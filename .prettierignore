@@ -1,0 +1,6 @@
+# Prettier ignore paths
+node_modules
+uni_modules
+dist
+build
+static/

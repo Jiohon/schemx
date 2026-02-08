@@ -1,0 +1,142 @@
+// FormGroup 组件样式
+// FormGroup component styles
+
+// ============================================
+// FormGroup 分组组件样式
+// ============================================
+
+.schema-form-group {
+  background-color: var(--schema-form-background-color, #ffffff);
+  padding: var(--schema-form-padding-md, 16px) 6px;
+  border-radius: var(--schema-form-border-radius-lg, 12px);
+  margin-bottom: var(--schema-form-padding-xs, 8px);
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  // ============================================
+  // 标题区域样式
+  // ============================================
+  
+  .schema-form-group-title {
+    display: flex;
+    align-items: center;
+    padding-left: var(--schema-form-padding-md, 16px);
+    padding-right: var(--schema-form-padding-md, 16px);
+    padding-bottom: var(--schema-form-padding-xs, 8px);
+    user-select: none;
+
+    // 可折叠状态的标题样式
+    &--collapsible {
+      cursor: pointer;
+      transition: opacity 0.2s ease;
+
+      &:hover {
+        opacity: 0.8;
+      }
+
+      &:focus {
+        outline: none;
+        opacity: 0.8;
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--schema-form-primary-color, #2f6bff);
+        outline-offset: 2px;
+        border-radius: var(--schema-form-border-radius-sm, 4px);
+      }
+    }
+
+    // 图标样式
+    &-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: var(--schema-form-padding-xs, 8px);
+      flex-shrink: 0;
+    }
+
+    // 标签文本样式
+    &-label {
+      font-size: var(--schema-form-font-size-md, 14px);
+      font-weight: 500;
+      color: var(--schema-form-text-color, #323233);
+      flex: 1;
+    }
+
+    // 折叠箭头样式
+    &-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: var(--schema-form-padding-xs, 8px);
+      transition: transform 0.3s ease;
+
+      .schema-form-group-arrow-icon {
+        font-size: var(--schema-form-icon-size, 18px);
+        color: var(--schema-form-icon-color, #969799);
+        transition: transform 0.3s ease;
+      }
+    }
+
+    // 折叠状态下的箭头旋转
+    &--collapsed {
+      .schema-form-group-title-arrow {
+        .schema-form-group-arrow-icon {
+          transform: rotate(0deg);
+        }
+      }
+    }
+  }
+
+  // ============================================
+  // 内容区域样式
+  // ============================================
+  
+  .schema-form-group-content {
+    overflow: hidden;
+
+    // 折叠状态
+    &--collapsed {
+      display: none;
+    }
+  }
+
+  // ============================================
+  // 折叠动画
+  // ============================================
+  
+  .schema-form-group-collapse-enter-active,
+  .schema-form-group-collapse-leave-active {
+    transition: all 0.3s ease;
+    overflow: hidden;
+  }
+
+  .schema-form-group-collapse-enter-from,
+  .schema-form-group-collapse-leave-to {
+    opacity: 0;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  .schema-form-group-collapse-enter-to,
+  .schema-form-group-collapse-leave-from {
+    opacity: 1;
+    max-height: 1000px; // 足够大的值以容纳内容
+  }
+}
+
+// ============================================
+// 嵌套分组样式
+// ============================================
+
+.schema-form-group {
+  .schema-form-group {
+    margin-left: var(--schema-form-padding-sm, 12px);
+    margin-right: var(--schema-form-padding-sm, 12px);
+    padding: var(--schema-form-padding-sm, 12px) 6px;
+    background-color: var(--schema-form-background-color-light, #f3f4f6);
+  }
+}

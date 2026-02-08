@@ -1,0 +1,105 @@
+{
+  "type": "module",
+  "name": "@anthropic/vue-schema-form",
+  "version": "1.0.0",
+  "description": "基于 JSON Schema 配置的 Vue 3 动态表单组件",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./style.css": "./dist/style.css",
+    "./dist/*": "./dist/*"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": [
+    "**/*.css",
+    "**/*.scss"
+  ],
+  "peerDependencies": {
+    "vant": "^4.0.0",
+    "vue": "^3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vant": {
+      "optional": false
+    }
+  },
+  "dependencies": {
+    "classnames": "^2.5.1",
+    "dayjs": "^1.11.19",
+    "lodash-es": "^4.17.21",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@types/lodash-es": "^4.17.12",
+    "@typescript-eslint/eslint-plugin": "^8.54.0",
+    "@typescript-eslint/parser": "^8.54.0",
+    "@vitejs/plugin-vue": "^5.0.0",
+    "@vitejs/plugin-vue-jsx": "^4.0.0",
+    "@vue/test-utils": "^2.4.6",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-unused-imports": "^4.3.0",
+    "eslint-plugin-vue": "^10.7.0",
+    "fast-check": "^4.5.3",
+    "happy-dom": "^20.3.9",
+    "prettier": "^3.8.1",
+    "sass": "^1.70.0",
+    "terser": "^5.46.0",
+    "typescript": "^5.0.0",
+    "typescript-eslint": "^8.54.0",
+    "vant": "^4.9.0",
+    "vite": "^5.0.0",
+    "vite-plugin-dts": "^3.0.0",
+    "vitest": "^4.0.18",
+    "vue": "^3.4.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint \"src/**/*.{ts,tsx,vue,js,jsx}\"",
+    "lint:fix": "eslint \"src/**/*.{ts,tsx,vue,js,jsx}\" --fix",
+    "format": "prettier --write \"src/**/*.{vue,ts,tsx,js,jsx,json,css,scss}\"",
+    "prepublishOnly": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/vue-schema-form.git"
+  },
+  "keywords": [
+    "vue",
+    "vue3",
+    "form",
+    "schema-form",
+    "dynamic-form",
+    "vant",
+    "json-schema"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/your-org/vue-schema-form/issues"
+  },
+  "homepage": "https://github.com/your-org/vue-schema-form#readme"
+}

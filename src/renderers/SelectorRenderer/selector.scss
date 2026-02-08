@@ -1,0 +1,27 @@
+.selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.option {
+  position: relative;
+  min-width: 80px;
+  padding: 8px 18px;
+  border-radius: 8px;
+  background: #f3f4f6;
+  color: #333333;
+  font-size: 14px;
+  text-align: center;
+  line-height: 20px;
+  box-sizing: border-box;
+}
+
+.option.active {
+  background: #eaf2ff;
+  color: #2f6bff;
+}
+
+.option.disabled {
+  opacity: 0.5;
+}

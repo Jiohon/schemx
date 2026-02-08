@@ -1,0 +1,40 @@
+.schema-form-stepper-renderer {
+  &--disabled {
+    opacity: 0.6;
+  }
+
+  &--readonly {
+    .schema-form-stepper-renderer__readonly {
+      padding: 8px 0;
+    }
+  }
+
+  &__readonly {
+    display: flex;
+    align-items: center;
+    min-height: 28px;
+
+    &-value {
+      font-size: 14px;
+      color: #323233;
+      font-weight: 500;
+    }
+  }
+
+  // Vant Stepper 组件的自定义样式
+  .van-stepper {
+    // 保持默认样式，可根据需要自定义
+  }
+
+  .van-stepper__minus,
+  .van-stepper__plus {
+    // 自定义按钮样式
+    border-radius: 4px;
+  }
+
+  .van-stepper__input {
+    // 自定义输入框样式
+    text-align: center;
+    font-weight: 500;
+  }
+}
