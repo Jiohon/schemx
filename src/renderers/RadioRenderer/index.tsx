@@ -94,8 +94,8 @@ const RadioRendererComponent = defineComponent({
     const valueName = computed(() => props.fieldNames?.value || "value")
     const disabledName = computed(() => props.fieldNames?.disabled || "disabled")
 
-    const disabled = computed(() => props.disabled || props.formItemProps?.disabled)
-    const readonly = computed(() => props.readonly || props.formItemProps?.readonly)
+    // const disabled = computed(() => props.disabled || props.formItemProps?.disabled)
+    // const readonly = computed(() => props.readonly || props.formItemProps?.readonly)
 
     const fieldValue = computed(() => {
       return getOption(props.value, labelName.value)
@@ -108,7 +108,7 @@ const RadioRendererComponent = defineComponent({
     }
 
     return () => {
-      if (readonly.value) {
+      if (props.readonly) {
         return (
           <div
             class={classNames("schema-form-radio-renderer", props.className)}
@@ -116,7 +116,7 @@ const RadioRendererComponent = defineComponent({
               textAlign: getFieldProps(attrs as Record<string, any>, "align", "right"),
             }}
           >
-            {readonly.value ? props.readonlyPlaceholder : fieldValue.value}
+            {props.readonly ? props.readonlyPlaceholder : fieldValue.value}
           </div>
         )
       }
@@ -128,8 +128,8 @@ const RadioRendererComponent = defineComponent({
             "schema-form-radio-renderer",
             props.className,
             {
-              "schema-form-renderer-readonly": readonly.value,
-              "schema-form-renderer-disabled": disabled.value,
+              "schema-form-renderer-readonly": props.readonly,
+              "schema-form-renderer-disabled": props.disabled,
             }
           )}
         >
@@ -153,7 +153,7 @@ const RadioRendererComponent = defineComponent({
               <Radio
                 key={option[valueName.value]}
                 name={option[valueName.value]}
-                disabled={disabled.value || option[disabledName.value]}
+                disabled={props.disabled || option[disabledName.value]}
                 {...option}
               >
                 {option[labelName.value]}

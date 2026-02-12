@@ -13,7 +13,7 @@ import { Icon } from "vant"
 
 import classNames from "classnames"
 
-import { BaseColumnConfig } from "@/types"
+import { SchemaBaseColumn } from "@/types"
 
 import { createRenderWrapper } from "../../renderer/rendererWrapper"
 import "./index.scss"
@@ -96,7 +96,7 @@ export interface InputRendererProps {
   align?: "left" | "center" | "right"
   className?: string
   readonlyPlaceholder?: string
-  formItemProps?: BaseColumnConfig
+  formItemProps?: SchemaBaseColumn
   error?: string[]
 }
 

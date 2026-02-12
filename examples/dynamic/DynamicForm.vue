@@ -23,7 +23,7 @@
   import { ref, computed } from "vue"
   import { z } from "zod"
   import SchemaForm from "@"
-  import type { ColumnConfig, SchemaFormInstance } from "@"
+  import type { SchemaColumn, SchemaFormInstance } from "@"
 
   const formRef = ref<SchemaFormInstance>()
   const formData = ref<Record<string, any>>({
@@ -84,7 +84,11 @@
           componentType: "text",
           required: true,
           // 仅企业用户显示
-          hidden: (values) => values.userType !== "enterprise",
+          hidden: (values) => {
+            console.log(values, values.userType)
+
+            return values.userType !== "enterprise"
+          },
           rules: z.string().min(2, "企业名称至少 2 个字符"),
         },
         {
@@ -127,17 +131,17 @@
             placeholder: "请选择省份",
           },
         },
-        // {
-        //   name: "city",
-        //   label: "城市",
-        //   componentType: "picker",
-        //   // 动态 componentProps - 根据省份显示对应城市
-        //   componentProps: (values) => ({
-        //     columns: values.province ? cityMap[values.province as string] || [] : [],
-        //     placeholder: values.province ? "请选择城市" : "请先选择省份",
-        //     disabled: !values.province,
-        //   }),
-        // },
+        {
+          name: "city",
+          label: "城市",
+          componentType: "picker",
+          // 动态 componentProps - 根据省份显示对应城市
+          componentProps: (values) => ({
+            columns: values.province ? cityMap[values.province as string] || [] : [],
+            placeholder: values.province ? "请选择城市" : "请先选择省份",
+            disabled: !values.province,
+          }),
+        },
         {
           name: "hasCompany",
           label: "是否有公司",
@@ -181,7 +185,7 @@
         //     maxlength: 200,
         //   }),
         // },
-      ] as ColumnConfig[]
+      ] as SchemaColumn[]
   )
 
   // 提交处理

@@ -15,20 +15,11 @@ export {
   type ValueGetter,
 } from "./Subscriber"
 
-// SchemaParser - Schema 解析
-export {
-  SchemaParser,
-  parseSchema,
-  type FieldNode,
-  type ParsedSchema,
-} from "./SchemaParser"
-
 // Validator - 校验
 export {
   Validator,
   createValidator,
   type ValidatorOptions,
-  type IValidator,
   type RulesMap,
   type ValidateResult,
   type ValidateError,
@@ -43,4 +34,4 @@ export {
   deleteByPath,
   isValidPath,
   parsePath,
-} from "./utils/path"
+} from "../utils/path"

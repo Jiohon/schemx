@@ -14,16 +14,18 @@ import type { SchemaFormInstance, SchemaFormProps } from "../types"
 export const FORM_CONTEXT_KEY = Symbol("FormContext")
 
 interface FormContextProps {
-  validationTrigger?: SchemaFormProps["validationTrigger"]
+  form: SchemaFormInstance
   columns?: SchemaFormProps["columns"]
   readonly?: SchemaFormProps["readonly"]
   disabled?: SchemaFormProps["disabled"]
+  labelIcon?: SchemaFormProps["labelIcon"]
   labelAlign?: SchemaFormProps["labelAlign"]
   labelWidth?: SchemaFormProps["labelWidth"]
+  contentAlign?: SchemaFormProps["contentAlign"]
   colon?: SchemaFormProps["colon"]
+  validationTrigger?: SchemaFormProps["validationTrigger"]
   className?: SchemaFormProps["className"]
   style?: SchemaFormProps["style"]
-  form: SchemaFormInstance
 }
 
 /**

@@ -16,10 +16,8 @@ export * from "./hooks"
 export { FORM_CONTEXT_KEY } from "./hooks/useFormContext"
 
 // 组件导出
-export { default as FormItem } from "./FormItem"
-export { default as FormDependency } from "./FormDependency"
-export { FormGroup } from "./components"
-export type { FormGroupProps, FormDependencyProps } from "./components"
+export { default as FormItem } from "./components/FormItem"
+export { default as FormDependency } from "./components/FormDependency"
 
 // 渲染器导出
 export {
@@ -83,11 +81,10 @@ export {
   randomString,
   getFileName,
   stringToHash,
-  getInitialValuesFromColumns,
 } from "./utils"
 
 // Utils 类型导出
-export type { TreeFindOptions, TreeFindResult, SimpleFormInstance } from "./utils"
+export type { TreeFindOptions, TreeFindResult } from "./utils"
 
 // SchemaForm 实例类型导出
 export type { SchemaFormInstallOptions } from "./SchemaForm"
@@ -100,9 +97,8 @@ export type {
   ValidationTrigger,
   DynamicProp,
   SchemaFormInstance,
-  ColumnConfig,
-  BaseColumnConfig,
+  SchemaColumn,
+  SchemaBaseColumn,
   ProcessedColumnConfig,
   SchemaFormProps,
-  FormItemProps,
 } from "./types"

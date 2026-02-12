@@ -2,7 +2,7 @@
 // Main style entry for SchemaForm
 
 // 导入 CSS 变量定义
-@import './variables.scss';
+@import "./variables.scss";
 
 // ============================================
 // SchemaForm 主组件样式
@@ -15,7 +15,7 @@
   padding-bottom: 15px;
 
   .schema-form-columns {
-    background-color: var(--schema-form-background-color, var(--van-white, #ffffff));
+    background-color: var(--schema-form-background-color, #ffffff);
     padding: var(--schema-form-padding-md, 16px) 6px;
     border-radius: var(--schema-form-border-radius-lg, 12px);
 
@@ -44,10 +44,10 @@
       box-sizing: border-box;
       content: " ";
       pointer-events: none;
-      right: var(--schema-form-padding-md, var(--van-padding-md, 16px));
+      right: var(--schema-form-padding-md, 16px);
       bottom: 0;
-      left: var(--schema-form-padding-md, var(--van-padding-md, 16px));
-      border-bottom: 1px solid var(--schema-form-border-color, var(--van-cell-border-color, #ebedf0));
+      left: var(--schema-form-padding-md, 16px);
+      border-bottom: 1px solid var(--schema-form-border-color, #ebedf0);
       transform: scaleY(0.5);
     }
 
@@ -56,7 +56,10 @@
     }
 
     .schema-form-item {
-      --van-cell-line-height: var(--schema-form-item-line-height, 36px);
+      display: flex;
+      align-items: flex-start;
+      padding: var(--schema-form-padding-sm, 12px) var(--schema-form-padding-md, 16px);
+      line-height: var(--schema-form-item-line-height, 36px);
 
       .schema-form-renderer-disabled {
         opacity: 0.65;
@@ -65,41 +68,76 @@
       .schema-form-renderer-readonly {
         opacity: 1;
       }
+    }
 
-      > .van-cell__title {
-        color: var(--schema-form-item-label-color, #666666);
+    // Label alignment modifiers
+    .schema-form-item--label-left {
+      flex-direction: row;
+
+      .schema-form-item__label {
+        text-align: left;
       }
+    }
+
+    .schema-form-item--label-right {
+      flex-direction: row;
+
+      .schema-form-item__label {
+        text-align: right;
+      }
+    }
+
+    .schema-form-item--label-top {
+      flex-direction: column;
+
+      .schema-form-item__label {
+        width: 100% !important;
+        margin-bottom: var(--schema-form-padding-xs, 8px);
+      }
+    }
+
+    // Label
+    .schema-form-item__label {
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+      color: var(--schema-form-item-label-color, #666666);
+      font-size: var(--schema-form-font-size-md, 14px);
+      margin-right: var(--schema-form-padding-xs, 8px);
+    }
+
+    // Required indicator
+    .schema-form-item__required {
+      color: var(--schema-form-danger-color, #ee0a24);
+      margin-right: 2px;
+    }
+
+    // Label text
+    .schema-form-item__label-text {
+      // Inherits from label
+    }
+
+    // Content area
+    .schema-form-item__content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    // Control (renderer/slot container)
+    .schema-form-item__control {
+      text-align: var(--schema-form-input-align, end);
 
       .schema-form-renderer {
         width: 100%;
-
-        > .van-field {
-          padding: 0;
-
-          .van-field__body:after {
-            display: none;
-          }
-        }
-
-        > .van-cell:after {
-          display: none;
-        }
       }
     }
 
-    .van-field__control[readonly] {
-      color: var(--schema-form-text-color, var(--van-field-input-text-color, #323233));
-      -webkit-text-fill-color: var(--schema-form-text-color, var(--van-field-input-text-color, #323233));
-    }
-
-    .van-field__control::placeholder {
-      color: var(--schema-form-text-color-placeholder, var(--van-field-input-disabled-text-color, #c8c9cc));
-      -webkit-text-fill-color: var(--schema-form-text-color-placeholder, var(--van-field-input-disabled-text-color, #c8c9cc));
-    }
-
-    .van-field__control[disabled] {
-      color: var(--schema-form-text-color, var(--van-field-input-text-color, #323233));
-      -webkit-text-fill-color: var(--schema-form-text-color, var(--van-field-input-text-color, #323233));
+    // Error message
+    .schema-form-item__error {
+      color: var(--schema-form-danger-color, #ee0a24);
+      font-size: var(--schema-form-font-size-sm, 12px);
+      text-align: var(--schema-form-error-align, "right");
+      margin-top: 2px;
     }
   }
 
@@ -114,35 +152,33 @@
 // ============================================
 
 // 输入类渲染器
-@import '../renderers/InputRenderer/index.scss';
-@import '../renderers/TextRenderer/index.scss';
-@import '../renderers/TextAreaRenderer/index.scss';
-@import '../renderers/NumberRenderer/index.scss';
+@import "../renderers/InputRenderer/index.scss";
+@import "../renderers/TextRenderer/index.scss";
+@import "../renderers/TextAreaRenderer/index.scss";
+@import "../renderers/NumberRenderer/index.scss";
 
 // 选择类渲染器
-@import '../renderers/SwitchRenderer/index.scss';
-@import '../renderers/RadioRenderer/index.scss';
-@import '../renderers/CheckboxRenderer/index.scss';
-@import '../renderers/SelectorRenderer/index.scss';
-@import '../renderers/SelectorRenderer/selector.scss';
+@import "../renderers/SwitchRenderer/index.scss";
+@import "../renderers/RadioRenderer/index.scss";
+@import "../renderers/CheckboxRenderer/index.scss";
+@import "../renderers/SelectorRenderer/index.scss";
+@import "../renderers/SelectorRenderer/selector.scss";
 
 // 日期时间渲染器
-@import '../renderers/DateRenderer/index.scss';
-@import '../renderers/CalendarRenderer/index.scss';
+@import "../renderers/DateRenderer/index.scss";
+@import "../renderers/CalendarRenderer/index.scss";
 
 // 选择器渲染器
-@import '../renderers/PickerRenderer/index.scss';
-@import '../renderers/CascaderRenderer/index.scss';
+@import "../renderers/PickerRenderer/index.scss";
+@import "../renderers/CascaderRenderer/index.scss";
 
 // 其他渲染器
-@import '../renderers/RateRenderer/index.scss';
-@import '../renderers/SliderRenderer/index.scss';
-@import '../renderers/StepperRenderer/index.scss';
-@import '../renderers/UploadRenderer/index.scss';
+@import "../renderers/RateRenderer/index.scss";
+@import "../renderers/SliderRenderer/index.scss";
+@import "../renderers/StepperRenderer/index.scss";
+@import "../renderers/UploadRenderer/index.scss";
 
 // ============================================
 // 导入组件样式
 // Import component styles
 // ============================================
-
-@import '../components/FormGroup.scss';

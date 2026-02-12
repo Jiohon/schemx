@@ -11,17 +11,27 @@
  * @module types
  */
 
-import type { Component, CSSProperties } from "vue"
+import type { Component, CSSProperties, DeepReadonly } from "vue"
 
-import type { ParsedSchema } from "../core"
+import type { DeepNamePath } from "./namePathType"
 import type { FieldSubscribeCallback, GlobalSubscribeCallback } from "../core/Subscriber"
 import type { ValidateError, ValidateResult } from "../core/Validator"
+// eslint-disable-next-line import/order
 import type { ISchemaRegistry } from "../renderer/createRegistry"
+
+export type { ISchemaRegistry }
 import type { DefaultRendererType } from "../renderer/defaultRenderers"
 import type { ZodType } from "zod"
 
-// 表单值类型
-export type FormValues = Record<string, unknown>
+export type ResolveDynamic<T> = {
+  [K in keyof T]: T[K] extends DynamicProp<infer U> ? U : T[K]
+}
+
+export type Value = any
+
+export type FormValues = Record<string, Value>
+
+export type NamePath<T = any> = DeepNamePath<T>
 
 // ============================================================================
 // 渲染器类型体系
@@ -70,7 +80,7 @@ export type ValidationTrigger =
  *
  * 支持静态值或函数形式，函数接收当前表单值并返回属性值
  */
-export type DynamicProp<T> = (values: FormValues) => T | T
+export type DynamicProp<T> = ((values: FormValues) => T | Promise<T>) | T
 
 // ============================================================================
 // 表单核心类型
@@ -83,82 +93,333 @@ export type DynamicProp<T> = (values: FormValues) => T | T
  * UseFormReturn 继承此接口并添加响应式状态。
  */
 export interface SchemaFormInstance<T extends FormValues = FormValues> {
-  schema: ParsedSchema | null
-  // ==================== 值操作 ====================
-  /** 设置单个字段值 */
-  setFieldValue: (name: string, value: unknown) => void
-  /** 批量设置字段值 */
-  setFieldsValue: (values: Partial<T>) => void
-  /** 获取单个字段值 */
-  getFieldValue: (name: string) => unknown
-  /** 获取多个字段值，不传参数返回所有值 */
-  getFieldsValue: (names?: string[]) => Record<string, unknown>
-  /** 获取字段初始值 */
-  getInitialValue: (name: string) => unknown
+  /**
+   * 设置单个字段值
+   *
+   * @param name - 字段路径
+   * @param value - 字段值
+   *
+   * @example
+   * ```typescript
+   * form.setFieldValue('name', 'John')
+   * form.setFieldValue('user.address.city', 'Beijing')
+   * ```
+   */
+  setFieldValue: (name: NamePath<T>, value: Value) => void
 
-  // ==================== 校验 ====================
-  /** 注册字段校验规则 */
-  registerRules: (name: string, rules: ZodType) => void
-  /** 注销字段校验规则 */
-  unregisterRules: (name: string) => void
-  /** 校验指定字段，可选指定字段名数组，成功返回 values，失败返回 errors */
-  validateField: (names: string | string[]) => Promise<ValidateResult<T>>
-  /** 校验表单，可选指定字段名数组，成功返回 values，失败返回 errors */
+  /**
+   * 批量设置字段值
+   *
+   * @param values - 要设置的字段值对象
+   *
+   * @example
+   * ```typescript
+   * form.setFieldsValue({ name: 'John', age: 25 })
+   * ```
+   */
+  setFieldsValue: (values: DeepReadonly<Partial<T>>) => void
+
+  /**
+   * 获取单个字段值
+   *
+   * @param name - 字段路径
+   * @returns 字段当前值
+   *
+   * @example
+   * ```typescript
+   * const name = form.getFieldValue('name')
+   * const city = form.getFieldValue('user.address.city')
+   * ```
+   */
+  getFieldValue: (name: NamePath<T>) => DeepReadonly<Value>
+
+  /**
+   * 获取多个字段值
+   *
+   * 不传参数返回所有值（DeepReadonly 只读引用），传入路径数组返回指定字段的值。
+   *
+   * @param names - 可选，要获取的字段路径数组
+   * @returns 全量只读值或指定字段的值
+   *
+   * @example
+   * ```typescript
+   * const latestValues = form.getFieldsValue()       // DeepReadonly<T>
+   * const partial = form.getFieldsValue(['name', 'email'])
+   * ```
+   */
+  getFieldsValue: (names?: NamePath<T>[]) => DeepReadonly<Partial<T>>
+
+  /**
+   * 获取字段初始值
+   *
+   * @param name - 字段路径
+   * @returns 字段初始值
+   *
+   * @example
+   * ```typescript
+   * const initialName = form.getInitialValue('name')
+   * ```
+   */
+  getInitialValue: (name: NamePath<T>) => Value
+
+  /**
+   * 注册字段校验规则
+   *
+   * @param name - 字段路径
+   * @param rules - Zod schema 规则
+   *
+   * @example
+   * ```typescript
+   * import { z } from 'zod'
+   * form.registerRules('email', z.string().email('邮箱格式错误'))
+   * ```
+   */
+  registerRules: (name: NamePath<T>, rules: ZodType) => void
+
+  /**
+   * 注销字段校验规则
+   *
+   * @param name - 字段路径
+   *
+   * @example
+   * ```typescript
+   * form.unregisterRules('email')
+   * ```
+   */
+  unregisterRules: (name: NamePath<T>) => void
+
+  /**
+   * 从 columns 配置提取并注册所有规则
+   *
+   * @param columns - 表单列配置数组
+   *
+   * @example
+   * ```typescript
+   * form.registerRulesFromColumns(columns)
+   * ```
+   */
+  registerRulesFromColumns: (columns: SchemaColumn<T>[]) => void
+
+  /**
+   * 校验指定字段
+   *
+   * @param names - 字段路径或路径数组
+   * @returns 校验结果，成功返回 values，失败返回 errors
+   *
+   * @example
+   * ```typescript
+   * const result = await form.validateField('email')
+   * const result = await form.validateField(['name', 'email'])
+   * if (!result.ok) {
+   *   console.log(result.error.errors)
+   * }
+   * ```
+   */
+  validateField: (names: NamePath | NamePath<T>[]) => Promise<ValidateResult<T>>
+
+  /**
+   * 校验所有已注册字段
+   *
+   * @returns 校验结果，成功返回 values，失败返回 errors
+   *
+   * @example
+   * ```typescript
+   * const result = await form.validate()
+   * if (result.ok) {
+   *   submitToServer(result.values)
+   * }
+   * ```
+   */
   validate: () => Promise<ValidateResult<T>>
 
-  /** 获取单个字段的错误信息 */
-  getFieldError: (name: string) => string[] | undefined
-  /** 设置字段的错误信息 */
-  setFieldError: (name: string, errors: string[]) => void
+  /**
+   * 获取单个字段的错误信息
+   *
+   * @param name - 字段路径
+   * @returns 错误信息数组，无错误时返回 undefined
+   *
+   * @example
+   * ```typescript
+   * const errors = form.getFieldError('email')
+   * // => ['邮箱格式错误'] 或 undefined
+   * ```
+   */
+  getFieldError: (name: NamePath<T>) => string[] | undefined
 
-  // ==================== 提交 ====================
-  /** 提交表单 */
+  /**
+   * 手动设置字段的错误信息
+   *
+   * @param name - 字段路径
+   * @param errors - 错误信息数组
+   *
+   * @example
+   * ```typescript
+   * form.setFieldError('username', ['用户名已存在'])
+   * ```
+   */
+  setFieldError: (name: NamePath<T>, errors: string[]) => void
+
+  /**
+   * 提交表单
+   *
+   * 先校验所有字段，通过后调用 onFinish，失败调用 onFinishFailed。
+   * 内置防重复提交锁，提交进行中重复调用返回同一个 Promise。
+   *
+   * @example
+   * ```typescript
+   * await form.submit()
+   * ```
+   */
   submit: () => Promise<void>
 
-  // ==================== 重置 ====================
-  /** 重置整个表单到初始值 */
+  /**
+   * 重置整个表单到初始值
+   *
+   * @example
+   * ```typescript
+   * form.reset()
+   * ```
+   */
   reset: () => void
-  /** 重置指定字段到初始值 */
-  resetFields: (names: string[]) => void
 
-  // ==================== Touched 状态（字段是否被修改） ====================
-  /** 检查单个字段是否被修改 */
+  /**
+   * 重置指定字段到初始值
+   *
+   * @param names - 要重置的字段路径数组
+   *
+   * @example
+   * ```typescript
+   * form.resetFields(['name', 'email'])
+   * ```
+   */
+  resetFields: (names: NamePath<T>[]) => void
+
+  /**
+   * 检查单个字段是否被修改
+   *
+   * @param name - 字段路径
+   * @returns 是否与初始值不同
+   *
+   * @example
+   * ```typescript
+   * form.isFieldTouched('name') // => true
+   * ```
+   */
   isFieldTouched: (name: string) => boolean
-  /** 检查多个字段是否被修改，不传参检查是否有任一字段被修改 */
-  isFieldsTouched: (names?: string[]) => boolean
-  /** 获取所有被修改的字段名 */
+
+  /**
+   * 检查多个字段是否被修改
+   *
+   * 传入路径数组时检查所有指定字段是否都被修改，不传则检查是否有任一字段被修改。
+   *
+   * @param names - 可选，要检查的字段路径
+   * @returns 是否被修改
+   *
+   * @example
+   * ```typescript
+   * form.isFieldsTouched(['name', 'email']) // 所有字段都被修改才返回 true
+   * form.isFieldsTouched()                  // 任一字段被修改即返回 true
+   * ```
+   */
+  isFieldsTouched: (names?: NamePath<T>) => boolean
+
+  /**
+   * 获取所有被修改的字段路径
+   *
+   * @returns 被修改的字段路径数组
+   *
+   * @example
+   * ```typescript
+   * const touched = form.getTouchedFields()
+   * // => ['name', 'user.address.city']
+   * ```
+   */
   getTouchedFields: () => string[]
 
-  // ==================== 订阅 ====================
-  /** 订阅单个字段变化 */
-  subscribe: (name: string, callback: FieldSubscribeCallback) => () => void
-  /** 订阅所有字段变化 */
-  subscribeAll: (callback: GlobalSubscribeCallback) => () => void
+  /**
+   * 订阅单个字段变化
+   *
+   * 当订阅的字段或其父/子路径发生变化时，都会收到通知。
+   *
+   * @param path - 要订阅的字段路径
+   * @param callback - 变化时的回调函数
+   * @returns 取消订阅的函数
+   *
+   * @example
+   * ```typescript
+   * const unsubscribe = form.subscribe('name', (path, value, latestValues) => {
+   *   console.log(`${path} changed to ${value}`)
+   * })
+   * unsubscribe()
+   * ```
+   */
+  subscribe: (path: NamePath<T>, callback: FieldSubscribeCallback<T>) => () => void
 
-  // ==================== Schema 操作 ====================
-  /** 更新表单 Schema */
-  updateSchema: (columns: ColumnConfig[]) => void
+  /**
+   * 订阅多个字段变化
+   *
+   * 当任一指定字段变化时触发回调。
+   *
+   * @param paths - 要订阅的字段路径数组
+   * @param callback - 变化时的回调函数
+   * @returns 取消所有订阅的函数
+   *
+   * @example
+   * ```typescript
+   * const unsubscribe = form.subscribeFields(['name', 'email'], (path, value) => {
+   *   console.log(`${path} changed`)
+   * })
+   * unsubscribe()
+   * ```
+   */
+  subscribeFields: (
+    paths: NamePath<T>[],
+    callback: FieldSubscribeCallback<T>
+  ) => () => void
+
+  /**
+   * 订阅所有字段变化
+   *
+   * 当任何字段值变化时都会收到通知。
+   *
+   * @param callback - 变化时的回调函数
+   * @returns 取消订阅的函数
+   *
+   * @example
+   * ```typescript
+   * const unsubscribe = form.subscribeAll((latestValues, changedValues, changedFields) => {
+   *   console.log('Changed:', changedFields)
+   * })
+   * unsubscribe()
+   * ```
+   */
+  subscribeAll: (callback: GlobalSubscribeCallback<T>) => () => void
+
+  /**
+   * 销毁表单实例，清除所有订阅
+   *
+   * @example
+   * ```typescript
+   * form.destroy()
+   * ```
+   */
+  destroy: () => void
 }
 
-/**
- * 字段配置
- */
-export type ColumnConfig = BaseColumnConfig | DependencyColumnConfig
+export type CustomRules = "required"
 
 /**
  * 基础字段配置
  */
-export interface BaseColumnConfig {
+export interface SchemaBaseColumn<T extends FormValues = FormValues> {
   /** 字段名（支持嵌套路径如 'user.name'） */
-  name: string
+  name: NamePath<T>
   /** 字段标签 */
   label?: string
   /** 组件类型（不能为 dependency） */
-  componentType: Exclude<RendererType, "dependency">
+  componentType: Exclude<RendererType, "dependency" | "group" | "columns">
   /** 组件属性（支持函数形式） */
-  componentProps?: ComponentsProps | ((values: FormValues) => ComponentsProps)
-  /** 校验规则（Zod schema） */
-  rules?: ZodType
+  componentProps?: DynamicProp<ComponentsProps>
   /** 是否必填（支持函数形式） */
   required?: DynamicProp<boolean>
   /** 是否只读（支持函数形式） */
@@ -169,14 +430,63 @@ export interface BaseColumnConfig {
   hidden?: DynamicProp<boolean>
   /** 初始值 */
   initialValue?: FormValues
+  /** 校验规则（Zod schema） */
+  rules?: ZodType | CustomRules
   /** 自定义类名 */
   className?: string
   /** 标签图标 */
   labelIcon?: string
-  /** 嵌套列配置 */
-  columns?: ColumnConfig[]
+  /** 表单label排列方向 */
+  labelAlign?: "left" | "right" | "top"
+  /** 表单label宽度 */
+  labelWidth?: string
   /** 对齐方式 */
-  align?: "left" | "center" | "right"
+  contentAlign?: "left" | "center" | "right"
+  /** 默认的验证触发时机 */
+  validationTrigger?: ValidationTrigger | ValidationTrigger[]
+  /** 是否在 label 后面添加冒号 */
+  colon?: boolean
+  /** 自定义样式 */
+  style?: CSSProperties
+}
+
+/** FormItem 组件 Props */
+export type FormItemProps = Omit<SchemaBaseColumn, "componentProps">
+
+/** 动态属性已解析为静态值的 FormItem Props */
+export type ProcessedFormItemProps = Omit<
+  SchemaBaseColumn,
+  "required" | "readonly" | "disabled" | "hidden"
+> & {
+  required: boolean
+  readonly: boolean
+  disabled: boolean
+  hidden: boolean
+  componentProps: ComponentsProps
+  class?: string
+}
+
+/**
+ * 嵌套字段配置
+ */
+export interface SchemaNestedColumn<T extends FormValues = FormValues> {
+  // /** 字段名（支持嵌套路径如 'user.name'） */
+  // label: string
+  /** 组件类型（固定为 dependency） */
+  componentType: "columns"
+  /** 嵌套列配置 */
+  columns: SchemaColumn<T>[]
+}
+/**
+ * 分组字段配置
+ */
+export interface SchemaGroupColumn<T extends FormValues = FormValues> {
+  // /** 字段名（支持嵌套路径如 'user.name'） */
+  // label: string
+  /** 组件类型（固定为 dependency） */
+  componentType: "group"
+  /** 嵌套列配置 */
+  columns: SchemaColumn<T>[]
   /** 是否可折叠 */
   collapsible?: boolean
   /** 默认是否折叠 */
@@ -186,67 +496,79 @@ export interface BaseColumnConfig {
 /**
  * 依赖字段配置
  */
-export interface DependencyColumnConfig {
+export interface SchemaDependencyColumn<T extends FormValues = FormValues> {
   /** 组件类型（固定为 dependency） */
   componentType: "dependency"
   /** 依赖字段 */
-  to: string[]
+  to: NamePath<T>[]
   /** 渲染函数 */
   renderer: (
     values: FormValues,
-    form: SchemaFormInstance,
-    isDependenceUpdated: boolean
-  ) => ColumnConfig[] | Promise<ColumnConfig[]>
+    form: SchemaFormInstance
+  ) => SchemaColumn[] | Promise<SchemaColumn[]>
 }
 
+/**
+ * 依赖字段配置
+ */
+export type SchemaColumn<T extends FormValues = FormValues> =
+  | SchemaBaseColumn<T>
+  | SchemaNestedColumn<T>
+  | SchemaGroupColumn<T>
+  | SchemaDependencyColumn<T>
 /**
  * 规范化后的基础字段配置
  * SchemaParser 解析后的结果，包含完整路径和原始配置引用
  */
-export interface NormalizedBaseColumnConfig extends BaseColumnConfig {
+
+export interface NormalizedSchemaBaseColumn extends SchemaBaseColumn {
   /** 完整路径（由 SchemaParser 生成） */
   path: string
   /** 原始配置引用 */
-  _raw: ColumnConfig
+  _raw: SchemaBaseColumn
+}
+
+/**
+ * 规范化后的嵌套字段配置
+ */
+export interface NormalizedSchemaNestedColumn extends SchemaNestedColumn {
+  /** 完整路径（由 SchemaParser 生成） */
+  path: string
+  /** 原始配置引用 */
+  _raw: SchemaGroupColumn
+}
+
+/**
+ * 规范化后的分组字段配置
+ */
+export interface NormalizedSchemaGroupColumn extends SchemaGroupColumn {
+  /** 完整路径（由 SchemaParser 生成） */
+  path: string
+  /** 原始配置引用 */
+  _raw: SchemaGroupColumn
 }
 
 /**
  * 规范化后的依赖字段配置
  */
-export interface NormalizedDependencyColumn extends DependencyColumnConfig {
+export interface NormalizedSchemaDependencyColumn extends SchemaDependencyColumn {
   /** 原始配置引用 */
-  _raw: ColumnConfig
+  _raw: SchemaDependencyColumn
 }
 
 /**
  * 规范化后的字段配置（联合类型）
  */
-export type NormalizedColumnConfig =
-  | NormalizedBaseColumnConfig
-  | NormalizedDependencyColumn
-
-/**
- * 处理后的基础列配置
- *
- * 所有动态属性已被解析为静态值
- */
-export interface ProcessedBaseColumnConfig extends Omit<
-  BaseColumnConfig,
-  "componentProps" | "visible" | "hidden" | "disabled" | "readonly" | "required"
-> {
-  class?: string
-  componentProps?: ComponentsProps
-  visible?: boolean
-  hidden?: boolean
-  disabled?: boolean
-  readonly?: boolean
-  required?: boolean
-}
+export type NormalizedSchemaColumn =
+  | NormalizedSchemaBaseColumn
+  | NormalizedSchemaNestedColumn
+  | NormalizedSchemaGroupColumn
+  | NormalizedSchemaDependencyColumn
 
 /**
  * 处理后的列配置（联合类型）
  */
-export type ProcessedColumnConfig = ProcessedBaseColumnConfig | DependencyColumnConfig
+export type ProcessedColumnConfig = ProcessedFormItemProps | SchemaDependencyColumn
 
 // ============================================================================
 // 组件 Props 类型
@@ -258,16 +580,20 @@ export interface SchemaFormProps<T extends FormValues = FormValues> {
   modelValue?: T
   /** 初始值 */
   initialValues?: T
-  /** 默认的验证触发时机 */
-  validationTrigger?: ValidationTrigger | ValidationTrigger[]
   /** 表单字段配置 */
-  columns: ColumnConfig[]
+  columns: SchemaColumn[]
   /** 表单实例 */
   form?: SchemaFormInstance
+  /** 默认的验证触发时机 */
+  validationTrigger?: ValidationTrigger | ValidationTrigger[]
+  /** 标签图标 */
+  labelIcon?: string
   /** 表单label排列方向 */
   labelAlign?: "left" | "right" | "top"
   /** 表单label宽度 */
   labelWidth?: string
+  /** 表单Content排列方向 */
+  contentAlign?: "left" | "right" | "top"
   /** 是否在 label 后面添加冒号 */
   colon?: boolean
   /** 是否只读 */
@@ -279,11 +605,11 @@ export interface SchemaFormProps<T extends FormValues = FormValues> {
   /** 自定义样式 */
   style?: CSSProperties
   /** 提交成功回调 */
-  onFinish?: (values: T) => void
+  onFinish?: (values: DeepReadonly<T>) => void
   /** 提交失败回调 */
   onFinishFailed?: (errorInfo: ValidateError<T>) => void
   /** 值变化回调 */
-  onValuesChange?: (changedValues: Partial<T>, allValues: T) => void
+  onValuesChange?: (changedValues: Partial<T>, latestValues: T) => void
   /** 字段变化回调 */
   onFieldsChange?: (changedFields: string[], allFields: string[]) => void
   /** 是否显示底部按钮 */
@@ -292,14 +618,6 @@ export interface SchemaFormProps<T extends FormValues = FormValues> {
   submitButtonText?: string
   /** 提交按钮属性 */
   submitButtonProps?: ComponentsProps
-}
-
-/** FormItem 组件 Props */
-export interface FormItemProps {
-  column: ColumnConfig
-  form: SchemaFormInstance
-  schemaRenderer: ISchemaRegistry
-  readonly?: boolean
 }
 
 export interface ComponentsProps {

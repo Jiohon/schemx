@@ -8,17 +8,32 @@
 
 // 主色调
 $schema-form-primary-color: var(--schema-form-primary-color, #2f6bff) !default;
-$schema-form-primary-color-light: var(--schema-form-primary-color-light, #eaf2ff) !default;
+$schema-form-primary-color-light: var(
+  --schema-form-primary-color-light,
+  #eaf2ff
+) !default;
 
 // 文本颜色
 $schema-form-text-color: var(--schema-form-text-color, #323233) !default;
-$schema-form-text-color-secondary: var(--schema-form-text-color-secondary, #666666) !default;
-$schema-form-text-color-placeholder: var(--schema-form-text-color-placeholder, #c8c9cc) !default;
-$schema-form-text-color-disabled: var(--schema-form-text-color-disabled, #c8c9cc) !default;
+$schema-form-text-color-secondary: var(
+  --schema-form-text-color-secondary,
+  #666666
+) !default;
+$schema-form-text-color-placeholder: var(
+  --schema-form-text-color-placeholder,
+  #c8c9cc
+) !default;
+$schema-form-text-color-disabled: var(
+  --schema-form-text-color-disabled,
+  #c8c9cc
+) !default;
 
 // 背景颜色
 $schema-form-background-color: var(--schema-form-background-color, #ffffff) !default;
-$schema-form-background-color-light: var(--schema-form-background-color-light, #f3f4f6) !default;
+$schema-form-background-color-light: var(
+  --schema-form-background-color-light,
+  #f3f4f6
+) !default;
 
 // 边框颜色
 $schema-form-border-color: var(--schema-form-border-color, #ebedf0) !default;
@@ -74,18 +89,29 @@ $schema-form-clear-icon-color: var(--schema-form-clear-icon-color, #c8c9cc) !def
 // 评分组件
 $schema-form-rate-star-size: var(--schema-form-rate-star-size, 20px) !default;
 $schema-form-rate-star-color: var(--schema-form-rate-star-color, #ddd) !default;
-$schema-form-rate-star-active-color: var(--schema-form-rate-star-active-color, #ffd21e) !default;
+$schema-form-rate-star-active-color: var(
+  --schema-form-rate-star-active-color,
+  #ffd21e
+) !default;
 
 // 选择器组件
 $schema-form-selector-gap: var(--schema-form-selector-gap, 12px) !default;
-$schema-form-selector-option-min-width: var(--schema-form-selector-option-min-width, 80px) !default;
-$schema-form-selector-option-padding: var(--schema-form-selector-option-padding, 8px 18px) !default;
+$schema-form-selector-option-min-width: var(
+  --schema-form-selector-option-min-width,
+  80px
+) !default;
+$schema-form-selector-option-padding: var(
+  --schema-form-selector-option-padding,
+  8px 18px
+) !default;
 
 // ============================================
 // CSS 自定义属性根定义 (CSS Custom Properties Root)
 // ============================================
 
 :root {
+  --schema-form-error-align: right;
+
   // 主色调
   --schema-form-primary-color: #2f6bff;
   --schema-form-primary-color-light: #eaf2ff;

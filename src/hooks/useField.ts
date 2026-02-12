@@ -8,7 +8,9 @@
 
 import { computed, type ComputedRef } from "vue"
 
-import type { FormValues, SchemaFormInstance } from "@/types"
+import type { DeepReadonly } from "vue"
+
+import type { FormValues, NamePath, SchemaFormInstance } from "@/types"
 
 import { useFormContext } from "./useFormContext"
 
@@ -49,7 +51,7 @@ export interface FieldActions {
   /** 获取当前 name 单值 */
   getValue: () => any
   /** 获取表单值 */
-  getValues: () => FormValues
+  getValues: () => DeepReadonly<FormValues>
 }
 
 /**
@@ -76,7 +78,10 @@ export interface UseFieldOptions {
  * @param options - 选项
  * @returns 字段状态和操作方法
  */
-export const useField = (name: string, options: UseFieldOptions = {}): UseFieldReturn => {
+export const useField = (
+  name: NamePath,
+  options: UseFieldOptions = {}
+): UseFieldReturn => {
   const context = useFormContext()
 
   const form = computed(() => context.form)
@@ -106,7 +111,7 @@ export const useField = (name: string, options: UseFieldOptions = {}): UseFieldR
 
   // 返回响应式 values 引用，computed 中使用时自动追踪所有字段变化
   const getValues = () => {
-    return form.value?.getFieldsValue() as FormValues
+    return form.value?.getFieldsValue() as DeepReadonly<FormValues>
   }
 
   const setValue = (newValue: any): void => {
@@ -128,7 +133,9 @@ export const useField = (name: string, options: UseFieldOptions = {}): UseFieldR
 
   const validate = async (): Promise<boolean> => {
     if (form.value) {
-      await form.value.validateField([name])
+      const result = await form.value.validateField([name])
+
+      return result.ok
     }
 
     return true

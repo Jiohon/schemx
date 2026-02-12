@@ -24,7 +24,7 @@
   import { ref } from "vue"
   import { z } from "zod"
   import SchemaForm from "@"
-  import type { ColumnConfig, SchemaFormInstance } from "@"
+  import type { SchemaColumn, SchemaFormInstance } from "@"
 
   const formRef = ref<SchemaFormInstance>()
   const formData = ref<Record<string, any>>({})
@@ -37,7 +37,7 @@
   }
 
   // 表单配置（使用 Zod schema 作为验证规则）
-  const columns: ColumnConfig[] = [
+  const columns: SchemaColumn[] = [
     {
       name: "username",
       label: "用户名",
@@ -112,6 +112,29 @@
       label: "订阅通知",
       componentType: "switch",
     },
+    {
+      label: "订阅通知",
+      componentType: "group",
+      columns: [
+        {
+          name: "subscribe1",
+          label: "订阅通知1",
+          componentType: "switch",
+        },
+        {
+          componentType: "dependency",
+          to: ["subscribe11"],
+          renderer: () => {
+            return []
+          },
+        },
+      ],
+    },
+    {
+      label: "group",
+      componentType: "group",
+      columns: [],
+    },
   ]
 
   // 提交处理
@@ -128,15 +151,15 @@
   // 值变化处理
   const handleValuesChange = (
     changedValues: Record<string, any>,
-    allValues: Record<string, any>
+    latestValues: Record<string, any>
   ) => {
-    console.log("值变化:", changedValues, allValues)
+    console.log("值变化:", changedValues, latestValues)
   }
 
   // 暴露方法供外部调用
   defineExpose({
     // 重置表单
-    reset: () => formRef.value?.resetFields(),
+    reset: () => formRef.value?.reset(),
     // 获取表单数据
     getData: () => formRef.value?.getFieldsValue(),
     // 设置表单数据

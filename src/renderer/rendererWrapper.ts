@@ -15,6 +15,7 @@
 
 import {
   Component,
+  computed,
   defineComponent,
   h,
   type PropType,
@@ -22,9 +23,7 @@ import {
   Slots,
 } from "vue"
 
-import { useFormContext } from "../hooks/useFormContext"
-
-import type { RendererType } from "../types"
+import type { ComponentsProps, NamePath, RendererType, SchemaBaseColumn } from "../types"
 
 /** 选择类组件类型 */
 const SELECT_TYPES: RendererType[] = [
@@ -36,8 +35,6 @@ const SELECT_TYPES: RendererType[] = [
   "radio",
   "checkbox",
 ]
-
-// ==================== 工具函数 ====================
 
 /**
  * 生成默认占位符文本
@@ -53,26 +50,15 @@ function generateDefaultPlaceholder(
     : `请输入${cleanLabel}`
 }
 
-/**
- * 合并状态（OR 逻辑）
- */
-function mergeState(...values: (boolean | undefined)[]): boolean {
-  return values.some(Boolean)
-}
-
-// ==================== 类型定义 ====================
-
 /** createRenderWrapper 选项 */
 export interface CreateRenderWrapperOptions {
   /** 内部渲染器组件 */
   component: Component
   /** 默认属性 */
-  defaultProps?: Record<string, unknown>
+  defaultProps?: ComponentsProps
   /** 自定义占位符生成函数 */
   generatePlaceholder?: (componentType: string, label?: string) => string
 }
-
-// ==================== 插槽合并 ====================
 
 /**
  * 合并插槽
@@ -84,7 +70,7 @@ export interface CreateRenderWrapperOptions {
  * @param rendererSlots - 父级插槽
  * @returns 合并后的插槽对象
  */
-function mergeSlots(fieldName: string, rendererSlots: Slots): Record<string, unknown> {
+function mergeSlots(fieldName: NamePath, rendererSlots: Slots): Record<string, unknown> {
   const childRendererSlots: Record<string, unknown> = {}
   const childSlots: Record<string, unknown> = {}
   const prefix = `${fieldName}:`
@@ -103,8 +89,6 @@ function mergeSlots(fieldName: string, rendererSlots: Slots): Record<string, unk
     ...childRendererSlots,
   }
 }
-
-// ==================== 渲染器工厂 ====================
 
 /**
  * 创建渲染器包装组件
@@ -131,109 +115,60 @@ export function createRenderWrapper(options: CreateRenderWrapperOptions): Compon
   const {
     component,
     defaultProps = {},
-    generatePlaceholder: customGeneratePlaceholder = generateDefaultPlaceholder,
+    generatePlaceholder: generatePlaceholder = generateDefaultPlaceholder,
   } = options
 
   return defineComponent({
     name: "RendererWrapper",
 
     props: {
-      name: {
-        type: String,
-        default: "",
-      },
-      class: {
-        type: String,
-        default: "",
-      },
-      value: {
-        type: null as unknown as PropType<unknown>,
-        default: undefined,
-      },
-      onChange: {
-        type: Function as PropType<(value: unknown) => void>,
-        default: undefined,
-      },
-      onBlur: {
-        type: Function as PropType<() => void>,
-        default: undefined,
-      },
       readonly: {
         type: Boolean,
-        default: undefined,
+        default: false,
       },
       disabled: {
         type: Boolean,
-        default: undefined,
+        default: false,
       },
       placeholder: {
         type: String,
         default: undefined,
       },
+      componentsProps: {
+        type: Object as PropType<ComponentsProps>,
+        default: () => ({}),
+      },
       formItemProps: {
-        type: Object as PropType<Record<string, unknown>>,
+        type: Object as PropType<Omit<SchemaBaseColumn, "componentProps">>,
         default: () => ({}),
       },
     },
 
-    setup(props, { slots }: SetupContext) {
-      const context = useFormContext()
-
+    setup(props, { attrs, slots }: SetupContext) {
       return () => {
-        const formItemProps = (props.formItemProps || {}) as Record<string, unknown>
-        const componentProps = (formItemProps.componentProps || {}) as Record<
-          string,
-          unknown
-        >
-
-        // 合并状态：props > formItemProps > globalContext
-        const mergedReadonly = mergeState(
-          props.readonly,
-          formItemProps.readonly as boolean | undefined,
-          context?.readonly as boolean | undefined
-        )
-        const mergedDisabled = mergeState(
-          props.disabled,
-          formItemProps.disabled as boolean | undefined,
-          context?.disabled as boolean | undefined
-        )
-
-        // 生成占位符
-        const placeholder =
-          props.placeholder ??
-          (componentProps.placeholder as string | undefined) ??
-          customGeneratePlaceholder(
-            (formItemProps.componentType as string) || "",
-            formItemProps.label as string | undefined
+        const mergedProps = computed(() => {
+          const defaultPlaceholder = generatePlaceholder?.(
+            props.formItemProps.componentType,
+            props.formItemProps.label
           )
 
-        // 合并 props：defaultProps < componentProps < 直接 props
-        const finalProps: Record<string, unknown> = {
-          ...defaultProps,
-          ...componentProps,
-          value: props.value,
-          onChange: props.onChange,
-          onBlur: props.onBlur,
-          readonly: mergedReadonly,
-          disabled: mergedDisabled,
-          placeholder,
-          formItemProps,
-          formInstance: context.form,
-        }
-
-        if (props.class) {
-          finalProps.class = props.class
-        }
+          return {
+            ...defaultProps,
+            ...props,
+            ...attrs,
+            placeholder: props.placeholder ?? defaultPlaceholder,
+          }
+        })
 
         // 合并插槽
-        const mergedSlots = mergeSlots(props.name, slots)
+        const mergedSlots = mergeSlots(props.formItemProps.name, slots)
 
-        return h(component, finalProps, mergedSlots)
+        return h(component, mergedProps.value, mergedSlots)
       }
     },
   })
 }
 
-export { mergeSlots, mergeState, generateDefaultPlaceholder }
+export { mergeSlots, generateDefaultPlaceholder }
 
 export default createRenderWrapper

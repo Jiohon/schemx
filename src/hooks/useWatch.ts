@@ -4,30 +4,40 @@
  * @module hooks/useWatch
  */
 
-import { onUnmounted } from "vue"
+import { DeepReadonly, onUnmounted } from "vue"
 
-import type { FormValues, SchemaFormInstance } from "@/types"
+import { isEqual } from "es-toolkit"
+
+import type { FormValues, NamePath, SchemaFormInstance, Value } from "@/types"
 
 import { useFormContext } from "./useFormContext"
 
 /**
  * 单字段监听回调
  */
-export type SingleFieldCallback = (
-  value: unknown,
-  oldValue: unknown,
-  name: string
+export type SingleFieldCallback<T extends FormValues = FormValues> = (
+  value: Value,
+  prevValue: Value,
+  latestValues: DeepReadonly<T>
 ) => void
 
 /**
  * 多字段监听回调
  */
-export type MultiFieldCallback = (values: FormValues, changedField: string) => void
+export type MultiFieldCallback<T extends FormValues = FormValues> = (
+  values: DeepReadonly<Partial<T>>,
+  prevValues: DeepReadonly<Partial<T>>,
+  latestValues: DeepReadonly<T>
+) => void
 
 /**
  * 全局监听回调
  */
-export type GlobalCallback = (changedValues: FormValues, allValues: FormValues) => void
+export type GlobalCallback<T extends FormValues = FormValues> = (
+  changedValues: DeepReadonly<Partial<T>>,
+  prevValues: DeepReadonly<Partial<T>>,
+  latestValues: DeepReadonly<T>
+) => void
 
 /**
  * useWatch 选项
@@ -35,47 +45,8 @@ export type GlobalCallback = (changedValues: FormValues, allValues: FormValues) 
 export interface UseWatchOptions {
   /** 是否立即执行回调 */
   immediate?: boolean
-}
-
-// ==================== 内部工具函数 ====================
-
-/**
- * 创建取消订阅函数
- */
-function createUnsubscriber(unsubscribes: Array<() => void>): () => void {
-  return () => unsubscribes.forEach((fn) => fn())
-}
-
-/**
- * 获取多个字段的值
- */
-function getFieldValues(formContext: SchemaFormInstance, names: string[]): FormValues {
-  const values: FormValues = {}
-  for (const name of names) {
-    values[name] = formContext.getFieldValue(name)
-  }
-
-  return values
-}
-
-// ==================== 监听实现 ====================
-
-/**
- * 监听所有字段变化
- */
-function watchAll(
-  formContext: SchemaFormInstance,
-  callback: GlobalCallback,
-  options: UseWatchOptions
-): () => void {
-  const unsubscribe = formContext.subscribeAll(callback)
-
-  if (options.immediate) {
-    const allValues = formContext.getFieldsValue()
-    callback(allValues, allValues)
-  }
-
-  return unsubscribe
+  /** 是否值变化时执行回调 */
+  inequality?: boolean
 }
 
 /**
@@ -83,20 +54,23 @@ function watchAll(
  */
 function watchField(
   formContext: SchemaFormInstance,
-  name: string,
+  name: NamePath,
   callback: SingleFieldCallback,
   options: UseWatchOptions
 ): () => void {
-  let oldValue = formContext.getFieldValue(name)
+  const unsubscribe = formContext.subscribe(
+    name,
+    (_path, value, prevValue, latestValues) => {
+      if (options.inequality && isEqual(value, prevValue)) return
 
-  const unsubscribe = formContext.subscribe(name, (_path, value) => {
-    const prevValue = oldValue
-    oldValue = value
-    callback(value, prevValue, name)
-  })
+      callback(value, prevValue, latestValues)
+    }
+  )
 
   if (options.immediate) {
-    callback(formContext.getFieldValue(name), undefined, name)
+    const latestValues = formContext.getFieldsValue()
+
+    callback(formContext.getFieldValue(name), undefined, latestValues)
   }
 
   return unsubscribe
@@ -107,24 +81,56 @@ function watchField(
  */
 function watchFields(
   formContext: SchemaFormInstance,
-  names: string[],
+  names: NamePath[],
   callback: MultiFieldCallback,
   options: UseWatchOptions
 ): () => void {
   const unsubscribes: Array<() => void> = []
 
   for (const name of names) {
-    const unsubscribe = formContext.subscribe(name, () => {
-      callback(getFieldValues(formContext, names), name)
-    })
+    const unsubscribe = formContext.subscribe(
+      name,
+      (_path, value, prevValue, latestValues) => {
+        callback(value, prevValue, latestValues)
+      }
+    )
     unsubscribes.push(unsubscribe)
   }
 
   if (options.immediate) {
-    callback(getFieldValues(formContext, names), names[0])
+    const currentValues = formContext.getFieldsValue(names)
+    const latestValues = formContext.getFieldsValue()
+    callback(currentValues, {}, latestValues)
   }
 
-  return createUnsubscriber(unsubscribes)
+  return () => unsubscribes.forEach((fn) => fn())
+}
+
+/**
+ * 监听所有字段变化
+ */
+function watchAll(
+  formContext: SchemaFormInstance,
+  callback: GlobalCallback,
+  options: UseWatchOptions
+): () => void {
+  const unsubscribe = formContext.subscribeAll(
+    (changedValues, prevValues, latestValues, _changedPaths) => {
+      if (options.inequality) {
+        if (isEqual(changedValues, prevValues)) return
+      }
+
+      callback(changedValues, prevValues, latestValues)
+    }
+  )
+
+  if (options.immediate) {
+    const latestValues = formContext.getFieldsValue()
+
+    callback(latestValues, {}, latestValues)
+  }
+
+  return unsubscribe
 }
 
 // ==================== 公开 API ====================
@@ -140,8 +146,8 @@ function watchFields(
  * @example
  * ```ts
  * // 监听单个字段
- * useWatch('username', (value, oldValue, name) => {
- *   console.log(`${name} changed from ${oldValue} to ${value}`)
+ * useWatch('username', (value, prevValue, name) => {
+ *   console.log(`${name} changed from ${prevValue} to ${value}`)
  * })
  *
  * // 监听多个字段
@@ -150,7 +156,7 @@ function watchFields(
  * })
  *
  * // 监听所有字段
- * useWatch((changedValues, allValues) => {
+ * useWatch((changedValues, latestValues) => {
  *   console.log('Form changed:', changedValues)
  * })
  *
@@ -160,17 +166,17 @@ function watchFields(
  */
 export function useWatch(callback: GlobalCallback, options?: UseWatchOptions): () => void
 export function useWatch(
-  name: string,
+  name: NamePath,
   callback: SingleFieldCallback,
   options?: UseWatchOptions
 ): () => void
 export function useWatch(
-  names: string[],
+  names: NamePath[],
   callback: MultiFieldCallback,
   options?: UseWatchOptions
 ): () => void
 export function useWatch(
-  nameOrNamesOrCallback: string | string[] | GlobalCallback,
+  nameOrNamesOrCallback: NamePath | NamePath[] | GlobalCallback,
   callbackOrOptions?: SingleFieldCallback | MultiFieldCallback | UseWatchOptions,
   maybeOptions?: UseWatchOptions
 ): () => void {
@@ -217,17 +223,17 @@ export function useWatch(
  *
  * @example
  * ```ts
- * useWatchField('name', (value, oldValue) => {
+ * useWatchField('name', (value, prevValue) => {
  *   console.log('name changed:', value)
  * })
  * ```
  */
 export function useWatchField(
-  name: string,
-  callback: (value: unknown, oldValue: unknown) => void,
+  name: NamePath,
+  callback: (value: Value, prevValue: Value) => void,
   options?: UseWatchOptions
 ): () => void {
-  return useWatch(name, (value, oldValue) => callback(value, oldValue), options)
+  return useWatch(name, (value, prevValue) => callback(value, prevValue), options)
 }
 
 /**
@@ -241,11 +247,20 @@ export function useWatchField(
  * ```
  */
 export function useWatchFields(
-  names: string[],
-  callback: (values: FormValues) => void,
+  names: NamePath[],
+  callback: (
+    values: FormValues,
+    prevValues: FormValues,
+    changedFields: NamePath[]
+  ) => void,
   options?: UseWatchOptions
 ): () => void {
-  return useWatch(names, (values) => callback(values), options)
+  return useWatch(
+    names as string[],
+    ((values: FormValues, prevValues: FormValues, changedFields: NamePath[]) =>
+      callback(values, prevValues, changedFields)) as MultiFieldCallback,
+    options
+  )
 }
 
 /**
@@ -253,7 +268,7 @@ export function useWatchFields(
  *
  * @example
  * ```ts
- * useWatchAll((changedValues, allValues) => {
+ * useWatchAll((changedValues, latestValues) => {
  *   console.log('form changed:', changedValues)
  * })
  * ```

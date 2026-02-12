@@ -1,69 +1,35 @@
 /**
- * FormGroup - 表单分组组件
+ * FormGroup - 分组字段组件
  *
- * 用于将相关的表单字段组织在一起，支持分组标题、图标显示、
- * 子字段递归渲染以及折叠/展开功能。
+ * 用于渲染 componentType 为 "group" 的分组字段配置。
+ * 支持可折叠的分组容器，内部渲染子 columns。
  *
  * @module components/FormGroup
  */
 
-import { computed, defineComponent, inject, PropType, ref, Transition } from "vue"
-import type { ComputedRef } from "vue"
-
-import { Icon, Image } from "vant"
+import { defineComponent, PropType, ref } from "vue"
 
 import classnames from "classnames"
 
-import FormItem from "../FormItem"
-import { FORM_CONTEXT_KEY } from "../hooks/useFormContext"
+import { isBaseColumn } from "../utils"
 
-import type {
-  BaseColumnConfig,
-  ColumnConfig,
-  ISchemaRegistry,
-  SchemaFormInstance,
-} from "../types"
+import FormItem from "./FormItem"
 
-/**
- * FormGroup Props 接口
- */
-export interface FormGroupProps {
-  label?: string
-  labelIcon?: string
-  columns?: ColumnConfig[]
-  collapsible?: boolean
-  defaultCollapsed?: boolean
-  className?: string
-  form?: SchemaFormInstance
-  schemaRenderer?: ISchemaRegistry
-  readonly?: boolean
-}
+import type { SchemaGroupColumn } from "../types"
 
-/**
- * 类型守卫：判断是否为基础字段配置
- */
-function isBaseColumn(column: ColumnConfig): column is BaseColumnConfig {
-  return column.componentType !== "dependency"
-}
+// ==================== 组件定义 ====================
 
-/**
- * FormGroup 组件
- */
 const FormGroup = defineComponent({
   name: "SchemaFormGroup",
 
   props: {
     label: {
       type: String,
-      default: "",
-    },
-    labelIcon: {
-      type: String,
-      default: "",
+      default: undefined,
     },
     columns: {
-      type: Array as PropType<ColumnConfig[]>,
-      default: () => [],
+      type: Array as PropType<SchemaGroupColumn["columns"]>,
+      required: true,
     },
     collapsible: {
       type: Boolean,
@@ -73,117 +39,59 @@ const FormGroup = defineComponent({
       type: Boolean,
       default: false,
     },
-    className: {
-      type: String,
-      default: "",
-    },
-    form: {
-      type: Object as PropType<SchemaFormInstance>,
-      default: undefined,
-    },
-    schemaRenderer: {
-      type: Object as PropType<ISchemaRegistry>,
-      default: undefined,
-    },
-    readonly: {
-      type: Boolean,
-      default: undefined,
-    },
   },
 
   setup(props, { slots }) {
-    // 从 FormContext 获取上下文（可选，不抛错）
-    inject<ComputedRef<SchemaFormInstance> | undefined>(FORM_CONTEXT_KEY, undefined)
+    const collapsed = ref(props.defaultCollapsed)
 
-    // 渲染器和只读状态
-    const rendererRegistry = computed(() => props.schemaRenderer)
-    const mergedReadonly = computed(() => props.readonly ?? false)
-
-    // 折叠状态管理
-    const isCollapsed = ref(props.defaultCollapsed)
-
-    const toggleCollapse = () => {
+    const toggle = () => {
       if (props.collapsible) {
-        isCollapsed.value = !isCollapsed.value
+        collapsed.value = !collapsed.value
       }
-    }
-
-    const titleClasses = computed(() =>
-      classnames("schema-form-group-title", {
-        "schema-form-group-title--collapsible": props.collapsible,
-        "schema-form-group-title--collapsed": isCollapsed.value,
-      })
-    )
-
-    const contentClasses = computed(() =>
-      classnames("schema-form-group-content", {
-        "schema-form-group-content--collapsed": isCollapsed.value,
-      })
-    )
-
-    /**
-     * 获取字段的 key
-     */
-    const getColumnKey = (column: ColumnConfig, index: number): string => {
-      if (isBaseColumn(column)) {
-        return `${column.name}-${index}`
-      }
-
-      return `dep-${index}`
     }
 
     return () => (
-      <div class={classnames("schema-form-group", props.className)}>
-        {(props.label || props.labelIcon) && (
+      <div
+        class={classnames("schema-form-group", {
+          "schema-form-group--collapsed": collapsed.value,
+        })}
+      >
+        {props.label && (
           <div
-            class={titleClasses.value}
-            onClick={toggleCollapse}
             role={props.collapsible ? "button" : undefined}
             tabindex={props.collapsible ? 0 : undefined}
-            aria-expanded={props.collapsible ? !isCollapsed.value : undefined}
+            class={classnames("schema-form-group__header", {
+              "schema-form-group__header--clickable": props.collapsible,
+            })}
+            onClick={toggle}
             onKeydown={(e: KeyboardEvent) => {
-              if (props.collapsible && (e.key === "Enter" || e.key === " ")) {
+              if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault()
-                toggleCollapse()
+                toggle()
               }
             }}
           >
-            {props.labelIcon && (
-              <span class="schema-form-group-title-icon">
-                <Image src={props.labelIcon} width="20px" height="20px" fit="contain" />
-              </span>
-            )}
-
-            {props.label && (
-              <span class="schema-form-group-title-label">{props.label}</span>
-            )}
-
+            <span class="schema-form-group__title">{props.label}</span>
             {props.collapsible && (
-              <span class="schema-form-group-title-arrow">
-                <Icon
-                  name={isCollapsed.value ? "arrow-down" : "arrow-up"}
-                  class="schema-form-group-arrow-icon"
-                />
-              </span>
+              <span
+                class={classnames("schema-form-group__arrow", {
+                  "schema-form-group__arrow--down": !collapsed.value,
+                })}
+              />
             )}
           </div>
         )}
+        {!collapsed.value && (
+          <div class="schema-form-group__body">
+            {props.columns.map((column, index) => {
+              const key = isBaseColumn(column)
+                ? `${String(column.name)}-${index}`
+                : `group-${index}`
 
-        <Transition name="schema-form-group-collapse">
-          {!isCollapsed.value && (
-            <div class={contentClasses.value}>
-              {props.columns.map((column, index) => (
-                <FormItem
-                  key={getColumnKey(column, index)}
-                  column={column}
-                  schemaRenderer={rendererRegistry.value}
-                  readonly={mergedReadonly.value}
-                  v-slots={slots}
-                />
-              ))}
-            </div>
-          )}
-        </Transition>
+              return <FormItem key={key} column={column} v-slots={slots} />
+            })}
+          </div>
+        )}
       </div>
     )
   },

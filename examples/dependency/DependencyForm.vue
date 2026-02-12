@@ -23,7 +23,7 @@
   import { ref } from "vue"
   import { z } from "zod"
   import SchemaForm from "@"
-  import type { ColumnConfig, SchemaFormInstance } from "@"
+  import type { SchemaColumn, SchemaFormInstance } from "@"
 
   const formRef = ref<SchemaFormInstance>()
   const formData = ref<Record<string, any>>({
@@ -46,7 +46,7 @@
   ]
 
   // 表单配置
-  const columns: ColumnConfig[] = [
+  const columns: SchemaColumn[] = [
     {
       name: "productType",
       label: "产品类型",
@@ -60,11 +60,7 @@
       name: "productDetails",
       componentType: "dependency",
       to: ["productType"], // 依赖 productType 字段
-      renderer: (
-        values: Record<string, any>,
-        form: SchemaFormInstance,
-        isDependenceUpdated: boolean
-      ) => {
+      renderer: (values: Record<string, any>, form: SchemaFormInstance) => {
         const productType = values.productType
 
         // 根据产品类型返回不同的字段配置
@@ -173,15 +169,11 @@
       name: "paymentDetails",
       componentType: "dependency",
       to: ["paymentMethod", "price"], // 依赖多个字段
-      renderer: (
-        values: Record<string, any>,
-        form: SchemaFormInstance,
-        isDependenceUpdated: boolean
-      ) => {
+      renderer: (values: Record<string, any>, form: SchemaFormInstance) => {
         const paymentMethod = values.paymentMethod
         const price = values.price || 0
 
-        const baseFields: ColumnConfig[] = []
+        const baseFields: SchemaColumn[] = []
 
         if (paymentMethod === "cod") {
           baseFields.push({

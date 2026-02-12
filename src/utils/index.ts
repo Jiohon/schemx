@@ -1,4 +1,22 @@
-import type { ColumnConfig, DynamicProp, FormValues } from "../types"
+import { cloneDeep } from "es-toolkit"
+
+import { setByPath } from "./path"
+
+import type {
+  DynamicProp,
+  FormValues,
+  NormalizedSchemaBaseColumn,
+  NormalizedSchemaColumn,
+  NormalizedSchemaDependencyColumn,
+  NormalizedSchemaGroupColumn,
+  NormalizedSchemaNestedColumn,
+  SchemaBaseColumn,
+  SchemaColumn,
+  SchemaDependencyColumn,
+  SchemaGroupColumn,
+  SchemaNestedColumn,
+  ValidationTrigger,
+} from "../types"
 
 /**
  * 从树形结构中查找指定项并返回路径
@@ -219,82 +237,48 @@ export function stringToHash(str: string, hashLength = 5): string {
 }
 
 /**
- * 从列配置中获取初始值
+ * 提取所有initialValue
+ * @param columns
+ * @returns
  */
-export interface SimpleFormInstance {
-  setFieldValue: (name: string, value: any) => void
-  getFieldValue: (name: string) => any
-  getFieldsValue: (names?: string[]) => Record<string, any>
-}
+export const getInitialValuesFromColumns = <T extends FormValues = FormValues>(
+  initialValues: T,
+  columns: SchemaColumn<T>[]
+): T => {
+  const result = cloneDeep(initialValues)
 
-export function getInitialValuesFromColumns(
-  columns: any[],
-  initValues: Record<string, any> = {}
-): Record<string, any> {
-  const result: Record<string, any> = {}
+  const bfs = (columns: SchemaColumn<T>[]) => {
+    // do something
+    if (!Array.isArray(columns)) return
 
-  const form: SimpleFormInstance = {
-    setFieldValue(name: string, value: any) {
-      initValues[name] = value
-      if (!(name in result)) result[name] = value ?? null
-    },
-    getFieldValue(name: string) {
-      return initValues[name]
-    },
-    getFieldsValue(names?: string[]) {
-      if (Array.isArray(names)) {
-        return names.reduce(
-          (o, k) => ((o[k] = initValues[k]), o),
-          {} as Record<string, any>
-        )
-      }
-
-      return { ...initValues }
-    },
-  }
-
-  const walk = (cols: any[]): void => {
-    if (!Array.isArray(cols)) return
-
-    for (const col of cols) {
-      // 嵌套 columns
-      if (
-        Object.prototype.hasOwnProperty.call(col, "columns") &&
-        Array.isArray(col.columns)
-      ) {
-        walk(col.columns)
+    for (const col of columns) {
+      // dependency 动态列
+      if (isDependencyColumn(col)) {
         continue
       }
 
-      // dependency 动态列
-      if (col?.componentType === "dependency" && typeof col?.renderer === "function") {
-        const deps: Record<string, any> = {}
-        ;(col.to || []).forEach((k: string) => {
-          deps[k] = initValues[k] ?? null
-        })
-        const children = col.renderer(deps, form) || []
-        walk(children)
+      if (isGroupColumn(col)) {
+        bfs(col.columns)
+        continue
+      }
+
+      // 嵌套 columns
+      if (isNestedColumn(col)) {
+        bfs(col.columns)
         continue
       }
 
       // 普通字段
-      if (col?.name) {
-        if (!(col.name in result)) {
-          const iv = Object.prototype.hasOwnProperty.call(col, "initialValue")
-            ? col.initialValue
-            : null
-          result[col.name] = iv
-          if (!(col.name in initValues)) initValues[col.name] = iv
-        }
+      if (col.name && Reflect.has(col, "initialValue")) {
+        setByPath(result, col.name, col.initialValue)
       }
     }
   }
 
-  walk(columns)
+  bfs(columns)
 
   return result
 }
-
 // ==================== 工具函数 ====================
 
 /**
@@ -325,18 +309,70 @@ export function getInitialValuesFromColumns(
  * // result: 'default'
  * ```
  */
-export function resolveDynamicProp<T>(
-  value: DynamicProp<T> | T | undefined | null,
+export async function resolveDynamicPropByBoolean(
+  value: DynamicProp<boolean> | undefined | null,
   formValues: FormValues,
-  defaultValue: T
-): T {
+  defaultValue: boolean | undefined = false
+): Promise<boolean> {
   if (value == null) {
     return defaultValue
   }
 
   if (typeof value === "function") {
     try {
-      const result = (value as (values: FormValues) => T)(formValues)
+      const result = await value(formValues)
+
+      return result ? result : defaultValue
+    } catch (error) {
+      console.error("[SchemaRenderer] Error evaluating dynamic prop:", error)
+
+      return defaultValue
+    }
+  }
+
+  return value
+}
+
+/**
+ * 解析动态属性
+ *
+ * 支持函数类型和静态值：
+ * - 如果值是函数，调用它并传入表单值，捕获错误并返回默认值
+ * - 如果值是静态值，直接返回
+ * - 如果值是 null/undefined，返回默认值
+ *
+ * @param value - 动态属性值（函数或静态值）
+ * @param formValues - 当前表单值
+ * @param defaultValue - 默认值
+ * @returns 解析后的属性值
+ *
+ * @example
+ * ```typescript
+ * // 函数类型
+ * const result = resolveDynamicProp((values) => values.name, { name: 'test' }, '')
+ * // result: 'test'
+ *
+ * // 静态值
+ * const result = resolveDynamicProp('hello', {}, '')
+ * // result: 'hello'
+ *
+ * // null/undefined
+ * const result = resolveDynamicProp(undefined, {}, 'default')
+ * // result: 'default'
+ * ```
+ */
+export async function resolveDynamicProp<T>(
+  value: DynamicProp<T> | T | undefined | null,
+  formValues: FormValues,
+  defaultValue: T
+): Promise<T> {
+  if (value == null) {
+    return defaultValue
+  }
+
+  if (typeof value === "function") {
+    try {
+      const result = await (value as (values: FormValues) => T)(formValues)
 
       return result ?? defaultValue
     } catch (error) {
@@ -346,23 +382,88 @@ export function resolveDynamicProp<T>(
     }
   }
 
-  return value as T
+  return value
 }
 
 /**
- * 判断字段类型
+ * 类型守卫：判断是否为基础字段配置
  */
-export function getFieldType(column: ColumnConfig): "group" | "dependency" | "normal" {
-  if (
-    Object.prototype.hasOwnProperty.call(column, "columns") &&
-    Array.isArray(column.columns)
-  ) {
-    return "group"
+export function isBaseColumn(
+  column: SchemaColumn | NormalizedSchemaColumn
+): column is SchemaBaseColumn | NormalizedSchemaBaseColumn {
+  return !isGroupColumn(column) && !isDependencyColumn(column) && !isNestedColumn(column)
+}
+
+/**
+ * 类型守卫：判断是否为分类字段配置
+ */
+export function isGroupColumn<T extends FormValues = FormValues>(
+  column: SchemaColumn<T> | NormalizedSchemaColumn
+): column is SchemaGroupColumn<T> | NormalizedSchemaGroupColumn {
+  return column.componentType === "group"
+}
+
+/**
+ * 类型守卫：判断是否为依赖字段配置
+ */
+export function isDependencyColumn<T extends FormValues = FormValues>(
+  column: SchemaColumn<T> | NormalizedSchemaColumn
+): column is SchemaDependencyColumn<T> | NormalizedSchemaDependencyColumn {
+  return column.componentType === "dependency"
+}
+
+/**
+ * 类型守卫：判断是否为嵌套字段配置
+ */
+export function isNestedColumn<T extends FormValues = FormValues>(
+  column: SchemaColumn<T> | NormalizedSchemaColumn
+): column is SchemaNestedColumn<T> | NormalizedSchemaNestedColumn {
+  return column.componentType === "columns"
+}
+
+// ==================== 校验触发工具 ====================
+
+type NormalizedTrigger = "blur" | "change" | "submit"
+
+/**
+ * 归一化触发类型
+ *
+ * 将 "onBlur" → "blur", "onChange" → "change", "onSubmit" → "submit"
+ */
+function normalizeTrigger(t: ValidationTrigger): NormalizedTrigger {
+  const map: Record<ValidationTrigger, NormalizedTrigger> = {
+    onBlur: "blur",
+    onChange: "change",
+    onSubmit: "submit",
+    blur: "blur",
+    change: "change",
+    submit: "submit",
   }
 
-  if (column.componentType === "dependency") {
-    return "dependency"
-  }
+  return map[t] ?? "submit"
+}
 
-  return "normal"
+/**
+ * 判断当前事件是否应该触发校验
+ *
+ * @param event - 当前触发的事件类型 ("blur" | "change" | "submit")
+ * @param trigger - 配置的触发时机（支持单个或数组）
+ * @returns 是否应该触发校验
+ *
+ * @example
+ * ```typescript
+ * shouldValidateOn("change", "onChange")  // true
+ * shouldValidateOn("blur", ["onBlur", "onChange"])  // true
+ * shouldValidateOn("change", "onSubmit")  // false
+ * shouldValidateOn("change", undefined)   // false
+ * ```
+ */
+export function shouldValidateOn(
+  event: NormalizedTrigger,
+  trigger?: ValidationTrigger | ValidationTrigger[]
+): boolean {
+  if (!trigger) return false
+  const triggers = Array.isArray(trigger) ? trigger : [trigger]
+
+  return triggers.some((t) => normalizeTrigger(t) === event)
 }

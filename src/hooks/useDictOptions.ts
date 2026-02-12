@@ -89,8 +89,8 @@ export const useDictOptions = (
    */
   watch(
     () => attrs?.dicUrl,
-    (newValue, oldValue) => {
-      if (newValue === oldValue) return
+    (newValue, prevValue) => {
+      if (newValue === prevValue) return
 
       loadDictOptions(attrs)
     }

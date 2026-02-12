@@ -1,19 +1,19 @@
-import type { IFormStore } from '../core/FormStore'
-import type { UseFormReturn } from '../hooks/useForm'
-import type { ISchemaRegistry } from '../renderer/createRegistry'
+import type { IFormStore } from "../core/FormStore"
+import type { UseFormReturn } from "../hooks/useForm"
+import type { ISchemaRegistry } from "../renderer/createRegistry"
 
 /**
  * 生命周期钩子名称
  */
 export type HookName =
-  | 'beforeMount'
-  | 'afterMount'
-  | 'beforeValidate'
-  | 'afterValidate'
-  | 'beforeSubmit'
-  | 'afterSubmit'
-  | 'onFieldChange'
-  | 'onError'
+  | "beforeMount"
+  | "afterMount"
+  | "beforeValidate"
+  | "afterValidate"
+  | "beforeSubmit"
+  | "afterSubmit"
+  | "onFieldChange"
+  | "onError"
 
 /**
  * 各钩子的参数类型定义
@@ -31,7 +31,7 @@ export interface HookParams {
   beforeSubmit: [Record<string, any>]
   /** 提交后 - 参数: values, result */
   afterSubmit: [Record<string, any>, any]
-  /** 字段变化时 - 参数: field, value, oldValue */
+  /** 字段变化时 - 参数: field, value, prevValue */
   onFieldChange: [string, any, any]
   /** 发生错误时 - 参数: error */
   onError: [Error]
@@ -44,7 +44,7 @@ export type HookCallback<T extends any[] = any[]> = (...args: T) => void | Promi
 
 /**
  * 插件上下文
- * 
+ *
  * 提供给插件的上下文信息，包含：
  * - version: 版本号
  * - store: FormStore 实例（可选）
@@ -76,7 +76,7 @@ export interface PluginOptions {
 
 /**
  * 插件接口
- * 
+ *
  * 插件必须实现 install 方法，可选实现 uninstall 方法
  */
 export interface Plugin {
@@ -107,7 +107,10 @@ export interface IPluginManager {
   /** 卸载插件 */
   uninstall(pluginId: string): void
   /** 注册钩子回调 */
-  tap<K extends HookName>(hookName: K, callback: (...args: HookParams[K]) => void | Promise<void>): void
+  tap<K extends HookName>(
+    hookName: K,
+    callback: (...args: HookParams[K]) => void | Promise<void>
+  ): void
   /** 调用钩子 */
   call<K extends HookName>(hookName: K, ...args: HookParams[K]): Promise<void>
   /** 获取上下文 */
@@ -124,11 +127,11 @@ export interface IPluginManager {
 
 /**
  * SchemaForm 插件管理器
- * 
+ *
  * 实现类似 Pinia 的插件系统，支持生命周期钩子。
- * 
+ *
  * ## 生命周期钩子
- * 
+ *
  * | 钩子 | 触发时机 | 参数 |
  * |------|----------|------|
  * | beforeMount | 表单挂载前 | formContext |
@@ -137,11 +140,11 @@ export interface IPluginManager {
  * | afterValidate | 校验后 | fields, errors |
  * | beforeSubmit | 提交前 | values |
  * | afterSubmit | 提交后 | values, result |
- * | onFieldChange | 字段变化时 | field, value, oldValue |
+ * | onFieldChange | 字段变化时 | field, value, prevValue |
  * | onError | 发生错误时 | error |
- * 
+ *
  * ## 对外功能
- * 
+ *
  * | 方法 | 说明 |
  * |------|------|
  * | use(plugin, options?) | 安装插件 |
@@ -150,11 +153,11 @@ export interface IPluginManager {
  * | call(hookName, ...args) | 调用钩子 |
  * | getContext() | 获取插件上下文 |
  * | setContext(key, value) | 设置上下文属性 |
- * 
+ *
  * @example
  * ```typescript
  * const pluginManager = new PluginManager()
- * 
+ *
  * // 安装插件
  * pluginManager.use({
  *   name: 'my-plugin',
@@ -162,12 +165,12 @@ export interface IPluginManager {
  *     console.log('Plugin installed', context.version)
  *   }
  * })
- * 
+ *
  * // 注册钩子
  * pluginManager.tap('beforeSubmit', (values) => {
  *   console.log('Before submit:', values)
  * })
- * 
+ *
  * // 调用钩子
  * await pluginManager.call('beforeSubmit', { name: 'John' })
  * ```
@@ -175,10 +178,10 @@ export interface IPluginManager {
 class PluginManager implements IPluginManager {
   /** 已安装的插件 */
   private plugins: Map<string, InstalledPlugin>
-  
+
   /** 插件上下文 */
   private context: PluginContext
-  
+
   /** 生命周期钩子回调 */
   private hooks: Map<HookName, Set<HookCallback>>
 
@@ -186,7 +189,7 @@ class PluginManager implements IPluginManager {
     this.plugins = new Map()
     this.hooks = new Map()
     this.context = {
-      version: '1.0.0',
+      version: "1.0.0",
       utils: {
         /**
          * 日志工具函数
@@ -197,7 +200,7 @@ class PluginManager implements IPluginManager {
         },
       },
     }
-    
+
     // 初始化所有钩子
     this.initHooks()
   }
@@ -208,16 +211,16 @@ class PluginManager implements IPluginManager {
    */
   private initHooks(): void {
     const hookNames: HookName[] = [
-      'beforeMount',
-      'afterMount',
-      'beforeValidate',
-      'afterValidate',
-      'beforeSubmit',
-      'afterSubmit',
-      'onFieldChange',
-      'onError',
+      "beforeMount",
+      "afterMount",
+      "beforeValidate",
+      "afterValidate",
+      "beforeSubmit",
+      "afterSubmit",
+      "onFieldChange",
+      "onError",
     ]
-    
+
     hookNames.forEach((hookName) => {
       this.hooks.set(hookName, new Set())
     })
@@ -225,14 +228,14 @@ class PluginManager implements IPluginManager {
 
   /**
    * 安装插件
-   * 
+   *
    * 支持两种插件形式：
    * 1. 对象插件：包含 install 方法的对象
    * 2. 函数插件：直接作为函数注入到上下文
-   * 
+   *
    * @param plugin - 插件对象或函数
    * @param options - 插件配置选项
-   * 
+   *
    * @example
    * ```typescript
    * // 对象插件
@@ -242,28 +245,33 @@ class PluginManager implements IPluginManager {
    *     // 插件逻辑
    *   }
    * })
-   * 
+   *
    * // 函数插件
    * pluginManager.use((context) => {
    *   // 函数逻辑
    * })
-   * 
+   *
    * // 带选项
    * pluginManager.use(myPlugin, { id: 'custom-id', debug: true })
    * ```
    */
   use(plugin: Plugin | Function, options: PluginOptions = {}): void {
-    const pluginId = options.id || (plugin as Plugin).name || `plugin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    const pluginId =
+      options.id ||
+      (plugin as Plugin).name ||
+      `plugin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
     // 检查是否已安装
     if (this.plugins.has(pluginId)) {
-      console.warn(`[SchemaForm Plugin] Plugin "${pluginId}" is already installed, skipping`)
+      console.warn(
+        `[SchemaForm Plugin] Plugin "${pluginId}" is already installed, skipping`
+      )
 
       return
     }
 
     try {
-      if (typeof plugin === 'function') {
+      if (typeof plugin === "function") {
         // 函数插件：直接将函数注册到上下文
         this.context.request = plugin
 
@@ -271,7 +279,7 @@ class PluginManager implements IPluginManager {
         this.plugins.set(pluginId, { plugin, options })
 
         console.log(`✅ SchemaForm 函数插件已安装: ${pluginId}`)
-      } else if (plugin && typeof plugin.install === 'function') {
+      } else if (plugin && typeof plugin.install === "function") {
         // 对象插件：调用 install 方法
         plugin.install(this.context, options)
 
@@ -280,7 +288,7 @@ class PluginManager implements IPluginManager {
 
         console.log(`✅ SchemaForm 插件已安装: ${pluginId}`)
       } else {
-        throw new Error('插件必须是函数或包含 install 方法的对象')
+        throw new Error("插件必须是函数或包含 install 方法的对象")
       }
     } catch (error) {
       console.error(`[SchemaForm Plugin] Failed to install plugin "${pluginId}":`, error)
@@ -290,11 +298,11 @@ class PluginManager implements IPluginManager {
 
   /**
    * 卸载插件
-   * 
+   *
    * 如果插件实现了 uninstall 方法，会在卸载时调用。
-   * 
+   *
    * @param pluginId - 插件ID
-   * 
+   *
    * @example
    * ```typescript
    * pluginManager.uninstall('my-plugin')
@@ -306,11 +314,18 @@ class PluginManager implements IPluginManager {
       const { plugin } = pluginData
 
       // 调用插件的卸载方法（如果存在）
-      if (plugin && typeof plugin !== 'function' && typeof plugin.uninstall === 'function') {
+      if (
+        plugin &&
+        typeof plugin !== "function" &&
+        typeof plugin.uninstall === "function"
+      ) {
         try {
           plugin.uninstall(this.context)
         } catch (error) {
-          console.error(`[SchemaForm Plugin] Error during uninstall of "${pluginId}":`, error)
+          console.error(
+            `[SchemaForm Plugin] Error during uninstall of "${pluginId}":`,
+            error
+          )
         }
       }
 
@@ -323,82 +338,87 @@ class PluginManager implements IPluginManager {
 
   /**
    * 注册钩子回调
-   * 
+   *
    * 将回调函数注册到指定的生命周期钩子。
    * 当钩子被调用时，所有注册的回调都会按顺序执行。
-   * 
+   *
    * @param hookName - 钩子名称
    * @param callback - 回调函数
-   * 
+   *
    * @example
    * ```typescript
    * // 注册 beforeSubmit 钩子
    * pluginManager.tap('beforeSubmit', (values) => {
    *   console.log('Form values:', values)
    * })
-   * 
+   *
    * // 注册异步钩子
    * pluginManager.tap('beforeSubmit', async (values) => {
    *   await validateWithServer(values)
    * })
-   * 
+   *
    * // 注册 onFieldChange 钩子
-   * pluginManager.tap('onFieldChange', (field, value, oldValue) => {
-   *   console.log(`Field ${field} changed from ${oldValue} to ${value}`)
+   * pluginManager.tap('onFieldChange', (field, value, prevValue) => {
+   *   console.log(`Field ${field} changed from ${prevValue} to ${value}`)
    * })
    * ```
    */
-  tap<K extends HookName>(hookName: K, callback: (...args: HookParams[K]) => void | Promise<void>): void {
+  tap<K extends HookName>(
+    hookName: K,
+    callback: (...args: HookParams[K]) => void | Promise<void>
+  ): void {
     const hookSet = this.hooks.get(hookName)
-    
+
     if (!hookSet) {
-      console.warn(`[SchemaForm Plugin] Unknown hook name: ${hookName}. Available hooks: ${Array.from(this.hooks.keys()).join(', ')}`)
+      console.warn(
+        `[SchemaForm Plugin] Unknown hook name: ${hookName}. Available hooks: ${Array.from(this.hooks.keys()).join(", ")}`
+      )
 
       return
     }
-    
+
     hookSet.add(callback as HookCallback)
   }
 
   /**
    * 调用钩子
-   * 
+   *
    * 执行指定钩子的所有注册回调。回调按注册顺序依次执行，
    * 支持异步回调。如果某个回调抛出错误，会触发 onError 钩子
    * （除非当前就是 onError 钩子），然后继续执行其他回调。
-   * 
+   *
    * @param hookName - 钩子名称
    * @param args - 传递给回调的参数
-   * 
+   *
    * @example
    * ```typescript
    * // 调用 beforeSubmit 钩子
    * await pluginManager.call('beforeSubmit', { name: 'John', age: 25 })
-   * 
+   *
    * // 调用 afterValidate 钩子
    * await pluginManager.call('afterValidate', ['name', 'email'], { name: ['Required'] })
-   * 
+   *
    * // 调用 onFieldChange 钩子
    * await pluginManager.call('onFieldChange', 'name', 'Jane', 'John')
    * ```
    */
   async call<K extends HookName>(hookName: K, ...args: HookParams[K]): Promise<void> {
     const hookSet = this.hooks.get(hookName)
-    
+
     if (!hookSet || hookSet.size === 0) {
       return
     }
-    
+
     // 按顺序执行所有钩子回调
     for (const callback of hookSet) {
       try {
         await callback(...args)
       } catch (error) {
         console.error(`[SchemaForm Plugin] Hook "${hookName}" callback error:`, error)
-        
+
         // 如果不是 onError 钩子，则触发 onError 钩子
-        if (hookName !== 'onError') {
-          await this.call('onError', error as Error)
+        if (hookName !== "onError") {
+          await this.call("onError", error as Error)
         }
       }
     }
@@ -406,10 +426,10 @@ class PluginManager implements IPluginManager {
 
   /**
    * 移除钩子回调
-   * 
+   *
    * @param hookName - 钩子名称
    * @param callback - 要移除的回调函数
-   * 
+   *
    * @example
    * ```typescript
    * const myCallback = (values) => console.log(values)
@@ -418,9 +438,12 @@ class PluginManager implements IPluginManager {
    * pluginManager.untap('beforeSubmit', myCallback)
    * ```
    */
-  untap<K extends HookName>(hookName: K, callback: (...args: HookParams[K]) => void | Promise<void>): void {
+  untap<K extends HookName>(
+    hookName: K,
+    callback: (...args: HookParams[K]) => void | Promise<void>
+  ): void {
     const hookSet = this.hooks.get(hookName)
-    
+
     if (hookSet) {
       hookSet.delete(callback as HookCallback)
     }
@@ -428,9 +451,9 @@ class PluginManager implements IPluginManager {
 
   /**
    * 清除指定钩子的所有回调
-   * 
+   *
    * @param hookName - 钩子名称
-   * 
+   *
    * @example
    * ```typescript
    * pluginManager.clearHook('beforeSubmit')
@@ -438,7 +461,7 @@ class PluginManager implements IPluginManager {
    */
   clearHook(hookName: HookName): void {
     const hookSet = this.hooks.get(hookName)
-    
+
     if (hookSet) {
       hookSet.clear()
     }
@@ -446,11 +469,11 @@ class PluginManager implements IPluginManager {
 
   /**
    * 获取插件上下文
-   * 
+   *
    * 返回当前的插件上下文，包含版本信息、store、rendererRegistry 和工具函数。
-   * 
+   *
    * @returns 插件上下文
-   * 
+   *
    * @example
    * ```typescript
    * const context = pluginManager.getContext()
@@ -464,20 +487,20 @@ class PluginManager implements IPluginManager {
 
   /**
    * 设置上下文属性
-   * 
+   *
    * 动态设置插件上下文的属性，用于在运行时注入 store、rendererRegistry 等。
-   * 
+   *
    * @param key - 属性名
    * @param value - 属性值
-   * 
+   *
    * @example
    * ```typescript
    * // 设置 FormStore
    * pluginManager.setContext('store', formStore)
-   * 
+   *
    * // 设置 RendererRegistry
    * pluginManager.setContext('rendererRegistry', rendererRegistry)
-   * 
+   *
    * // 设置自定义属性
    * pluginManager.setContext('customData', { foo: 'bar' })
    * ```
@@ -488,9 +511,9 @@ class PluginManager implements IPluginManager {
 
   /**
    * 获取已安装的插件列表
-   * 
+   *
    * @returns 插件ID数组
-   * 
+   *
    * @example
    * ```typescript
    * const plugins = pluginManager.getInstalledPlugins()
@@ -503,10 +526,10 @@ class PluginManager implements IPluginManager {
 
   /**
    * 检查插件是否已安装
-   * 
+   *
    * @param pluginId - 插件ID
    * @returns 是否已安装
-   * 
+   *
    * @example
    * ```typescript
    * if (pluginManager.isInstalled('my-plugin')) {
@@ -520,9 +543,9 @@ class PluginManager implements IPluginManager {
 
   /**
    * 获取已注册的钩子名称列表
-   * 
+   *
    * @returns 钩子名称数组
-   * 
+   *
    * @example
    * ```typescript
    * const hooks = pluginManager.getRegisteredHooks()
@@ -535,10 +558,10 @@ class PluginManager implements IPluginManager {
 
   /**
    * 获取指定钩子的回调数量
-   * 
+   *
    * @param hookName - 钩子名称
    * @returns 回调数量
-   * 
+   *
    * @example
    * ```typescript
    * const count = pluginManager.getHookCallbackCount('beforeSubmit')
@@ -553,9 +576,9 @@ class PluginManager implements IPluginManager {
 
   /**
    * 清除所有插件和钩子
-   * 
+   *
    * 卸载所有已安装的插件，并清除所有钩子回调。
-   * 
+   *
    * @example
    * ```typescript
    * pluginManager.clear()
@@ -566,23 +589,23 @@ class PluginManager implements IPluginManager {
     for (const pluginId of this.plugins.keys()) {
       this.uninstall(pluginId)
     }
-    
+
     this.plugins.clear()
-    
+
     // 清除所有钩子回调
     for (const hookSet of this.hooks.values()) {
       hookSet.clear()
     }
-    
-    console.log('🗑️ 所有 SchemaForm 插件已清除')
+
+    console.log("🗑️ 所有 SchemaForm 插件已清除")
   }
 }
 
 /**
  * 创建 PluginManager 实例的工厂函数
- * 
+ *
  * @returns 新的 PluginManager 实例
- * 
+ *
  * @example
  * ```typescript
  * const pluginManager = createPluginManager()

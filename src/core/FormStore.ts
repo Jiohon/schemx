@@ -32,13 +32,14 @@
  * ```
  */
 
-import { reactive } from "vue"
+import { reactive, readonly, toRaw } from "vue"
+import type { DeepReadonly } from "vue"
 
-import { cloneDeep, isEqual } from "lodash-es"
+import { cloneDeep, isEqual } from "es-toolkit"
 
-import { getByPath, setByPath } from "./utils/path"
+import { getByPath, setByPath } from "../utils/path"
 
-import type { FormValues } from "../types"
+import type { FormValues, NamePath, Value } from "../types"
 
 /**
  * FormStore 状态接口
@@ -69,11 +70,11 @@ export interface FormStoreOptions<T extends FormValues> {
  * 读取的值都会自动建立响应式依赖，在 computed / watch / render 中使用时
  * 能自动追踪变化并触发更新。
  *
- * @template T - 表单值类型，默认为 Record<string, any>
+ * @template T - 表单值类型，默认为 FormValues
  */
 export class FormStore<T extends FormValues> {
-  /** 响应式状态 */
-  public state: FormStoreState<T>
+  /** 响应式状态（运行时为 reactive，类型层面不暴露 Reactive 以避免 UnwrapRef 问题） */
+  private state: FormStoreState<T>
 
   constructor(options: FormStoreOptions<T> = {}) {
     const initialValues = (options.initialValues ?? {}) as T
@@ -85,48 +86,59 @@ export class FormStore<T extends FormValues> {
     }) as FormStoreState<T>
   }
 
-  // ==================== 值操作 ====================
-
   /**
-   * 获取指定路径的字段值（响应式）
+   * 获取指定路径的字段值
+   *
+   * 返回响应式引用，在 computed/watch 中使用时自动追踪变化。
+   *
+   * @param path - 字段路径，支持嵌套路径如 'user.name'
+   * @returns 字段当前值
    */
-  getFieldValue(path: string): any {
-    return getByPath(this.state.values, path)
+  getFieldValue(path: NamePath<T>): DeepReadonly<Value> {
+    return readonly(toRaw(getByPath(this.state.values, path)))
   }
 
   /**
    * 设置指定路径的字段值
+   *
+   * @param path - 字段路径
+   * @param value - 要设置的值
    */
-  setFieldValue(path: string, value: any): void {
+  setFieldValue(path: NamePath<T>, value: Value): void {
     setByPath(this.state.values, path, value)
   }
 
   /**
-   * 获取多个字段的值（响应式）
+   * 获取多个字段的值
    *
-   * 注意：不再 cloneDeep，直接返回响应式对象的引用，
-   * 这样 Vue 的 computed/watch 能自动追踪变化。
+   * 不传参返回全量值，传入路径数组返回指定字段的值。
+   * 直接返回响应式引用，Vue 的 computed/watch 能自动追踪变化。
+   *
+   * @param paths - 可选，要获取的字段路径数组
+   * @returns 全量值或指定字段的值
    */
-  getFieldsValue(): T
-  getFieldsValue<K extends keyof T>(paths: K[]): Pick<T, K>
-  getFieldsValue(paths?: string[]): Record<string, any>
-  getFieldsValue(paths?: string[]): Record<string, any> {
+  getFieldsValue(): DeepReadonly<T>
+  getFieldsValue(paths: NamePath<T>[]): DeepReadonly<Partial<T>>
+  getFieldsValue(paths?: NamePath<T>[]): any {
     if (!paths) {
-      return this.state.values
+      return readonly(toRaw(this.state.values))
     }
 
-    const result: Record<string, any> = {}
+    const result: Partial<T> = {}
+
     for (const path of paths) {
-      result[path] = this.getFieldValue(path)
+      ;(result as any)[path] = this.getFieldValue(path as NamePath<T>)
     }
 
-    return result
+    return readonly(toRaw(result))
   }
 
   /**
    * 批量设置多个字段的值
+   *
+   * @param values - 要设置的字段值对象
    */
-  setFieldsValue(values: Partial<T>): void {
+  setFieldsValue(values: DeepReadonly<Partial<T>>): void {
     for (const [path, value] of Object.entries(values)) {
       setByPath(this.state.values, path, value)
     }
@@ -134,17 +146,25 @@ export class FormStore<T extends FormValues> {
 
   /**
    * 获取指定路径的初始值
+   *
+   * 返回深拷贝副本，防止外部直接修改初始值。
+   *
+   * @param path - 字段路径
+   * @returns 字段初始值的深拷贝
    */
-  getInitialValue(path: string): any {
+  getInitialValue(path: NamePath<T>): Value {
     return getByPath(this.state.initialValues, path)
   }
 
-  // ==================== Touched 状态 ====================
-
   /**
    * 检查指定字段是否被修改过
+   *
+   * 通过深比较当前值与初始值判断。
+   *
+   * @param path - 字段路径
+   * @returns 是否与初始值不同
    */
-  isFieldTouched(path: string): boolean {
+  isFieldTouched(path: NamePath<T>): boolean {
     const currentValue = this.getFieldValue(path)
     const initialValue = getByPath(this.state.initialValues, path)
 
@@ -153,10 +173,15 @@ export class FormStore<T extends FormValues> {
 
   /**
    * 检查多个字段是否被修改
+   *
+   * 传入路径数组时检查所有指定字段是否都被修改，不传则检查是否有任一字段被修改。
+   *
+   * @param paths - 可选，要检查的字段路径数组
+   * @returns 是否被修改
    */
-  isFieldsTouched(paths?: string[]): boolean {
-    if (paths?.length) {
-      return paths.every((path) => this.isFieldTouched(path))
+  isFieldsTouched(paths?: NamePath<T>): boolean {
+    if (Array.isArray(paths) && paths?.length) {
+      return paths.every((path) => this.isFieldTouched(path as NamePath<T>))
     }
 
     return this.getTouchedFields().length > 0
@@ -164,9 +189,14 @@ export class FormStore<T extends FormValues> {
 
   /**
    * 获取所有被修改的字段路径
+   *
+   * 递归遍历当前值和初始值，收集所有与初始值不同的叶子路径。
+   *
+   * @returns 被修改的字段路径数组
    */
   getTouchedFields(): string[] {
     const touchedFields: string[] = []
+
     const collectPaths = (obj: any, prefix = ""): void => {
       if (obj === null || typeof obj !== "object") return
       for (const key of Object.keys(obj)) {
@@ -174,7 +204,7 @@ export class FormStore<T extends FormValues> {
         const value = obj[key]
         if (value !== null && typeof value === "object" && !Array.isArray(value)) {
           collectPaths(value, path)
-        } else if (this.isFieldTouched(path)) {
+        } else if (this.isFieldTouched(path as NamePath<T>)) {
           touchedFields.push(path)
         }
       }
@@ -186,10 +216,13 @@ export class FormStore<T extends FormValues> {
     return [...new Set(touchedFields)]
   }
 
-  // ==================== 重置操作 ====================
-
   /**
    * 重置表单到初始状态
+   *
+   * 不传参时恢复到构造时的初始值，传入 values 时同时更新初始值。
+   * 通过清空再赋值的方式保持 reactive 引用不变。
+   *
+   * @param values - 可选，新的初始值
    */
   reset(values?: Partial<T>): void {
     const resetValues = values ?? this.state.initialValues
@@ -214,27 +247,20 @@ export class FormStore<T extends FormValues> {
 
   /**
    * 重置指定字段到初始值
+   *
+   * @param path - 要重置的字段路径
    */
-  resetField(path: string): void {
+  resetField(path: NamePath<T>): void {
     const initialValue = getByPath(this.state.initialValues, path)
     setByPath(this.state.values, path, cloneDeep(initialValue))
-  }
-
-  // ==================== 状态快照 ====================
-
-  /**
-   * 获取当前状态的只读快照（深拷贝，非响应式）
-   */
-  getState(): Readonly<FormStoreState<T>> {
-    return {
-      values: cloneDeep(this.state.values),
-      initialValues: cloneDeep(this.state.initialValues),
-    }
   }
 }
 
 /**
  * 创建 FormStore 实例的工厂函数
+ *
+ * @param options - 配置选项
+ * @returns FormStore 实例
  */
 export function createFormStore<T extends FormValues>(
   options: FormStoreOptions<T> = {}

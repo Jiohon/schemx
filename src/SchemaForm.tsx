@@ -6,25 +6,16 @@
  * @module SchemaForm
  */
 
-import {
-  App,
-  computed,
-  CSSProperties,
-  defineComponent,
-  onMounted,
-  PropType,
-  ref,
-  watch,
-} from "vue"
+import { App, CSSProperties, defineComponent, onMounted, PropType, ref } from "vue"
 
 import { Button, Form } from "vant"
 
 // Hooks
 
 import classnames from "classnames"
-import { omit } from "lodash-es"
+import { omit } from "es-toolkit"
 
-import FormItem from "./FormItem"
+import FormItem from "./components/FormItem"
 import { useForm } from "./hooks/useForm"
 import { createFormContext } from "./hooks/useFormContext"
 import { useRenderer } from "./hooks/useRenderer"
@@ -35,7 +26,7 @@ import globalPluginManager, {
 } from "./plugins"
 
 import type { Plugin } from "./plugins"
-import type { ColumnConfig, SchemaFormProps } from "./types"
+import type { SchemaBaseColumn, SchemaFormProps } from "./types"
 
 // ==================== 类型定义 ====================
 
@@ -187,15 +178,15 @@ const SchemaForm = defineComponent<SchemaFormProps>({
       onFinishFailed: async (errors) => {
         props.onFinishFailed?.(errors)
       },
-      onValuesChange: (changedValues, allValues) => {
+      onValuesChange: (changedValues, latestValues) => {
         // 触发 update:modelValue 事件
-        emit("update:modelValue", allValues)
+        emit("update:modelValue", latestValues)
 
         // 触发 onValuesChange 回调
-        props.onValuesChange?.(changedValues, allValues)
+        props.onValuesChange?.(changedValues, latestValues)
 
         // 触发 onFieldsChange 回调
-        props.onFieldsChange?.(Object.keys(changedValues), Object.keys(allValues))
+        props.onFieldsChange?.(Object.keys(changedValues), Object.keys(latestValues))
 
         // 触发 onFieldChange 钩子
         Object.keys(changedValues).forEach((field) => {
@@ -216,59 +207,6 @@ const SchemaForm = defineComponent<SchemaFormProps>({
       style: props.style,
       form,
     })
-
-    const normalizedColumns = computed(() => form.schema?.columns)
-
-    // ==================== 监听 modelValue 变化 ====================
-
-    // watch(
-    //   () => props.modelValue,
-    //   (newValue) => {
-    //     if (newValue) {
-    //       const currentValues = form.getFieldsValue()
-    //       const changedValues: Record<string, any> = {}
-
-    //       Object.keys(newValue).forEach((key) => {
-    //         if (currentValues[key] !== newValue[key]) {
-    //           changedValues[key] = newValue[key]
-    //         }
-    //       })
-
-    //       if (Object.keys(changedValues).length > 0) {
-    //         form.setFieldsValue(changedValues)
-    //       }
-    //     }
-    //   },
-    //   { deep: true }
-    // )
-
-    /** 序列化 columns 用于比较（排除函数） */
-    const serializeColumns = (columns: ColumnConfig[]): string => {
-      return JSON.stringify(columns, (_, value) => {
-        // 函数不参与比较，因为动态属性函数会在运行时解析
-        if (typeof value === "function") return "__fn__"
-
-        return value
-      })
-    }
-
-    /** 上一次 columns 的序列化结果 */
-    let prevColumnsSerialized = serializeColumns(props.columns)
-
-    /** 监听 columns 变化 */
-    watch(
-      () => props.columns,
-      (newColumns) => {
-        // 只有当 columns 结构真正变化时才更新 schema
-        // 避免 computed columns 因为依赖变化而触发无限循环
-        const newSerialized = serializeColumns(newColumns)
-        if (newSerialized !== prevColumnsSerialized) {
-          prevColumnsSerialized = newSerialized
-          form.updateSchema(newColumns)
-        }
-      },
-      { deep: true }
-    )
 
     // ==================== 生命周期钩子 ====================
 
@@ -315,25 +253,10 @@ const SchemaForm = defineComponent<SchemaFormProps>({
           required="auto"
         >
           {/* 渲染基础字段 */}
-          {normalizedColumns.value?.map((column, index) => {
+          {props.columns?.map((column, index) => {
             // ==================== 依赖字段直接渲染 ====================
-
-            // if (column.componentType === "dependency") {
-            //   return () => (
-            //     <FormDependency
-            //       to={column.to}
-            //       renderer={column.renderer}
-            //       schemaRenderer={rendererRegistry.value}
-            //       v-slots={slots}
-            //     />
-            //   )
-            // }
-
             // 获取 key：依赖字段使用 index，普通字段使用 name
-            const key =
-              column.componentType === "dependency"
-                ? `dep-${index}`
-                : `${String((column as any).name)}-${index}`
+            const key = `${column.componentType}-${(column as SchemaBaseColumn).name ? (column as SchemaBaseColumn).name : index}`
 
             return (
               <FormItem

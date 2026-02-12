@@ -32,6 +32,13 @@ export {
   type UseWatchOptions,
 } from "./useWatch"
 
+// 导出 useDependency 相关
+export {
+  useDependency,
+  type UseDependencyOptions,
+  type UseDependencyReturn,
+} from "./useDependency"
+
 // 基础 hooks
 export { useMountCleanup } from "./useMountCleanup"
 

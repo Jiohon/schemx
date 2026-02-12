@@ -41,12 +41,11 @@
   "dependencies": {
     "classnames": "^2.5.1",
     "dayjs": "^1.11.19",
-    "lodash-es": "^4.17.21",
+    "es-toolkit": "^1.44.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
-    "@types/lodash-es": "^4.17.12",
     "@typescript-eslint/eslint-plugin": "^8.54.0",
     "@typescript-eslint/parser": "^8.54.0",
     "@vitejs/plugin-vue": "^5.0.0",
