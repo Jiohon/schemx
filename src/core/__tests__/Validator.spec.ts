@@ -8,7 +8,7 @@
 import { beforeEach, describe, expect, it } from "vitest"
 import { z } from "zod"
 
-import { createValidator, Validator } from "../Validator"
+import { createValidator, Validator } from "../validator"
 
 describe("Validator - Zod Schema Validation", () => {
   let validator: Validator

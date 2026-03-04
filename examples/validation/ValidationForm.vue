@@ -11,6 +11,8 @@
       @finish="handleSubmit"
       @finish-failed="handleSubmitFailed"
     />
+
+    <button @click="handleEmil">验证邮箱</button>
   </div>
 </template>
 
@@ -146,6 +148,10 @@
   // 提交失败处理
   const handleSubmitFailed = (errorInfo: any) => {
     console.error("验证失败:", errorInfo)
+  }
+
+  const handleEmil = () => {
+    formRef.value?.validateField("email")
   }
 </script>
 

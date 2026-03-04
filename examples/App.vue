@@ -26,7 +26,6 @@
   import ValidationForm from "./validation/ValidationForm.vue"
   import DynamicForm from "./dynamic/DynamicForm.vue"
   import CustomRendererForm from "./custom-renderer/CustomRendererForm.vue"
-  import HooksExample from "./hooks/HooksExample.vue"
   import DependencyForm from "./dependency/DependencyForm.vue"
 
   const examples = [
@@ -35,10 +34,9 @@
     { id: "dynamic", name: "动态表单", component: markRaw(DynamicForm) },
     { id: "dependency", name: "字段联动", component: markRaw(DependencyForm) },
     { id: "custom", name: "自定义渲染器", component: markRaw(CustomRendererForm) },
-    { id: "hooks", name: "Hooks API", component: markRaw(HooksExample) },
   ]
 
-  const currentExample = ref("dynamic")
+  const currentExample = ref("validation")
 
   const currentComponent = computed(() => {
     const example = examples.find((e) => e.id === currentExample.value)

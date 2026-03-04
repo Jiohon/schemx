@@ -15,7 +15,7 @@ import { defineComponent, h } from "vue"
 import * as fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import { createRegistry, type RegistryOptions } from "../createRegistry"
+import { createLocalRegistry, type RegistryOptions } from "../rendererRegistry"
 
 // ==================== 测试辅助 ====================
 
@@ -63,7 +63,7 @@ describe("Registry Property Tests", () => {
     it("should return the registered renderer for any valid type", () => {
       fc.assert(
         fc.property(rendererTypeArb, (type) => {
-          const registry = createRegistry()
+          const registry = createLocalRegistry()
           const component = createTestComponent(`Test-${type}`)
 
           registry.register(type, component)
@@ -79,7 +79,7 @@ describe("Registry Property Tests", () => {
     it("should correctly handle registerAll for multiple renderers", () => {
       fc.assert(
         fc.property(uniqueRendererTypesArb, (types) => {
-          const registry = createRegistry()
+          const registry = createLocalRegistry()
           const rendererMap: Record<string, ReturnType<typeof createTestComponent>> = {}
 
           types.forEach((type) => {
@@ -113,7 +113,7 @@ describe("Registry Property Tests", () => {
     it("should remove renderer after unregister", () => {
       fc.assert(
         fc.property(rendererTypeArb, (type) => {
-          const registry = createRegistry()
+          const registry = createLocalRegistry()
           const component = createTestComponent(`Test-${type}`)
 
           // Register first
@@ -133,7 +133,7 @@ describe("Registry Property Tests", () => {
     it("should return false when unregistering non-existent type", () => {
       fc.assert(
         fc.property(rendererTypeArb, (type) => {
-          const registry = createRegistry()
+          const registry = createLocalRegistry()
 
           // Unregister without registering
           const result = registry.unregister(type)
@@ -146,7 +146,7 @@ describe("Registry Property Tests", () => {
     it("should correctly update size after unregister", () => {
       fc.assert(
         fc.property(uniqueRendererTypesArb, (types) => {
-          const registry = createRegistry()
+          const registry = createLocalRegistry()
 
           // Register all types
           types.forEach((type) => {
@@ -181,7 +181,7 @@ describe("Registry Property Tests", () => {
     it("should reset size to 0 after clear", () => {
       fc.assert(
         fc.property(uniqueRendererTypesArb, (types) => {
-          const registry = createRegistry()
+          const registry = createLocalRegistry()
 
           // Register multiple renderers
           types.forEach((type) => {
@@ -202,7 +202,7 @@ describe("Registry Property Tests", () => {
     it("should return empty array from getTypes after clear", () => {
       fc.assert(
         fc.property(uniqueRendererTypesArb, (types) => {
-          const registry = createRegistry()
+          const registry = createLocalRegistry()
 
           // Register multiple renderers
           types.forEach((type) => {
@@ -223,7 +223,7 @@ describe("Registry Property Tests", () => {
     it("should make all previously registered types unavailable after clear", () => {
       fc.assert(
         fc.property(uniqueRendererTypesArb, (types) => {
-          const registry = createRegistry()
+          const registry = createLocalRegistry()
 
           // Register multiple renderers
           types.forEach((type) => {
@@ -248,7 +248,7 @@ describe("Registry Property Tests", () => {
         fc.property(
           uniqueRendererTypesArb.filter((types) => types.length >= 1),
           (types) => {
-            const registry = createRegistry()
+            const registry = createLocalRegistry()
 
             // Register and set a custom default
             const firstType = types[0]
@@ -280,7 +280,7 @@ describe("Registry Property Tests", () => {
     it("should return the same type from getDefault after setDefault", () => {
       fc.assert(
         fc.property(rendererTypeArb, (type) => {
-          const registry = createRegistry()
+          const registry = createLocalRegistry()
           const component = createTestComponent(`Test-${type}`)
 
           // Register first (setDefault requires the type to be registered)
@@ -301,7 +301,7 @@ describe("Registry Property Tests", () => {
         fc.property(
           fc.tuple(rendererTypeArb, rendererTypeArb).filter(([a, b]) => a !== b),
           ([registeredType, unregisteredType]) => {
-            const registry = createRegistry()
+            const registry = createLocalRegistry()
 
             // Register one type
             registry.register(
@@ -328,7 +328,7 @@ describe("Registry Property Tests", () => {
         fc.property(
           uniqueRendererTypesArb.filter((types) => types.length >= 2),
           (types) => {
-            const registry = createRegistry()
+            const registry = createLocalRegistry()
 
             // Register all types
             types.forEach((type) => {
@@ -351,7 +351,7 @@ describe("Registry Property Tests", () => {
         fc.property(
           rendererTypeArb.filter((type) => type !== "text"),
           (type) => {
-            const registry = createRegistry()
+            const registry = createLocalRegistry()
 
             // Register and set as default
             registry.register(type, createTestComponent(`Test-${type}`))

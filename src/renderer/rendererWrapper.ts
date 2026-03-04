@@ -26,15 +26,7 @@ import {
 import type { ComponentsProps, NamePath, RendererType, SchemaBaseColumn } from "../types"
 
 /** 选择类组件类型 */
-const SELECT_TYPES: RendererType[] = [
-  "picker",
-  "selector",
-  "cascader",
-  "date",
-  "calendar",
-  "radio",
-  "checkbox",
-]
+const SELECT_TYPES: RendererType[] = []
 
 /**
  * 生成默认占位符文本
@@ -57,7 +49,7 @@ export interface CreateRenderWrapperOptions {
   /** 默认属性 */
   defaultProps?: ComponentsProps
   /** 自定义占位符生成函数 */
-  generatePlaceholder?: (componentType: string, label?: string) => string
+  generatePlaceholder?: (componentType?: RendererType | string, label?: string) => string
 }
 
 /**
@@ -139,7 +131,8 @@ export function createRenderWrapper(options: CreateRenderWrapperOptions): Compon
         default: () => ({}),
       },
       formItemProps: {
-        type: Object as PropType<Omit<SchemaBaseColumn, "componentProps">>,
+        // type: Object as PropType<Record<string, any>>,
+        type: Object as PropType<Partial<Omit<SchemaBaseColumn, "componentProps">>>,
         default: () => ({}),
       },
     },
@@ -148,7 +141,7 @@ export function createRenderWrapper(options: CreateRenderWrapperOptions): Compon
       return () => {
         const mergedProps = computed(() => {
           const defaultPlaceholder = generatePlaceholder?.(
-            props.formItemProps.componentType,
+            props.formItemProps?.componentType,
             props.formItemProps.label
           )
 

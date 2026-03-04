@@ -1,0 +1,61 @@
+/**
+ * 创建严格单例工厂
+ *
+ * 确保 factory 只执行一次，后续调用返回同一实例。
+ * reset 仅在非生产环境可用。
+ *
+ * @param factory - 创建实例的工厂函数
+ *
+ * @example
+ * ```typescript
+ * // 基础用法
+ * const singleton = createStrictSingleton(() => new DatabaseConnection())
+ * const db = singleton.getInstance() // 创建实例
+ * const db2 = singleton.getInstance() // 返回同一实例，db === db2
+ *
+ * // 带参数的工厂
+ * const singleton = createStrictSingleton((host: string, port: number) => {
+ *   return new RedisClient(host, port)
+ * })
+ * const client = singleton.getInstance('localhost', 6379) // 首次调用，创建实例
+ * const client2 = singleton.getInstance('other', 9999) // 忽略参数，返回同一实例
+ *
+ * // 测试环境重置
+ * singleton.reset() // 仅非生产环境可用
+ * const fresh = singleton.getInstance('localhost', 6379) // 重新创建
+ * ```
+ */
+export function createStrictSingleton<T, Args extends any[] = []>(
+  factory: (...args: Args) => T
+) {
+  let instance: T | undefined
+  let initialized = false
+
+  return Object.freeze({
+    getInstance(...args: Args): T {
+      if (!initialized) {
+        instance = factory(...args)
+
+        if (instance == null) {
+          throw new Error("[Singleton] factory 不能返回 null 或 undefined")
+        }
+
+        initialized = true
+      }
+
+      return instance as T
+    },
+
+    /** 重置单例，仅测试环境可用 */
+    reset() {
+      if (import.meta.env?.PROD) {
+        console.warn("[Singleton] reset() 不应在生产环境调用")
+
+        return
+      }
+
+      instance = undefined
+      initialized = false
+    },
+  })
+}

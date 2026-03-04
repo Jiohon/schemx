@@ -36,20 +36,20 @@ npx vite examples
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import SchemaForm from '@anthropic/vue-schema-form'
-import '@anthropic/vue-schema-form/style.css'
+  import { ref } from "vue"
+  import SchemaForm from "@Jonhn/vue-schema-form"
+  import "@Jonhn/vue-schema-form/style.css"
 
-const formData = ref({})
+  const formData = ref({})
 
-const columns = [
-  { name: 'username', label: '用户名', componentType: 'text', required: true },
-  { name: 'email', label: '邮箱', componentType: 'text' },
-]
+  const columns = [
+    { name: "username", label: "用户名", componentType: "text", required: true },
+    { name: "email", label: "邮箱", componentType: "text" },
+  ]
 
-const handleSubmit = (values: Record<string, any>, done: () => void) => {
-  console.log('提交数据:', values)
-  done()
-}
+  const handleSubmit = (values: Record<string, any>, done: () => void) => {
+    console.log("提交数据:", values)
+    done()
+  }
 </script>
 ```

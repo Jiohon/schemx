@@ -14,7 +14,7 @@ import { computed, defineComponent, h, provide, ref } from "vue"
 import { mount } from "@vue/test-utils"
 import { describe, expect, it, vi } from "vitest"
 
-import { createFormStore } from "../../core/FormStore"
+import { createFormStore } from "../../core/store"
 import { FORM_CONTEXT_KEY, type UseFormReturn } from "../../hooks/useForm"
 import { createRenderWrapper } from "../rendererWrapper"
 

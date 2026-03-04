@@ -9,19 +9,19 @@ import { defineComponent, h } from "vue"
 import { mount } from "@vue/test-utils"
 import { describe, expect, it, vi } from "vitest"
 
-import { DEFAULT_RENDERER_TYPES } from "../../renderer/defaultRenderers"
-import { useRenderer, useRendererContext, type UseRendererOptions } from "../useRenderer"
+import { DEFAULT_RENDERER_TYPES } from "../../../renderers/defaultRenderers"
+import { createRenderer, useRendererContext } from "../useRenderer"
 
-import type { ISchemaRegistry } from "../../renderer/createRegistry"
+import type { Registry } from "../../renderer/rendererRegistry"
 
 /**
  * 创建测试组件的辅助函数
  *
  * 使用父子组件结构来正确测试 provide/inject
  */
-function createTestSetup(options?: UseRendererOptions) {
-  let parentRegistry: ISchemaRegistry | null = null
-  let childRegistry: ISchemaRegistry | null = null
+function createTestSetup() {
+  let parentRegistry: Registry | null = null
+  let childRegistry: Registry | null = null
 
   const ChildComponent = defineComponent({
     name: "ChildComponent",
@@ -35,7 +35,7 @@ function createTestSetup(options?: UseRendererOptions) {
   const ParentComponent = defineComponent({
     name: "ParentComponent",
     setup() {
-      parentRegistry = useRenderer(options)
+      parentRegistry = createRenderer()
 
       return () => h(ChildComponent)
     },
@@ -105,7 +105,7 @@ describe("useRenderer Hook (Task 5.1)", () => {
 
   describe("setup 回调 - Requirement 10.3", () => {
     it("应该在默认渲染器注册后调用 setup 回调", () => {
-      const setup = vi.fn((registry: ISchemaRegistry) => {
+      const setup = vi.fn((registry: Registry) => {
         // 验证默认渲染器已注册
         expect(registry.hasRenderer("input")).toBe(true)
         // 注册自定义渲染器
@@ -122,7 +122,7 @@ describe("useRenderer Hook (Task 5.1)", () => {
     })
 
     it("skipDefaults=true 时 setup 回调仍然被调用", () => {
-      const setup = vi.fn((registry: ISchemaRegistry) => {
+      const setup = vi.fn((registry: Registry) => {
         expect(registry.size()).toBe(0)
         registry.register("myRenderer", defineComponent({ render: () => h("span") }))
       })

@@ -1,6 +1,6 @@
 {
   "type": "module",
-  "name": "@anthropic/vue-schema-form",
+  "name": "@Jonhn/vue-schema-form",
   "version": "1.0.0",
   "description": "基于 JSON Schema 配置的 Vue 3 动态表单组件",
   "main": "./dist/index.cjs",

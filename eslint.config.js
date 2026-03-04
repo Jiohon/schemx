@@ -200,6 +200,7 @@ export default tseslint.config(
           jsx: true,
         },
         extraFileExtensions: [".vue"],
+        project: ["./tsconfig.json", "./examples/tsconfig.json"],
       },
     },
     rules: {
@@ -221,7 +222,7 @@ export default tseslint.config(
         ecmaFeatures: {
           jsx: true,
         },
-        project: "./tsconfig.json",
+        project: ["./tsconfig.json", "./examples/tsconfig.json"],
       },
     },
   }

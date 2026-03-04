@@ -1,63 +1,21 @@
 /**
  * useField - 字段 Hook
  *
- * 获取单个字段的控制能力。
+ * 获取单个字段的控制能力，将 SchemaFormInstance 的方法作用域限定到指定字段。
  *
  * @module hooks/useField
  */
 
-import { computed, type ComputedRef } from "vue"
-
+import { computed } from "vue"
 import type { DeepReadonly } from "vue"
 
-import type { FormValues, NamePath, SchemaFormInstance } from "@/types"
+import type { FormValues, NamePath, Value } from "@/types"
 
-import { useFormContext } from "./useFormContext"
+import { useFormInstance } from "./useFormContext"
 
-/**
- * 字段状态接口
- */
-export interface FieldState {
-  /** 字段错误信息（响应式） */
-  error: ComputedRef<string[] | undefined>
-  /** 值是否与初始值不同（响应式） */
-  dirty: ComputedRef<boolean>
-  /** 值未被修改（dirty 的反义） */
-  pristine: ComputedRef<boolean>
-  /** 是否正在校验中（响应式） */
-  isValidating: ComputedRef<boolean>
-  /** 组件实例 */
-  form: ComputedRef<SchemaFormInstance>
-}
-
-/**
- * 字段操作接口
- */
-export interface FieldActions {
-  /** 获取指定路径的初始值 */
-  getInitialValue: (path: string) => any
-  /** 设置值 */
-  setValue: (value: any) => void
-  /** 设置错误 */
-  setError: (error: string[]) => void
-  /** 获取错误信息 */
-  getError: () => string[] | undefined
-  /** 清除错误信息 */
-  clearError: () => void
-  /** 校验字段 */
-  validate: () => Promise<boolean>
-  /** 重置字段 */
-  reset: () => void
-  /** 获取当前 name 单值 */
-  getValue: () => any
-  /** 获取表单值 */
-  getValues: () => DeepReadonly<FormValues>
-}
-
-/**
- * useField 返回类型
- */
-export interface UseFieldReturn extends FieldState, FieldActions {}
+import type { FieldSubscribeCallback } from "../core/subscriber"
+import type { ValidateResult } from "../core/validator"
+import type { ZodType } from "zod"
 
 /**
  * useField 选项
@@ -70,96 +28,279 @@ export interface UseFieldOptions {
 /**
  * 获取单个字段的控制能力
  *
- * FormStore 的 state 已经是 Vue reactive 对象，
- * 所以 getFieldValue / getFieldsValue 在 computed 中使用时
- * 会自动建立响应式依赖，无需手动订阅。
+ * 将 SchemaFormInstance 的方法作用域限定到指定字段，
+ * FormStore 的 state 是 Vue reactive 对象，
+ * getFieldValue / getFieldsValue 在 computed 中使用时自动建立响应式依赖。
  *
  * @param name - 字段名（支持嵌套路径，如 'user.address.city'）
  * @param options - 选项
  * @returns 字段状态和操作方法
+ *
+ * @example
+ * ```typescript
+ * const field = useField('username')
+ *
+ * // 读写值
+ * field.getValue()
+ * field.setValue('new value')
+ *
+ * // 校验
+ * const result = await field.validate()
+ *
+ * // 响应式状态
+ * field.error.value   // string[] | undefined
+ * field.dirty.value   // boolean
+ *
+ * // 规则管理
+ * field.registerRules(z.string().min(3))
+ * field.unregisterRules()
+ *
+ * // 订阅
+ * const unsub = field.subscribe((path, value, allValues) => { ... })
+ * ```
  */
-export const useField = (
-  name: NamePath,
-  options: UseFieldOptions = {}
-): UseFieldReturn => {
-  const context = useFormContext()
+export const useField = (name: NamePath, options: UseFieldOptions = {}) => {
+  /**
+   * 表单实例引用
+   *
+   * @example
+   * ```typescript
+   * field.form.validate()
+   * ```
+   */
+  const form = useFormInstance()
 
-  const form = computed(() => context.form)
+  /**
+   * 字段错误信息（响应式）
+   *
+   * @example
+   * ```typescript
+   * field.error.value // => ['用户名不能为空'] 或 undefined
+   * ```
+   */
+  const error = computed(() => form?.getFieldError(name))
 
-  // 计算属性：错误信息
-  const error = computed(() => {
-    return form.value?.getFieldError(name)
-  })
+  /**
+   * 值是否与初始值不同（响应式）
+   *
+   * @example
+   * ```typescript
+   * field.dirty.value // => true（值已修改）
+   * ```
+   */
+  const dirty = computed(() => form?.isFieldTouched(name) ?? false)
 
-  // 计算属性：值是否与初始值不同
-  const dirty = computed(() => {
-    return form.value?.isFieldTouched(name) ?? false
-  })
-
+  /**
+   * 值未被修改（dirty 的反义，响应式）
+   *
+   * @example
+   * ```typescript
+   * field.pristine.value // => true（值未修改）
+   * ```
+   */
   const pristine = computed(() => !dirty.value)
 
-  const isValidating = computed(() => false)
+  /**
+   * 获取当前字段值
+   *
+   * @returns 字段当前值（响应式，在 computed/render 中自动追踪）
+   *
+   * @example
+   * ```typescript
+   * const value = field.getValue() // => 'hello'
+   * ```
+   */
+  const getValue = () => form?.getFieldValue(name)
 
-  const getInitialValue = (path: string) => {
-    return form.value?.getInitialValue(path)
+  /**
+   * 设置当前字段值
+   *
+   * @param value - 要设置的值
+   *
+   * @example
+   * ```typescript
+   * field.setValue('new value')
+   * field.setValue({ nested: true })
+   * ```
+   */
+  const setValue = (value: Value): void => {
+    form?.setFieldValue(name, value)
+    options.onChange?.(value)
   }
 
-  // 直接读取响应式 state，在 render/computed 中自动追踪
-  const getValue = () => {
-    return form.value?.getFieldValue(name)
-  }
+  /**
+   * 获取字段初始值
+   *
+   * @returns 字段初始值
+   *
+   * @example
+   * ```typescript
+   * const initial = field.getInitialValue() // => ''
+   * ```
+   */
+  const getInitialValue = () => form?.getInitialValue(name)
 
-  // 返回响应式 values 引用，computed 中使用时自动追踪所有字段变化
-  const getValues = () => {
-    return form.value?.getFieldsValue() as DeepReadonly<FormValues>
-  }
+  /**
+   * 获取表单全量值
+   *
+   * @returns 所有字段的只读值
+   *
+   * @example
+   * ```typescript
+   * const all = field.getValues() // => { username: 'a', email: 'b' }
+   * ```
+   */
+  const getValues = () => form?.getFieldsValue() as DeepReadonly<FormValues>
 
-  const setValue = (newValue: any): void => {
-    form.value?.setFieldValue(name, newValue)
-    options.onChange?.(newValue)
-  }
-
-  const setError = (newError: string[]): void => {
-    form.value?.setFieldError(name, newError)
-  }
-
-  const getError = () => {
-    return form.value?.getFieldError(name)
-  }
-
-  const clearError = (): void => {
-    form.value?.setFieldError(name, [])
-  }
-
-  const validate = async (): Promise<boolean> => {
-    if (form.value) {
-      const result = await form.value.validateField([name])
-
-      return result.ok
+  /**
+   * 校验当前字段
+   *
+   * @returns 校验结果，包含 ok 和 values/error
+   *
+   * @example
+   * ```typescript
+   * const result = await field.validate()
+   * if (!result.ok) console.log(result.error)
+   * ```
+   */
+  const validate = async (): Promise<ValidateResult<FormValues>> => {
+    if (form) {
+      return form.validateField([name])
     }
 
-    return true
+    return { ok: true, values: {} as DeepReadonly<FormValues> }
   }
 
+  /**
+   * 获取错误信息
+   *
+   * @returns 错误信息数组，无错误时返回 undefined
+   *
+   * @example
+   * ```typescript
+   * field.getError() // => ['最少3个字符'] 或 undefined
+   * ```
+   */
+  const getError = () => form?.getFieldError(name)
+
+  /**
+   * 手动设置错误信息
+   *
+   * @param errors - 错误信息数组
+   *
+   * @example
+   * ```typescript
+   * field.setError(['用户名已存在'])
+   * ```
+   */
+  const setError = (errors: string[]): void => {
+    form?.setFieldError(name, errors)
+  }
+
+  /**
+   * 清除错误信息
+   *
+   * @example
+   * ```typescript
+   * field.clearError()
+   * ```
+   */
+  const clearError = (): void => {
+    form?.setFieldError(name, [])
+  }
+
+  /**
+   * 注册校验规则
+   *
+   * @param rules - Zod schema 规则
+   *
+   * @example
+   * ```typescript
+   * field.registerRules(z.string().min(3, '最少3个字符'))
+   * ```
+   */
+  const registerRules = (rules: ZodType): void => {
+    form?.registerRules(name, rules)
+  }
+
+  /**
+   * 注销校验规则
+   *
+   * @example
+   * ```typescript
+   * field.unregisterRules()
+   * ```
+   */
+  const unregisterRules = (): void => {
+    form?.unregisterRules(name)
+  }
+
+  /**
+   * 当前字段是否被修改
+   *
+   * @returns 是否与初始值不同
+   *
+   * @example
+   * ```typescript
+   * field.isTouched() // => true
+   * ```
+   */
+  const isTouched = () => form?.isFieldTouched(name) ?? false
+
+  /**
+   * 重置当前字段到初始值
+   *
+   * @example
+   * ```typescript
+   * field.reset()
+   * ```
+   */
   const reset = (): void => {
-    form.value?.resetFields([name])
+    form?.resetFields([name])
+  }
+
+  /**
+   * 订阅当前字段变化
+   *
+   * @param callback - 变化时的回调函数
+   * @returns 取消订阅的函数
+   *
+   * @example
+   * ```typescript
+   * const unsub = field.subscribe((path, value, allValues) => {
+   *   console.log(`${path} changed to`, value)
+   * })
+   * unsub() // 取消订阅
+   * ```
+   */
+  const subscribe = (callback: FieldSubscribeCallback<FormValues>) => {
+    return form?.subscribe(name, callback) ?? (() => {})
   }
 
   return {
+    // 状态
     error,
     dirty,
     pristine,
-    isValidating,
     form,
-    getInitialValue,
+    // 值操作
     getValue,
-    getValues,
     setValue,
-    setError,
-    getError,
-    clearError,
+    getInitialValue,
+    getValues,
+    // 校验
     validate,
+    getError,
+    setError,
+    clearError,
+    registerRules,
+    unregisterRules,
+    // Touched
+    isTouched,
+    // 重置
     reset,
+    // 订阅
+    subscribe,
   }
 }
 

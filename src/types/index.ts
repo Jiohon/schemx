@@ -1,26 +1,10 @@
-/**
- * 类型定义模块
- *
- * 本模块是类型的统一出口，分为以下几类：
- * 1. 基础类型 - FormValues, DynamicProp 等
- * 2. 表单核心类型 - SchemaFormInstance, ColumnConfig 等
- * 3. 渲染器类型 - ISchemaRegistry, RendererOptions 等
- * 4. 插件系统类型 - Plugin, PluginContext 等
- * 5. 重导出类型 - 从 core/hooks/renderer 模块重导出
- *
- * @module types
- */
-
 import type { Component, CSSProperties, DeepReadonly } from "vue"
 
-import type { DeepNamePath } from "./namePathType"
-import type { FieldSubscribeCallback, GlobalSubscribeCallback } from "../core/Subscriber"
-import type { ValidateError, ValidateResult } from "../core/Validator"
-// eslint-disable-next-line import/order
-import type { ISchemaRegistry } from "../renderer/createRegistry"
+import Registry from "@/renderer/rendererRegistry"
 
-export type { ISchemaRegistry }
-import type { DefaultRendererType } from "../renderer/defaultRenderers"
+import type { DeepNamePath } from "./namePathType"
+import type { FieldSubscribeCallback, GlobalSubscribeCallback } from "../core/subscriber"
+import type { ValidateError, ValidateResult } from "../core/validator"
 import type { ZodType } from "zod"
 
 export type ResolveDynamic<T> = {
@@ -45,7 +29,7 @@ export type NamePath<T = any> = DeepNamePath<T>
  * @example
  * ```typescript
  * // 在你的项目中创建 schema-form.d.ts
- * declare module '@anthropic/schema-form' {
+ * declare module '@Jonhn/schema-form' {
  *   interface CustomRendererTypes {
  *     'my-custom-input': true
  *     'rich-editor': true
@@ -64,7 +48,31 @@ export interface CustomRendererTypes {}
  * - keyof CustomRendererTypes: 用户扩展的自定义渲染器
  * - "dependency": 依赖字段特殊类型
  */
-export type RendererType = DefaultRendererType | keyof CustomRendererTypes | "dependency"
+export type RendererType = keyof CustomRendererTypes
+
+/**
+ * 自定义渲染器 Props 映射扩展接口
+ *
+ * 用户可以通过声明合并来扩展自定义渲染器的 Props 映射：
+ *
+ * @example
+ * ```typescript
+ * declare module '@' {
+ *   interface CustomRendererPropsMap {
+ *     'rich-editor': RichEditorProps
+ *   }
+ * }
+ * ```
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface CustomRendererPropsMap {}
+
+/**
+ * 完整的渲染器 Props 映射
+ *
+ * 合并内置映射和自定义扩展映射
+ */
+export type RendererPropsMap = CustomRendererPropsMap
 
 /** 验证规则触发时机 */
 export type ValidationTrigger =
@@ -85,6 +93,12 @@ export type DynamicProp<T> = ((values: FormValues) => T | Promise<T>) | T
 // ============================================================================
 // 表单核心类型
 // ============================================================================
+
+export interface ComponentsProps {
+  className?: string
+  style?: CSSProperties
+  [key: string]: unknown
+}
 
 /**
  * 表单实例接口
@@ -409,17 +423,55 @@ export interface SchemaFormInstance<T extends FormValues = FormValues> {
 export type CustomRules = "required"
 
 /**
+ * 表单项组件 placeholder 属性接口
+ *
+ * 用于 FormItem 组件的 props 定义，继承自 ComponentsProps 并添加 placeholder 属性。
+ */
+export interface ColumnComponentsProps extends ComponentsProps {
+  placeholder?: DynamicProp<string>
+}
+
+/** 动态属性已解析为静态值的 component Props */
+export interface ProcessedColumnComponentsProps extends ColumnComponentsProps {
+  placeholder?: string
+}
+
+/** FormItem 组件 Props */
+export type FormItemProps = Omit<SchemaBaseColumn, "componentProps" | "componentType"> & {
+  componentType: string
+}
+
+/** 动态属性已解析为静态值的 FormItem Props */
+export type ProcessedFormItemProps = Omit<
+  SchemaBaseColumn,
+  "required" | "readonly" | "disabled" | "hidden" | "componentType"
+> & {
+  componentType: string
+  required: boolean
+  readonly: boolean
+  disabled: boolean
+  hidden: boolean
+  componentProps: ProcessedColumnComponentsProps
+  class?: string
+}
+
+/**
  * 基础字段配置
  */
-export interface SchemaBaseColumn<T extends FormValues = FormValues> {
+export interface SchemaBaseColumn<
+  T extends FormValues = FormValues,
+  K extends keyof RendererPropsMap = keyof RendererPropsMap,
+> {
   /** 字段名（支持嵌套路径如 'user.name'） */
   name: NamePath<T>
   /** 字段标签 */
   label?: string
-  /** 组件类型（不能为 dependency） */
-  componentType: Exclude<RendererType, "dependency" | "group" | "columns">
-  /** 组件属性（支持函数形式） */
-  componentProps?: DynamicProp<ComponentsProps>
+  /** 组件类型 */
+  componentType: K
+  /** 组件属性（根据 componentType 自动收窄类型，支持函数形式） */
+  componentProps?: DynamicProp<RendererPropsMap[K]>
+  /** 占位符（支持函数形式） */
+  placeholder?: DynamicProp<string>
   /** 是否必填（支持函数形式） */
   required?: DynamicProp<boolean>
   /** 是否只读（支持函数形式） */
@@ -450,22 +502,6 @@ export interface SchemaBaseColumn<T extends FormValues = FormValues> {
   style?: CSSProperties
 }
 
-/** FormItem 组件 Props */
-export type FormItemProps = Omit<SchemaBaseColumn, "componentProps">
-
-/** 动态属性已解析为静态值的 FormItem Props */
-export type ProcessedFormItemProps = Omit<
-  SchemaBaseColumn,
-  "required" | "readonly" | "disabled" | "hidden"
-> & {
-  required: boolean
-  readonly: boolean
-  disabled: boolean
-  hidden: boolean
-  componentProps: ComponentsProps
-  class?: string
-}
-
 /**
  * 嵌套字段配置
  */
@@ -481,8 +517,8 @@ export interface SchemaNestedColumn<T extends FormValues = FormValues> {
  * 分组字段配置
  */
 export interface SchemaGroupColumn<T extends FormValues = FormValues> {
-  // /** 字段名（支持嵌套路径如 'user.name'） */
-  // label: string
+  /** 字段标签 */
+  label: string
   /** 组件类型（固定为 dependency） */
   componentType: "group"
   /** 嵌套列配置 */
@@ -509,10 +545,20 @@ export interface SchemaDependencyColumn<T extends FormValues = FormValues> {
 }
 
 /**
- * 依赖字段配置
+ * 基础字段配置的分布式联合类型
+ *
+ * 将每个 componentType 展开为独立的 SchemaBaseColumn 变体，
+ * 使 columns 数组中每个元素根据 componentType 获得精确的 componentProps 类型推断。
+ */
+export type SchemaBaseColumnUnion<T extends FormValues = FormValues> = {
+  [K in keyof RendererPropsMap]: SchemaBaseColumn<T, K>
+}[keyof RendererPropsMap]
+
+/**
+ * 字段配置联合类型
  */
 export type SchemaColumn<T extends FormValues = FormValues> =
-  | SchemaBaseColumn<T>
+  | SchemaBaseColumnUnion<T>
   | SchemaNestedColumn<T>
   | SchemaGroupColumn<T>
   | SchemaDependencyColumn<T>
@@ -584,6 +630,8 @@ export interface SchemaFormProps<T extends FormValues = FormValues> {
   columns: SchemaColumn[]
   /** 表单实例 */
   form?: SchemaFormInstance
+  /** 渲染器注册实例 */
+  rendererRegistry?: Registry
   /** 默认的验证触发时机 */
   validationTrigger?: ValidationTrigger | ValidationTrigger[]
   /** 标签图标 */
@@ -618,12 +666,6 @@ export interface SchemaFormProps<T extends FormValues = FormValues> {
   submitButtonText?: string
   /** 提交按钮属性 */
   submitButtonProps?: ComponentsProps
-}
-
-export interface ComponentsProps {
-  className?: string
-  style?: CSSProperties
-  [key: string]: unknown
 }
 
 // ============================================================================

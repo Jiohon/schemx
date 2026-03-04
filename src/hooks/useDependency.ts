@@ -9,7 +9,7 @@
 
 import { type Ref, ref } from "vue"
 
-import { useFormContext } from "./useFormContext"
+import { useFormInstance } from "./useFormContext"
 import { useWatchFields } from "./useWatch"
 
 import type {
@@ -51,8 +51,7 @@ export function useDependency(
   to: SchemaDependencyColumn["to"],
   renderer: SchemaDependencyColumn["renderer"]
 ): UseDependencyReturn {
-  const context = useFormContext()
-  const form = context.form
+  const form = useFormInstance()
 
   const columns = ref<SchemaColumn[]>([])
   const values = ref<FormValues>({})
@@ -60,12 +59,12 @@ export function useDependency(
   // 订阅依赖字段变化，触发响应式更新
   useWatchFields(
     to,
-    async (values, _prevValue, _changedFields) => {
-      values.value = values
+    async (value, prevValue, latestValues) => {
+      values.value = latestValues
 
       if (renderer) {
         try {
-          columns.value = await renderer(values, form)
+          columns.value = await renderer(latestValues, form)
 
           form.registerRulesFromColumns(columns.value)
         } catch (error) {

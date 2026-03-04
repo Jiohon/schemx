@@ -15,8 +15,7 @@ import classnames from "classnames"
 import { omit } from "es-toolkit"
 import z from "zod"
 
-import { useWatchAll } from "@/hooks"
-import { generateDefaultPlaceholder } from "@/renderer/rendererWrapper"
+import { useWatchAll } from "../hooks"
 
 import { useField } from "../hooks/useField"
 import { useFormContext } from "../hooks/useFormContext"
@@ -34,7 +33,12 @@ import FormDependency from "./FormDependency"
 import FormGroup from "./FormGroup"
 import FormNested from "./FormNested"
 
-import type { FormItemProps, ProcessedFormItemProps, SchemaColumn } from "../types"
+import type {
+  FormItemProps,
+  ProcessedFormItemProps,
+  SchemaBaseColumn,
+  SchemaColumn,
+} from "../types"
 
 const FormItem = defineComponent({
   name: "SchemaFormColumnRenderer",
@@ -76,14 +80,16 @@ const FormItem = defineComponent({
 
     const rendererRegistry = useRendererContext()
     const formContext = useFormContext()
-    const baseColumn = props.column
+    const baseColumn = props.column as SchemaBaseColumn
     const field = useField(baseColumn.name)
 
     const resolvedReadonly = ref(false)
     const resolvedDisabled = ref(false)
     const resolvedHidden = ref(false)
     const resolvedRequired = ref(false)
-    const resolvedComponentProps = ref({})
+    const resolvedPlaceholder = ref("")
+
+    const resolvedComponentProps = ref<any>({})
 
     // 稳定的 onChange 引用，避免每次渲染创建新函数导致子组件无限更新
     const trigger = baseColumn.validationTrigger ?? formContext.validationTrigger
@@ -115,42 +121,77 @@ const FormItem = defineComponent({
       }
     })
 
+    // 解析所有的动态属性
     useWatchAll(
-      async (_changedValues, _prevValues, latestValues) => {
-        resolvedComponentProps.value = await resolveDynamicProp(
-          baseColumn.componentProps,
+      (_changedValues, _prevValues, latestValues) => {
+        resolveDynamicProp(
+          baseColumn.placeholder,
           latestValues,
-          {}
-        )
+          `${baseColumn.label}为必填项`
+        ).then((data) => {
+          resolvedPlaceholder.value = data
+        })
 
-        resolvedReadonly.value = await resolveDynamicPropByBoolean(
+        resolveDynamicProp(baseColumn.componentProps, latestValues, {}).then((data) => {
+          resolvedComponentProps.value = data
+        })
+
+        resolveDynamicPropByBoolean(
           baseColumn.readonly,
           latestValues,
           formContext.readonly
-        )
+        ).then((data) => {
+          resolvedReadonly.value = data
+        })
 
-        resolvedDisabled.value = await resolveDynamicPropByBoolean(
+        resolveDynamicPropByBoolean(
           baseColumn.disabled,
           latestValues,
           formContext.disabled
+        ).then((data) => {
+          resolvedDisabled.value = data
+        })
+
+        resolveDynamicPropByBoolean(baseColumn.hidden, latestValues, false).then(
+          (data) => {
+            resolvedHidden.value = data
+          }
         )
 
-        resolvedHidden.value = await resolveDynamicPropByBoolean(
-          baseColumn.hidden,
-          latestValues,
-          false
-        )
-
-        resolvedRequired.value = await resolveDynamicPropByBoolean(
-          baseColumn.required,
-          latestValues,
-          false
+        resolveDynamicPropByBoolean(baseColumn.required, latestValues, false).then(
+          (data) => {
+            resolvedRequired.value = data
+          }
         )
       },
       {
         immediate: true,
       }
     )
+
+    // 设置默认的必填rule
+    watchEffect(() => {
+      if (resolvedHidden.value) {
+        field.clearError()
+        field.unregisterRules()
+      } else {
+        let rules = baseColumn?.rules
+
+        if (baseColumn?.required || baseColumn?.rules === "required") {
+          const placeholder = resolvedComponentProps.value?.placeholder
+            ? resolvedComponentProps.value?.placeholder
+            : resolvedPlaceholder.value
+
+          rules = z
+            .string({ message: placeholder as string })
+            .min(1, { message: placeholder as string })
+        } else {
+          rules = baseColumn?.rules
+        }
+
+        if (rules) field.registerRules(rules)
+      }
+    })
 
     /** 值变化处理，设置值后根据触发时机决定是否校验 */
     const handleChange = (v: unknown) => {
@@ -166,20 +207,6 @@ const FormItem = defineComponent({
         field.validate()
       }
     }
-
-    watchEffect(() => {
-      if (
-        (resolvedRequired.value && !baseColumn.rules) ||
-        baseColumn.rules === "required"
-      ) {
-        const placeholder = generateDefaultPlaceholder(
-          baseColumn.componentType,
-          baseColumn.label
-        )
-
-        formContext.form.registerRules(baseColumn.name, z.string(placeholder))
-      }
-    })
 
     return () => {
       if (resolvedHidden.value) {
@@ -201,7 +228,11 @@ const FormItem = defineComponent({
       } else {
         const component = rendererRegistry.getRenderer(formItemProps.value.componentType)
 
-        if (!component) return null
+        if (!component) {
+          throw new Error(
+            `[SchemaForm] Can not find component renderer of "${formItemProps.value.componentType}".`
+          )
+        }
 
         columnElement = h(component, processedComponentProps.value, slots)
       }

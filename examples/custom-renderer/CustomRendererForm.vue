@@ -5,6 +5,7 @@
 
     <SchemaForm
       ref="formRef"
+      :form="form"
       v-model="formData"
       :columns="columns"
       :footer="true"
@@ -20,173 +21,11 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, h, defineComponent } from "vue"
+  import { ref } from "vue"
   import { z } from "zod"
-  import SchemaForm from "@"
+  import SchemaForm, { useForm } from "@"
+
   import type { SchemaColumn, SchemaFormInstance } from "@"
-
-  const formRef = ref<SchemaFormInstance>()
-  const formData = ref<Record<string, any>>({
-    color: "#1989fa",
-    rating: 3,
-  })
-
-  // ==================== 自定义渲染器组件 ====================
-
-  // 颜色选择器渲染器
-  const ColorPickerRenderer = defineComponent({
-    name: "ColorPickerRenderer",
-    props: {
-      modelValue: String,
-      colors: {
-        type: Array as () => string[],
-        default: () => ["#1989fa", "#07c160", "#ee0a24", "#ff976a", "#ffdd00", "#7232dd"],
-      },
-      disabled: Boolean,
-      readonly: Boolean,
-    },
-    emits: ["update:modelValue"],
-    setup(props, { emit }) {
-      const handleSelect = (color: string) => {
-        if (props.disabled || props.readonly) return
-        emit("update:modelValue", color)
-      }
-
-      return () =>
-        h("div", { class: "color-picker" }, [
-          props.colors.map((color: string) =>
-            h("div", {
-              class: ["color-item", { active: props.modelValue === color }],
-              style: { backgroundColor: color },
-              onClick: () => handleSelect(color),
-            })
-          ),
-          h("div", { class: "current-color" }, [
-            h("span", "当前颜色: "),
-            h("span", {
-              class: "color-preview",
-              style: { backgroundColor: props.modelValue },
-            }),
-            h("span", props.modelValue),
-          ]),
-        ])
-    },
-  })
-
-  // 星级评分渲染器（自定义样式）
-  const StarRatingRenderer = defineComponent({
-    name: "StarRatingRenderer",
-    props: {
-      modelValue: {
-        type: Number,
-        default: 0,
-      },
-      max: {
-        type: Number,
-        default: 5,
-      },
-      disabled: Boolean,
-      readonly: Boolean,
-      allowHalf: Boolean,
-    },
-    emits: ["update:modelValue"],
-    setup(props, { emit }) {
-      const handleClick = (index: number) => {
-        if (props.disabled || props.readonly) return
-        emit("update:modelValue", index)
-      }
-
-      return () =>
-        h("div", { class: "star-rating" }, [
-          Array.from({ length: props.max }, (_, i) => i + 1).map((index) =>
-            h(
-              "span",
-              {
-                class: ["star", { active: index <= props.modelValue }],
-                onClick: () => handleClick(index),
-              },
-              index <= props.modelValue ? "★" : "☆"
-            )
-          ),
-          h("span", { class: "rating-text" }, `${props.modelValue} / ${props.max}`),
-        ])
-    },
-  })
-
-  // 标签输入渲染器
-  const TagInputRenderer = defineComponent({
-    name: "TagInputRenderer",
-    props: {
-      modelValue: {
-        type: Array as () => string[],
-        default: () => [],
-      },
-      placeholder: {
-        type: String,
-        default: "输入后按回车添加",
-      },
-      maxTags: {
-        type: Number,
-        default: 10,
-      },
-      disabled: Boolean,
-      readonly: Boolean,
-    },
-    emits: ["update:modelValue"],
-    setup(props, { emit }) {
-      const inputValue = ref("")
-
-      const handleKeydown = (e: KeyboardEvent) => {
-        if (e.key === "Enter" && inputValue.value.trim()) {
-          e.preventDefault()
-          if (props.modelValue.length >= props.maxTags) return
-          if (props.modelValue.includes(inputValue.value.trim())) return
-
-          emit("update:modelValue", [...props.modelValue, inputValue.value.trim()])
-          inputValue.value = ""
-        }
-      }
-
-      const handleRemove = (index: number) => {
-        if (props.disabled || props.readonly) return
-        const newTags = [...props.modelValue]
-        newTags.splice(index, 1)
-        emit("update:modelValue", newTags)
-      }
-
-      return () =>
-        h("div", { class: "tag-input" }, [
-          h("div", { class: "tags" }, [
-            props.modelValue.map((tag: string, index: number) =>
-              h("span", { class: "tag", key: tag }, [
-                tag,
-                !props.disabled &&
-                  !props.readonly &&
-                  h(
-                    "span",
-                    {
-                      class: "tag-close",
-                      onClick: () => handleRemove(index),
-                    },
-                    "×"
-                  ),
-              ])
-            ),
-          ]),
-          !props.disabled &&
-            !props.readonly &&
-            h("input", {
-              class: "tag-input-field",
-              value: inputValue.value,
-              placeholder: props.placeholder,
-              onInput: (e: Event) => {
-                inputValue.value = (e.target as HTMLInputElement).value
-              },
-              onKeydown: handleKeydown,
-            }),
-        ])
-    },
-  })
 
   // ==================== 表单配置 ====================
   // 注意：自定义渲染器需要在 SchemaForm 外部注册
@@ -203,7 +42,7 @@
     {
       name: "color",
       label: "主题颜色",
-      componentType: "text", // 使用 slot 覆盖
+      componentType: "color", // 使用 slot 覆盖
       componentProps: {
         colors: [
           "#1989fa",
@@ -231,7 +70,6 @@
       componentType: "text", // 使用 slot 覆盖
       componentProps: {
         placeholder: "输入标签后按回车",
-        maxTags: 5,
       },
     },
     {
@@ -245,14 +83,17 @@
     },
   ]
 
-  // 提交处理
-  const handleSubmit = (values: Record<string, any>, done: () => void) => {
-    console.log("提交数据:", values)
+  const formRef = ref<SchemaFormInstance>()
+  const formData = ref<Record<string, any>>({
+    color: "#1989fa",
+    rating: 3,
+  })
 
-    setTimeout(() => {
-      alert("提交成功！")
-      done()
-    }, 1000)
+  const form = useForm({ initialValues: formData.value, columns })
+
+  // 提交处理
+  const handleSubmit = (values: Record<string, any>) => {
+    console.log("提交数据:", values)
   }
 </script>
 

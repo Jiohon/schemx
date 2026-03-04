@@ -10,6 +10,7 @@
       :footer="true"
       submit-button-text="提交"
       @finish="handleSubmit"
+      @finish-failed="handleFailed"
     />
 
     <div class="form-data-preview">
@@ -191,6 +192,11 @@
   // 提交处理
   const handleSubmit = (values: Record<string, any>) => {
     console.log("提交数据:", values)
+  }
+
+  const handleFailed = (errorInfo: any) => {
+    console.log(errorInfo)
+    // do something
   }
 </script>
 

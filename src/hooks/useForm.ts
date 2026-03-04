@@ -6,20 +6,20 @@
  *
  * @module core/FormInstance
  */
-import { onUnmounted } from "vue"
+import { onUnmounted, provide } from "vue"
 import type { DeepReadonly } from "vue"
 
 import { getInitialValuesFromColumns } from "@/utils"
 import { withLock } from "@/utils/async"
 
-import { createFormStore, FormStore } from "../core/FormStore"
-import { createSubscriber, Subscriber } from "../core/Subscriber"
+import { createFormStore, FormStore } from "../core/store"
+import { createSubscriber, Subscriber } from "../core/subscriber"
 import {
   createValidator,
   type ValidateError,
   type ValidateResult,
   Validator,
-} from "../core/Validator"
+} from "../core/validator"
 
 import type { FormValues, NamePath, SchemaColumn, SchemaFormInstance } from "../types"
 
@@ -35,6 +35,7 @@ export interface FormInstanceOptions<T extends FormValues> {
   columns?: SchemaColumn<T>[]
   initialValues?: T
   modelValue?: T
+
   /** 字段值更新时触发回调事件 */
   onValuesChange?: (changedValues: Partial<T>, latestValues: T) => void
   /** 提交成功回调 */
@@ -42,6 +43,9 @@ export interface FormInstanceOptions<T extends FormValues> {
   /** 提交失败回调 */
   onFinishFailed?: (error: ValidateError<T>) => void
 }
+
+/** FormInstance 注入 key */
+export const FORM_INSTANCE_KEY = Symbol("FormInstance")
 
 /**
  * FormInstance 类
@@ -69,20 +73,20 @@ export class FormInstance<T extends FormValues = FormValues> {
       columns ?? []
     )
 
-    // 2. Store: 初始化状态管理
+    // Store: 初始化状态管理
     this.store = createFormStore<T>({ initialValues: mergedInitialValues as T })
 
-    // 3. Subscriber: 初始化订阅管理
+    // Subscriber: 初始化订阅管理
     this.subscriber = createSubscriber<T>()
 
-    // 4. Validator: 初始化校验器
+    // Validator: 初始化校验器
     this.validator = createValidator<T>()
 
     if (columns) {
       this.validator.registerRulesFromColumns(columns)
     }
 
-    // 5. 注册值变化回调
+    // 注册值变化回调
     if (this.callbacks?.onValuesChange) {
       this.subscriber.subscribeAll((changedValues, latestValues) => {
         this.callbacks.onValuesChange?.(changedValues as Partial<T>, latestValues as T)
@@ -297,6 +301,8 @@ export function useForm<T extends FormValues>(
   const form = createFormInstance<T>(options)
 
   const instance = form.getForm()
+
+  provide<SchemaFormInstance<T>>(FORM_INSTANCE_KEY, instance)
 
   onUnmounted(() => {
     instance.destroy()

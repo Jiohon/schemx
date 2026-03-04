@@ -1,21 +1,10 @@
 // RendererRegistry
 export {
-  createRegistry,
+  globalRegistry,
   Registry,
-  type ISchemaRegistry,
   type RegistryOptions,
   type RendererMap,
-} from "./createRegistry"
+} from "./rendererRegistry"
 
 // createRenderWrapper 工厂函数
 export { createRenderWrapper, type CreateRenderWrapperOptions } from "./rendererWrapper"
-
-// 导出 defaultRenderer 相关
-export {
-  DEFAULT_RENDERER_TYPES,
-  registerDefaultRenderers,
-  hasAllDefaultRenderers,
-  getMissingDefaultRenderers,
-  type DefaultRendererType,
-  type RendererRegistrationConfig,
-} from "./defaultRenderers"

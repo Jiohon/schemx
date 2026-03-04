@@ -11,6 +11,7 @@ import type {
   NormalizedSchemaGroupColumn,
   NormalizedSchemaNestedColumn,
   SchemaBaseColumn,
+  SchemaBaseColumnUnion,
   SchemaColumn,
   SchemaDependencyColumn,
   SchemaGroupColumn,
@@ -390,7 +391,7 @@ export async function resolveDynamicProp<T>(
  */
 export function isBaseColumn(
   column: SchemaColumn | NormalizedSchemaColumn
-): column is SchemaBaseColumn | NormalizedSchemaBaseColumn {
+): column is SchemaBaseColumnUnion | NormalizedSchemaBaseColumn {
   return !isGroupColumn(column) && !isDependencyColumn(column) && !isNestedColumn(column)
 }
 

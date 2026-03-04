@@ -10,7 +10,7 @@ import { isEqual } from "es-toolkit"
 
 import type { FormValues, NamePath, SchemaFormInstance, Value } from "@/types"
 
-import { useFormContext } from "./useFormContext"
+import { useFormInstance } from "./useFormContext"
 
 /**
  * 单字段监听回调
@@ -180,14 +180,14 @@ export function useWatch(
   callbackOrOptions?: SingleFieldCallback | MultiFieldCallback | UseWatchOptions,
   maybeOptions?: UseWatchOptions
 ): () => void {
-  const context = useFormContext()
+  const form = useFormInstance()
 
   let unsubscribe: () => void
 
   // 全局监听：useWatch(callback, options?)
   if (typeof nameOrNamesOrCallback === "function") {
     unsubscribe = watchAll(
-      context.form,
+      form,
       nameOrNamesOrCallback,
       (callbackOrOptions as UseWatchOptions) || {}
     )
@@ -195,7 +195,7 @@ export function useWatch(
   // 单字段监听：useWatch('name', callback, options?)
   else if (typeof nameOrNamesOrCallback === "string") {
     unsubscribe = watchField(
-      context.form,
+      form,
       nameOrNamesOrCallback,
       callbackOrOptions as SingleFieldCallback,
       maybeOptions || {}
@@ -204,7 +204,7 @@ export function useWatch(
   // 多字段监听：useWatch(['name', 'age'], callback, options?)
   else {
     unsubscribe = watchFields(
-      context.form,
+      form,
       nameOrNamesOrCallback,
       callbackOrOptions as MultiFieldCallback,
       maybeOptions || {}
@@ -230,10 +230,14 @@ export function useWatch(
  */
 export function useWatchField(
   name: NamePath,
-  callback: (value: Value, prevValue: Value) => void,
+  callback: SingleFieldCallback,
   options?: UseWatchOptions
 ): () => void {
-  return useWatch(name, (value, prevValue) => callback(value, prevValue), options)
+  return useWatch(
+    name,
+    (value, prevValue, latestValues) => callback(value, prevValue, latestValues),
+    options
+  )
 }
 
 /**
@@ -248,11 +252,7 @@ export function useWatchField(
  */
 export function useWatchFields(
   names: NamePath[],
-  callback: (
-    values: FormValues,
-    prevValues: FormValues,
-    changedFields: NamePath[]
-  ) => void,
+  callback: MultiFieldCallback,
   options?: UseWatchOptions
 ): () => void {
   return useWatch(

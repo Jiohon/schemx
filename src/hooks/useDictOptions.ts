@@ -1,6 +1,6 @@
-import { ComputedRef, inject, onMounted, Ref, ref, watch } from "vue"
+import { onMounted, Ref, ref, watch } from "vue"
 
-import pluginManager from "../plugins"
+import { useFormInstance } from "./useFormContext"
 
 import type { SchemaFormInstance } from "../types"
 
@@ -20,10 +20,9 @@ const queryString = (obj: Record<string, any> = {}): string => {
 export interface DictOptionsAttrs {
   dicUrl?: string
   dicQuery?: () => Record<string, any> | Promise<Record<string, any>>
-  dicFormatter?: (
-    res: any,
-    form: ComputedRef<SchemaFormInstance> | undefined
-  ) => any | Promise<any>
+  dicFormatter?: (res: any, form: SchemaFormInstance | undefined) => any | Promise<any>
+  /** HTTP 请求器 */
+  request?: (url: string) => Promise<any>
   [key: string]: any
 }
 
@@ -38,18 +37,10 @@ export interface UseDictOptionsReturn {
  * @param formInstance - 表单实例（可选）
  * @returns 字典选项
  */
-export const useDictOptions = (
-  attrs: DictOptionsAttrs,
-  formInstance?: ComputedRef<SchemaFormInstance>
-): UseDictOptionsReturn => {
-  const form = formInstance || inject<ComputedRef<SchemaFormInstance>>("form")
+export const useDictOptions = (attrs: DictOptionsAttrs): UseDictOptionsReturn => {
+  const instance = useFormInstance()
 
-  /**
-   * 获取请求器
-   */
-  const requester = pluginManager.getContext()?.request as
-    | ((url: string) => Promise<any>)
-    | undefined
+  const requester = attrs.request
   const remoteOptions = ref<any[]>([])
 
   /**
@@ -59,7 +50,7 @@ export const useDictOptions = (
    */
   const dictFormatter = async (res: any): Promise<any> => {
     if (typeof attrs?.dicFormatter === "function") {
-      return await attrs?.dicFormatter?.(res, form)
+      return await attrs?.dicFormatter?.(res, instance)
     }
 
     return res

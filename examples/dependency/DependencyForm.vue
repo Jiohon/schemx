@@ -57,7 +57,6 @@
     },
     // 使用 dependency 类型实现复杂联动
     {
-      name: "productDetails",
       componentType: "dependency",
       to: ["productType"], // 依赖 productType 字段
       renderer: (values: Record<string, any>, form: SchemaFormInstance) => {
@@ -166,7 +165,6 @@
     },
     // 另一个 dependency 示例：根据支付方式显示不同字段
     {
-      name: "paymentDetails",
       componentType: "dependency",
       to: ["paymentMethod", "price"], // 依赖多个字段
       renderer: (values: Record<string, any>, form: SchemaFormInstance) => {

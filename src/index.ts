@@ -19,53 +19,6 @@ export { FORM_CONTEXT_KEY } from "./hooks/useFormContext"
 export { default as FormItem } from "./components/FormItem"
 export { default as FormDependency } from "./components/FormDependency"
 
-// 渲染器导出
-export {
-  InputRenderer,
-  TextRenderer,
-  TextAreaRenderer,
-  NumberRenderer,
-  SwitchRenderer,
-  RadioRenderer,
-  CheckboxRenderer,
-  DateRenderer,
-  CalendarRenderer,
-  PickerRenderer,
-  SelectorRenderer,
-  RateRenderer,
-  SliderRenderer,
-  StepperRenderer,
-  UploadRenderer,
-  CascaderRenderer,
-} from "./renderers"
-
-// 渲染器类型导出
-export type {
-  InputRendererProps,
-  TextRendererProps,
-  TextAreaRendererProps,
-  CheckboxRendererProps,
-  CheckboxOption,
-  DateRendererProps,
-  CalendarRendererProps,
-  NumberRendererProps,
-  PickerRendererProps,
-  RadioRendererProps,
-  RadioOption,
-  RateRendererProps,
-  SliderRendererProps,
-  StepperRendererProps,
-  SwitchRendererProps,
-  UploadRendererProps,
-  UploadFile,
-  CascaderRendererProps,
-  SelectorRendererProps,
-  SelectorOption,
-} from "./renderers"
-
-// 插件系统导出
-export { default as pluginManager, PluginManager, createPluginManager } from "./plugins"
-
 // 工具函数导出
 export {
   findTreeItem,
@@ -93,6 +46,8 @@ export type { SchemaFormInstallOptions } from "./SchemaForm"
 export type {
   FormValues,
   CustomRendererTypes,
+  CustomRendererPropsMap,
+  RendererPropsMap,
   RendererType,
   ValidationTrigger,
   DynamicProp,

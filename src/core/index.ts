@@ -4,7 +4,7 @@ export {
   createFormStore,
   type FormStoreState,
   type FormStoreOptions,
-} from "./FormStore"
+} from "./store"
 
 // Subscriber - 发布订阅
 export {
@@ -12,19 +12,17 @@ export {
   createSubscriber,
   type FieldSubscribeCallback,
   type GlobalSubscribeCallback,
-  type ValueGetter,
-} from "./Subscriber"
+} from "./subscriber"
 
 // Validator - 校验
 export {
   Validator,
   createValidator,
-  type ValidatorOptions,
   type RulesMap,
   type ValidateResult,
   type ValidateError,
   type FieldError,
-} from "./Validator"
+} from "./validator"
 
 // 路径工具
 export {
