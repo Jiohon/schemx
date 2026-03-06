@@ -1,10 +1,6 @@
 import { inject, provide } from "vue"
 
-import {
-  createLocalRegistry,
-  globalRegistry,
-  Registry,
-} from "../renderer/rendererRegistry"
+import { createLocalRegistry, globalRegistry, Registry } from "../../core/registry"
 
 const RENDERER_KEY = Symbol("SchemaRenderer")
 

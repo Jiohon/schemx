@@ -15,7 +15,7 @@ import classnames from "classnames"
 import { omit } from "es-toolkit"
 import z from "zod"
 
-import { useWatchAll } from "../hooks"
+import { useWatchFields } from "../hooks"
 
 import { useField } from "../hooks/useField"
 import { useFormContext } from "../hooks/useFormContext"
@@ -82,6 +82,9 @@ const FormItem = defineComponent({
     const formContext = useFormContext()
     const baseColumn = props.column as SchemaBaseColumn
     const field = useField(baseColumn.name)
+    const dependencies = Array.isArray(baseColumn.dependencies)
+      ? baseColumn.dependencies
+      : [baseColumn.dependencies]
 
     const resolvedReadonly = ref(false)
     const resolvedDisabled = ref(false)
@@ -122,23 +125,24 @@ const FormItem = defineComponent({
     })
 
     // 解析所有的动态属性
-    useWatchAll(
-      (_changedValues, _prevValues, latestValues) => {
+    useWatchFields(
+      dependencies,
+      (payload, prevSnapshot, latestSnapshot) => {
         resolveDynamicProp(
           baseColumn.placeholder,
-          latestValues,
+          latestSnapshot,
           `${baseColumn.label}为必填项`
         ).then((data) => {
           resolvedPlaceholder.value = data
         })
 
-        resolveDynamicProp(baseColumn.componentProps, latestValues, {}).then((data) => {
+        resolveDynamicProp(baseColumn.componentProps, latestSnapshot, {}).then((data) => {
           resolvedComponentProps.value = data
         })
 
         resolveDynamicPropByBoolean(
           baseColumn.readonly,
-          latestValues,
+          latestSnapshot,
           formContext.readonly
         ).then((data) => {
           resolvedReadonly.value = data
@@ -146,19 +150,19 @@ const FormItem = defineComponent({
 
         resolveDynamicPropByBoolean(
           baseColumn.disabled,
-          latestValues,
+          latestSnapshot,
           formContext.disabled
         ).then((data) => {
           resolvedDisabled.value = data
         })
 
-        resolveDynamicPropByBoolean(baseColumn.hidden, latestValues, false).then(
+        resolveDynamicPropByBoolean(baseColumn.hidden, latestSnapshot, false).then(
           (data) => {
             resolvedHidden.value = data
           }
         )
 
-        resolveDynamicPropByBoolean(baseColumn.required, latestValues, false).then(
+        resolveDynamicPropByBoolean(baseColumn.required, latestSnapshot, false).then(
           (data) => {
             resolvedRequired.value = data
           }

@@ -1,10 +1,10 @@
 /**
- * Validator - 表单校验器
+ * 表单校验器。
  *
- * 纯校验模块，无框架依赖。
- * 职责：管理校验规则（rules）和校验错误（errors）。
+ * 管理校验规则（rules）和校验错误（errors），基于 Zod schema 进行字段校验。
+ * 使用 Vue reactive 保持错误状态的响应式。
  *
- * @module core/Validator
+ * @module core/validator
  *
  * @example
  * ```typescript
@@ -65,14 +65,31 @@ export interface ValidatorState<T extends FormValues> {
 }
 
 /**
- * Validator 类 - 纯校验器
+ * 表单校验器。
  *
  * 不持有 store 引用，所有值由调用方传入。
  * 基于 Zod schema 进行字段校验，支持同步和异步规则。
+ *
+ * @typeParam T - 表单值类型，默认为 FormValues
+ *
+ * @example
+ * ```typescript
+ * const validator = new Validator<FormValues>()
+ * validator.registerRule('email', z.string().email())
+ * const result = await validator.validateField('email', formValues)
+ * ```
+ *
+ * @remarks
+ * 校验状态（rules / errors）通过 Vue reactive 包装，可在模板中直接响应式使用。
  */
 export class Validator<T extends FormValues = FormValues> {
   public state: Reactive<ValidatorState<T>>
 
+  /**
+   * 创建 Validator 实例。
+   *
+   * 初始化空的 rules 和 errors 映射表。
+   */
   constructor() {
     this.state = reactive({
       rules: new Map(),
@@ -81,19 +98,29 @@ export class Validator<T extends FormValues = FormValues> {
   }
 
   /**
-   * 注册单个字段的校验规则
+   * 注册单个字段的校验规则。
    *
    * @param path - 字段路径
    * @param rule - Zod schema 规则
+   *
+   * @example
+   * ```typescript
+   * validator.registerRule('email', z.string().email())
+   * ```
    */
   public registerRule(path: NamePath<T>, rule: ZodType): void {
     this.state.rules.set(path, rule)
   }
 
   /**
-   * 注销单个字段的校验规则，同时清除该字段的错误信息
+   * 注销单个字段的校验规则，同时清除该字段的错误信息。
    *
    * @param path - 字段路径
+   *
+   * @example
+   * ```typescript
+   * validator.unregisterRule('email')
+   * ```
    */
   public unregisterRule(path: NamePath<T>): void {
     this.state.rules.delete(path)
@@ -101,22 +128,33 @@ export class Validator<T extends FormValues = FormValues> {
   }
 
   /**
-   * 从 columns 配置中递归提取并注册所有校验规则
+   * 从 columns 配置中递归提取并注册所有校验规则。
    *
    * @param columns - 表单列配置数组
+   *
+   * @example
+   * ```typescript
+   * validator.registerRulesFromColumns(schemaColumns)
+   * ```
    */
   public registerRulesFromColumns(columns: SchemaColumn<T>[]): void {
     this.extractRules(columns, "")
   }
 
   /**
-   * 校验指定字段
+   * 校验指定字段。
    *
    * 支持传入单个路径或路径数组，逐个校验后返回汇总结果。
    *
    * @param path - 字段路径或路径数组
    * @param latestValues - 当前表单全量值
    * @returns 校验结果
+   *
+   * @example
+   * ```typescript
+   * const result = await validator.validateField('email', formValues)
+   * if (!result.ok) console.log(result.error.errors)
+   * ```
    */
   async validateField(
     path: NamePath<T> | NamePath<T>[],
@@ -134,12 +172,18 @@ export class Validator<T extends FormValues = FormValues> {
   }
 
   /**
-   * 校验所有已注册规则的字段
+   * 校验所有已注册规则的字段。
    *
    * 校验前清空所有错误，逐个校验后返回汇总结果。
    *
    * @param latestValues - 当前表单全量值
    * @returns 校验结果
+   *
+   * @example
+   * ```typescript
+   * const result = await validator.validate(formValues)
+   * if (result.ok) submit(result.values)
+   * ```
    */
   async validate(latestValues: DeepReadonly<T>): Promise<ValidateResult<T>> {
     this.state.errors.clear()
@@ -154,9 +198,12 @@ export class Validator<T extends FormValues = FormValues> {
   }
 
   /**
-   * 递归遍历 columns 提取规则（内部）
+   * 递归遍历 columns 提取规则（内部）。
    *
    * 跳过 dependency 类型，递归处理 group/nested 类型的子列。
+   *
+   * @param columns - 表单列配置数组
+   * @param parentPath - 父级路径前缀
    */
   private extractRules(columns: SchemaColumn<T>[], parentPath: string): void {
     for (const column of columns) {
@@ -229,7 +276,13 @@ export class Validator<T extends FormValues = FormValues> {
     }
   }
 
-  /** 根据校验结果构建 ValidateResult 返回值 */
+  /**
+   * 根据校验结果构建 ValidateResult 返回值
+   *
+   * @param ok - 校验是否全部通过
+   * @param latestValues - 当前表单全量值
+   * @returns 统一的校验结果对象
+   */
   private buildResult(ok: boolean, latestValues: DeepReadonly<T>): ValidateResult<T> {
     if (ok) {
       return { ok: true, values: latestValues }
@@ -248,20 +301,30 @@ export class Validator<T extends FormValues = FormValues> {
   }
 
   /**
-   * 获取指定字段的错误信息
+   * 获取指定字段的错误信息。
    *
    * @param path - 字段路径
    * @returns 错误信息数组，无错误时返回 undefined
+   *
+   * @example
+   * ```typescript
+   * validator.getFieldError('email') // => ['邮箱格式不正确']
+   * ```
    */
   public getFieldError(path: NamePath<T>): string[] | undefined {
     return this.state.errors.get(path)
   }
 
   /**
-   * 手动设置指定字段的错误信息
+   * 手动设置指定字段的错误信息。
    *
    * @param path - 字段路径
    * @param errors - 错误信息数组
+   *
+   * @example
+   * ```typescript
+   * validator.setFieldError('email', ['该邮箱已被注册'])
+   * ```
    */
   public setFieldError(path: NamePath<T>, errors: string[]): void {
     this.state.errors.set(path, errors)
@@ -269,9 +332,16 @@ export class Validator<T extends FormValues = FormValues> {
 }
 
 /**
- * 创建 Validator 实例的工厂函数
+ * 创建 Validator 实例的工厂函数。
+ *
+ * @typeParam T - 表单值类型
  *
  * @returns Validator 实例
+ *
+ * @example
+ * ```typescript
+ * const validator = createValidator<FormValues>()
+ * ```
  */
 export function createValidator<T extends FormValues>(): Validator<T> {
   return new Validator()

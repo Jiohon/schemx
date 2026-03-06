@@ -8,9 +8,10 @@
 
 import { inject, provide } from "vue"
 
-import { FORM_INSTANCE_KEY } from "./useForm"
+import { FORM_INSTANCE_KEY } from "../useForm"
 
-import type { FormValues, SchemaFormInstance, SchemaFormProps } from "../types"
+import type { FormValues, SchemaFormProps } from "../../types"
+import { FormInstance } from "../../hooks/useForm/types/instance"
 
 /** FormContext 注入 key */
 export const FORM_CONTEXT_KEY = Symbol("FormContext")
@@ -27,6 +28,8 @@ interface FormContextProps {
   validationTrigger?: SchemaFormProps["validationTrigger"]
   className?: SchemaFormProps["className"]
   style?: SchemaFormProps["style"]
+  /** HTTP 请求器（由 SchemaForm props.request 注入） */
+  request?: SchemaFormProps["request"]
 }
 
 /**
@@ -60,10 +63,8 @@ export function useFormContext(): FormContextProps {
  *
  * @throws 如果不在 useForm 提供的上下文中调用，会抛出错误
  */
-export function useFormInstance<
-  T extends FormValues = FormValues,
->(): SchemaFormInstance<T> {
-  const instance = inject<SchemaFormInstance<T>>(FORM_INSTANCE_KEY)
+export function useFormInstance<T extends FormValues = FormValues>(): FormInstance<T> {
+  const instance = inject<FormInstance<T>>(FORM_INSTANCE_KEY)
 
   if (!instance) {
     throw new Error("useFormInstance must be used within a Form")

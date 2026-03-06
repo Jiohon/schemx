@@ -261,3 +261,28 @@ export function collectObjectPaths(obj: Record<string, any>, prefix = ""): NameP
 
   return paths
 }
+
+/**
+ * 从源对象中按路径集合提取子集
+ *
+ * @param source - 源对象
+ * @param paths - 要提取的路径集合
+ * @returns 包含指定路径值的部分对象
+ *
+ * @example
+ * ```typescript
+ * const obj = { name: 'John', age: 25, city: 'Beijing' }
+ * pickByPaths(obj, new Set(['name', 'age']))
+ * // => { name: 'John', age: 25 }
+ * ```
+ */
+export function pickByPaths<T extends FormValues>(
+  source: Record<string, any>,
+  paths: Set<NamePath<T>>
+): Partial<T> {
+  const result: Partial<T> = {}
+  for (const path of paths) {
+    ;(result as any)[path] = getByPath(source, path)
+  }
+  return result
+}

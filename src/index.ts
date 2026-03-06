@@ -51,7 +51,7 @@ export type {
   RendererType,
   ValidationTrigger,
   DynamicProp,
-  SchemaFormInstance,
+  FormInstance,
   SchemaColumn,
   SchemaBaseColumn,
   ProcessedColumnConfig,

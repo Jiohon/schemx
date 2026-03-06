@@ -105,7 +105,7 @@ describe("useWatch Hook (Task 11.3)", () => {
       const callback = vi.fn()
 
       const { wrapper } = createTestComponent(store, () => {
-        return useWatch("name", callback)
+        return useWatch(callback, "name")
       })
 
       // 修改字段值
@@ -126,7 +126,7 @@ describe("useWatch Hook (Task 11.3)", () => {
       const callback = vi.fn()
 
       const { wrapper } = createTestComponent(store, () => {
-        return useWatch("count", callback)
+        return useWatch(callback, "count")
       })
 
       // 多次修改
@@ -151,7 +151,7 @@ describe("useWatch Hook (Task 11.3)", () => {
       const callback = vi.fn()
 
       const { wrapper } = createTestComponent(store, () => {
-        return useWatch("name", callback)
+        return useWatch(callback, "name")
       })
 
       // 修改其他字段
@@ -171,7 +171,7 @@ describe("useWatch Hook (Task 11.3)", () => {
       const callback = vi.fn()
 
       const { wrapper } = createTestComponent(store, () => {
-        return useWatch("user.address.city", callback)
+        return useWatch(callback, "user.address.city")
       })
 
       store.setFieldValue("user.address.city", "Shanghai")
@@ -190,7 +190,7 @@ describe("useWatch Hook (Task 11.3)", () => {
       const callback = vi.fn()
 
       const { wrapper } = createTestComponent(store, () => {
-        return useWatch("name", callback, { immediate: true })
+        return useWatch(callback, "name", { immediate: true })
       })
 
       // 应该立即调用一次
@@ -209,7 +209,7 @@ describe("useWatch Hook (Task 11.3)", () => {
       let unsubscribe: (() => void) | undefined
 
       const { wrapper } = createTestComponent(store, () => {
-        unsubscribe = useWatch("name", callback)
+        unsubscribe = useWatch(callback, "name")
 
         return unsubscribe
       })
@@ -236,7 +236,7 @@ describe("useWatch Hook (Task 11.3)", () => {
       const callback = vi.fn()
 
       const { wrapper } = createTestComponent(store, () => {
-        return useWatch(["firstName", "lastName"], callback)
+        return useWatch(callback, ["firstName", "lastName"])
       })
 
       // 修改 firstName
@@ -270,7 +270,7 @@ describe("useWatch Hook (Task 11.3)", () => {
       const callback = vi.fn()
 
       const { wrapper } = createTestComponent(store, () => {
-        return useWatch(["firstName", "lastName"], callback)
+        return useWatch(callback, ["firstName", "lastName"])
       })
 
       // 修改未监听的字段
@@ -290,7 +290,7 @@ describe("useWatch Hook (Task 11.3)", () => {
       const callback = vi.fn()
 
       const { wrapper } = createTestComponent(store, () => {
-        return useWatch(["a", "b"], callback)
+        return useWatch(callback, ["a", "b"])
       })
 
       store.setFieldValue("a", 10)
@@ -310,7 +310,7 @@ describe("useWatch Hook (Task 11.3)", () => {
       const callback = vi.fn()
 
       const { wrapper } = createTestComponent(store, () => {
-        return useWatch(["firstName", "lastName"], callback, { immediate: true })
+        return useWatch(callback, ["firstName", "lastName"], { immediate: true })
       })
 
       expect(callback).toHaveBeenCalledTimes(1)
@@ -475,7 +475,7 @@ describe("useWatch Hook (Task 11.3)", () => {
       const callback = vi.fn()
 
       const { wrapper } = createTestComponent(store, () => {
-        return useWatch("name", callback)
+        return useWatch(callback, "name")
       })
 
       // 卸载组件
@@ -497,7 +497,7 @@ describe("useWatch Hook (Task 11.3)", () => {
       const TestComponent = defineComponent({
         setup() {
           // 不提供 FormContext
-          const unsubscribe = useWatch("name", vi.fn())
+          const unsubscribe = useWatch(vi.fn(), "name")
           expect(typeof unsubscribe).toBe("function")
 
           return () => h("div")

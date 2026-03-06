@@ -1,8 +1,9 @@
 import { onMounted, Ref, ref, watch } from "vue"
 
-import { useFormInstance } from "./useFormContext"
+import { useFormInstance } from "../useFormContext"
+import { useRequester } from "../useRequester"
 
-import type { SchemaFormInstance } from "../types"
+import type { FormInstance } from "../../types"
 
 /**
  * 对象转url参数
@@ -18,10 +19,10 @@ const queryString = (obj: Record<string, any> = {}): string => {
 }
 
 export interface DictOptionsAttrs {
-  dicUrl?: string
-  dicQuery?: () => Record<string, any> | Promise<Record<string, any>>
-  dicFormatter?: (res: any, form: SchemaFormInstance | undefined) => any | Promise<any>
-  /** HTTP 请求器 */
+  dictUrl?: string
+  dictQuery?: () => Record<string, any> | Promise<Record<string, any>>
+  dictFormatter?: (res: any, form: FormInstance | undefined) => any | Promise<any>
+  /** HTTP 请求器（column 级别，最高优先级） */
   request?: (url: string) => Promise<any>
   [key: string]: any
 }
@@ -33,41 +34,33 @@ export interface UseDictOptionsReturn {
 
 /**
  * 获取字典选项
+ *
+ * 三级优先级解析请求器：column > SchemaForm > 全局
+ *
  * @param attrs - 属性
- * @param formInstance - 表单实例（可选）
  * @returns 字典选项
  */
 export const useDictOptions = (attrs: DictOptionsAttrs): UseDictOptionsReturn => {
   const instance = useFormInstance()
 
-  const requester = attrs.request
+  // 三级优先级解析：column > SchemaForm > 全局（SchemaForm.registerRequest）
+  const requester = useRequester(attrs)
   const remoteOptions = ref<any[]>([])
 
-  /**
-   * 格式化字典选项
-   * @param res - 字典选项
-   * @returns 格式化后的字典选项
-   */
   const dictFormatter = async (res: any): Promise<any> => {
-    if (typeof attrs?.dicFormatter === "function") {
-      return await attrs?.dicFormatter?.(res, instance)
+    if (typeof attrs?.dictFormatter === "function") {
+      return await attrs.dictFormatter(res, instance)
     }
-
     return res
   }
 
-  /**
-   * 加载字典选项
-   * @param attrs - 属性
-   */
   const loadDictOptions = async (attrs: DictOptionsAttrs): Promise<void> => {
     try {
-      if (!attrs?.dicUrl || !requester) return
+      if (!attrs?.dictUrl || !requester) return
 
-      const query = typeof attrs?.dicQuery === "function" ? await attrs?.dicQuery?.() : {}
+      const query = typeof attrs?.dictQuery === "function" ? await attrs.dictQuery() : {}
 
-      const res = await requester(`${attrs.dicUrl}${queryString(query)}`)
-
+      const res = await requester(`${attrs.dictUrl}${queryString(query)}`)
       remoteOptions.value = await dictFormatter(res)
     } catch (error) {
       remoteOptions.value = []
@@ -75,21 +68,14 @@ export const useDictOptions = (attrs: DictOptionsAttrs): UseDictOptionsReturn =>
     }
   }
 
-  /**
-   * 监听字典URL变化
-   */
   watch(
-    () => attrs?.dicUrl,
+    () => attrs?.dictUrl,
     (newValue, prevValue) => {
       if (newValue === prevValue) return
-
       loadDictOptions(attrs)
     }
   )
 
-  /**
-   * 挂载时加载字典选项
-   */
   onMounted(() => {
     loadDictOptions(attrs)
   })

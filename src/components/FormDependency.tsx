@@ -16,8 +16,6 @@ import FormItem from "./FormItem"
 
 import type { SchemaDependencyColumn } from "../types"
 
-// ==================== 类型定义 ====================
-
 /**
  * FormDependency Props 接口
  */
@@ -26,8 +24,6 @@ export interface FormDependencyProps extends Omit<
   SchemaDependencyColumn,
   "componentType"
 > {}
-
-// ==================== 组件定义 ====================
 
 /**
  * FormDependency 组件

@@ -8,7 +8,7 @@ export {
 // 导出 useField 相关
 export { useField, type UseFieldOptions } from "./useField"
 
-// SchemaFormInstance - 组合实例
+// FormInstance - 组合实例
 export { createFormInstance, useForm, type FormInstanceOptions } from "./useForm"
 
 // 导出 useFormContext 相关
@@ -31,3 +31,6 @@ export { useDependency, type UseDependencyReturn } from "./useDependency"
 
 // 导出 useRenderer 相关
 export { createRenderer, useRendererContext } from "./useRenderer"
+
+// 导出 resolveRequester / useRequester
+export { resolveRequester, useRequester } from "./useRequester"

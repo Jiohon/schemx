@@ -15,7 +15,7 @@ import { defineComponent, h } from "vue"
 import * as fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import { createLocalRegistry, type RegistryOptions } from "../rendererRegistry"
+import { createLocalRegistry, type RegistryOptions } from "../../core/registry"
 
 // ==================== 测试辅助 ====================
 

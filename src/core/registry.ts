@@ -1,10 +1,10 @@
 /**
- * RendererRegistry - 渲染器注册中心
+ * 渲染器注册中心。
  *
  * 纯粹的注册/查询中心，不负责渲染逻辑。
  * 支持注册裸组件或经过 createRenderWrapper 包装的组件。
  *
- * @module renderer/RendererRegistry
+ * @module core/registry
  */
 
 import { Component } from "vue"
@@ -21,7 +21,7 @@ export interface RegistryOptions {
 export type RendererMap = Record<string, Component>
 
 /**
- * 渲染器注册中心
+ * 渲染器注册中心。
  *
  * 纯粹的 Map 存储，不关心注册的是裸组件还是包装组件。
  *
@@ -38,6 +38,9 @@ export type RendererMap = Record<string, Component>
  * // 批量注册
  * registry.registerAll({ text: TextRenderer, number: NumberRenderer })
  * ```
+ *
+ * @remarks
+ * 当 getRenderer 找不到指定类型时，会自动回退到默认渲染器类型（默认为 'text'）。
  */
 export class Registry {
   /** 渲染器存储 */
@@ -46,13 +49,20 @@ export class Registry {
   /** 默认渲染器类型 */
   private defaultType: string
 
+  /**
+   * 创建 Registry 实例。
+   *
+   * @param defaultType - 默认渲染器类型，未找到指定类型时回退使用
+   */
   constructor(defaultType: string = "text") {
     this.renderers = new Map()
     this.defaultType = defaultType
   }
 
   /**
-   * 注册渲染器
+   * 注册渲染器。
+   *
+   * 默认会覆盖已存在的同名渲染器，可通过 `options.override` 控制。
    *
    * @param type - 渲染器类型标识
    * @param renderer - Vue 组件
@@ -77,7 +87,9 @@ export class Registry {
   }
 
   /**
-   * 批量注册渲染器
+   * 批量注册渲染器。
+   *
+   * 遍历映射对象逐个注册，已存在的同名渲染器会被直接覆盖。
    *
    * @param renderers - 类型到组件的映射对象
    *
@@ -97,9 +109,9 @@ export class Registry {
   }
 
   /**
-   * 获取渲染器
+   * 获取指定类型的渲染器组件。
    *
-   * 根据类型获取对应的渲染器组件。未找到则回退到默认类型。
+   * 未找到时自动回退到默认类型，默认类型也不存在则返回 undefined。
    *
    * @param type - 渲染器类型标识
    * @returns 对应的 Vue 组件，未找到且无默认时返回 undefined
@@ -216,7 +228,7 @@ export class Registry {
   }
 
   /**
-   * 清除所有渲染器并重置默认类型为 'text'
+   * 清除所有已注册的渲染器并重置默认类型为 'text'。
    *
    * @example
    * ```typescript
@@ -244,12 +256,34 @@ export class Registry {
   }
 }
 
-/** 创建局部渲染器注册中心实例（仅内部使用） */
+/**
+ * 创建局部渲染器注册中心实例（仅内部使用）。
+ *
+ * @param defaultType - 默认渲染器类型
+ * @returns 新的 Registry 实例
+ *
+ * @remarks
+ * 用于组件内部创建独立的注册中心实例，
+ * 不建议外部直接使用，除非有特殊需求。
+ */
 export function createLocalRegistry(defaultType: string = "text"): Registry {
   return new Registry(defaultType)
 }
 
-/** 全局渲染器注册中心严格单例 */
+/**
+ * 全局渲染器注册中心的严格单例实例。
+ *
+ * @example
+ * ```typescript
+ * import { globalRegistry } from '@core/registry'
+ *
+ * // 注册全局渲染器
+ * globalRegistry.register('custom', CustomRenderer)
+ *
+ * // 在其他地方获取
+ * const renderer = globalRegistry.getRenderer('custom')
+ * ```
+ */
 const globalRegistrySingleton = createStrictSingleton(
   (defaultType: string = "text") => new Registry(defaultType)
 )

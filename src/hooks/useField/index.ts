@@ -1,7 +1,7 @@
 /**
  * useField - 字段 Hook
  *
- * 获取单个字段的控制能力，将 SchemaFormInstance 的方法作用域限定到指定字段。
+ * 获取单个字段的控制能力，将 FormInstance 的方法作用域限定到指定字段。
  *
  * @module hooks/useField
  */
@@ -11,10 +11,10 @@ import type { DeepReadonly } from "vue"
 
 import type { FormValues, NamePath, Value } from "@/types"
 
-import { useFormInstance } from "./useFormContext"
+import { useFormInstance } from "../useFormContext"
 
-import type { FieldSubscribeCallback } from "../core/subscriber"
-import type { ValidateResult } from "../core/validator"
+import type { FieldSubscribeCallback } from "../../core/subscriber"
+import type { ValidateResult } from "../../core/validator"
 import type { ZodType } from "zod"
 
 /**
@@ -28,7 +28,7 @@ export interface UseFieldOptions {
 /**
  * 获取单个字段的控制能力
  *
- * 将 SchemaFormInstance 的方法作用域限定到指定字段，
+ * 将 FormInstance 的方法作用域限定到指定字段，
  * FormStore 的 state 是 Vue reactive 对象，
  * getFieldValue / getFieldsValue 在 computed 中使用时自动建立响应式依赖。
  *
@@ -56,7 +56,7 @@ export interface UseFieldOptions {
  * field.unregisterRules()
  *
  * // 订阅
- * const unsub = field.subscribe((path, value, allValues) => { ... })
+ * const unsub = field.subscribe((payload, prevSnapshot, latestSnapshot) => { ... })
  * ```
  */
 export const useField = (name: NamePath, options: UseFieldOptions = {}) => {
@@ -219,8 +219,8 @@ export const useField = (name: NamePath, options: UseFieldOptions = {}) => {
    * field.registerRules(z.string().min(3, '最少3个字符'))
    * ```
    */
-  const registerRules = (rules: ZodType): void => {
-    form?.registerRules(name, rules)
+  const registerRule = (rules: ZodType): void => {
+    form?.registerRule(name, rules)
   }
 
   /**
@@ -231,8 +231,8 @@ export const useField = (name: NamePath, options: UseFieldOptions = {}) => {
    * field.unregisterRules()
    * ```
    */
-  const unregisterRules = (): void => {
-    form?.unregisterRules(name)
+  const unregisterRule = (): void => {
+    form?.unregisterRule(name)
   }
 
   /**
@@ -267,8 +267,8 @@ export const useField = (name: NamePath, options: UseFieldOptions = {}) => {
    *
    * @example
    * ```typescript
-   * const unsub = field.subscribe((path, value, allValues) => {
-   *   console.log(`${path} changed to`, value)
+   * const unsub = field.subscribe((payload, prevSnapshot, latestSnapshot) => {
+   *   console.log(`${payload.path} changed to`, payload.value)
    * })
    * unsub() // 取消订阅
    * ```
@@ -293,8 +293,8 @@ export const useField = (name: NamePath, options: UseFieldOptions = {}) => {
     getError,
     setError,
     clearError,
-    registerRules,
-    unregisterRules,
+    registerRule,
+    unregisterRule,
     // Touched
     isTouched,
     // 重置

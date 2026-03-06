@@ -1,3 +1,11 @@
+/**
+ * core 模块统一导出
+ *
+ * 聚合 FormStore、Subscriber、Validator、Registry 四个核心模块的公开 API。
+ *
+ * @module core
+ */
+
 // FormStore - 纯状态管理
 export {
   FormStore,
@@ -24,12 +32,11 @@ export {
   type FieldError,
 } from "./validator"
 
-// 路径工具
+// RendererRegistry - 渲染器注册
 export {
-  getByPath,
-  setByPath,
-  hasPath,
-  deleteByPath,
-  isValidPath,
-  parsePath,
-} from "../utils/path"
+  Registry,
+  globalRegistry,
+  createLocalRegistry,
+  type RegistryOptions,
+  type RendererMap,
+} from "./registry"

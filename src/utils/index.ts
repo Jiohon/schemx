@@ -2,6 +2,18 @@ import { cloneDeep } from "es-toolkit"
 
 import { setByPath } from "./path"
 
+// 导出 createWatch 相关
+export {
+  createWatchField,
+  createWatchFields,
+  createWatchAll,
+  type SingleFieldCallback,
+  type MultiFieldCallback,
+  type GlobalCallback,
+  type UseWatchOptions,
+  type CreateWatchReturn,
+} from "./createWatch"
+
 import type {
   DynamicProp,
   FormValues,

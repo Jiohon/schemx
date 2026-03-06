@@ -25,7 +25,7 @@
   import { z } from "zod"
   import SchemaForm, { useForm } from "@"
 
-  import type { SchemaColumn, SchemaFormInstance } from "@"
+  import type { SchemaColumn, FormInstance } from "@"
 
   // ==================== 表单配置 ====================
   // 注意：自定义渲染器需要在 SchemaForm 外部注册
@@ -83,7 +83,7 @@
     },
   ]
 
-  const formRef = ref<SchemaFormInstance>()
+  const formRef = ref<FormInstance>()
   const formData = ref<Record<string, any>>({
     color: "#1989fa",
     rating: 3,

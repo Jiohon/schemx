@@ -1,6 +1,6 @@
 import type { Component } from "vue"
 
-import type { Registry } from "@/renderer/rendererRegistry"
+import type { Registry } from "@/core/registry"
 
 import {
   CalendarRendererWrapped,

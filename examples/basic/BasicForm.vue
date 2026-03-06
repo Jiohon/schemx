@@ -24,9 +24,9 @@
   import { ref } from "vue"
   import { z } from "zod"
   import SchemaForm from "@"
-  import type { SchemaColumn, SchemaFormInstance } from "@"
+  import type { SchemaColumn, FormInstance } from "@"
 
-  const formRef = ref<SchemaFormInstance>()
+  const formRef = ref<FormInstance>()
   const formData = ref<Record<string, any>>({})
 
   // 初始值

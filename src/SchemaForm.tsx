@@ -17,9 +17,13 @@ import FormItem from "./components/FormItem"
 import { useForm } from "./hooks/useForm"
 import { createFormContext } from "./hooks/useFormContext"
 import { createRenderer } from "./hooks/useRenderer"
-import { globalRegistry } from "./renderer/rendererRegistry"
+import {
+  _setGlobalRequest,
+  _clearGlobalRequest,
+} from "./hooks/useRequester/globalRequestProvider"
+import { globalRegistry } from "./core/registry"
 
-import type { Registry } from "./renderer/rendererRegistry"
+import type { Registry } from "./core/registry"
 import type { SchemaFormProps } from "./types"
 
 // ==================== 类型定义 ====================
@@ -118,6 +122,10 @@ const SchemaForm = defineComponent<SchemaFormProps>({
       type: Object as PropType<Registry>,
       default: undefined,
     },
+    request: {
+      type: Function as PropType<SchemaFormProps["request"]>,
+      default: undefined,
+    },
   },
 
   emits: ["update:modelValue"],
@@ -179,6 +187,7 @@ const SchemaForm = defineComponent<SchemaFormProps>({
       colon: props.colon,
       className: props.className,
       style: props.style,
+      request: props.request,
     })
 
     // ==================== 暴露方法 ====================
@@ -259,6 +268,10 @@ const SchemaForm = defineComponent<SchemaFormProps>({
 type SchemaFormType = typeof SchemaForm & {
   install: (app: App, options?: SchemaFormInstallOptions) => void
   FormItem: typeof FormItem
+  /** 注册全局请求器，作为三级优先级中的最低级兜底 */
+  registerRequest: (request: (url: string) => Promise<any>) => void
+  /** 清除全局请求器（仅测试用） */
+  clearRequest: () => void
 }
 
 /** 添加 Vue 插件支持 */
@@ -271,5 +284,15 @@ type SchemaFormType = typeof SchemaForm & {
 
 /** 添加 FormItem 组件引用 */
 ;(SchemaForm as SchemaFormType).FormItem = FormItem
+
+/** 注册全局请求器 */
+;(SchemaForm as SchemaFormType).registerRequest = (request) => {
+  _setGlobalRequest(request)
+}
+
+/** 清除全局请求器（仅测试用） */
+;(SchemaForm as SchemaFormType).clearRequest = () => {
+  _clearGlobalRequest()
+}
 
 export default SchemaForm as SchemaFormType

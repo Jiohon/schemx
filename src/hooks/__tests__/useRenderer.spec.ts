@@ -12,7 +12,7 @@ import { describe, expect, it, vi } from "vitest"
 import { DEFAULT_RENDERER_TYPES } from "../../../renderers/defaultRenderers"
 import { createRenderer, useRendererContext } from "../useRenderer"
 
-import type { Registry } from "../../renderer/rendererRegistry"
+import type { Registry } from "../../core/registry"
 
 /**
  * 创建测试组件的辅助函数

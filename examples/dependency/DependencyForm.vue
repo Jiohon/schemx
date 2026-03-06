@@ -23,9 +23,9 @@
   import { ref } from "vue"
   import { z } from "zod"
   import SchemaForm from "@"
-  import type { SchemaColumn, SchemaFormInstance } from "@"
+  import type { SchemaColumn, FormInstance } from "@"
 
-  const formRef = ref<SchemaFormInstance>()
+  const formRef = ref<FormInstance>()
   const formData = ref<Record<string, any>>({
     productType: "physical",
     paymentMethod: "online",
@@ -59,7 +59,7 @@
     {
       componentType: "dependency",
       to: ["productType"], // 依赖 productType 字段
-      renderer: (values: Record<string, any>, form: SchemaFormInstance) => {
+      renderer: (values: Record<string, any>, form: FormInstance) => {
         const productType = values.productType
 
         // 根据产品类型返回不同的字段配置
@@ -167,7 +167,7 @@
     {
       componentType: "dependency",
       to: ["paymentMethod", "price"], // 依赖多个字段
-      renderer: (values: Record<string, any>, form: SchemaFormInstance) => {
+      renderer: (values: Record<string, any>, form: FormInstance) => {
         const paymentMethod = values.paymentMethod
         const price = values.price || 0
 

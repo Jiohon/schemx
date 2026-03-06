@@ -9,15 +9,15 @@
 
 import { type Ref, ref } from "vue"
 
-import { useFormInstance } from "./useFormContext"
-import { useWatchFields } from "./useWatch"
+import { useFormInstance } from "../useFormContext"
+import { useWatchFields } from "../useWatch"
 
 import type {
   FormValues,
   SchemaColumn,
   SchemaDependencyColumn,
-  SchemaFormInstance,
-} from "../types"
+  FormInstance,
+} from "../../types"
 
 /**
  * useDependency 返回值
@@ -26,7 +26,7 @@ export interface UseDependencyReturn {
   /** 动态生成的列配置 */
   columns: Ref<SchemaColumn[]>
   /** 表单实例 */
-  form: SchemaFormInstance
+  form: FormInstance
   /** 当前表单值 */
   values: Ref<FormValues>
 }
@@ -59,12 +59,12 @@ export function useDependency(
   // 订阅依赖字段变化，触发响应式更新
   useWatchFields(
     to,
-    async (value, prevValue, latestValues) => {
-      values.value = latestValues
+    async (payload, prevSnapshot, latestSnapshot) => {
+      values.value = latestSnapshot
 
       if (renderer) {
         try {
-          columns.value = await renderer(latestValues, form)
+          columns.value = await renderer(latestSnapshot, form)
 
           form.registerRulesFromColumns(columns.value)
         } catch (error) {
