@@ -1,7 +1,7 @@
 type BaseNamePath = string | number | boolean | (string | number | boolean)[]
 
 /**
- * Store: The store type from `FormInstance<Store>`
+ * Store: The store type from `SchemaFormInstance<Store>`
  * ParentNamePath: Auto generate by nest logic. Do not fill manually.
  */
 export type DeepNamePath<

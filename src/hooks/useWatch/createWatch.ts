@@ -31,14 +31,15 @@
  */
 
 import { isEqual } from "es-toolkit"
-import {
-  FieldSubscribeCallback,
-  FieldsSubscribeCallback,
-  GlobalSubscribeCallback,
-} from "../../core/subscriber"
 
 import type { FormValues, NamePath } from "@/types"
-import { FormInstance } from "../useForm/types/instance"
+
+import {
+  FieldsSubscribeCallback,
+  FieldSubscribeCallback,
+  GlobalSubscribeCallback,
+} from "../../core/subscriber"
+import { SchemaFormInstance } from "../../types/instance"
 
 /**
  * 单字段监听回调
@@ -131,7 +132,7 @@ export type CreateWatchReturn = () => void
  * ```
  */
 export const createWatchField = (
-  formContext: FormInstance,
+  formContext: SchemaFormInstance,
   name: NamePath,
   callback: SingleFieldCallback,
   options: UseWatchOptions
@@ -188,7 +189,7 @@ export const createWatchField = (
  * ```
  */
 export const createWatchFields = (
-  formContext: FormInstance,
+  formContext: SchemaFormInstance,
   names: NamePath[],
   callback: MultiFieldCallback,
   options: UseWatchOptions
@@ -240,7 +241,7 @@ export const createWatchFields = (
  * ```
  */
 export const createWatchAll = (
-  formContext: FormInstance,
+  formContext: SchemaFormInstance,
   callback: GlobalCallback,
   options: UseWatchOptions
 ): CreateWatchReturn => {

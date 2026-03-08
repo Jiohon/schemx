@@ -1,117 +1,13 @@
-// SchemaForm CSS Variables
-// 用于主题定制的 CSS 变量定义
-// Theme customization CSS variables
+/**
+ * SchemaForm CSS 变量定义
+ *
+ * 用于主题定制，支持通过 CSS 自定义属性覆盖默认值。
+ */
 
-// ============================================
-// 基础颜色变量 (Base Color Variables)
-// ============================================
-
-// 主色调
-$schema-form-primary-color: var(--schema-form-primary-color, #2f6bff) !default;
-$schema-form-primary-color-light: var(
-  --schema-form-primary-color-light,
-  #eaf2ff
-) !default;
-
-// 文本颜色
-$schema-form-text-color: var(--schema-form-text-color, #323233) !default;
-$schema-form-text-color-secondary: var(
-  --schema-form-text-color-secondary,
-  #666666
-) !default;
-$schema-form-text-color-placeholder: var(
-  --schema-form-text-color-placeholder,
-  #c8c9cc
-) !default;
-$schema-form-text-color-disabled: var(
-  --schema-form-text-color-disabled,
-  #c8c9cc
-) !default;
-
-// 背景颜色
-$schema-form-background-color: var(--schema-form-background-color, #ffffff) !default;
-$schema-form-background-color-light: var(
-  --schema-form-background-color-light,
-  #f3f4f6
-) !default;
-
-// 边框颜色
-$schema-form-border-color: var(--schema-form-border-color, #ebedf0) !default;
-
-// 状态颜色
-$schema-form-danger-color: var(--schema-form-danger-color, #ee0a24) !default;
-$schema-form-success-color: var(--schema-form-success-color, #07c160) !default;
-$schema-form-warning-color: var(--schema-form-warning-color, #ff976a) !default;
-
-// ============================================
-// 间距变量 (Spacing Variables)
-// ============================================
-
-$schema-form-padding-base: var(--schema-form-padding-base, 4px) !default;
-$schema-form-padding-xs: var(--schema-form-padding-xs, 8px) !default;
-$schema-form-padding-sm: var(--schema-form-padding-sm, 12px) !default;
-$schema-form-padding-md: var(--schema-form-padding-md, 16px) !default;
-$schema-form-padding-lg: var(--schema-form-padding-lg, 24px) !default;
-
-// ============================================
-// 字体变量 (Font Variables)
-// ============================================
-
-$schema-form-font-size-xs: var(--schema-form-font-size-xs, 10px) !default;
-$schema-form-font-size-sm: var(--schema-form-font-size-sm, 12px) !default;
-$schema-form-font-size-md: var(--schema-form-font-size-md, 14px) !default;
-$schema-form-font-size-lg: var(--schema-form-font-size-lg, 16px) !default;
-
-// ============================================
-// 圆角变量 (Border Radius Variables)
-// ============================================
-
-$schema-form-border-radius-sm: var(--schema-form-border-radius-sm, 4px) !default;
-$schema-form-border-radius-md: var(--schema-form-border-radius-md, 8px) !default;
-$schema-form-border-radius-lg: var(--schema-form-border-radius-lg, 12px) !default;
-
-// ============================================
-// 表单特定变量 (Form Specific Variables)
-// ============================================
-
-// 表单项
-$schema-form-item-line-height: var(--schema-form-item-line-height, 36px) !default;
-$schema-form-item-label-color: var(--schema-form-item-label-color, #666666) !default;
-
-// 输入框对齐方式
-$schema-form-input-align: var(--schema-form-input-align, end) !default;
-
-// 图标
-$schema-form-icon-size: var(--schema-form-icon-size, 18px) !default;
-$schema-form-icon-color: var(--schema-form-icon-color, #969799) !default;
-$schema-form-clear-icon-color: var(--schema-form-clear-icon-color, #c8c9cc) !default;
-
-// 评分组件
-$schema-form-rate-star-size: var(--schema-form-rate-star-size, 20px) !default;
-$schema-form-rate-star-color: var(--schema-form-rate-star-color, #ddd) !default;
-$schema-form-rate-star-active-color: var(
-  --schema-form-rate-star-active-color,
-  #ffd21e
-) !default;
-
-// 选择器组件
-$schema-form-selector-gap: var(--schema-form-selector-gap, 12px) !default;
-$schema-form-selector-option-min-width: var(
-  --schema-form-selector-option-min-width,
-  80px
-) !default;
-$schema-form-selector-option-padding: var(
-  --schema-form-selector-option-padding,
-  8px 18px
-) !default;
-
-// ============================================
-// CSS 自定义属性根定义 (CSS Custom Properties Root)
-// ============================================
-
+/**
+ * CSS 自定义属性默认值
+ */
 :root {
-  --schema-form-error-align: right;
-
   // 主色调
   --schema-form-primary-color: #2f6bff;
   --schema-form-primary-color-light: #eaf2ff;
@@ -156,6 +52,7 @@ $schema-form-selector-option-padding: var(
   --schema-form-item-line-height: 36px;
   --schema-form-item-label-color: #666666;
   --schema-form-input-align: end;
+  --schema-form-error-align: right;
 
   // 图标
   --schema-form-icon-size: 18px;
@@ -172,3 +69,69 @@ $schema-form-selector-option-padding: var(
   --schema-form-selector-option-min-width: 80px;
   --schema-form-selector-option-padding: 8px 18px;
 }
+
+/**
+ * SCSS 变量（引用 CSS 自定义属性，便于在 SCSS 中使用）
+ */
+
+// 主色调
+$schema-form-primary-color: var(--schema-form-primary-color) !default;
+$schema-form-primary-color-light: var(--schema-form-primary-color-light) !default;
+
+// 文本颜色
+$schema-form-text-color: var(--schema-form-text-color) !default;
+$schema-form-text-color-secondary: var(--schema-form-text-color-secondary) !default;
+$schema-form-text-color-placeholder: var(--schema-form-text-color-placeholder) !default;
+$schema-form-text-color-disabled: var(--schema-form-text-color-disabled) !default;
+
+// 背景颜色
+$schema-form-background-color: var(--schema-form-background-color) !default;
+$schema-form-background-color-light: var(--schema-form-background-color-light) !default;
+
+// 边框颜色
+$schema-form-border-color: var(--schema-form-border-color) !default;
+
+// 状态颜色
+$schema-form-danger-color: var(--schema-form-danger-color) !default;
+$schema-form-success-color: var(--schema-form-success-color) !default;
+$schema-form-warning-color: var(--schema-form-warning-color) !default;
+
+// 间距
+$schema-form-padding-base: var(--schema-form-padding-base) !default;
+$schema-form-padding-xs: var(--schema-form-padding-xs) !default;
+$schema-form-padding-sm: var(--schema-form-padding-sm) !default;
+$schema-form-padding-md: var(--schema-form-padding-md) !default;
+$schema-form-padding-lg: var(--schema-form-padding-lg) !default;
+
+// 字体大小
+$schema-form-font-size-xs: var(--schema-form-font-size-xs) !default;
+$schema-form-font-size-sm: var(--schema-form-font-size-sm) !default;
+$schema-form-font-size-md: var(--schema-form-font-size-md) !default;
+$schema-form-font-size-lg: var(--schema-form-font-size-lg) !default;
+
+// 圆角
+$schema-form-border-radius-sm: var(--schema-form-border-radius-sm) !default;
+$schema-form-border-radius-md: var(--schema-form-border-radius-md) !default;
+$schema-form-border-radius-lg: var(--schema-form-border-radius-lg) !default;
+
+// 表单项
+$schema-form-item-line-height: var(--schema-form-item-line-height) !default;
+$schema-form-item-label-color: var(--schema-form-item-label-color) !default;
+$schema-form-input-align: var(--schema-form-input-align) !default;
+
+// 图标
+$schema-form-icon-size: var(--schema-form-icon-size) !default;
+$schema-form-icon-color: var(--schema-form-icon-color) !default;
+$schema-form-clear-icon-color: var(--schema-form-clear-icon-color) !default;
+
+// 评分组件
+$schema-form-rate-star-size: var(--schema-form-rate-star-size) !default;
+$schema-form-rate-star-color: var(--schema-form-rate-star-color) !default;
+$schema-form-rate-star-active-color: var(--schema-form-rate-star-active-color) !default;
+
+// 选择器组件
+$schema-form-selector-gap: var(--schema-form-selector-gap) !default;
+$schema-form-selector-option-min-width: var(
+  --schema-form-selector-option-min-width
+) !default;
+$schema-form-selector-option-padding: var(--schema-form-selector-option-padding) !default;

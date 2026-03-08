@@ -38,9 +38,9 @@ import {
   createWatchAll,
   createWatchField,
   createWatchFields,
-  type SingleFieldCallback,
-  type MultiFieldCallback,
   type GlobalCallback,
+  type MultiFieldCallback,
+  type SingleFieldCallback,
   type UseWatchOptions,
 } from "./createWatch"
 

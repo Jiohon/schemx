@@ -23,7 +23,7 @@ import { mount } from "@vue/test-utils"
 import * as fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import FormItem from "../components/FormItem/FormItem"
+import FormItem from "../components/FormItem"
 import { resolveDynamicProp } from "../utils"
 
 // ==================== Generators ====================
@@ -390,6 +390,7 @@ describe("Feature: formitem-library-agnostic, Property 8: Dynamic property resol
         const dynamicFn = (values: Record<string, unknown>) => {
           // Use values to ensure the function actually receives form values
           void values
+
           return expectedResult
         }
 
@@ -452,6 +453,7 @@ describe("Feature: formitem-library-agnostic, Property 8: Dynamic property resol
 
         const captureFn = (values: Record<string, unknown>) => {
           receivedValues = values
+
           return true
         }
 

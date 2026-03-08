@@ -1,7 +1,8 @@
 /**
- * useField - 字段 Hook
+ * useField - 字段控制 Hook
  *
- * 获取单个字段的控制能力，将 FormInstance 的方法作用域限定到指定字段。
+ * 将 SchemaFormInstance 的方法作用域限定到指定字段，
+ * 提供单字段的读写、校验、订阅等能力。
  *
  * @module hooks/useField
  */
@@ -28,7 +29,7 @@ export interface UseFieldOptions {
 /**
  * 获取单个字段的控制能力
  *
- * 将 FormInstance 的方法作用域限定到指定字段，
+ * 将 SchemaFormInstance 的方法作用域限定到指定字段，
  * FormStore 的 state 是 Vue reactive 对象，
  * getFieldValue / getFieldsValue 在 computed 中使用时自动建立响应式依赖。
  *

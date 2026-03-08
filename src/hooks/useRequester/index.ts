@@ -1,15 +1,16 @@
 /**
- * useRequester - 三级优先级请求器解析（Vue 组合式 API 版本）
+ * useRequester - 三级优先级请求器解析
  *
- * 优先级: attrs.request (column) > context.request (SchemaForm) > globalRequest (全局)
+ * 按优先级解析可用的 HTTP 请求器：
+ * 1. column 级别（attrs.request）
+ * 2. SchemaForm 级别（context.request）
+ * 3. 全局级别（SchemaForm.registerRequest）
  *
- * 自动通过 useFormContext 获取 SchemaForm 级别请求器，
- * 通过 _getGlobalRequest 获取全局请求器，调用方只需传入 column 级别属性。
- *
- * @module hooks/resolveRequester
+ * @module hooks/useRequester
  */
 
 import { useFormContext } from "../useFormContext"
+
 import { _getGlobalRequest } from "./globalRequestProvider"
 
 type RequestFn = (url: string) => Promise<any>
@@ -20,16 +21,15 @@ interface HasRequest {
 }
 
 /**
- * 解析最终使用的 request 函数（组合式 API）
+ * 解析请求器（Vue 组合式 API 版本）
  *
- * 内部自动注入 formContext 和 globalRequest，调用方只需传入 column 级别属性。
+ * 自动注入 formContext 和 globalRequest，调用方只需传入 column 级别属性。
  *
  * @param attrs - column 级别属性（componentProps），包含可选的 `request` 字段
- * @returns 解析后的请求器，三级均无则返回 undefined
+ * @returns 解析后的请求器函数，三级均无则返回 undefined
  *
  * @example
  * ```ts
- * // 在组件 setup 中使用
  * const requester = useRequester(attrs)
  *
  * if (requester) {
@@ -45,17 +45,22 @@ export function useRequester(attrs: HasRequest): RequestFn | undefined {
 }
 
 /**
- * 解析最终使用的 request 函数（纯函数版本）
+ * 解析请求器（纯函数版本）
  *
  * 按三级优先级依次查找可用的请求器：
  * 1. column 级别（attrs.request）
  * 2. SchemaForm 级别（context.request）
  * 3. 全局级别（globalRequest）
  *
- * @param attrs - column 级别属性（componentProps）
- * @param context - SchemaForm 级别上下文（FormContext）
+ * @param attrs - column 级别属性
+ * @param context - SchemaForm 级别上下文
  * @param globalRequest - 全局级别请求器
- * @returns 解析后的请求器，三级均无则返回 undefined
+ * @returns 解析后的请求器函数，三级均无则返回 undefined
+ *
+ * @example
+ * ```ts
+ * const requester = resolveRequester(attrs, formContext, globalRequest)
+ * ```
  */
 export function resolveRequester(
   attrs: HasRequest,

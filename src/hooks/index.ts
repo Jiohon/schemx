@@ -1,20 +1,16 @@
-// 导出 useDictOptions 相关
-export {
-  useDictOptions,
-  type DictOptionsAttrs,
-  type UseDictOptionsReturn,
-} from "./useDictOptions"
+/**
+ * Hooks 统一导出
+ *
+ * @module hooks
+ */
 
-// 导出 useField 相关
+/** useForm - 表单状态管理 */
+export { createFormInstance, useForm, type CreateFormInstanceOptions } from "./useForm"
+
+/** useField - 单字段控制 */
 export { useField, type UseFieldOptions } from "./useField"
 
-// FormInstance - 组合实例
-export { createFormInstance, useForm, type FormInstanceOptions } from "./useForm"
-
-// 导出 useFormContext 相关
-export { useFormContext } from "./useFormContext"
-
-// 导出 useWatch 相关
+/** useWatch - 字段变化监听 */
 export {
   useWatch,
   useWatchField,
@@ -26,11 +22,21 @@ export {
   type UseWatchOptions,
 } from "./useWatch"
 
-// 导出 useDependency 相关
+/** useDependency - 依赖字段动态渲染 */
 export { useDependency, type UseDependencyReturn } from "./useDependency"
 
-// 导出 useRenderer 相关
+/** useDictOptions - 远程字典选项加载 */
+export {
+  useDictOptions,
+  type DictOptionsAttrs,
+  type UseDictOptionsReturn,
+} from "./useDictOptions"
+
+/** useFormContext - 表单上下文注入与消费 */
+export { useFormContext } from "./useFormContext"
+
+/** useRenderer - 渲染器注册中心 */
 export { createRenderer, useRendererContext } from "./useRenderer"
 
-// 导出 resolveRequester / useRequester
+/** useRequester - 三级优先级请求器解析 */
 export { resolveRequester, useRequester } from "./useRequester"

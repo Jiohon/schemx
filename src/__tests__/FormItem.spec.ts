@@ -129,6 +129,7 @@ describe("ColumnRenderer Unit Tests", () => {
         slots: {
           emailItem: (props: any) => {
             receivedProps = props
+
             return h("div", { class: "custom-item" }, "Custom Email")
           },
         },
@@ -194,6 +195,7 @@ describe("ColumnRenderer Unit Tests", () => {
         slots: {
           address: (props: any) => {
             receivedProps = props
+
             return h("div", { class: "custom-content" }, "Custom Address")
           },
         },

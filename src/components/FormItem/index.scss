@@ -1,0 +1,108 @@
+/**
+ * FormItem 组件样式
+ */
+
+@import "../../styles/variables.scss";
+
+.schema-form-item-wrapper {
+  position: relative;
+
+  &:after {
+    position: absolute;
+    box-sizing: border-box;
+    content: " ";
+    pointer-events: none;
+    right: $schema-form-padding-md;
+    bottom: 0;
+    left: $schema-form-padding-md;
+    border-bottom: 1px solid $schema-form-border-color;
+    transform: scaleY(0.5);
+  }
+
+  &:last-child:after {
+    display: none;
+  }
+}
+
+.schema-form-item {
+  display: flex;
+  align-items: flex-start;
+  padding: $schema-form-padding-sm $schema-form-padding-md;
+  line-height: $schema-form-item-line-height;
+
+  .schema-form-renderer-disabled {
+    opacity: 0.65;
+  }
+
+  .schema-form-renderer-readonly {
+    opacity: 1;
+  }
+}
+
+/**
+ * Label 排列方向修饰符
+ */
+.schema-form-item--label-left {
+  flex-direction: row;
+
+  .schema-form-item__label {
+    text-align: left;
+  }
+}
+
+.schema-form-item--label-right {
+  flex-direction: row;
+
+  .schema-form-item__label {
+    text-align: right;
+  }
+}
+
+.schema-form-item--label-top {
+  flex-direction: column;
+
+  .schema-form-item__label {
+    width: 100% !important;
+    margin-bottom: $schema-form-padding-xs;
+  }
+}
+
+/**
+ * Label 样式
+ */
+.schema-form-item__label {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: $schema-form-item-label-color;
+  font-size: $schema-form-font-size-md;
+  margin-right: $schema-form-padding-xs;
+}
+
+.schema-form-item__required {
+  color: $schema-form-danger-color;
+  margin-right: 2px;
+}
+
+/**
+ * 内容区域
+ */
+.schema-form-item__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.schema-form-item__control {
+  text-align: $schema-form-input-align;
+
+  .schema-form-renderer {
+    width: 100%;
+  }
+}
+
+.schema-form-item__error {
+  color: $schema-form-danger-color;
+  font-size: $schema-form-font-size-sm;
+  text-align: var(--schema-form-error-align, right);
+  margin-top: 2px;
+}

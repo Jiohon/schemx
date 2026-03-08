@@ -14,29 +14,30 @@ import classnames from "classnames"
 import { omit } from "es-toolkit"
 
 import FormItem from "./components/FormItem"
+import { globalRegistry } from "./core/registry"
 import { useForm } from "./hooks/useForm"
 import { createFormContext } from "./hooks/useFormContext"
 import { createRenderer } from "./hooks/useRenderer"
 import {
-  _setGlobalRequest,
   _clearGlobalRequest,
+  _setGlobalRequest,
 } from "./hooks/useRequester/globalRequestProvider"
-import { globalRegistry } from "./core/registry"
 
 import type { Registry } from "./core/registry"
 import type { SchemaFormProps } from "./types"
 
-// ==================== 类型定义 ====================
-
 /**
- * SchemaForm 安装选项
+ * SchemaForm 插件安装选项
+ *
+ * 通过 `app.use(SchemaForm, options)` 传入，预留扩展。
  */
 export interface SchemaFormInstallOptions {}
 
-// ==================== 组件定义 ====================
-
 /**
  * SchemaForm 组件
+ *
+ * 基于 Schema 配置驱动的表单，内部通过 useForm 管理状态，
+ * 并自动向子组件提供 FormContext。
  */
 const SchemaForm = defineComponent<SchemaFormProps>({
   name: "SchemaForm",
@@ -131,19 +132,16 @@ const SchemaForm = defineComponent<SchemaFormProps>({
   emits: ["update:modelValue"],
 
   setup(props, { expose, slots, emit, attrs }) {
-    // ==================== 核心模块初始化 ====================
-
     /** Vant Form 组件引用 */
     const formRef = ref<InstanceType<typeof Form> | null>(null)
 
     /** 提交状态 */
     const submitting = ref(false)
 
-    // ==================== 使用 useForm Hook ====================
-
     /**
-     * 使用 useForm 创建表单实例
-     * 这会自动提供 FormContext 给子组件
+     * 获取或创建表单实例
+     *
+     * 优先使用外部传入的 form，否则内部通过 useForm 创建。
      */
     const form = computed(() => {
       if (props.form) {
@@ -190,13 +188,9 @@ const SchemaForm = defineComponent<SchemaFormProps>({
       request: props.request,
     })
 
-    // ==================== 暴露方法 ====================
-
     expose({
       ...form.value,
     })
-
-    // ==================== 渲染 ====================
 
     return () => (
       <div
@@ -225,7 +219,6 @@ const SchemaForm = defineComponent<SchemaFormProps>({
           ])}
           required="auto"
         >
-          {/* 渲染基础字段 */}
           {props.columns?.map((column, index) => {
             const key = `${column.componentType}-${"name" in column ? column.name : index}`
 
@@ -238,7 +231,6 @@ const SchemaForm = defineComponent<SchemaFormProps>({
             )
           })}
 
-          {/* 底部按钮 */}
           {props.footer && !props.readonly && (
             <div class="schema-form-submit-button">
               <Button
@@ -260,39 +252,54 @@ const SchemaForm = defineComponent<SchemaFormProps>({
   },
 })
 
-// ==================== 静态方法和属性 ====================
-
 /**
- * 扩展组件类型以支持静态方法
+ * SchemaForm 组件完整类型
+ *
+ * 包含组件本体及挂载的静态方法和属性。
+ *
+ * @example
+ * ```ts
+ * import SchemaForm from '@user/schema-form'
+ *
+ * // 作为 Vue 插件安装
+ * app.use(SchemaForm)
+ *
+ * // 注册全局请求器
+ * SchemaForm.registerRequest((url) => fetch(url).then(r => r.json()))
+ *
+ * // 访问子组件
+ * SchemaForm.FormItem
+ * ```
  */
 type SchemaFormType = typeof SchemaForm & {
+  /** Vue 插件安装方法 */
   install: (app: App, options?: SchemaFormInstallOptions) => void
+  /** FormItem 子组件引用 */
   FormItem: typeof FormItem
-  /** 注册全局请求器，作为三级优先级中的最低级兜底 */
+  /**
+   * 注册全局请求器
+   *
+   * 作为三级优先级中的最低级兜底（全局 < 表单实例 < 字段级）。
+   *
+   * @param request - HTTP 请求函数
+   */
   registerRequest: (request: (url: string) => Promise<any>) => void
-  /** 清除全局请求器（仅测试用） */
+  /**
+   * 清除全局请求器
+   *
+   * @remarks 仅用于测试环境
+   */
   clearRequest: () => void
 }
 
-/** 添加 Vue 插件支持 */
-;(SchemaForm as SchemaFormType).install = (
-  app: App,
-  _options: SchemaFormInstallOptions = {}
-) => {
-  app.component("SchemaForm", SchemaForm)
-}
-
-/** 添加 FormItem 组件引用 */
-;(SchemaForm as SchemaFormType).FormItem = FormItem
-
-/** 注册全局请求器 */
-;(SchemaForm as SchemaFormType).registerRequest = (request) => {
-  _setGlobalRequest(request)
-}
-
-/** 清除全局请求器（仅测试用） */
-;(SchemaForm as SchemaFormType).clearRequest = () => {
-  _clearGlobalRequest()
-}
+/** 挂载静态方法和属性到组件上 */
+Object.assign(SchemaForm, {
+  install(app: App, _options: SchemaFormInstallOptions = {}) {
+    app.component("SchemaForm", SchemaForm)
+  },
+  FormItem,
+  registerRequest: _setGlobalRequest,
+  clearRequest: _clearGlobalRequest,
+})
 
 export default SchemaForm as SchemaFormType

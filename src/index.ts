@@ -1,57 +1,57 @@
-// 样式导入 - 确保样式被编译到 dist/style.css
+/**
+ * SchemaForm 统一导出入口
+ *
+ * @module @Jonhn/vschema-form
+ */
+
 import "./styles/index.scss"
 
-// 默认导出
+/** 默认导出 */
 export { default } from "./SchemaForm"
 export { default as SchemaForm } from "./SchemaForm"
 
-// 核心功能导出
+/** 核心功能 */
 export * from "./core"
 
-// 渲染层导出
+/** 渲染层 */
 export * from "./renderer"
 
-// hooks 导出
+/** Hooks */
 export * from "./hooks"
 export { FORM_CONTEXT_KEY } from "./hooks/useFormContext"
 
-// 组件导出
+/** 组件 */
 export { default as FormItem } from "./components/FormItem"
 export { default as FormDependency } from "./components/FormDependency"
 
-// 工具函数导出
+/** 工具函数（显式导出，排除与 hooks 冲突的类型） */
 export {
-  findTreeItem,
-  isCamelCase,
-  isKebabCase,
-  isLowerCase,
-  camelToKebab,
-  kebabToCamel,
-  getFieldProps,
-  findDiffProps,
-  isObject,
-  deepFreeze,
-  randomString,
-  getFileName,
-  stringToHash,
+  createWatchField,
+  createWatchFields,
+  createWatchAll,
+  type CreateWatchReturn,
+  getInitialValuesFromColumns,
+  resolveDynamicProp,
+  resolveDynamicPropByBoolean,
+  isBaseColumn,
+  isGroupColumn,
+  isDependencyColumn,
+  isNestedColumn,
+  shouldValidateOn,
 } from "./utils"
 
-// Utils 类型导出
-export type { TreeFindOptions, TreeFindResult } from "./utils"
-
-// SchemaForm 实例类型导出
+/** 类型导出 */
 export type { SchemaFormInstallOptions } from "./SchemaForm"
 
-// 类型导出
 export type {
   FormValues,
+  SchemaFormInstance,
   CustomRendererTypes,
   CustomRendererPropsMap,
   RendererPropsMap,
   RendererType,
   ValidationTrigger,
   DynamicProp,
-  FormInstance,
   SchemaColumn,
   SchemaBaseColumn,
   ProcessedColumnConfig,

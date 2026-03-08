@@ -133,6 +133,7 @@ describe("Feature: formitem-library-agnostic, Property 9: Renderer receives corr
           },
           setup(props) {
             receivedProps = { ...props }
+
             return () => h("input", { class: "mock-renderer" })
           },
         })

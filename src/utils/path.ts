@@ -21,7 +21,7 @@
  * ```
  */
 
-import { get, has, set, unset } from "es-toolkit/compat"
+import { get, set } from "es-toolkit/compat"
 
 import type { FormValues, NamePath, Value } from "../types"
 
@@ -52,145 +52,6 @@ export function setByPath(obj: FormValues, path: NamePath, value: Value): void {
 }
 
 /**
- * 检查路径是否为有效的嵌套路径格式
- *
- * 有效的路径应该是非空字符串，可以包含点号分隔的多个部分。
- * 每个部分应该是有效的对象属性名。
- *
- * @param path - 要检查的路径字符串
- * @returns 是否为有效路径
- *
- * @example
- * ```typescript
- * isValidPath('user.name')        // => true
- * isValidPath('user.address.city') // => true
- * isValidPath('name')             // => true
- * isValidPath('')                 // => false
- * isValidPath('.')                // => false
- * isValidPath('user..name')       // => false
- * ```
- */
-export function isValidPath(path: string): boolean {
-  if (typeof path !== "string" || path === "") {
-    return false
-  }
-
-  const keys = path.split(".")
-
-  return keys.every((key) => key.length > 0)
-}
-
-/**
- * 解析路径为 key 数组
- *
- * @param path - 点号分隔的路径字符串
- * @returns key 数组
- *
- * @example
- * ```typescript
- * parsePath('user.address.city') // => ['user', 'address', 'city']
- * parsePath('name')              // => ['name']
- * parsePath('')                  // => []
- * ```
- */
-export function parsePath(path: string): string[] {
-  if (path === "") {
-    return []
-  }
-
-  return path.split(".")
-}
-
-/**
- * 检查对象中是否存在指定路径
- *
- * @param obj - 要检查的对象
- * @param path - 点号分隔的路径字符串
- * @returns 路径是否存在
- *
- * @example
- * ```typescript
- * const obj = { user: { name: 'John', address: null } }
- *
- * hasPath(obj, 'user.name')      // => true
- * hasPath(obj, 'user.address')   // => true (值为 null 但路径存在)
- * hasPath(obj, 'user.age')       // => false
- * hasPath(obj, 'user.profile.bio') // => false
- * ```
- */
-export function hasPath(obj: any, path: string): boolean {
-  if (path === "") return true
-
-  return has(obj, path)
-}
-
-/**
- * 删除对象中指定路径的值
- *
- * @param obj - 要操作的对象
- * @param path - 点号分隔的路径字符串
- * @returns 是否成功删除
- *
- * @example
- * ```typescript
- * const obj = { user: { name: 'John', age: 25 } }
- *
- * deleteByPath(obj, 'user.age')  // => true, obj => { user: { name: 'John' } }
- * deleteByPath(obj, 'user.bio')  // => false (路径不存在)
- * ```
- */
-export function deleteByPath(obj: any, path: string): boolean {
-  if (path === "" || obj == null) return false
-
-  return unset(obj, path)
-}
-
-/**
- * 获取路径的所有父路径（从近到远）
- *
- * @param path - 点号分隔的路径字符串
- * @returns 父路径数组
- *
- * @example
- * ```typescript
- * getParentPaths('a.b.c') // => ['a.b', 'a']
- * getParentPaths('name')  // => []
- * getParentPaths('')      // => []
- * ```
- */
-export function getParentPaths(path: string): string[] {
-  if (!path) return []
-
-  const parts = path.split(".")
-  const parents: string[] = []
-
-  for (let i = parts.length - 1; i > 0; i--) {
-    parents.push(parts.slice(0, i).join("."))
-  }
-
-  return parents
-}
-
-/**
- * 判断 candidate 是否是 path 的子路径
- *
- * @param path - 父路径
- * @param candidate - 候选路径
- * @returns 是否为子路径
- *
- * @example
- * ```typescript
- * isChildPath('user', 'user.name')           // => true
- * isChildPath('user', 'user.address.city')   // => true
- * isChildPath('user', 'user')                // => false
- * isChildPath('user', 'username')            // => false
- * ```
- */
-export function isChildPath(path: string, candidate: string): boolean {
-  return candidate.startsWith(path + ".")
-}
-
-/**
  * 从对象中递归收集所有路径（包括中间节点和叶子节点）
  *
  * 对于嵌套的纯对象和数组，同时收集自身路径和递归展开的子路径。
@@ -204,33 +65,14 @@ export function isChildPath(path: string, candidate: string): boolean {
  *
  * @example
  * ```typescript
- * // 简单对象
  * collectObjectPaths({ name: 'a', age: 25 })
  * // => ['name', 'age']
  *
- * // 嵌套对象：同时返回中间路径和叶子路径
  * collectObjectPaths({ name: 'a', address: { city: 'BJ', zip: '100000' } })
  * // => ['name', 'address', 'address.city', 'address.zip']
  *
- * // 数组展开：返回数组自身路径和每个元素路径
  * collectObjectPaths({ tags: [1, 2] })
  * // => ['tags', 'tags[0]', 'tags[1]']
- *
- * // 数组内嵌套对象
- * collectObjectPaths({ users: [{ name: 'a' }, { name: 'b' }] })
- * // => ['users', 'users[0]', 'users[0].name', 'users[1]', 'users[1].name']
- *
- * // 带前缀
- * collectObjectPaths({ city: 'BJ' }, 'address')
- * // => ['address.city']
- *
- * // 空对象
- * collectObjectPaths({})
- * // => []
- *
- * // null 值视为叶子节点
- * collectObjectPaths({ name: null, age: undefined })
- * // => ['name', 'age']
  * ```
  */
 export function collectObjectPaths(obj: Record<string, any>, prefix = ""): NamePath[] {
@@ -284,5 +126,6 @@ export function pickByPaths<T extends FormValues>(
   for (const path of paths) {
     ;(result as any)[path] = getByPath(source, path)
   }
+
   return result
 }
