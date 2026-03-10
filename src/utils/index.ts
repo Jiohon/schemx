@@ -13,13 +13,7 @@ export {
 } from "../hooks/useWatch/createWatch"
 
 /** Schema 列配置工具 */
-export {
-  isBaseColumn,
-  isGroupColumn,
-  isDependencyColumn,
-  isNestedColumn,
-  getInitialValuesFromColumns,
-} from "./schema"
+export { isBaseColumn, isGroupColumn, isDependencyColumn, isNestedColumn } from "./schema"
 
 /** 动态属性解析 */
 export { resolveDynamicProp, resolveDynamicPropByBoolean } from "./dynamic"

@@ -1,0 +1,47 @@
+/**
+ * SchemaForm 主样式入口
+ */
+
+@import "./variables.css";
+
+/**
+ * 组件样式
+ */
+@import "../components/FormItem/index.css";
+@import "../components/FormGroup/index.css";
+
+/**
+ * SchemaForm 容器
+ */
+.schema-form {
+  --schema-form-input-align: end;
+
+  box-sizing: border-box;
+  padding-bottom: 15px;
+}
+
+.schema-form-columns {
+  background-color: var(--schema-form-background-color);
+  padding: var(--schema-form-padding-md) 6px;
+  border-radius: var(--schema-form-border-radius-lg);
+}
+
+.schema-form-columns-title {
+  display: flex;
+  align-items: center;
+  padding-left: var(--schema-form-padding-md);
+  padding-bottom: var(--schema-form-padding-xs);
+}
+
+.schema-form-columns-title-icon {
+  margin-right: var(--schema-form-padding-xs);
+}
+
+.schema-form-columns-title-label {
+  font-size: var(--schema-form-font-size-md);
+  color: var(--schema-form-text-color);
+}
+
+.schema-form-submit-button {
+  margin-top: 15px;
+}

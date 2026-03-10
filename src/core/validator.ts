@@ -1,39 +1,38 @@
 /**
  * 表单校验器。
  *
- * 管理校验规则（rules）和校验错误（errors），基于 Zod schema 进行字段校验。
+ * 管理校验规则（rules）和校验错误（errors），基于 Standard Schema 接口进行字段校验。
  * 使用 Vue reactive 保持错误状态的响应式。
+ * 支持所有实现了 StandardSchemaV1 接口的验证库（Zod v4、Valibot、ArkType 等）。
  *
  * @module core/validator
  *
  * @example
  * ```typescript
- * import { z } from 'zod'
+ * import type { StandardSchemaV1 } from './standardSchema'
  * import { createValidator } from './Validator'
  *
  * const validator = createValidator()
  *
- * // 从 columns 提取并注册规则
- * validator.registerRulesFromColumns(columns)
+ * // 注册校验规则
+ * validator.registerRule('email', emailSchema)
+ *
+ * // 注册校验规则并指定空值提示
+ * validator.registerRule('address', addressSchema, '请输入收货地址')
  *
  * // 校验单个字段
  * const result = await validator.validateField('email', latestValues)
- *
- * // 校验整个表单
- * const result = await validator.validate(latestValues)
  * ```
  */
 
 import { reactive } from "vue"
 import type { DeepReadonly, Reactive } from "vue"
 
-import { z, type ZodType } from "zod"
-
-import { isDependencyColumn, isGroupColumn, isNestedColumn } from "@/utils"
+import type { StandardSchemaV1 } from "./standardSchema"
 
 import { getByPath } from "../utils/path"
 
-import type { FormValues, NamePath, SchemaColumn, Value } from "../types"
+import type { FormValues, NamePath, Value } from "../types"
 
 /** 单个字段的校验错误 */
 export interface FieldError {
@@ -52,8 +51,27 @@ export type ValidateResult<T extends FormValues = FormValues> =
   | { ok: true; values: DeepReadonly<T> }
   | { ok: false; error: ValidateError<T> }
 
+/**
+ * 校验规则条目。
+ *
+ * 包含 StandardSchemaV1 schema 和可选的空值默认错误提示。
+ * 当字段值为 `undefined`/`null` 时，使用 `defaultMessage` 作为错误提示，
+ * 避免验证库报出类型错误（如 Zod 的 "expected string, received undefined"）。
+ */
+export interface RuleEntry {
+  /** 符合 StandardSchemaV1 接口的校验 schema */
+  schema: StandardSchemaV1
+  /**
+   * 空值（undefined/null）时的默认错误提示。
+   *
+   * 设置后，当字段值为 undefined/null 时直接返回此提示，不调用 schema 校验。
+   * 未设置时将原始值直接传给 schema。
+   */
+  defaultMessage?: string
+}
+
 /** 规则映射表 */
-export type RulesMap<T extends FormValues> = Map<NamePath<T>, ZodType>
+export type RulesMap<T extends FormValues> = Map<NamePath<T>, RuleEntry>
 
 /** 错误映射表 */
 export type ErrorsMap<T extends FormValues> = Map<NamePath<T>, string[]>
@@ -68,14 +86,19 @@ export interface ValidatorState<T extends FormValues> {
  * 表单校验器。
  *
  * 不持有 store 引用，所有值由调用方传入。
- * 基于 Zod schema 进行字段校验，支持同步和异步规则。
+ * 基于 Standard Schema 接口进行字段校验，支持同步和异步规则。
+ * 兼容所有实现了 StandardSchemaV1 接口的验证库。
+ *
+ * 每个字段可配置 `defaultMessage`，当值为 `undefined`/`null` 时
+ * 跳过 schema 校验并返回该提示，避免验证库报类型错误。
  *
  * @typeParam T - 表单值类型，默认为 FormValues
  *
  * @example
  * ```typescript
  * const validator = new Validator<FormValues>()
- * validator.registerRule('email', z.string().email())
+ * validator.registerRule('email', emailSchema)
+ * validator.registerRule('address', addressSchema, '请输入收货地址')
  * const result = await validator.validateField('email', formValues)
  * ```
  *
@@ -101,15 +124,21 @@ export class Validator<T extends FormValues = FormValues> {
    * 注册单个字段的校验规则。
    *
    * @param path - 字段路径
-   * @param rule - Zod schema 规则
+   * @param rule - 符合 StandardSchemaV1 接口的校验 schema
+   * @param defaultMessage - 可选，空值（undefined/null）时的默认错误提示
    *
    * @example
    * ```typescript
-   * validator.registerRule('email', z.string().email())
+   * validator.registerRule('email', emailSchema)
+   * validator.registerRule('name', nameSchema, '请输入姓名')
    * ```
    */
-  public registerRule(path: NamePath<T>, rule: ZodType): void {
-    this.state.rules.set(path, rule)
+  public registerRule(
+    path: NamePath<T>,
+    rule: StandardSchemaV1,
+    defaultMessage?: string
+  ): void {
+    this.state.rules.set(path, { schema: rule, defaultMessage })
   }
 
   /**
@@ -125,179 +154,6 @@ export class Validator<T extends FormValues = FormValues> {
   public unregisterRule(path: NamePath<T>): void {
     this.state.rules.delete(path)
     this.state.errors.delete(path)
-  }
-
-  /**
-   * 从 columns 配置中递归提取并注册所有校验规则。
-   *
-   * @param columns - 表单列配置数组
-   *
-   * @example
-   * ```typescript
-   * validator.registerRulesFromColumns(schemaColumns)
-   * ```
-   */
-  public registerRulesFromColumns(columns: SchemaColumn<T>[]): void {
-    this.extractRules(columns, "")
-  }
-
-  /**
-   * 校验指定字段。
-   *
-   * 支持传入单个路径或路径数组，逐个校验后返回汇总结果。
-   *
-   * @param path - 字段路径或路径数组
-   * @param latestValues - 当前表单全量值
-   * @returns 校验结果
-   *
-   * @example
-   * ```typescript
-   * const result = await validator.validateField('email', formValues)
-   * if (!result.ok) console.log(result.error.errors)
-   * ```
-   */
-  async validateField(
-    path: NamePath<T> | NamePath<T>[],
-    latestValues: DeepReadonly<T>
-  ): Promise<ValidateResult<T>> {
-    const paths = Array.isArray(path) ? path : [path]
-    let allValid = true
-
-    for (const p of paths) {
-      const valid = await this.validateOne(p as NamePath<T>, latestValues)
-      if (!valid) allValid = false
-    }
-
-    return this.buildResult(allValid, latestValues)
-  }
-
-  /**
-   * 校验所有已注册规则的字段。
-   *
-   * 校验前清空所有错误，逐个校验后返回汇总结果。
-   *
-   * @param latestValues - 当前表单全量值
-   * @returns 校验结果
-   *
-   * @example
-   * ```typescript
-   * const result = await validator.validate(formValues)
-   * if (result.ok) submit(result.values)
-   * ```
-   */
-  async validate(latestValues: DeepReadonly<T>): Promise<ValidateResult<T>> {
-    this.state.errors.clear()
-
-    let allValid = true
-    for (const path of this.state.rules.keys()) {
-      const valid = await this.validateOne(path, latestValues)
-      if (!valid) allValid = false
-    }
-
-    return this.buildResult(allValid, latestValues)
-  }
-
-  /**
-   * 递归遍历 columns 提取规则（内部）。
-   *
-   * 跳过 dependency 类型，递归处理 group/nested 类型的子列。
-   *
-   * @param columns - 表单列配置数组
-   * @param parentPath - 父级路径前缀
-   */
-  private extractRules(columns: SchemaColumn<T>[], parentPath: string): void {
-    for (const column of columns) {
-      if (isDependencyColumn(column)) continue
-
-      if (isGroupColumn(column) || isNestedColumn(column)) {
-        this.extractRules(column.columns, "")
-        continue
-      }
-
-      const path = parentPath ? `${parentPath}.${column.name}` : column.name
-
-      let rules = column?.rules
-
-      if (column?.required || column?.rules === "required") {
-        rules = z
-          .string({ message: "此字段为必填项" })
-          .min(1, { message: "此字段为必填项" })
-      } else {
-        rules = column?.rules
-      }
-
-      if (rules) this.state.rules.set(path as NamePath<T>, rules)
-    }
-  }
-
-  /**
-   * 校验单个字段
-   *
-   * 通过 getByPath 从 latestValues 中取值，使用 Zod safeParseAsync 进行校验。
-   * 校验失败时将错误信息写入 state.errors，成功时清除对应错误。
-   *
-   * @param path - 字段路径
-   * @param latestValues - 当前表单全量值
-   * @returns 校验是否通过
-   */
-  private async validateOne(
-    path: NamePath<T>,
-    latestValues: DeepReadonly<T>
-  ): Promise<boolean> {
-    const schema = this.state.rules.get(path)
-    if (!schema) {
-      this.state.errors.delete(path)
-
-      return true
-    }
-
-    const value: Value = getByPath(latestValues, path as string)
-
-    try {
-      const result = await schema.safeParseAsync(value)
-
-      if (!result.success) {
-        this.state.errors.set(
-          path,
-          result.error.issues.map((issue) => issue.message)
-        )
-
-        return false
-      }
-
-      this.state.errors.delete(path)
-
-      return true
-    } catch (error) {
-      console.warn(`[Validator] 校验字段 "${String(path)}" 时发生错误:`, error)
-      this.state.errors.set(path, ["校验失败"])
-
-      return false
-    }
-  }
-
-  /**
-   * 根据校验结果构建 ValidateResult 返回值
-   *
-   * @param ok - 校验是否全部通过
-   * @param latestValues - 当前表单全量值
-   * @returns 统一的校验结果对象
-   */
-  private buildResult(ok: boolean, latestValues: DeepReadonly<T>): ValidateResult<T> {
-    if (ok) {
-      return { ok: true, values: latestValues }
-    }
-
-    return {
-      ok: false,
-      error: {
-        errors: Array.from(this.state.errors.entries()).map(([field, message]) => ({
-          field: String(field),
-          message,
-        })),
-        values: latestValues,
-      },
-    }
   }
 
   /**
@@ -328,6 +184,159 @@ export class Validator<T extends FormValues = FormValues> {
    */
   public setFieldError(path: NamePath<T>, errors: string[]): void {
     this.state.errors.set(path, errors)
+  }
+
+  /**
+   * 记录字段错误并返回失败结果。
+   *
+   * @param path - 字段路径
+   * @param messages - 错误信息数组
+   * @param latestValues - 当前表单全量值
+   * @returns 失败的校验结果
+   */
+  private failResult(
+    path: NamePath<T>,
+    messages: string[],
+    latestValues: DeepReadonly<T>
+  ): ValidateResult<T> {
+    this.state.errors.set(path, messages)
+    return {
+      ok: false,
+      error: {
+        errors: [{ field: String(path), message: messages }],
+        values: latestValues,
+      },
+    }
+  }
+
+  /**
+   * 校验单个字段。
+   *
+   * 通过 getByPath 从 latestValues 中取值。
+   * 若值为 undefined/null 且该字段配置了 defaultMessage，直接返回失败结果。
+   * 否则调用 `schema['~standard'].validate(value)` 进行校验。
+   *
+   * @param path - 字段路径
+   * @param latestValues - 当前表单全量值
+   * @returns 校验结果
+   */
+  private async validateSingleRule(
+    path: NamePath<T>,
+    latestValues: DeepReadonly<T>
+  ): Promise<ValidateResult<T>> {
+    const entry = this.state.rules.get(path)
+
+    if (!entry) {
+      this.state.errors.delete(path)
+      return { ok: true, values: latestValues }
+    }
+
+    const value: Value = getByPath(latestValues, path)
+
+    // 空值拦截：当值为 undefined/null 且配置了 defaultMessage 时，
+    // 直接返回该字段的默认错误提示，避免验证库报类型错误
+    if ((value === undefined || value === null) && entry.defaultMessage) {
+      return this.failResult(path, [entry.defaultMessage], latestValues)
+    }
+
+    try {
+      const result = await entry.schema["~standard"].validate(value)
+
+      if (result.issues) {
+        return this.failResult(
+          path,
+          result.issues.map((i) => i.message),
+          latestValues
+        )
+      }
+
+      this.state.errors.delete(path)
+      return { ok: true, values: latestValues }
+    } catch (error) {
+      console.warn(`[Validator] 校验字段 "${String(path)}" 时发生错误:`, error)
+      return this.failResult(path, ["校验失败"], latestValues)
+    }
+  }
+
+  /**
+   * 根据校验结果构建 ValidateResult 返回值。
+   *
+   * @param ok - 校验是否全部通过
+   * @param latestValues - 当前表单全量值
+   * @returns 统一的校验结果对象
+   */
+  private buildResult(ok: boolean, latestValues: DeepReadonly<T>): ValidateResult<T> {
+    if (ok) {
+      return { ok: true, values: latestValues }
+    }
+
+    return {
+      ok: false,
+      error: {
+        errors: Array.from(this.state.errors.entries()).map(([field, message]) => ({
+          field: String(field),
+          message,
+        })),
+        values: latestValues,
+      },
+    }
+  }
+
+  /**
+   * 校验指定字段。
+   *
+   * 支持传入单个路径或路径数组，逐个校验后返回汇总结果。
+   *
+   * @param path - 字段路径或路径数组
+   * @param latestValues - 当前表单全量值
+   * @returns 校验结果
+   *
+   * @example
+   * ```typescript
+   * const result = await validator.validateField('email', formValues)
+   * if (!result.ok) console.log(result.error.errors)
+   * ```
+   */
+  async validateField(
+    path: NamePath<T> | NamePath<T>[],
+    latestValues: DeepReadonly<T>
+  ): Promise<ValidateResult<T>> {
+    const paths = Array.isArray(path) ? path : [path]
+    let allValid = true
+
+    for (const p of paths) {
+      const result = await this.validateSingleRule(p as NamePath<T>, latestValues)
+      if (!result.ok) allValid = false
+    }
+
+    return this.buildResult(allValid, latestValues)
+  }
+
+  /**
+   * 校验所有已注册规则的字段。
+   *
+   * 校验前清空所有错误，逐个校验后返回汇总结果。
+   *
+   * @param latestValues - 当前表单全量值
+   * @returns 校验结果
+   *
+   * @example
+   * ```typescript
+   * const result = await validator.validate(formValues)
+   * if (result.ok) submit(result.values)
+   * ```
+   */
+  async validate(latestValues: DeepReadonly<T>): Promise<ValidateResult<T>> {
+    this.state.errors.clear()
+
+    let allValid = true
+
+    for (const path of this.state.rules.keys()) {
+      const result = await this.validateSingleRule(path, latestValues)
+      if (!result.ok) allValid = false
+    }
+
+    return this.buildResult(allValid, latestValues)
   }
 }
 

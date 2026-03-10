@@ -9,12 +9,21 @@
  * @module components/FormItem
  */
 
-import { computed, defineComponent, h, PropType, ref, watchEffect } from "vue"
+import {
+  computed,
+  defineComponent,
+  h,
+  onMounted,
+  PropType,
+  ref,
+  shallowRef,
+  watch,
+  watchEffect,
+} from "vue"
 
 import classnames from "classnames"
 import { omit } from "es-toolkit"
-import z from "zod"
-
+import { createRequiredSchema } from "../../core/standardSchema"
 import { useWatchFields } from "../../hooks"
 import { useField } from "../../hooks/useField"
 import { useFormContext } from "../../hooks/useFormContext"
@@ -32,12 +41,7 @@ import FormDependency from "../FormDependency"
 import FormGroup from "../FormGroup"
 import FormNested from "../FormNested"
 
-import type {
-  FormItemProps,
-  ProcessedFormItemProps,
-  SchemaBaseColumn,
-  SchemaColumn,
-} from "../../types"
+import type { FormItemProps, SchemaBaseColumn, SchemaColumn } from "../../types"
 
 const FormItem = defineComponent({
   name: "SchemaFormColumnRenderer",
@@ -81,9 +85,16 @@ const FormItem = defineComponent({
     const formContext = useFormContext()
     const baseColumn = props.column as SchemaBaseColumn
     const field = useField(baseColumn.name)
-    const dependencies = Array.isArray(baseColumn.dependencies)
-      ? baseColumn.dependencies
-      : [baseColumn.dependencies]
+
+    const dependencies = computed(() => {
+      if (Object.hasOwn(baseColumn, "dependencies")) {
+        return Array.isArray(baseColumn.dependencies)
+          ? baseColumn.dependencies
+          : [baseColumn.dependencies]
+      }
+
+      return []
+    })
 
     const resolvedReadonly = ref(false)
     const resolvedDisabled = ref(false)
@@ -96,7 +107,22 @@ const FormItem = defineComponent({
     // 稳定的 onChange 引用，避免每次渲染创建新函数导致子组件无限更新
     const trigger = baseColumn.validationTrigger ?? formContext.validationTrigger
 
-    const formItemProps = computed<Omit<ProcessedFormItemProps, "componentProps">>(() => {
+    /** 值变化处理，设置值后根据触发时机决定是否校验 */
+    const handleChange = (v: unknown) => {
+      field.setValue(v)
+      if (shouldValidateOn("change", trigger)) {
+        field.validate()
+      }
+    }
+
+    /** 失焦处理，根据触发时机决定是否校验 */
+    const handleBlur = () => {
+      if (shouldValidateOn("blur", trigger)) {
+        field.validate()
+      }
+    }
+
+    const formItemProps = computed<Omit<FormItemProps, "componentProps">>(() => {
       return {
         ...omit<FormItemProps>(baseColumn, ["componentProps"]),
         name: baseColumn.name,
@@ -109,8 +135,28 @@ const FormItem = defineComponent({
       }
     })
 
-    const processedComponentProps = computed(() => {
-      return {
+    /**
+     * 浅比较两个对象的自有属性值是否相同。
+     *
+     * 用于避免 computed 每次返回新对象引用导致子组件不必要的更新。
+     * 仅比较第一层属性，函数引用通过 === 判断。
+     *
+     * @param a - 旧对象
+     * @param b - 新对象
+     * @returns 两个对象浅相等时返回 true
+     */
+    const shallowEqual = (a: Record<string, any>, b: Record<string, any>): boolean => {
+      const keysA = Object.keys(a)
+      const keysB = Object.keys(b)
+      if (keysA.length !== keysB.length) return false
+      return keysA.every((key) => a[key] === b[key])
+    }
+
+    // 使用 shallowRef + watchEffect 避免每次生成新对象引用
+    const processedComponentProps = shallowRef<Record<string, any>>({})
+
+    watchEffect(() => {
+      const next: Record<string, any> = {
         ...resolvedComponentProps.value,
         required: resolvedRequired.value,
         readonly: resolvedReadonly.value,
@@ -121,11 +167,15 @@ const FormItem = defineComponent({
         onBlur: handleBlur,
         formItemProps: formItemProps.value,
       }
+
+      if (!shallowEqual(processedComponentProps.value, next)) {
+        processedComponentProps.value = next
+      }
     })
 
     // 解析所有的动态属性
     useWatchFields(
-      dependencies,
+      dependencies.value,
       (payload, prevSnapshot, latestSnapshot) => {
         resolveDynamicProp(
           baseColumn.placeholder,
@@ -161,55 +211,63 @@ const FormItem = defineComponent({
           }
         )
 
-        resolveDynamicPropByBoolean(baseColumn.required, latestSnapshot, false).then(
-          (data) => {
-            resolvedRequired.value = data
-          }
-        )
+        resolveDynamicPropByBoolean(
+          baseColumn.required,
+          latestSnapshot,
+          !!baseColumn.rules
+        ).then((data) => {
+          resolvedRequired.value = data
+        })
       },
       {
         immediate: true,
       }
     )
 
+    /**
+     * 提取规则配置并注册到字段。
+     *
+     * 当 rules 为 "required" 时使用 createRequiredSchema 构造必填规则，
+     * 同时将 placeholder 作为 defaultMessage 传给 registerRule，
+     * 用于空值拦截时的错误提示。
+     *
+     * @param baseColumn - 字段基础配置
+     */
+    const extractAndRegisterRules = (baseColumn: SchemaBaseColumn) => {
+      if (!Object.hasOwn(baseColumn, "rules")) return
+
+      const placeholder =
+        resolvedComponentProps.value?.placeholder ||
+        resolvedPlaceholder.value ||
+        `${baseColumn.label}为必填项`
+
+      if (baseColumn.rules === "required") {
+        field.registerRule(createRequiredSchema(placeholder), placeholder)
+      } else if (baseColumn.rules) {
+        field.registerRule(baseColumn.rules, placeholder)
+      }
+    }
+
     // 设置默认的必填rule
-    watchEffect(() => {
-      if (resolvedHidden.value) {
-        field.clearError()
-        field.unregisterRule()
-      } else {
-        let rules = baseColumn?.rules
-
-        if (baseColumn?.required || baseColumn?.rules === "required") {
-          const placeholder = resolvedComponentProps.value?.placeholder
-            ? resolvedComponentProps.value?.placeholder
-            : resolvedPlaceholder.value
-
-          rules = z
-            .string({ message: placeholder as string })
-            .min(1, { message: placeholder as string })
+    watch(
+      resolvedHidden,
+      () => {
+        if (resolvedHidden.value) {
+          field.clearError()
+          field.unregisterRule()
         } else {
-          rules = baseColumn?.rules
+          extractAndRegisterRules(baseColumn)
         }
+      },
+      { immediate: true }
+    )
 
-        if (rules) field.registerRule(rules)
+    onMounted(() => {
+      if (Object.hasOwn(baseColumn, "initialValue")) {
+        field.setInitialValue(baseColumn.initialValue)
+        field.setValue(baseColumn.initialValue)
       }
     })
-
-    /** 值变化处理，设置值后根据触发时机决定是否校验 */
-    const handleChange = (v: unknown) => {
-      field.setValue(v)
-      if (shouldValidateOn("change", trigger)) {
-        field.validate()
-      }
-    }
-
-    /** 失焦处理，根据触发时机决定是否校验 */
-    const handleBlur = () => {
-      if (shouldValidateOn("blur", trigger)) {
-        field.validate()
-      }
-    }
 
     return () => {
       if (resolvedHidden.value) {

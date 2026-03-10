@@ -17,7 +17,11 @@ export interface RegistryOptions {
   override?: boolean
 }
 
-/** 渲染器映射类型 */
+/**
+ * 渲染器组件映射类型。
+ *
+ * key 为渲染器类型字符串，value 为对应的 Vue 组件。
+ */
 export type RendererMap = Record<string, Component>
 
 /**

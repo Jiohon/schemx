@@ -1,0 +1,9 @@
+.schema-form-number-renderer {
+  padding: 0;
+
+  .van-field__value {
+    .van-field__body {
+      flex: 1;
+    }
+  }
+}

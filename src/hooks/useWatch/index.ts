@@ -3,28 +3,36 @@
  *
  * 在组件内使用，自动通过 `useFormInstance` 获取 formContext，
  * 并在 `onUnmounted` 时自动取消订阅，无需手动管理生命周期。
- * 纯函数版本请使用 `@/utils/createWatch`。
+ * 纯函数版本请使用 `createWatch` 系列函数。
+ *
+ * 提供三种监听模式：
+ * - 全局监听：`useWatch(callback, options?)` — 监听表单中任意字段变化
+ * - 单字段监听：`useWatch(name, callback, options?)` — 监听指定字段变化
+ * - 多字段监听：`useWatch(names, callback, options?)` — 监听一组字段变化
+ *
+ * 同时提供语义化的便捷方法：
+ * - {@link useWatchField} — 单字段监听
+ * - {@link useWatchFields} — 多字段监听
+ * - {@link useWatchAll} — 全局监听
  *
  * @module hooks/useWatch
  *
  * @example
  * ```ts
- * import { useWatch, useWatchField, useWatchFields, useWatchAll } from '@/hooks/useWatch'
- *
- * // 监听单个字段
+ * // 全局监听
  * useWatch((payload, prev, latest) => {
- *   console.log(`${payload.path}: ${payload.prevValue} -> ${payload.value}`)
- * }, 'username')
- *
- * // 监听多个字段
- * useWatch((payload, prev, latest) => {
- *   console.log('changed:', payload.changedValues)
- * }, ['firstName', 'lastName'])
- *
- * // 监听所有字段
- * useWatch((payload, prev, latest) => {
- *   console.log('form changed:', payload.changedPaths)
+ *   console.log('changed paths:', payload.changedPaths)
  * })
+ *
+ * // 单字段监听
+ * useWatch('username', (payload, prev, latest) => {
+ *   console.log('username changed:', payload.value)
+ * }, { immediate: true })
+ *
+ * // 多字段监听
+ * useWatch(['firstName', 'lastName'], (payload, prev, latest) => {
+ *   console.log('name changed:', payload.changedValues)
+ * }, { inequality: true })
  * ```
  */
 
@@ -32,7 +40,7 @@ import { onUnmounted } from "vue"
 
 import type { NamePath } from "@/types"
 
-import { useFormInstance } from "../useFormContext"
+import { useFormInstance } from "../useForm"
 
 import {
   createWatchAll,
@@ -48,70 +56,72 @@ import {
 export type { SingleFieldCallback, MultiFieldCallback, GlobalCallback, UseWatchOptions }
 
 /**
- * 监听字段变化（Vue 组合式 API）
+ * 监听所有字段变化
  *
- * 支持三种使用方式，根据参数自动推断监听模式：
- *
- * 1. 监听单个字段：`useWatch(callback, 'name', options?)`
- * 2. 监听多个字段：`useWatch(callback, ['name', 'age'], options?)`
- * 3. 监听所有字段：`useWatch(callback, options?)`
- *
- * 自动绑定当前组件的 formContext（通过 `useFormInstance`），
- * 并在组件卸载时自动取消订阅。
- *
- * @param callback - 变化回调，签名取决于监听模式：
- *   - 单字段：`(payload: { path, value, prevValue }, prevSnapshot, latestSnapshot) => void`
- *   - 多字段：`(payload: { changedValues, prevValues }, prevSnapshot, latestSnapshot) => void`
- *   - 全局：`(payload: { changedPaths, changedValues, prevValues }, prevSnapshot, latestSnapshot) => void`
- * @param nameOrNames - 监听的字段名或字段名数组，不传则监听所有字段
- * @param options - 可选配置
- *   - `immediate` - 是否立即执行一次回调（默认 `false`）
- *   - `inequality` - 是否在新旧值相等时跳过回调（默认 `false`）
- * @returns 取消订阅函数（通常无需手动调用，组件卸载时自动取消）
+ * @param callback - 全局变化回调
+ * @param options - 监听选项
+ * @returns 取消订阅函数
  *
  * @example
  * ```ts
- * // 监听单个字段
- * useWatch(
- *   (payload, prevSnapshot, latestSnapshot) => {
- *     console.log('new:', payload.value, 'old:', payload.prevValue)
- *   },
- *   'username'
- * )
- *
- * // 监听多个字段
- * useWatch(
- *   (payload, prevSnapshot, latestSnapshot) => {
- *     console.log('changed values:', payload.changedValues)
- *   },
- *   ['firstName', 'lastName']
- * )
- *
- * // 监听所有字段
- * useWatch(
- *   (payload, prevSnapshot, latestSnapshot) => {
- *     console.log('form changed:', payload.changedPaths)
- *   }
- * )
- *
- * // 立即执行 + 值相等时跳过
- * useWatch(callback, 'name', { immediate: true, inequality: true })
+ * useWatch((payload, prev, latest) => {
+ *   console.log('form changed:', payload.changedPaths)
+ * })
  * ```
  */
 export function useWatch(callback: GlobalCallback, options?: UseWatchOptions): () => void
+/**
+ * 监听单个字段变化
+ *
+ * @param name - 字段路径
+ * @param callback - 单字段变化回调
+ * @param options - 监听选项
+ * @returns 取消订阅函数
+ *
+ * @example
+ * ```ts
+ * useWatch('name', (payload, prev, latest) => {
+ *   console.log('name changed:', payload.value)
+ * }, { immediate: true })
+ * ```
+ */
 export function useWatch(
-  callback: SingleFieldCallback,
   name: NamePath,
+  callback: SingleFieldCallback,
   options?: UseWatchOptions
 ): () => void
+/**
+ * 监听多个字段变化
+ *
+ * @param names - 字段路径数组
+ * @param callback - 多字段变化回调
+ * @param options - 监听选项
+ *
+ * @returns 取消订阅函数
+ *
+ * @example
+ * ```ts
+ * useWatch(['firstName', 'lastName'], (payload, prev, latest) => {
+ *   console.log('changed:', payload.changedValues)
+ * }, { inequality: true })
+ * ```
+ */
 export function useWatch(
-  callback: MultiFieldCallback,
   names: NamePath[],
+  callback: MultiFieldCallback,
   options?: UseWatchOptions
 ): () => void
+/**
+ * useWatch 实现 — 根据第一个参数类型分发到对应的 createWatch 函数
+ *
+ * @param nameOrNamesOrCallback - 字段路径、字段路径数组或全局回调
+ * @param callbackOrOptions - 回调函数或全局监听时的选项
+ * @param maybeOptions - 单字段/多字段监听时的选项
+ * @returns 取消订阅函数
+ */
 export function useWatch(
-  callback: SingleFieldCallback | MultiFieldCallback | GlobalCallback,
-  nameOrNamesOrOptions?: NamePath | NamePath[] | UseWatchOptions,
+  nameOrNamesOrCallback: NamePath | NamePath[] | GlobalCallback,
+  callbackOrOptions?: SingleFieldCallback | MultiFieldCallback | UseWatchOptions,
   maybeOptions?: UseWatchOptions
 ): () => void {
   const form = useFormInstance()
@@ -119,31 +129,31 @@ export function useWatch(
   let unsubscribe: () => void
 
   // 全局监听：useWatch(callback, options?)
-  if (
-    nameOrNamesOrOptions === undefined ||
-    (typeof nameOrNamesOrOptions === "object" && !Array.isArray(nameOrNamesOrOptions))
-  ) {
+  if (typeof nameOrNamesOrCallback === "function") {
     unsubscribe = createWatchAll(
       form,
-      callback as GlobalCallback,
-      (nameOrNamesOrOptions as UseWatchOptions) || {}
+      nameOrNamesOrCallback as GlobalCallback,
+      (callbackOrOptions as UseWatchOptions) || {}
     )
   }
-  // 单字段监听：useWatch(callback, 'name', options?)
-  else if (typeof nameOrNamesOrOptions === "string") {
+  // 单字段监听：useWatch(name, callback, options?)
+  else if (
+    typeof nameOrNamesOrCallback === "string" ||
+    typeof nameOrNamesOrCallback === "number"
+  ) {
     unsubscribe = createWatchField(
       form,
-      nameOrNamesOrOptions,
-      callback as SingleFieldCallback,
+      nameOrNamesOrCallback,
+      callbackOrOptions as SingleFieldCallback,
       maybeOptions || {}
     )
   }
-  // 多字段监听：useWatch(callback, ['name', 'age'], options?)
+  // 多字段监听：useWatch(names, callback, options?)
   else {
     unsubscribe = createWatchFields(
       form,
-      nameOrNamesOrOptions,
-      callback as MultiFieldCallback,
+      nameOrNamesOrCallback as NamePath[],
+      callbackOrOptions as MultiFieldCallback,
       maybeOptions || {}
     )
   }
@@ -156,7 +166,7 @@ export function useWatch(
 /**
  * 监听单个字段变化的便捷方法
  *
- * 等价于 `useWatch(callback, name, options)`，参数顺序更符合「先指定目标，再传回调」的直觉。
+ * 等价于 `useWatch(name, callback, options)`，语义更明确。
  * 自动绑定 formContext 并在组件卸载时取消订阅。
  *
  * @param name - 要监听的字段路径，如 `'username'` 或 `'user.address.city'`
@@ -187,13 +197,13 @@ export function useWatchField(
   callback: SingleFieldCallback,
   options?: UseWatchOptions
 ): () => void {
-  return useWatch(callback, name, options)
+  return useWatch(name, callback, options)
 }
 
 /**
  * 监听多个字段变化的便捷方法
  *
- * 等价于 `useWatch(callback, names, options)`，参数顺序更符合「先指定目标，再传回调」的直觉。
+ * 等价于 `useWatch(names, callback, options)`，语义更明确。
  * 当任一指定字段发生变化时触发回调，自动绑定 formContext 并在组件卸载时取消订阅。
  *
  * @param names - 要监听的字段路径数组，如 `['firstName', 'lastName']`
@@ -224,13 +234,14 @@ export function useWatchFields(
   callback: MultiFieldCallback,
   options?: UseWatchOptions
 ): () => void {
-  return useWatch(callback, names, options)
+  return useWatch(names, callback, options)
 }
 
 /**
  * 监听所有字段变化的便捷方法
  *
- * 等价于 `useWatch(callback, options)`。当表单中任意字段发生变化时触发回调，
+ * 等价于 `useWatch(callback, options)`，语义更明确。
+ * 当表单中任意字段发生变化时触发回调，
  * 适用于全局感知表单变化的场景（如自动保存、脏检测）。
  * 自动绑定 formContext 并在组件卸载时取消订阅。
  *

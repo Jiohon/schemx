@@ -15,10 +15,11 @@ import type {
   FormValues,
   NamePath,
   ValidationTrigger,
+  Value,
 } from "./base"
 import type { SchemaFormInstance } from "./instance"
-import type { RendererPropsMap } from "./renderer"
-import type { ZodType } from "zod"
+import type { CustomRendererMap } from "./renderer"
+import type { StandardSchemaV1 } from "../core/standardSchema"
 
 /**
  * 基础字段配置
@@ -30,47 +31,158 @@ import type { ZodType } from "zod"
  */
 export interface SchemaBaseColumn<
   T extends FormValues = FormValues,
-  K extends keyof RendererPropsMap = keyof RendererPropsMap,
+  K extends keyof CustomRendererMap = keyof CustomRendererMap,
 > {
-  /** 字段名（支持嵌套路径如 'user.name'） */
+  /**
+   * 字段名称
+   *
+   * 支持嵌套路径语法，如 `'user.name'`、`['user', 'address', 'city']`。
+   * 用于在 FormStore 中定位字段值的存取路径。
+   */
   name: NamePath<T>
-  /** 字段标签 */
+
+  /**
+   * 字段标签文本
+   *
+   * 显示在表单项左侧的描述文字，不设置时不渲染 label 区域。
+   */
   label?: string
-  /** 组件类型 */
+
+  /**
+   * 渲染组件类型
+   *
+   * 对应 CustomRendererMap 中注册的组件键名，
+   * 用于从 rendererRegistry 中查找并渲染对应的表单控件。
+   */
   componentType: K
-  /** 所依赖的字段，值变化后触发动态属性重新计算 */
+
+  /**
+   * 依赖的字段路径
+   *
+   * 当指定字段的值发生变化时，会触发当前字段的动态属性
+   * （如 `componentProps`、`hidden`、`disabled` 等）重新计算。
+   */
   dependencies?: NamePath<T>
-  /** 组件属性（根据 componentType 自动收窄类型，支持函数形式） */
-  componentProps?: DynamicProp<RendererPropsMap[K]>
-  /** 占位符（支持函数形式） */
+
+  /**
+   * 传递给渲染组件的属性
+   *
+   * 类型根据 `componentType` 自动收窄为对应组件的 Props 类型。
+   * 支持函数形式 `(values) => props`，在依赖字段变化时动态计算。
+   */
+  componentProps?: DynamicProp<CustomRendererMap[K]>
+
+  /**
+   * 占位提示文本
+   *
+   * 支持函数形式 `(values) => string`，在依赖字段变化时动态计算。
+   */
   placeholder?: DynamicProp<string>
-  /** 是否必填（支持函数形式） */
+
+  /**
+   * 是否必填
+   *
+   * 控制必填标记（红色星号）的显示。
+   * 若未设置，会根据 `rules` 中的校验规则自动推断。
+   * 支持函数形式 `(values) => boolean`，在依赖字段变化时动态计算。
+   */
   required?: DynamicProp<boolean>
-  /** 是否只读（支持函数形式） */
+
+  /**
+   * 是否只读
+   *
+   * 只读状态下字段可见但不可编辑。
+   * 未设置时继承 FormContext 的全局 `readonly` 配置。
+   * 支持函数形式 `(values) => boolean`，在依赖字段变化时动态计算。
+   */
   readonly?: DynamicProp<boolean>
-  /** 是否禁用（支持函数形式） */
+
+  /**
+   * 是否禁用
+   *
+   * 禁用状态下字段不可交互。
+   * 未设置时继承 FormContext 的全局 `disabled` 配置。
+   * 支持函数形式 `(values) => boolean`，在依赖字段变化时动态计算。
+   */
   disabled?: DynamicProp<boolean>
-  /** 是否隐藏（支持函数形式） */
+
+  /**
+   * 是否隐藏
+   *
+   * 隐藏时字段不渲染，同时会清除校验规则和错误信息。
+   * 支持函数形式 `(values) => boolean`，在依赖字段变化时动态计算。
+   */
   hidden?: DynamicProp<boolean>
-  /** 初始值 */
-  initialValue?: FormValues
-  /** 校验规则（Zod schema 或快捷方式） */
-  rules?: ZodType | CustomRules
-  /** 自定义类名 */
+
+  /**
+   * 字段初始值
+   *
+   * 组件挂载时写入 FormStore，同时作为 `reset()` 的还原目标。
+   */
+  initialValue?: Value
+
+  /**
+   * 校验规则
+   *
+   * 支持 StandardSchemaV1 实例（如 Zod、Valibot 等实现了 Standard Schema 接口的验证库）
+   * 或内置快捷方式（如 `"required"`）。
+   * 校验在 `submit` 或触发时机（`validationTrigger`）到达时执行。
+   */
+  rules?: StandardSchemaV1 | CustomRules
+
+  /**
+   * 自定义 CSS 类名
+   *
+   * 追加到表单项容器元素上，与内置类名合并。
+   */
   className?: string
-  /** 标签图标 */
+
+  /**
+   * 标签图标
+   *
+   * 显示在 label 文本旁的图标标识。
+   */
   labelIcon?: string
-  /** 表单 label 排列方向 */
+
+  /**
+   * 标签对齐方式
+   *
+   * 未设置时继承 FormContext 的全局 `labelAlign` 配置。
+   */
   labelAlign?: "left" | "right" | "top"
-  /** 表单 label 宽度 */
+
+  /**
+   * 标签宽度
+   *
+   * 未设置时继承 FormContext 的全局 `labelWidth` 配置。
+   */
   labelWidth?: string
-  /** 内容对齐方式 */
+
+  /**
+   * 内容区域对齐方式
+   */
   contentAlign?: "left" | "center" | "right"
-  /** 验证触发时机 */
+
+  /**
+   * 校验触发时机
+   *
+   * 支持单个或多个触发时机组合，如 `'change'`、`'blur'`、`['change', 'blur']`。
+   * 未设置时继承 FormContext 的全局 `validationTrigger` 配置。
+   */
   validationTrigger?: ValidationTrigger | ValidationTrigger[]
-  /** 是否在 label 后面添加冒号 */
+
+  /**
+   * 是否在标签后显示冒号
+   *
+   * 未设置时继承 FormContext 的全局 `colon` 配置。
+   */
   colon?: boolean
-  /** 自定义样式 */
+
+  /**
+   * 自定义内联样式
+   *
+   * 应用到表单项容器元素上。
+   */
   style?: CSSProperties
 }
 
@@ -136,8 +248,8 @@ export interface SchemaDependencyColumn<T extends FormValues = FormValues> {
  * @typeParam T - 表单值类型
  */
 export type SchemaBaseColumnUnion<T extends FormValues = FormValues> = {
-  [K in keyof RendererPropsMap]: SchemaBaseColumn<T, K>
-}[keyof RendererPropsMap]
+  [K in keyof CustomRendererMap]: SchemaBaseColumn<T, K>
+}[keyof CustomRendererMap]
 
 /**
  * 字段配置联合类型
@@ -151,52 +263,3 @@ export type SchemaColumn<T extends FormValues = FormValues> =
   | SchemaNestedColumn<T>
   | SchemaGroupColumn<T>
   | SchemaDependencyColumn<T>
-
-/**
- * 规范化后的基础字段配置
- *
- * SchemaParser 解析后的结果，包含完整路径和原始配置引用。
- */
-export interface NormalizedSchemaBaseColumn extends SchemaBaseColumn {
-  /** 完整路径（由 SchemaParser 生成） */
-  path: string
-  /** 原始配置引用 */
-  _raw: SchemaBaseColumn
-}
-
-/**
- * 规范化后的嵌套字段配置
- */
-export interface NormalizedSchemaNestedColumn extends SchemaNestedColumn {
-  /** 完整路径（由 SchemaParser 生成） */
-  path: string
-  /** 原始配置引用 */
-  _raw: SchemaGroupColumn
-}
-
-/**
- * 规范化后的分组字段配置
- */
-export interface NormalizedSchemaGroupColumn extends SchemaGroupColumn {
-  /** 完整路径（由 SchemaParser 生成） */
-  path: string
-  /** 原始配置引用 */
-  _raw: SchemaGroupColumn
-}
-
-/**
- * 规范化后的依赖字段配置
- */
-export interface NormalizedSchemaDependencyColumn extends SchemaDependencyColumn {
-  /** 原始配置引用 */
-  _raw: SchemaDependencyColumn
-}
-
-/**
- * 规范化后的字段配置联合类型
- */
-export type NormalizedSchemaColumn =
-  | NormalizedSchemaBaseColumn
-  | NormalizedSchemaNestedColumn
-  | NormalizedSchemaGroupColumn
-  | NormalizedSchemaDependencyColumn

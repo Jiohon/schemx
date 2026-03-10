@@ -8,7 +8,7 @@ import type {
   GlobalSubscribeCallback,
 } from "../core/subscriber"
 import type { ValidateResult } from "../core/validator"
-import type { ZodType } from "zod"
+import type { StandardSchemaV1 } from "../core/standardSchema"
 
 /**
  * 表单实例接口
@@ -97,31 +97,52 @@ export interface SchemaFormInstance<T extends FormValues = FormValues> {
   getFieldsSnapshot: () => T
 
   /**
-   * 获取字段初始值
+   * 获取表单初始值。
    *
-   * @param name - 字段路径
-   * @returns 字段初始值
+   * 不传参返回全量初始值的深拷贝，传入路径返回指定字段的初始值。
+   *
+   * @param path - 可选，字段路径
+   * @returns 全量初始值或指定字段的初始值
    *
    * @example
    * ```typescript
-   * const initialName = form.getInitialValue('name')
+   * form.getInitialValues()         // => { name: 'John', age: 25 }
+   * form.getInitialValues(['name']) // => { name: 'John' }
    * ```
    */
-  getInitialValue: (name: NamePath<T>) => Value
+  getInitialValues: (path?: NamePath<T>[]) => T | Partial<T>
+
+  /**
+   * 批量设置多个字段的初始值。
+   *
+   * @param values - 要设置的字段值对象
+   *
+   * @example
+   * ```typescript
+   * form.setInitialValues({ name: 'Bob', age: 30 })
+   * ```
+   */
+  setInitialValues: (values: Partial<T>) => void
 
   /**
    * 注册字段校验规则
    *
    * @param name - 字段路径
-   * @param rules - Zod schema 规则
+   * @param rules - StandardSchemaV1 校验规则
+   * @param defaultMessage - 可选，空值时的默认错误提示
    *
    * @example
    * ```typescript
    * import { z } from 'zod'
    * form.registerRule('email', z.string().email('邮箱格式错误'))
+   * form.registerRule('name', nameSchema, '请输入姓名')
    * ```
    */
-  registerRule: (name: NamePath<T>, rules: ZodType) => void
+  registerRule: (
+    name: NamePath<T>,
+    rules: StandardSchemaV1,
+    defaultMessage?: string
+  ) => void
 
   /**
    * 注销字段校验规则

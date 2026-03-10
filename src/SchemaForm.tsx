@@ -142,34 +142,31 @@ const SchemaForm = defineComponent<SchemaFormProps>({
      * 获取或创建表单实例
      *
      * 优先使用外部传入的 form，否则内部通过 useForm 创建。
+     * 必须在 setup 同步阶段调用，确保 provide 正确注入。
      */
-    const form = computed(() => {
-      if (props.form) {
-        return props.form
-      }
+    const form = props.form
+      ? props.form
+      : useForm({
+          columns: props.columns,
+          initialValues: props.initialValues,
 
-      return useForm({
-        columns: props.columns,
-        initialValues: props.initialValues,
-
-        onFinish: async (values) => {
-          submitting.value = true
-          try {
-            props.onFinish?.(values)
-          } finally {
-            submitting.value = false
-          }
-        },
-        onFinishFailed: async (errors) => {
-          props.onFinishFailed?.(errors)
-        },
-        onValuesChange: (changedValues, latestValues) => {
-          emit("update:modelValue", latestValues)
-          props.onValuesChange?.(changedValues, latestValues)
-          props.onFieldsChange?.(Object.keys(changedValues), Object.keys(latestValues))
-        },
-      })
-    })
+          onFinish: async (values) => {
+            submitting.value = true
+            try {
+              props.onFinish?.(values)
+            } finally {
+              submitting.value = false
+            }
+          },
+          onFinishFailed: async (errors) => {
+            props.onFinishFailed?.(errors)
+          },
+          onValuesChange: (changedValues, latestValues) => {
+            emit("update:modelValue", latestValues)
+            props.onValuesChange?.(changedValues, latestValues)
+            props.onFieldsChange?.(Object.keys(changedValues), Object.keys(latestValues))
+          },
+        })
 
     if (!props.rendererRegistry) {
       createRenderer(globalRegistry)
@@ -189,7 +186,7 @@ const SchemaForm = defineComponent<SchemaFormProps>({
     })
 
     expose({
-      ...form.value,
+      ...form,
     })
 
     return () => (
@@ -239,7 +236,7 @@ const SchemaForm = defineComponent<SchemaFormProps>({
                 type="primary"
                 loading={submitting.value}
                 disabled={props.disabled}
-                onClick={() => form.value.submit()}
+                onClick={() => form.submit()}
                 {...props.submitButtonProps}
               >
                 {props.submitButtonText}

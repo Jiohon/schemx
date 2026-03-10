@@ -16,14 +16,7 @@ export type {
 } from "./base"
 
 /** 渲染器类型 */
-export type {
-  CustomRendererTypes,
-  RendererType,
-  CustomRendererPropsMap,
-  RendererPropsMap,
-  RendererMap,
-  RendererContext,
-} from "./renderer"
+export type { RendererType, CustomRendererMap } from "./renderer"
 
 /** Schema 列配置类型 */
 export type {
@@ -33,21 +26,13 @@ export type {
   SchemaDependencyColumn,
   SchemaBaseColumnUnion,
   SchemaColumn,
-  NormalizedSchemaBaseColumn,
-  NormalizedSchemaNestedColumn,
-  NormalizedSchemaGroupColumn,
-  NormalizedSchemaDependencyColumn,
-  NormalizedSchemaColumn,
 } from "./schema"
 
 /** 表单组件 Props 类型 */
 export type {
   ComponentsProps,
   ColumnComponentsProps,
-  ProcessedColumnComponentsProps,
   FormItemProps,
-  ProcessedFormItemProps,
-  ProcessedColumnConfig,
   SchemaFormProps,
   GlobalContext,
 } from "./form"

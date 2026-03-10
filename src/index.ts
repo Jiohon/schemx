@@ -1,10 +1,10 @@
 /**
  * SchemaForm 统一导出入口
  *
- * @module @Jonhn/vschema-form
+ * @module @Jonhn/schema-form
  */
 
-import "./styles/index.scss"
+import "./styles/index.css"
 
 /** 默认导出 */
 export { default } from "./SchemaForm"
@@ -30,7 +30,6 @@ export {
   createWatchFields,
   createWatchAll,
   type CreateWatchReturn,
-  getInitialValuesFromColumns,
   resolveDynamicProp,
   resolveDynamicPropByBoolean,
   isBaseColumn,
@@ -46,9 +45,7 @@ export type { SchemaFormInstallOptions } from "./SchemaForm"
 export type {
   FormValues,
   SchemaFormInstance,
-  CustomRendererTypes,
-  CustomRendererPropsMap,
-  RendererPropsMap,
+  CustomRendererMap,
   RendererType,
   ValidationTrigger,
   DynamicProp,

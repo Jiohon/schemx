@@ -12,11 +12,12 @@ import type { DeepReadonly } from "vue"
 
 import type { FormValues, NamePath, Value } from "@/types"
 
-import { useFormInstance } from "../useFormContext"
+import { useFormInstance } from "../useForm"
 
 import type { FieldSubscribeCallback } from "../../core/subscriber"
 import type { ValidateResult } from "../../core/validator"
-import type { ZodType } from "zod"
+import type { StandardSchemaV1 } from "../../core/standardSchema"
+import { getByPath, setByPath } from "@/utils"
 
 /**
  * useField 选项
@@ -139,7 +140,27 @@ export const useField = (name: NamePath, options: UseFieldOptions = {}) => {
    * const initial = field.getInitialValue() // => ''
    * ```
    */
-  const getInitialValue = () => form?.getInitialValue(name)
+  const getInitialValue = () => {
+    return getByPath(form?.getInitialValues([name]), name)
+  }
+
+  /**
+   * 获取字段初始值
+   *
+   * @returns 字段初始值
+   *
+   * @example
+   * ```typescript
+   * field.setInitialValue('initial value')
+   * ```
+   */
+  const setInitialValue = (value: Value) => {
+    const result = {}
+
+    setByPath(result, name, value)
+
+    form?.setInitialValues(result)
+  }
 
   /**
    * 获取表单全量值
@@ -151,7 +172,20 @@ export const useField = (name: NamePath, options: UseFieldOptions = {}) => {
    * const all = field.getValues() // => { username: 'a', email: 'b' }
    * ```
    */
-  const getValues = () => form?.getFieldsValue() as DeepReadonly<FormValues>
+  const getValues = () => form?.getFieldsValue()
+
+  /**
+   * 获取表单全量值
+   *
+   * @returns 所有字段的原始值，调用toRaw返回
+   * @see https://vuejs.org/api/reactivity-advanced.html#toraw
+   *
+   * @example
+   * ```typescript
+   * const all = field.getSnapshot() // => { username: 'a', email: 'b' }
+   * ```
+   */
+  const getSnapshot = () => form?.getFieldsSnapshot()
 
   /**
    * 校验当前字段
@@ -213,15 +247,17 @@ export const useField = (name: NamePath, options: UseFieldOptions = {}) => {
   /**
    * 注册校验规则
    *
-   * @param rules - Zod schema 规则
+   * @param rules - StandardSchemaV1 校验规则
+   * @param defaultMessage - 可选，空值时的默认错误提示
    *
    * @example
    * ```typescript
-   * field.registerRules(z.string().min(3, '最少3个字符'))
+   * field.registerRule(z.string().min(3, '最少3个字符'))
+   * field.registerRule(z.string().min(1), '请输入用户名')
    * ```
    */
-  const registerRule = (rules: ZodType): void => {
-    form?.registerRule(name, rules)
+  const registerRule = (rules: StandardSchemaV1, defaultMessage?: string): void => {
+    form?.registerRule(name, rules, defaultMessage)
   }
 
   /**
@@ -288,7 +324,9 @@ export const useField = (name: NamePath, options: UseFieldOptions = {}) => {
     getValue,
     setValue,
     getInitialValue,
+    setInitialValue,
     getValues,
+    getSnapshot,
     // 校验
     validate,
     getError,

@@ -11,7 +11,7 @@ import { onMounted, Ref, ref, watch } from "vue"
 
 import { SchemaFormInstance } from "@/types/instance"
 
-import { useFormInstance } from "../useFormContext"
+import { useFormInstance } from "../useForm"
 import { useRequester } from "../useRequester"
 
 /**

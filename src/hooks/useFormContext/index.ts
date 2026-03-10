@@ -3,17 +3,14 @@
  *
  * 提供表单上下文的创建与消费能力。
  * SchemaForm 通过 createFormContext 注入全局配置，
- * 子组件通过 useFormContext / useFormInstance 获取。
+ * 子组件通过 useFormContext 获取。
  *
  * @module hooks/useFormContext
  */
 
 import { inject, provide } from "vue"
 
-import { SchemaFormInstance } from "../../types/instance"
-import { FORM_INSTANCE_KEY } from "../useForm"
-
-import type { FormValues, SchemaFormProps } from "../../types"
+import type { SchemaFormProps } from "../../types"
 
 /** FormContext 注入 key */
 export const FORM_CONTEXT_KEY = Symbol("FormContext")
@@ -84,33 +81,4 @@ export function useFormContext(): FormContextProps {
   }
 
   return context
-}
-
-/**
- * 获取表单实例
- *
- * 在子组件中获取 useForm 创建的 SchemaFormInstance，
- * 可用于读写字段值、校验、订阅等操作。
- *
- * @typeParam T - 表单值类型
- * @returns 表单实例
- *
- * @throws Error 如果不在 SchemaForm 提供的上下文中调用
- *
- * @example
- * ```ts
- * const form = useFormInstance()
- * form.setFieldValue('name', 'hello')
- * ```
- */
-export function useFormInstance<
-  T extends FormValues = FormValues,
->(): SchemaFormInstance<T> {
-  const instance = inject<SchemaFormInstance<T>>(FORM_INSTANCE_KEY)
-
-  if (!instance) {
-    throw new Error("useFormInstance must be used within a Form")
-  }
-
-  return instance
 }

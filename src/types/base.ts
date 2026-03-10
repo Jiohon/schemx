@@ -8,15 +8,6 @@
 
 import type { DeepNamePath } from "./namePathType"
 
-/**
- * 将对象中所有 DynamicProp 类型解析为其静态值类型
- *
- * @typeParam T - 包含 DynamicProp 属性的对象类型
- */
-export type ResolveDynamic<T> = {
-  [K in keyof T]: T[K] extends DynamicProp<infer U> ? U : T[K]
-}
-
 /** 字段值类型 */
 export type Value = any
 
@@ -62,6 +53,15 @@ export type ValidationTrigger =
  * ```
  */
 export type DynamicProp<T> = ((values: FormValues) => T | Promise<T>) | T
+
+/**
+ * 将对象中所有 DynamicProp 类型解析为其静态值类型
+ *
+ * @typeParam T - 包含 DynamicProp 属性的对象类型
+ */
+export type ResolveDynamic<T> = {
+  [K in keyof T]: T[K] extends DynamicProp<infer U> ? U : T[K]
+}
 
 /** 自定义校验规则快捷方式 */
 export type CustomRules = "required"

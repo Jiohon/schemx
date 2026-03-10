@@ -42,11 +42,4 @@ export default defineConfig({
     sourcemap: true,
     minify: "terser",
   },
-  css: {
-    preprocessorOptions: {
-      scss: {
-        additionalData: `@import "./src/styles/variables.scss";`,
-      },
-    },
-  },
 })

@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
+    "target": "ES2022",
     "module": "ESNext",
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "moduleResolution": "bundler",
     "strict": true,
     "jsx": "preserve",
@@ -16,9 +16,9 @@
     "paths": {
       "@/*": ["src/*"],
       "@": ["src"],
-      "@Jonhn/vschema-form": ["./src/index.ts"],
-      "@Jonhn/vschema-form/es/*": ["src/*"],
-      "@Jonhn/vschema-form/lib/*": ["src/*"]
+      "@Jonhn/schema-form": ["./src/index.ts"],
+      "@Jonhn/schema-form/es/*": ["src/*"],
+      "@Jonhn/schema-form/lib/*": ["src/*"]
     },
     "resolveJsonModule": true,
     "esModuleInterop": true,

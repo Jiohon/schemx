@@ -10,7 +10,6 @@ import type { CSSProperties, DeepReadonly } from "vue"
 
 import type { CustomRules, DynamicProp, FormValues, ValidationTrigger } from "./base"
 import type { SchemaFormInstance } from "./instance"
-import type { RendererPropsMap } from "./renderer"
 import type { SchemaBaseColumn, SchemaColumn, SchemaDependencyColumn } from "./schema"
 import type { ValidateError } from "../core/validator"
 import type { Registry } from "../core/registry"
@@ -37,40 +36,9 @@ export interface ColumnComponentsProps extends ComponentsProps {
 }
 
 /**
- * 动态属性已解析为静态值的组件 Props
- */
-export interface ProcessedColumnComponentsProps extends ColumnComponentsProps {
-  /** 占位符（已解析为静态值） */
-  placeholder?: string
-}
-
-/**
  * FormItem 组件 Props
  */
-export type FormItemProps = Omit<SchemaBaseColumn, "componentProps" | "componentType"> & {
-  componentType: string
-}
-
-/**
- * 动态属性已解析为静态值的 FormItem Props
- */
-export type ProcessedFormItemProps = Omit<
-  SchemaBaseColumn,
-  "required" | "readonly" | "disabled" | "hidden" | "componentType"
-> & {
-  componentType: string
-  required: boolean
-  readonly: boolean
-  disabled: boolean
-  hidden: boolean
-  componentProps: ProcessedColumnComponentsProps
-  class?: string
-}
-
-/**
- * 处理后的列配置联合类型
- */
-export type ProcessedColumnConfig = ProcessedFormItemProps | SchemaDependencyColumn
+export type FormItemProps = Omit<SchemaBaseColumn, "componentProps">
 
 /**
  * SchemaForm 组件 Props

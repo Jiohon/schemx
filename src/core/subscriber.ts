@@ -37,9 +37,9 @@ import { collectObjectPaths, getByPath, pickByPaths } from "../utils/path"
 import type { FormValues, NamePath, Value } from "../types"
 
 /** 变化前的表单全量值快照（只读） */
-export type PrevSnapshot<T> = DeepReadonly<T>
+export type PrevSnapshot<T> = DeepReadonly<T> | T
 /** 变化后的表单全量值快照（只读） */
-export type LatestSnapshot<T> = DeepReadonly<T>
+export type LatestSnapshot<T> = DeepReadonly<T> | T
 
 /** 单字段订阅回调的载荷 */
 type FieldPayload<T> = {
@@ -245,7 +245,6 @@ export class Subscriber<T extends FormValues> {
    */
   notify(
     changedValues: DeepReadonly<Partial<T>>,
-    prevValues: DeepReadonly<Partial<T>>,
     prevSnapshot: PrevSnapshot<T>,
     latestSnapshot: LatestSnapshot<T>
   ): void {
@@ -254,7 +253,7 @@ export class Subscriber<T extends FormValues> {
     // 1. 逐字段通知（精确匹配）
     for (const path of changedPaths) {
       const value = getByPath(changedValues, path)
-      const prevValue = getByPath(prevValues, path)
+      const prevValue = getByPath(prevSnapshot, path)
 
       this.notifyField(path, value, prevValue, prevSnapshot, latestSnapshot)
     }
@@ -266,7 +265,7 @@ export class Subscriber<T extends FormValues> {
     this.notifyGlobal(
       changedPaths,
       changedValues,
-      prevValues,
+
       prevSnapshot,
       latestSnapshot
     )
@@ -351,10 +350,14 @@ export class Subscriber<T extends FormValues> {
   private notifyGlobal(
     changedPaths: NamePath<T>[],
     changedValues: DeepReadonly<Partial<T>>,
-    prevValues: DeepReadonly<Partial<T>>,
     prevSnapshot: PrevSnapshot<T>,
     latestSnapshot: LatestSnapshot<T>
   ): void {
+    const prevValues = pickByPaths(
+      prevSnapshot,
+      new Set([...changedPaths])
+    ) as DeepReadonly<Partial<T>>
+
     const payload: GlobalPayload<T> = { changedPaths, changedValues, prevValues }
     this.globalSubscribers.forEach((cb) => cb(payload, prevSnapshot, latestSnapshot))
   }

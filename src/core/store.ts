@@ -37,7 +37,7 @@ import type { DeepReadonly } from "vue"
 
 import { cloneDeep, isEqual } from "es-toolkit"
 
-import { getByPath, setByPath } from "../utils/path"
+import { collectObjectPathsByLeaf, getByPath, setByPath } from "../utils/path"
 
 import type { FormValues, NamePath, Value } from "../types"
 
@@ -113,7 +113,7 @@ export class FormStore<T extends FormValues> {
    * @example
    * ```typescript
    * store.getFieldValue('name')         // => 'John'
-   * store.getFieldValue('user.address') // => { city: 'Beijing' }
+   * store.getFieldValue('user.address') // => { user: { address: 'Beijing' } }
    * ```
    */
   getFieldValue(path: NamePath<T>): DeepReadonly<Value> {
@@ -181,8 +181,10 @@ export class FormStore<T extends FormValues> {
    * ```
    */
   setFieldsValue(values: DeepReadonly<Partial<T>>): void {
-    for (const [path, value] of Object.entries(values)) {
-      setByPath(this.state.values, path, value)
+    const paths = collectObjectPathsByLeaf(values)
+
+    for (const path in paths) {
+      setByPath(this.state.values, path, getByPath(values, path))
     }
   }
 
@@ -200,22 +202,57 @@ export class FormStore<T extends FormValues> {
    * ```
    */
   getFieldsSnapshot(): T {
-    return toRaw(this.state.values) as T
+    return cloneDeep(toRaw(this.state.values)) as T
   }
 
   /**
-   * 获取指定路径的初始值。
+   * 获取表单初始值。
    *
-   * @param path - 字段路径
-   * @returns 字段的初始值
+   * 不传参返回全量初始值的深拷贝，传入路径返回指定字段的初始值。
+   *
+   * @param path - 可选，字段路径
+   * @returns 全量初始值或指定字段的初始值
    *
    * @example
    * ```typescript
-   * store.getInitialValue('name') // => 'John'
+   * store.getInitialValues()       // => { name: 'John', age: 25 }
+   * store.getInitialValues(['name']) // => { name: 'John' }
    * ```
    */
-  getInitialValue(path: NamePath<T>): Value {
-    return getByPath(this.state.initialValues, path)
+  getInitialValues(): T
+  getInitialValues(paths: NamePath<T>[]): Partial<T>
+  getInitialValues(paths?: NamePath<T>[]): T | Partial<T> {
+    if (paths === undefined) {
+      return cloneDeep(this.state.initialValues) as T
+    }
+
+    const result = {} as Partial<T>
+
+    for (const path in paths) {
+      setByPath(result, path, getByPath(this.state.initialValues, path))
+    }
+
+    return result
+  }
+
+  /**
+   * 批量设置多个字段的初始值。
+   *
+   * @param values - 要设置的字段值对象
+   *
+   * @example
+   * ```typescript
+   * store.setInitialValues({ name: 'Bob', age: 30 })
+   * ```
+   */
+  setInitialValues(values: Partial<T>): void {
+    const paths = collectObjectPathsByLeaf(values)
+
+    if (!paths.length) return
+
+    for (const path of paths) {
+      setByPath(this.state.initialValues, path, getByPath(values, path))
+    }
   }
 
   /**

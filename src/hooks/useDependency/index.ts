@@ -11,7 +11,7 @@ import { type Ref, ref } from "vue"
 
 import { SchemaFormInstance } from "@/types/instance"
 
-import { useFormInstance } from "../useFormContext"
+import { useFormInstance } from "../useForm"
 import { useWatchFields } from "../useWatch"
 
 import type { FormValues, SchemaColumn, SchemaDependencyColumn } from "../../types"
@@ -76,6 +76,7 @@ export function useDependency(
     },
     {
       inequality: true,
+      immediate: true,
     }
   )
 

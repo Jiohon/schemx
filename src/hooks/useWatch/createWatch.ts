@@ -2,7 +2,7 @@
  * createWatch - 纯函数版本的字段监听工具
  *
  * 提供不依赖 Vue 组件生命周期的字段监听能力，适用于非组件场景（如工具函数、外部逻辑）。
- * 组件内推荐使用 `useWatch`（自动绑定 formContext 并在 onUnmounted 时取消订阅）。
+ * 组件内推荐使用 `useWatch`（自动绑定 form 并在 onUnmounted 时取消订阅）。
  *
  * @module utils/createWatch
  *
@@ -40,6 +40,7 @@ import {
   GlobalSubscribeCallback,
 } from "../../core/subscriber"
 import { SchemaFormInstance } from "../../types/instance"
+import { pickByPaths } from "@/utils"
 
 /**
  * 单字段监听回调
@@ -109,7 +110,7 @@ export type CreateWatchReturn = () => void
  * 订阅指定字段的值变更，当字段值（或其父/子路径）发生变化时触发回调。
  * 支持 `immediate`（立即执行）和 `inequality`（值相等时跳过）选项。
  *
- * @param formContext - 表单实例，通过 `useForm` 或 `createForm` 获取
+ * @param form - 表单实例，通过 `useForm` 或 `createForm` 获取
  * @param name - 要监听的字段路径，如 `'username'` 或 `'user.address.city'`
  * @param callback - 字段变化时的回调函数，接收 `(payload, prevSnapshot, latestSnapshot)`
  *   - `payload.path` - 发生变更的字段路径
@@ -132,24 +133,21 @@ export type CreateWatchReturn = () => void
  * ```
  */
 export const createWatchField = (
-  formContext: SchemaFormInstance,
+  form: SchemaFormInstance,
   name: NamePath,
   callback: SingleFieldCallback,
   options: UseWatchOptions
 ): CreateWatchReturn => {
-  const unsubscribe = formContext.subscribe(
-    name,
-    (payload, prevSnapshot, latestSnapshot) => {
-      if (options.inequality && isEqual(payload.value, payload.prevValue)) return
+  const unsubscribe = form.subscribe(name, (payload, prevSnapshot, latestSnapshot) => {
+    if (options.inequality && isEqual(payload.value, payload.prevValue)) return
 
-      callback(payload, prevSnapshot, latestSnapshot)
-    }
-  )
+    callback(payload, prevSnapshot, latestSnapshot)
+  })
 
   if (options.immediate) {
     const payload = { path: name, value: undefined, prevValue: undefined }
 
-    callback(payload, {}, formContext.getFieldsSnapshot())
+    callback(payload, {}, form.getFieldsSnapshot())
   }
 
   return unsubscribe
@@ -159,14 +157,13 @@ export const createWatchField = (
  * 监听多个字段变化（纯函数版本）
  *
  * 订阅一组字段的值变更，当任一指定字段发生变化时触发回调。
- * 聚合快照逻辑由 `formContext.subscribeFields` 处理，
+ * 聚合快照逻辑由 `form.subscribeFields` 处理，
  * 此处只负责 `immediate` 和 `inequality` 选项。
  *
- * @param formContext - 表单实例，通过 `useForm` 或 `createForm` 获取
+ * @param form - 表单实例，通过 `useForm` 或 `createForm` 获取
  * @param names - 要监听的字段路径数组，如 `['firstName', 'lastName']`
  * @param callback - 字段变化时的回调函数，接收 `(payload, prevSnapshot, latestSnapshot)`
  *   - `payload.changedValues` - 本次变更涉及的字段值（部分表单数据）
- *   - `payload.prevValues` - 变更前对应字段的旧值（部分表单数据）
  *   - `prevSnapshot` - 变更前的表单完整快照
  *   - `latestSnapshot` - 变更后的表单最新快照
  * @param options - 监听选项
@@ -179,7 +176,6 @@ export const createWatchField = (
  *   ['firstName', 'lastName'],
  *   (payload, prevSnapshot, latestSnapshot) => {
  *     console.log('changed:', payload.changedValues)
- *     console.log('previous:', payload.prevValues)
  *   },
  *   { inequality: true }
  * )
@@ -189,12 +185,12 @@ export const createWatchField = (
  * ```
  */
 export const createWatchFields = (
-  formContext: SchemaFormInstance,
+  form: SchemaFormInstance,
   names: NamePath[],
   callback: MultiFieldCallback,
   options: UseWatchOptions
 ): CreateWatchReturn => {
-  const unsubscribe = formContext.subscribeFields(
+  const unsubscribe = form.subscribeFields(
     names,
     (payload, prevSnapshot, latestSnapshot) => {
       if (options.inequality && isEqual(payload.changedValues, payload.prevValues)) return
@@ -206,7 +202,7 @@ export const createWatchFields = (
   if (options.immediate) {
     const payload = { changedValues: {}, prevValues: {} }
 
-    callback(payload, {}, formContext.getFieldsSnapshot())
+    callback(payload, {}, form.getFieldsSnapshot())
   }
 
   return unsubscribe
@@ -218,7 +214,7 @@ export const createWatchFields = (
  * 订阅表单中任意字段的值变更，当任何字段发生变化时触发回调。
  * 适用于需要全局感知表单变化的场景，如自动保存、表单脏检测等。
  *
- * @param formContext - 表单实例，通过 `useForm` 或 `createForm` 获取
+ * @param form - 表单实例，通过 `useForm` 或 `createForm` 获取
  * @param callback - 字段变化时的回调函数，接收 `(payload, prevSnapshot, latestSnapshot)`
  *   - `payload.changedPaths` - 本次变更涉及的所有字段路径
  *   - `payload.changedValues` - 本次变更涉及的字段值（部分表单数据）
@@ -241,22 +237,22 @@ export const createWatchFields = (
  * ```
  */
 export const createWatchAll = (
-  formContext: SchemaFormInstance,
+  form: SchemaFormInstance,
   callback: GlobalCallback,
   options: UseWatchOptions
 ): CreateWatchReturn => {
-  const unsubscribe = formContext.subscribeAll(
-    (payload, prevSnapshot, latestSnapshot) => {
-      if (options.inequality && isEqual(payload.changedValues, payload.prevValues)) return
+  const unsubscribe = form.subscribeAll((payload, prevSnapshot, latestSnapshot) => {
+    const prevValues = pickByPaths(prevSnapshot, new Set([...payload.changedPaths]))
 
-      callback(payload, prevSnapshot, latestSnapshot)
-    }
-  )
+    if (options.inequality && isEqual(payload.changedValues, prevValues)) return
+
+    callback(payload, prevSnapshot, latestSnapshot)
+  })
 
   if (options.immediate) {
     const payload = { changedPaths: [], changedValues: {}, prevValues: {} }
 
-    callback(payload, {}, formContext.getFieldsSnapshot)
+    callback(payload, {}, form.getFieldsSnapshot)
   }
 
   return unsubscribe
