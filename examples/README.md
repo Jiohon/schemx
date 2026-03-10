@@ -14,7 +14,7 @@
 ## 运行示例
 
 ```bash
-# 在 packages/schema-form 目录下
+# 在 packages/schemaForm 目录下
 npm run dev
 
 # 或者使用 vite 直接运行示例

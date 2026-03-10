@@ -31,6 +31,8 @@ interface FormContextProps {
   labelIcon?: SchemaFormProps["labelIcon"]
   /** 表单 label 排列方向 */
   labelAlign?: SchemaFormProps["labelAlign"]
+  /** 表单 label 位置 */
+  labelPosition?: SchemaFormProps["labelPosition"]
   /** 表单 label 宽度 */
   labelWidth?: SchemaFormProps["labelWidth"]
   /** 表单内容排列方向 */

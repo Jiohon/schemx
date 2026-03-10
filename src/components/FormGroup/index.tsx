@@ -12,7 +12,6 @@ import { defineComponent, PropType, ref } from "vue"
 import classnames from "classnames"
 
 import { isBaseColumn } from "../../utils"
-
 import FormItem from "../FormItem"
 
 import type { SchemaGroupColumn } from "../../types"

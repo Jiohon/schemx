@@ -3,12 +3,7 @@
  */
 import { createApp } from "vue"
 
-import Vant from "vant"
-
 import { globalRegistry } from "@"
-
-// 导入 Vant 组件库
-import "vant/lib/index.css"
 
 // 导入 SchemaForm 样式
 import "../src/styles/index.css"
@@ -23,7 +18,6 @@ registerDefaultRenderers(globalRegistry)
 
 const app = createApp(App)
 
-app.use(Vant)
 app.mount("#app")
 
 globalRegistry.registerAll({

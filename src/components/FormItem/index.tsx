@@ -23,8 +23,9 @@ import {
 
 import classnames from "classnames"
 import { omit } from "es-toolkit"
+
 import { createRequiredSchema } from "../../core/standardSchema"
-import { useWatchFields } from "../../hooks"
+import { useSchemaWatchFields } from "../../hooks"
 import { useField } from "../../hooks/useField"
 import { useFormContext } from "../../hooks/useFormContext"
 import { useRendererContext } from "../../hooks/useRenderer"
@@ -36,7 +37,6 @@ import {
   resolveDynamicPropByBoolean,
   shouldValidateOn,
 } from "../../utils"
-
 import FormDependency from "../FormDependency"
 import FormGroup from "../FormGroup"
 import FormNested from "../FormNested"
@@ -149,6 +149,7 @@ const FormItem = defineComponent({
       const keysA = Object.keys(a)
       const keysB = Object.keys(b)
       if (keysA.length !== keysB.length) return false
+
       return keysA.every((key) => a[key] === b[key])
     }
 
@@ -174,7 +175,7 @@ const FormItem = defineComponent({
     })
 
     // 解析所有的动态属性
-    useWatchFields(
+    useSchemaWatchFields(
       dependencies.value,
       (payload, prevSnapshot, latestSnapshot) => {
         resolveDynamicProp(
@@ -250,9 +251,9 @@ const FormItem = defineComponent({
 
     // 设置默认的必填rule
     watch(
-      resolvedHidden,
+      [resolvedHidden, resolvedDisabled, resolvedReadonly],
       () => {
-        if (resolvedHidden.value) {
+        if (resolvedHidden.value || resolvedReadonly.value || resolvedDisabled.value) {
           field.clearError()
           field.unregisterRule()
         } else {
@@ -269,12 +270,20 @@ const FormItem = defineComponent({
       }
     })
 
+    const renderRequired = () => {
+      if (!resolvedRequired.value || resolvedDisabled.value || resolvedReadonly.value) {
+        return <></>
+      }
+
+      return <span class="schema-form-item__required">*</span>
+    }
+
     return () => {
       if (resolvedHidden.value) {
         return null
       }
 
-      const slotName = String(formItemProps.value.name)
+      const slotName = String(baseColumn.name)
 
       // 自定义 item slot (#nameItem) — 替换整个表单项
       if (slots[`${slotName}Item`]) {
@@ -287,11 +296,11 @@ const FormItem = defineComponent({
       if (slots[slotName]) {
         columnElement = slots[slotName]?.(formItemProps.value)
       } else {
-        const component = rendererRegistry.getRenderer(formItemProps.value.componentType)
+        const component = rendererRegistry.getRenderer(baseColumn.componentType)
 
         if (!component) {
           throw new Error(
-            `[SchemaForm] Can not find component renderer of "${formItemProps.value.componentType}".`
+            `[SchemaForm] Can not find component renderer of "${baseColumn.componentType}".`
           )
         }
 
@@ -300,31 +309,36 @@ const FormItem = defineComponent({
 
       if (!columnElement) return null
 
-      const labelAlign = baseColumn.labelAlign ?? formContext.labelAlign
-      const labelWidth = baseColumn.labelWidth ?? formContext.labelWidth
+      const labelAlign = baseColumn.labelAlign || formContext.labelAlign
+      const labelPosition = baseColumn.labelPosition || formContext.labelPosition
+      const labelWidth = baseColumn.labelWidth || formContext.labelWidth
       const colon = baseColumn.colon ?? formContext.colon
-      const labelAlignClass = `schema-form-item--label-${labelAlign}`
+      const readonlyClass = resolvedReadonly.value ? "is-readonly" : ""
+      const disabledClass = resolvedDisabled.value ? "is-disabled" : ""
 
       return (
-        <div class="schema-form-item-wrapper">
+        <div class={classnames("schema-form-item-wrapper", disabledClass, readonlyClass)}>
           <div
-            class={classnames("schema-form-item", baseColumn.className, labelAlignClass)}
+            class={classnames(
+              "schema-form-item",
+              `schema-form-item--label-${labelPosition}`,
+
+              baseColumn.className
+            )}
           >
-            {formItemProps.value.label && (
+            {baseColumn.label && (
               <label
                 class="schema-form-item__label"
-                style={labelWidth ? { width: labelWidth } : undefined}
+                style={{ width: labelWidth, textAlign: labelAlign }}
               >
-                {resolvedRequired.value && (
-                  <span class="schema-form-item__required">*</span>
-                )}
-
+                {renderRequired()}
                 <span class="schema-form-item__label-text">
-                  {formItemProps.value.label}
+                  {baseColumn.label}
                   {colon ? ":" : ""}
                 </span>
               </label>
             )}
+
             <div class="schema-form-item__content">
               <div class="schema-form-item__control">{columnElement}</div>
 

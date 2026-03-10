@@ -2,7 +2,7 @@
  * createWatch - 纯函数版本的字段监听工具
  *
  * 提供不依赖 Vue 组件生命周期的字段监听能力，适用于非组件场景（如工具函数、外部逻辑）。
- * 组件内推荐使用 `useWatch`（自动绑定 form 并在 onUnmounted 时取消订阅）。
+ * 组件内推荐使用 `useSchemaWatch`（自动绑定 form 并在 onUnmounted 时取消订阅）。
  *
  * @module utils/createWatch
  *
@@ -33,6 +33,7 @@
 import { isEqual } from "es-toolkit"
 
 import type { FormValues, NamePath } from "@/types"
+import { pickByPaths } from "@/utils"
 
 import {
   FieldsSubscribeCallback,
@@ -40,7 +41,6 @@ import {
   GlobalSubscribeCallback,
 } from "../../core/subscriber"
 import { SchemaFormInstance } from "../../types/instance"
-import { pickByPaths } from "@/utils"
 
 /**
  * 单字段监听回调
@@ -72,9 +72,9 @@ export type MultiFieldCallback<T extends FormValues = FormValues> =
 export type GlobalCallback<T extends FormValues = FormValues> = GlobalSubscribeCallback<T>
 
 /**
- * useWatch / createWatch 选项
+ * useSchemaWatch / createWatch 选项
  */
-export interface UseWatchOptions {
+export interface useSchemaWatchOptions {
   /**
    * 是否在订阅后立即执行一次回调
    *
@@ -136,7 +136,7 @@ export const createWatchField = (
   form: SchemaFormInstance,
   name: NamePath,
   callback: SingleFieldCallback,
-  options: UseWatchOptions
+  options: useSchemaWatchOptions
 ): CreateWatchReturn => {
   const unsubscribe = form.subscribe(name, (payload, prevSnapshot, latestSnapshot) => {
     if (options.inequality && isEqual(payload.value, payload.prevValue)) return
@@ -188,7 +188,7 @@ export const createWatchFields = (
   form: SchemaFormInstance,
   names: NamePath[],
   callback: MultiFieldCallback,
-  options: UseWatchOptions
+  options: useSchemaWatchOptions
 ): CreateWatchReturn => {
   const unsubscribe = form.subscribeFields(
     names,
@@ -239,7 +239,7 @@ export const createWatchFields = (
 export const createWatchAll = (
   form: SchemaFormInstance,
   callback: GlobalCallback,
-  options: UseWatchOptions
+  options: useSchemaWatchOptions
 ): CreateWatchReturn => {
   const unsubscribe = form.subscribeAll((payload, prevSnapshot, latestSnapshot) => {
     const prevValues = pickByPaths(prevSnapshot, new Set([...payload.changedPaths]))

@@ -8,10 +8,15 @@
       v-model="formData"
       :columns="columns"
       :initial-values="{ orderType: 'standard', customRequirement: 'xx定制' }"
-      :footer="true"
-      submit-button-text="提交"
       @finish="handleSubmit"
+      @finish-failed="handleSubmitFailed"
     />
+
+    <div class="form-actions">
+      <button class="btn btn-primary" @click="formRef?.submit()">提交</button>
+      <button class="btn" @click="formRef?.validate()">校验</button>
+      <button class="btn" @click="formRef?.reset()">重置</button>
+    </div>
 
     <div class="form-data-preview">
       <h3>表单数据预览</h3>
@@ -22,8 +27,11 @@
 
 <script setup lang="ts">
   import { ref } from "vue"
+
   import { z } from "zod"
+
   import SchemaForm from "@"
+
   import type { SchemaColumn, SchemaFormInstance } from "@"
 
   const formRef = ref<SchemaFormInstance>()
@@ -83,11 +91,13 @@
               label: "商品名称",
               componentType: "text",
               required: true,
+              disabled: true,
               rules: "required",
             },
             {
               name: "quantity",
               label: "数量",
+              readonly: true,
               componentType: "number",
               componentProps: {
                 min: 1,
@@ -190,6 +200,11 @@
   // 提交处理
   const handleSubmit = (values: Record<string, any>) => {
     console.log("提交数据:", values)
+  }
+
+  // 提交失败处理
+  const handleSubmitFailed = (errorInfo: any) => {
+    console.error("验证失败:", errorInfo)
   }
 </script>
 

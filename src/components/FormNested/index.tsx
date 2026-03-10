@@ -10,7 +10,6 @@
 import { defineComponent, PropType } from "vue"
 
 import { isBaseColumn } from "../../utils"
-
 import FormItem from "../FormItem"
 
 import type { SchemaNestedColumn } from "../../types"

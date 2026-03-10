@@ -28,10 +28,9 @@
 import { reactive } from "vue"
 import type { DeepReadonly, Reactive } from "vue"
 
-import type { StandardSchemaV1 } from "./standardSchema"
-
 import { getByPath } from "../utils/path"
 
+import type { StandardSchemaV1 } from "./standardSchema"
 import type { FormValues, NamePath, Value } from "../types"
 
 /** 单个字段的校验错误 */
@@ -187,6 +186,20 @@ export class Validator<T extends FormValues = FormValues> {
   }
 
   /**
+   * 重置所有字段的校验错误。
+   *
+   * 清空 errors 映射表，不影响已注册的校验规则。
+   *
+   * @example
+   * ```typescript
+   * validator.resetErrors()
+   * ```
+   */
+  public resetErrors(): void {
+    this.state.errors.clear()
+  }
+
+  /**
    * 记录字段错误并返回失败结果。
    *
    * @param path - 字段路径
@@ -200,6 +213,7 @@ export class Validator<T extends FormValues = FormValues> {
     latestValues: DeepReadonly<T>
   ): ValidateResult<T> {
     this.state.errors.set(path, messages)
+
     return {
       ok: false,
       error: {
@@ -228,6 +242,7 @@ export class Validator<T extends FormValues = FormValues> {
 
     if (!entry) {
       this.state.errors.delete(path)
+
       return { ok: true, values: latestValues }
     }
 
@@ -251,9 +266,11 @@ export class Validator<T extends FormValues = FormValues> {
       }
 
       this.state.errors.delete(path)
+
       return { ok: true, values: latestValues }
     } catch (error) {
       console.warn(`[Validator] 校验字段 "${String(path)}" 时发生错误:`, error)
+
       return this.failResult(path, ["校验失败"], latestValues)
     }
   }
@@ -327,8 +344,6 @@ export class Validator<T extends FormValues = FormValues> {
    * ```
    */
   async validate(latestValues: DeepReadonly<T>): Promise<ValidateResult<T>> {
-    this.state.errors.clear()
-
     let allValid = true
 
     for (const path of this.state.rules.keys()) {

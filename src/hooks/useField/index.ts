@@ -11,13 +11,13 @@ import { computed } from "vue"
 import type { DeepReadonly } from "vue"
 
 import type { FormValues, NamePath, Value } from "@/types"
+import { getByPath, setByPath } from "@/utils"
 
 import { useFormInstance } from "../useForm"
 
+import type { StandardSchemaV1 } from "../../core/standardSchema"
 import type { FieldSubscribeCallback } from "../../core/subscriber"
 import type { ValidateResult } from "../../core/validator"
-import type { StandardSchemaV1 } from "../../core/standardSchema"
-import { getByPath, setByPath } from "@/utils"
 
 /**
  * useField 选项

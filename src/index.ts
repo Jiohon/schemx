@@ -1,7 +1,7 @@
 /**
  * SchemaForm 统一导出入口
  *
- * @module @Jonhn/schema-form
+ * @module @Jonhn/schemaForm
  */
 
 import "./styles/index.css"
@@ -24,12 +24,8 @@ export { FORM_CONTEXT_KEY } from "./hooks/useFormContext"
 export { default as FormItem } from "./components/FormItem"
 export { default as FormDependency } from "./components/FormDependency"
 
-/** 工具函数（显式导出，排除与 hooks 冲突的类型） */
+/** 工具函数 */
 export {
-  createWatchField,
-  createWatchFields,
-  createWatchAll,
-  type CreateWatchReturn,
   resolveDynamicProp,
   resolveDynamicPropByBoolean,
   isBaseColumn,
@@ -40,8 +36,6 @@ export {
 } from "./utils"
 
 /** 类型导出 */
-export type { SchemaFormInstallOptions } from "./SchemaForm"
-
 export type {
   FormValues,
   SchemaFormInstance,
@@ -51,6 +45,5 @@ export type {
   DynamicProp,
   SchemaColumn,
   SchemaBaseColumn,
-  ProcessedColumnConfig,
   SchemaFormProps,
 } from "./types"

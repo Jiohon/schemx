@@ -12,7 +12,7 @@ import { type Ref, ref } from "vue"
 import { SchemaFormInstance } from "@/types/instance"
 
 import { useFormInstance } from "../useForm"
-import { useWatchFields } from "../useWatch"
+import { useSchemaWatchFields } from "../useSchemaWatch"
 
 import type { FormValues, SchemaColumn, SchemaDependencyColumn } from "../../types"
 
@@ -61,7 +61,7 @@ export function useDependency(
   const values = ref<FormValues>({})
 
   // 订阅依赖字段变化，触发响应式更新
-  useWatchFields(
+  useSchemaWatchFields(
     to,
     async (payload, prevSnapshot, latestSnapshot) => {
       values.value = latestSnapshot

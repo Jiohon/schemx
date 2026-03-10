@@ -21,12 +21,13 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, computed, markRaw } from "vue"
+  import { computed, markRaw, ref } from "vue"
+
   import BasicForm from "./basic/BasicForm.vue"
-  import ValidationForm from "./validation/ValidationForm.vue"
-  import DynamicForm from "./dynamic/DynamicForm.vue"
   import CustomRendererForm from "./custom-renderer/CustomRendererForm.vue"
   import DependencyForm from "./dependency/DependencyForm.vue"
+  import DynamicForm from "./dynamic/DynamicForm.vue"
+  import ValidationForm from "./validation/ValidationForm.vue"
 
   const examples = [
     { id: "basic", name: "基础表单", component: markRaw(BasicForm) },
@@ -36,10 +37,11 @@
     { id: "custom", name: "自定义渲染器", component: markRaw(CustomRendererForm) },
   ]
 
-  const currentExample = ref("dependency")
+  const currentExample = ref("validation")
 
   const currentComponent = computed(() => {
     const example = examples.find((e) => e.id === currentExample.value)
+
     return example?.component || BasicForm
   })
 </script>
@@ -108,5 +110,38 @@
     padding: 16px;
     max-width: 100%;
     overflow-x: hidden;
+  }
+
+  .form-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    padding: 0 16px;
+  }
+
+  .btn {
+    padding: 8px 20px;
+    border: 1px solid #ddd;
+    background: white;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #333;
+    transition: all 0.2s;
+  }
+
+  .btn:hover {
+    border-color: #1989fa;
+    color: #1989fa;
+  }
+
+  .btn-primary {
+    background: #1989fa;
+    border-color: #1989fa;
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: #1478de;
   }
 </style>

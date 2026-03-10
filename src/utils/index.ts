@@ -4,14 +4,6 @@
  * @module utils
  */
 
-/** createWatch 纯函数版本（类型由 hooks/useWatch 统一导出） */
-export {
-  createWatchField,
-  createWatchFields,
-  createWatchAll,
-  type CreateWatchReturn,
-} from "../hooks/useWatch/createWatch"
-
 /** Schema 列配置工具 */
 export { isBaseColumn, isGroupColumn, isDependencyColumn, isNestedColumn } from "./schema"
 

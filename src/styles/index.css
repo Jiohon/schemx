@@ -41,7 +41,3 @@
   font-size: var(--schema-form-font-size-md);
   color: var(--schema-form-text-color);
 }
-
-.schema-form-submit-button {
-  margin-top: 15px;
-}

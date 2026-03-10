@@ -25,9 +25,6 @@ import { inject, onUnmounted, provide } from "vue"
 import type { DeepReadonly } from "vue"
 
 import type { StandardSchemaV1 } from "@/core/standardSchema"
-
-import { withLock } from "@/utils/async"
-
 import { createFormStore, FormStore } from "@/core/store"
 import {
   createSubscriber,
@@ -42,14 +39,15 @@ import {
   type ValidateResult,
   Validator,
 } from "@/core/validator"
-
 import type {
-  SchemaFormInstance,
   FormValues,
   NamePath,
   SchemaColumn,
+  SchemaFormInstance,
   Value,
 } from "@/types"
+import { withLock } from "@/utils/async"
+import { collectObjectPathsByLeaf } from "@/utils/path"
 
 /**
  * 表单回调函数集合
@@ -60,7 +58,7 @@ import type {
  */
 type Callbacks<T extends FormValues> = Pick<
   CreateFormInstanceOptions<T>,
-  "onValuesChange" | "onFinish" | "onFinishFailed"
+  "onValuesChange" | "onFinish" | "onFinishFailed" | "onFieldsChange"
 >
 
 /**
@@ -76,12 +74,17 @@ export interface CreateFormInstanceOptions<T extends FormValues> {
   /** 双向绑定的表单值（v-model） */
   modelValue?: T
 
-  /** 字段值更新时触发的回调 */
-  onValuesChange?: (changedValues: Partial<T>, latestValues: T) => void
   /** 表单提交校验通过后的回调 */
   onFinish?: (values: DeepReadonly<T>) => void | Promise<void>
   /** 表单提交校验失败后的回调 */
   onFinishFailed?: (error: ValidateError<T>) => void
+  /** 字段值更新时触发的回调 */
+  onValuesChange?: (
+    changedValues: DeepReadonly<Partial<T>>,
+    latestSnapshot: DeepReadonly<T> | T
+  ) => void
+  /** 字段更新时触发的回调 */
+  onFieldsChange?: (changedFields: NamePath<T>[], allFields: NamePath<T>[]) => void
 }
 
 /** SchemaFormInstance 在 Vue provide/inject 中的注入 key */
@@ -120,36 +123,32 @@ class CreateFormInstance<T extends FormValues = FormValues> {
   /** 发布订阅管理器，管理字段级和全局订阅 */
   private subscriber: Subscriber<T>
 
-  /** 回调函数集合（onValuesChange / onFinish / onFinishFailed） */
+  /** 回调函数集合（onValuesChange / onFinish / onFinishFailed / onFieldsChange */
   private callbacks: Callbacks<T> = {}
-
-  /** 表单是否正在提交中 */
-  private _submitting: boolean = false
 
   /**
    * 创建 SchemaFormInstance 实例
    *
    * 初始化 Store、Subscriber、Validator 三个核心模块，
-   * 从 columns 中提取初始值和校验规则，注册值变化回调。
    *
    * @param options - 表单配置选项
    *
    * @example
    * ```typescript
    * const form = new SchemaFormInstance({
-   *   columns: [{ name: 'email', componentType: 'input', rules: z.string().email() }],
    *   initialValues: { email: '' },
    * })
    * ```
    */
 
   constructor(options: CreateFormInstanceOptions<T> = {}) {
-    const { columns, initialValues = {} as T } = options
+    const { initialValues = {} as T } = options
 
     this.setCallbacks({
       onValuesChange: options.onValuesChange,
       onFinish: options.onFinish,
       onFinishFailed: options.onFinishFailed,
+      onFieldsChange: options.onFieldsChange,
     })
 
     // Store: 初始化状态管理
@@ -161,16 +160,14 @@ class CreateFormInstance<T extends FormValues = FormValues> {
     // Validator: 初始化校验器
     this.validator = createValidator<T>()
 
-    // if (columns) {
-    //   this.validator.registerRulesFromColumns(columns)
-    // }
-
     // 注册值变化回调
-    if (this.callbacks?.onValuesChange) {
+    if (this.callbacks?.onValuesChange || this.callbacks?.onFieldsChange) {
       this.subscriber.subscribeAll((payload, _prevSnapshot, latestSnapshot) => {
-        this.callbacks.onValuesChange?.(
-          payload.changedValues as Partial<T>,
-          latestSnapshot as T
+        this.callbacks.onValuesChange?.(payload.changedValues, latestSnapshot)
+
+        this.callbacks?.onFieldsChange?.(
+          payload.changedPaths,
+          collectObjectPathsByLeaf(latestSnapshot)
         )
       })
     }
@@ -208,7 +205,7 @@ class CreateFormInstance<T extends FormValues = FormValues> {
     subscribeAll: this.subscribeAll.bind(this),
     reset: this.reset.bind(this),
     resetFields: this.resetFields.bind(this),
-    submit: this.submit,
+    submit: this.submit.bind(this),
     destroy: this.destroy.bind(this),
   })
 
@@ -307,32 +304,6 @@ class CreateFormInstance<T extends FormValues = FormValues> {
   }
 
   /**
-   * 校验指定字段
-   */
-  private async validateField(name: string | string[]): Promise<ValidateResult<T>> {
-    const result = await this.validator.validateField(
-      name as NamePath<T> | NamePath<T>[],
-      this.store.getFieldsValue()
-    )
-
-    return result
-  }
-
-  /**
-   * 校验所有已注册字段
-   */
-  private async validate(): Promise<ValidateResult<T>> {
-    try {
-      this.setSubmitting(true)
-
-      const result = await this.validator.validate(this.store.getFieldsValue())
-
-      return result
-    } finally {
-      this.setSubmitting(false)
-    }
-  }
-  /**
    * 获取指定字段的错误信息
    */
   private getFieldError(path: NamePath<T>): string[] | undefined {
@@ -344,42 +315,6 @@ class CreateFormInstance<T extends FormValues = FormValues> {
    */
   private setFieldError(path: NamePath<T>, errors: string[]): void {
     this.validator.setFieldError(path, errors)
-  }
-
-  /**
-   * 提交表单
-   */
-  private submit = withLock(async (): Promise<void> => {
-    const result = await this.validate()
-    if (result.ok) {
-      await this.callbacks.onFinish?.(result.values)
-    } else {
-      this.callbacks.onFinishFailed?.(result.error)
-    }
-  })
-
-  /**
-   * 重置整个表单到初始值并通知订阅者
-   */
-  private reset(): void {
-    const prevSnapshot = this.store.getFieldsSnapshot()
-    this.store.reset()
-    const latestValues = this.store.getFieldsValue()
-    this.notify(latestValues, prevSnapshot, prevSnapshot)
-  }
-
-  /**
-   * 重置指定字段到初始值并通知订阅者
-   */
-  private resetFields(names: NamePath<T>[]): void {
-    const prevSnapshot = this.store.getFieldsSnapshot()
-
-    names.forEach((name) => {
-      this.store.resetField(name)
-    })
-    const newValues = this.store.getFieldsValue(names)
-
-    this.notify(newValues, prevSnapshot, prevSnapshot)
   }
 
   /**
@@ -428,29 +363,6 @@ class CreateFormInstance<T extends FormValues = FormValues> {
   }
 
   /**
-   * 检查表单是否正在提交中
-   */
-  private isSubmitting(): boolean {
-    return this._submitting
-  }
-
-  /**
-   * 设置表单提交状态
-   */
-  private setSubmitting(submitting: boolean): void {
-    this._submitting = submitting
-  }
-
-  /**
-   * 销毁表单实例
-   *
-   * 清除所有订阅回调，释放资源。通常在组件卸载时调用。
-   */
-  private destroy(): void {
-    this.subscriber.clear()
-  }
-
-  /**
    * 批量通知所有相关订阅者（字段级、多字段组、全局）。
    *
    * 依次执行：逐字段精确通知 → 多字段组通知 → 全局通知。
@@ -465,6 +377,72 @@ class CreateFormInstance<T extends FormValues = FormValues> {
     latestSnapshot: T
   ): void {
     this.subscriber.notify(changedValues, prevSnapshot, latestSnapshot)
+  }
+
+  /**
+   * 校验指定字段
+   */
+  private async validateField(name: string | string[]): Promise<ValidateResult<T>> {
+    const result = await this.validator.validateField(
+      name as NamePath<T> | NamePath<T>[],
+      this.store.getFieldsValue()
+    )
+
+    return result
+  }
+
+  /**
+   * 校验所有已注册字段
+   */
+  private validate = withLock(async (): Promise<ValidateResult<T>> => {
+    const result = await this.validator.validate(this.store.getFieldsValue())
+
+    return result
+  })
+
+  /**
+   * 重置指定字段到初始值并通知订阅者
+   */
+  private resetFields(names: NamePath<T>[]): void {
+    const prevSnapshot = this.store.getFieldsSnapshot()
+
+    names.forEach((name) => {
+      this.store.resetField(name)
+    })
+    const newValues = this.store.getFieldsValue(names)
+
+    this.notify(newValues, prevSnapshot, prevSnapshot)
+  }
+
+  /**
+   * 重置整个表单到初始值并通知订阅者
+   */
+  private reset(): void {
+    const prevSnapshot = this.store.getFieldsSnapshot()
+    this.store.reset()
+    this.validator.resetErrors()
+    const latestValues = this.store.getFieldsValue()
+    this.notify(latestValues, prevSnapshot, prevSnapshot)
+  }
+
+  /**
+   * 提交表单
+   */
+  private submit = withLock(async (): Promise<void> => {
+    const result = await this.validate()
+    if (result.ok) {
+      await this.callbacks.onFinish?.(result.values)
+    } else {
+      this.callbacks.onFinishFailed?.(result.error)
+    }
+  })
+  /**
+   * 销毁表单实例
+   *
+   * 清除所有订阅回调，释放资源。通常在组件卸载时调用。
+   */
+  private destroy(): void {
+    this.subscriber.clear()
   }
 }
 
@@ -505,7 +483,6 @@ export function createFormInstance<T extends FormValues>(
  * ```typescript
  * // 在 setup 中使用
  * const form = useForm({
- *   columns: [...],
  *   initialValues: { name: '', email: '' },
  *   onFinish: async (values) => {
  *     await api.submit(values)

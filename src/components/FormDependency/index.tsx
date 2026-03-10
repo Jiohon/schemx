@@ -11,7 +11,6 @@ import { defineComponent, PropType } from "vue"
 
 import { useDependency } from "../../hooks"
 import { isBaseColumn } from "../../utils"
-
 import FormItem from "../FormItem"
 
 import type { SchemaDependencyColumn } from "../../types"

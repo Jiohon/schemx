@@ -85,6 +85,9 @@ export interface SchemaBaseColumn<
    * 控制必填标记（红色星号）的显示。
    * 若未设置，会根据 `rules` 中的校验规则自动推断。
    * 支持函数形式 `(values) => boolean`，在依赖字段变化时动态计算。
+   *
+   * @remarks
+   * 注意：需要配置 `dependencies` 字段
    */
   required?: DynamicProp<boolean>
 
@@ -94,6 +97,9 @@ export interface SchemaBaseColumn<
    * 只读状态下字段可见但不可编辑。
    * 未设置时继承 FormContext 的全局 `readonly` 配置。
    * 支持函数形式 `(values) => boolean`，在依赖字段变化时动态计算。
+   *
+   * @remarks
+   * 注意：需要配置 `dependencies` 字段
    */
   readonly?: DynamicProp<boolean>
 
@@ -103,6 +109,9 @@ export interface SchemaBaseColumn<
    * 禁用状态下字段不可交互。
    * 未设置时继承 FormContext 的全局 `disabled` 配置。
    * 支持函数形式 `(values) => boolean`，在依赖字段变化时动态计算。
+   *
+   * @remarks
+   * 注意：需要配置 `dependencies` 字段
    */
   disabled?: DynamicProp<boolean>
 
@@ -111,6 +120,9 @@ export interface SchemaBaseColumn<
    *
    * 隐藏时字段不渲染，同时会清除校验规则和错误信息。
    * 支持函数形式 `(values) => boolean`，在依赖字段变化时动态计算。
+   *
+   * @remarks
+   * 注意：需要配置 `dependencies` 字段
    */
   hidden?: DynamicProp<boolean>
 
@@ -149,7 +161,14 @@ export interface SchemaBaseColumn<
    *
    * 未设置时继承 FormContext 的全局 `labelAlign` 配置。
    */
-  labelAlign?: "left" | "right" | "top"
+  labelAlign?: "left" | "center" | "right"
+
+  /**
+   * 标签位置
+   *
+   * 未设置时继承 FormContext 的全局 `labelPosition` 配置。
+   */
+  labelPosition?: "left" | "top" | "right"
 
   /**
    * 标签宽度

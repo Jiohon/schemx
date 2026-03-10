@@ -22,6 +22,14 @@
   display: none;
 }
 
+.is-disabled {
+  opacity: 0.65;
+}
+
+.is-readonly {
+  opacity: 1;
+}
+
 .schema-form-item {
   display: flex;
   align-items: flex-start;
@@ -29,40 +37,36 @@
   line-height: var(--schema-form-item-line-height);
 }
 
-.schema-form-item .schema-form-renderer-disabled {
-  opacity: 0.65;
-}
-
-.schema-form-item .schema-form-renderer-readonly {
-  opacity: 1;
-}
-
 /**
- * Label 排列方向修饰符
+ * label 位置：左侧（默认）
  */
 .schema-form-item--label-left {
   flex-direction: row;
 }
 
-.schema-form-item--label-left .schema-form-item__label {
-  text-align: left;
-}
-
+/**
+ * label 位置：右侧
+ */
 .schema-form-item--label-right {
-  flex-direction: row;
+  flex-direction: row-reverse;
 }
 
 .schema-form-item--label-right .schema-form-item__label {
-  text-align: right;
+  margin-right: 0;
+  margin-left: var(--schema-form-padding-xs);
 }
 
+/**
+ * label 位置：顶部
+ */
 .schema-form-item--label-top {
   flex-direction: column;
 }
 
 .schema-form-item--label-top .schema-form-item__label {
-  width: 100% !important;
-  margin-bottom: var(--schema-form-padding-xs);
+  margin-right: 0;
+  margin-bottom: 4px;
+  width: auto;
 }
 
 /**

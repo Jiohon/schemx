@@ -1,36 +1,36 @@
 /**
- * useWatch - 监听字段变化（Vue 组合式 API 版本）
+ * useSchemaWatch - 监听字段变化（Vue 组合式 API 版本）
  *
  * 在组件内使用，自动通过 `useFormInstance` 获取 formContext，
  * 并在 `onUnmounted` 时自动取消订阅，无需手动管理生命周期。
  * 纯函数版本请使用 `createWatch` 系列函数。
  *
  * 提供三种监听模式：
- * - 全局监听：`useWatch(callback, options?)` — 监听表单中任意字段变化
- * - 单字段监听：`useWatch(name, callback, options?)` — 监听指定字段变化
- * - 多字段监听：`useWatch(names, callback, options?)` — 监听一组字段变化
+ * - 全局监听：`useSchemaWatch(callback, options?)` — 监听表单中任意字段变化
+ * - 单字段监听：`useSchemaWatch(name, callback, options?)` — 监听指定字段变化
+ * - 多字段监听：`useSchemaWatch(names, callback, options?)` — 监听一组字段变化
  *
  * 同时提供语义化的便捷方法：
- * - {@link useWatchField} — 单字段监听
- * - {@link useWatchFields} — 多字段监听
- * - {@link useWatchAll} — 全局监听
+ * - {@link useSchemaWatchField} — 单字段监听
+ * - {@link useSchemaWatchFields} — 多字段监听
+ * - {@link useSchemaWatchAll} — 全局监听
  *
- * @module hooks/useWatch
+ * @module hooks/useSchemaWatch
  *
  * @example
  * ```ts
  * // 全局监听
- * useWatch((payload, prev, latest) => {
+ * useSchemaWatch((payload, prev, latest) => {
  *   console.log('changed paths:', payload.changedPaths)
  * })
  *
  * // 单字段监听
- * useWatch('username', (payload, prev, latest) => {
+ * useSchemaWatch('username', (payload, prev, latest) => {
  *   console.log('username changed:', payload.value)
  * }, { immediate: true })
  *
  * // 多字段监听
- * useWatch(['firstName', 'lastName'], (payload, prev, latest) => {
+ * useSchemaWatch(['firstName', 'lastName'], (payload, prev, latest) => {
  *   console.log('name changed:', payload.changedValues)
  * }, { inequality: true })
  * ```
@@ -49,11 +49,8 @@ import {
   type GlobalCallback,
   type MultiFieldCallback,
   type SingleFieldCallback,
-  type UseWatchOptions,
+  type useSchemaWatchOptions,
 } from "./createWatch"
-
-// 重新导出类型，保持对外 API 不变
-export type { SingleFieldCallback, MultiFieldCallback, GlobalCallback, UseWatchOptions }
 
 /**
  * 监听所有字段变化
@@ -64,12 +61,15 @@ export type { SingleFieldCallback, MultiFieldCallback, GlobalCallback, UseWatchO
  *
  * @example
  * ```ts
- * useWatch((payload, prev, latest) => {
+ * useSchemaWatch((payload, prev, latest) => {
  *   console.log('form changed:', payload.changedPaths)
  * })
  * ```
  */
-export function useWatch(callback: GlobalCallback, options?: UseWatchOptions): () => void
+export function useSchemaWatch(
+  callback: GlobalCallback,
+  options?: useSchemaWatchOptions
+): () => void
 /**
  * 监听单个字段变化
  *
@@ -80,15 +80,15 @@ export function useWatch(callback: GlobalCallback, options?: UseWatchOptions): (
  *
  * @example
  * ```ts
- * useWatch('name', (payload, prev, latest) => {
+ * useSchemaWatch('name', (payload, prev, latest) => {
  *   console.log('name changed:', payload.value)
  * }, { immediate: true })
  * ```
  */
-export function useWatch(
+export function useSchemaWatch(
   name: NamePath,
   callback: SingleFieldCallback,
-  options?: UseWatchOptions
+  options?: useSchemaWatchOptions
 ): () => void
 /**
  * 监听多个字段变化
@@ -101,42 +101,42 @@ export function useWatch(
  *
  * @example
  * ```ts
- * useWatch(['firstName', 'lastName'], (payload, prev, latest) => {
+ * useSchemaWatch(['firstName', 'lastName'], (payload, prev, latest) => {
  *   console.log('changed:', payload.changedValues)
  * }, { inequality: true })
  * ```
  */
-export function useWatch(
+export function useSchemaWatch(
   names: NamePath[],
   callback: MultiFieldCallback,
-  options?: UseWatchOptions
+  options?: useSchemaWatchOptions
 ): () => void
 /**
- * useWatch 实现 — 根据第一个参数类型分发到对应的 createWatch 函数
+ * useSchemaWatch 实现 — 根据第一个参数类型分发到对应的 createWatch 函数
  *
  * @param nameOrNamesOrCallback - 字段路径、字段路径数组或全局回调
  * @param callbackOrOptions - 回调函数或全局监听时的选项
  * @param maybeOptions - 单字段/多字段监听时的选项
  * @returns 取消订阅函数
  */
-export function useWatch(
+export function useSchemaWatch(
   nameOrNamesOrCallback: NamePath | NamePath[] | GlobalCallback,
-  callbackOrOptions?: SingleFieldCallback | MultiFieldCallback | UseWatchOptions,
-  maybeOptions?: UseWatchOptions
+  callbackOrOptions?: SingleFieldCallback | MultiFieldCallback | useSchemaWatchOptions,
+  maybeOptions?: useSchemaWatchOptions
 ): () => void {
   const form = useFormInstance()
 
   let unsubscribe: () => void
 
-  // 全局监听：useWatch(callback, options?)
+  // 全局监听：useSchemaWatch(callback, options?)
   if (typeof nameOrNamesOrCallback === "function") {
     unsubscribe = createWatchAll(
       form,
       nameOrNamesOrCallback as GlobalCallback,
-      (callbackOrOptions as UseWatchOptions) || {}
+      (callbackOrOptions as useSchemaWatchOptions) || {}
     )
   }
-  // 单字段监听：useWatch(name, callback, options?)
+  // 单字段监听：useSchemaWatch(name, callback, options?)
   else if (
     typeof nameOrNamesOrCallback === "string" ||
     typeof nameOrNamesOrCallback === "number"
@@ -148,7 +148,7 @@ export function useWatch(
       maybeOptions || {}
     )
   }
-  // 多字段监听：useWatch(names, callback, options?)
+  // 多字段监听：useSchemaWatch(names, callback, options?)
   else {
     unsubscribe = createWatchFields(
       form,
@@ -166,7 +166,7 @@ export function useWatch(
 /**
  * 监听单个字段变化的便捷方法
  *
- * 等价于 `useWatch(name, callback, options)`，语义更明确。
+ * 等价于 `useSchemaWatch(name, callback, options)`，语义更明确。
  * 自动绑定 formContext 并在组件卸载时取消订阅。
  *
  * @param name - 要监听的字段路径，如 `'username'` 或 `'user.address.city'`
@@ -181,29 +181,29 @@ export function useWatch(
  *
  * @example
  * ```ts
- * useWatchField('name', (payload, prevSnapshot, latestSnapshot) => {
+ * useSchemaWatchField('name', (payload, prevSnapshot, latestSnapshot) => {
  *   console.log('name changed from', payload.prevValue, 'to', payload.value)
  * })
  *
  * // 立即执行
- * useWatchField('name', callback, { immediate: true })
+ * useSchemaWatchField('name', callback, { immediate: true })
  *
  * // 值相等时跳过
- * useWatchField('name', callback, { inequality: true })
+ * useSchemaWatchField('name', callback, { inequality: true })
  * ```
  */
-export function useWatchField(
+export function useSchemaWatchField(
   name: NamePath,
   callback: SingleFieldCallback,
-  options?: UseWatchOptions
+  options?: useSchemaWatchOptions
 ): () => void {
-  return useWatch(name, callback, options)
+  return useSchemaWatch(name, callback, options)
 }
 
 /**
  * 监听多个字段变化的便捷方法
  *
- * 等价于 `useWatch(names, callback, options)`，语义更明确。
+ * 等价于 `useSchemaWatch(names, callback, options)`，语义更明确。
  * 当任一指定字段发生变化时触发回调，自动绑定 formContext 并在组件卸载时取消订阅。
  *
  * @param names - 要监听的字段路径数组，如 `['firstName', 'lastName']`
@@ -217,7 +217,7 @@ export function useWatchField(
  *
  * @example
  * ```ts
- * useWatchFields(
+ * useSchemaWatchFields(
  *   ['firstName', 'lastName'],
  *   (payload, prevSnapshot, latestSnapshot) => {
  *     console.log('name fields changed:', payload.changedValues)
@@ -226,21 +226,21 @@ export function useWatchField(
  * )
  *
  * // 立即执行
- * useWatchFields(['firstName', 'lastName'], callback, { immediate: true })
+ * useSchemaWatchFields(['firstName', 'lastName'], callback, { immediate: true })
  * ```
  */
-export function useWatchFields(
+export function useSchemaWatchFields(
   names: NamePath[],
   callback: MultiFieldCallback,
-  options?: UseWatchOptions
+  options?: useSchemaWatchOptions
 ): () => void {
-  return useWatch(names, callback, options)
+  return useSchemaWatch(names, callback, options)
 }
 
 /**
  * 监听所有字段变化的便捷方法
  *
- * 等价于 `useWatch(callback, options)`，语义更明确。
+ * 等价于 `useSchemaWatch(callback, options)`，语义更明确。
  * 当表单中任意字段发生变化时触发回调，
  * 适用于全局感知表单变化的场景（如自动保存、脏检测）。
  * 自动绑定 formContext 并在组件卸载时取消订阅。
@@ -256,20 +256,20 @@ export function useWatchFields(
  *
  * @example
  * ```ts
- * useWatchAll((payload, prevSnapshot, latestSnapshot) => {
+ * useSchemaWatchAll((payload, prevSnapshot, latestSnapshot) => {
  *   console.log('form changed:', payload.changedPaths)
  *   console.log('changed values:', payload.changedValues)
  * })
  *
  * // 立即执行
- * useWatchAll(callback, { immediate: true })
+ * useSchemaWatchAll(callback, { immediate: true })
  * ```
  */
-export function useWatchAll(
+export function useSchemaWatchAll(
   callback: GlobalCallback,
-  options?: UseWatchOptions
+  options?: useSchemaWatchOptions
 ): () => void {
-  return useWatch(callback, options)
+  return useSchemaWatch(callback, options)
 }
 
-export default useWatch
+export default useSchemaWatch

@@ -16,9 +16,9 @@
     "paths": {
       "@/*": ["src/*"],
       "@": ["src"],
-      "@Jonhn/schema-form": ["./src/index.ts"],
-      "@Jonhn/schema-form/es/*": ["src/*"],
-      "@Jonhn/schema-form/lib/*": ["src/*"]
+      "@Jonhn/schemaForm": ["./src/index.ts"],
+      "@Jonhn/schemaForm/es/*": ["src/*"],
+      "@Jonhn/schemaForm/lib/*": ["src/*"]
     },
     "resolveJsonModule": true,
     "esModuleInterop": true,

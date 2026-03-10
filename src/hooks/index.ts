@@ -10,17 +10,13 @@ export { createFormInstance, useForm, type CreateFormInstanceOptions } from "./u
 /** useField - 单字段控制 */
 export { useField, type UseFieldOptions } from "./useField"
 
-/** useWatch - 字段变化监听 */
+/** useSchemaWatch - 字段变化监听 */
 export {
-  useWatch,
-  useWatchField,
-  useWatchFields,
-  useWatchAll,
-  type SingleFieldCallback,
-  type MultiFieldCallback,
-  type GlobalCallback,
-  type UseWatchOptions,
-} from "./useWatch"
+  useSchemaWatch,
+  useSchemaWatchField,
+  useSchemaWatchFields,
+  useSchemaWatchAll,
+} from "./useSchemaWatch"
 
 /** useDependency - 依赖字段动态渲染 */
 export { useDependency, type UseDependencyReturn } from "./useDependency"

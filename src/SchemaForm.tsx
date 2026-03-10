@@ -6,12 +6,9 @@
  * @module SchemaForm
  */
 
-import { App, computed, CSSProperties, defineComponent, PropType, ref } from "vue"
-
-import { Button, Form } from "vant"
+import { App, CSSProperties, defineComponent, PropType } from "vue"
 
 import classnames from "classnames"
-import { omit } from "es-toolkit"
 
 import FormItem from "./components/FormItem"
 import { globalRegistry } from "./core/registry"
@@ -22,16 +19,13 @@ import {
   _clearGlobalRequest,
   _setGlobalRequest,
 } from "./hooks/useRequester/globalRequestProvider"
+import { isBaseColumn } from "./utils"
+import { collectObjectPathsByLeaf } from "./utils/path"
 
 import type { Registry } from "./core/registry"
 import type { SchemaFormProps } from "./types"
 
-/**
- * SchemaForm 插件安装选项
- *
- * 通过 `app.use(SchemaForm, options)` 传入，预留扩展。
- */
-export interface SchemaFormInstallOptions {}
+import "./styles/index.css"
 
 /**
  * SchemaForm 组件
@@ -79,6 +73,10 @@ const SchemaForm = defineComponent<SchemaFormProps>({
       type: String as PropType<SchemaFormProps["labelAlign"]>,
       default: "right",
     },
+    labelPosition: {
+      type: String as PropType<SchemaFormProps["labelPosition"]>,
+      default: "left",
+    },
     colon: {
       type: Boolean as PropType<SchemaFormProps["colon"]>,
       default: true,
@@ -107,18 +105,6 @@ const SchemaForm = defineComponent<SchemaFormProps>({
       type: Function as PropType<SchemaFormProps["onFieldsChange"]>,
       default: null,
     },
-    footer: {
-      type: [Object, Function, Boolean] as PropType<SchemaFormProps["footer"]>,
-      default: false,
-    },
-    submitButtonText: {
-      type: String as PropType<SchemaFormProps["submitButtonText"]>,
-      default: "提交",
-    },
-    submitButtonProps: {
-      type: Object as PropType<SchemaFormProps["submitButtonProps"]>,
-      default: () => ({}),
-    },
     rendererRegistry: {
       type: Object as PropType<Registry>,
       default: undefined,
@@ -132,12 +118,6 @@ const SchemaForm = defineComponent<SchemaFormProps>({
   emits: ["update:modelValue"],
 
   setup(props, { expose, slots, emit, attrs }) {
-    /** Vant Form 组件引用 */
-    const formRef = ref<InstanceType<typeof Form> | null>(null)
-
-    /** 提交状态 */
-    const submitting = ref(false)
-
     /**
      * 获取或创建表单实例
      *
@@ -151,20 +131,21 @@ const SchemaForm = defineComponent<SchemaFormProps>({
           initialValues: props.initialValues,
 
           onFinish: async (values) => {
-            submitting.value = true
-            try {
-              props.onFinish?.(values)
-            } finally {
-              submitting.value = false
-            }
+            props.onFinish?.(values)
           },
           onFinishFailed: async (errors) => {
             props.onFinishFailed?.(errors)
           },
-          onValuesChange: (changedValues, latestValues) => {
-            emit("update:modelValue", latestValues)
-            props.onValuesChange?.(changedValues, latestValues)
-            props.onFieldsChange?.(Object.keys(changedValues), Object.keys(latestValues))
+          onValuesChange: (changedValues, latestSnapshot) => {
+            emit("update:modelValue", latestSnapshot)
+            props.onValuesChange?.(changedValues, latestSnapshot)
+            props.onFieldsChange?.(
+              collectObjectPathsByLeaf(changedValues),
+              collectObjectPathsByLeaf(latestSnapshot)
+            )
+          },
+          onFieldsChange: (changedPaths, allPaths) => {
+            props.onFieldsChange?.(changedPaths, allPaths)
           },
         })
 
@@ -178,6 +159,7 @@ const SchemaForm = defineComponent<SchemaFormProps>({
       readonly: props.readonly,
       disabled: props.disabled,
       labelAlign: props.labelAlign,
+      labelPosition: props.labelPosition,
       labelWidth: props.labelWidth,
       colon: props.colon,
       className: props.className,
@@ -198,52 +180,11 @@ const SchemaForm = defineComponent<SchemaFormProps>({
           } as CSSProperties
         }
       >
-        <Form
-          ref={formRef}
-          class="vant-form"
-          disabled={props.disabled}
-          readonly={props.readonly}
-          style={props.style}
-          errorMessageAlign="right"
-          {...omit({ ...attrs }, [
-            "columns",
-            "className",
-            "initialValues",
-            "disabled",
-            "readonly",
-            "style",
-            "validateTrigger",
-          ])}
-          required="auto"
-        >
-          {props.columns?.map((column, index) => {
-            const key = `${column.componentType}-${"name" in column ? column.name : index}`
+        {props.columns?.map((column, index) => {
+          const key = `${column.componentType}-${isBaseColumn(column) ? column.name : index}`
 
-            return (
-              <FormItem
-                key={key}
-                column={{ ...column, ...(attrs as Record<string, any>) }}
-                v-slots={slots}
-              />
-            )
-          })}
-
-          {props.footer && !props.readonly && (
-            <div class="schema-form-submit-button">
-              <Button
-                round
-                block
-                type="primary"
-                loading={submitting.value}
-                disabled={props.disabled}
-                onClick={() => form.submit()}
-                {...props.submitButtonProps}
-              >
-                {props.submitButtonText}
-              </Button>
-            </div>
-          )}
-        </Form>
+          return <FormItem key={key} column={{ ...column, ...attrs }} v-slots={slots} />
+        })}
       </div>
     )
   },
@@ -256,7 +197,7 @@ const SchemaForm = defineComponent<SchemaFormProps>({
  *
  * @example
  * ```ts
- * import SchemaForm from '@user/schema-form'
+ * import SchemaForm from '@user/schemaForm'
  *
  * // 作为 Vue 插件安装
  * app.use(SchemaForm)
@@ -270,7 +211,7 @@ const SchemaForm = defineComponent<SchemaFormProps>({
  */
 type SchemaFormType = typeof SchemaForm & {
   /** Vue 插件安装方法 */
-  install: (app: App, options?: SchemaFormInstallOptions) => void
+  install: (app: App) => void
   /** FormItem 子组件引用 */
   FormItem: typeof FormItem
   /**
@@ -291,7 +232,7 @@ type SchemaFormType = typeof SchemaForm & {
 
 /** 挂载静态方法和属性到组件上 */
 Object.assign(SchemaForm, {
-  install(app: App, _options: SchemaFormInstallOptions = {}) {
+  install(app: App) {
     app.component("SchemaForm", SchemaForm)
   },
   FormItem,

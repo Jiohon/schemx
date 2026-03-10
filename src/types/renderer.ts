@@ -19,7 +19,7 @@
  * @example
  * ```ts
  * // 在项目中创建 schema-form.d.ts
- * declare module '@Jonhn/schema-form' {
+ * declare module '@Jonhn/schemaForm' {
  *   interface CustomRendererMap {
  *     'my-input': MyInputProps
  *     'rich-editor': RichEditorProps

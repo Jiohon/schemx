@@ -2,13 +2,13 @@ import type { DeepReadonly } from "vue"
 
 import { FormValues, NamePath, Value } from "@/types"
 
+import type { StandardSchemaV1 } from "../core/standardSchema"
 import type {
   FieldsSubscribeCallback,
   FieldSubscribeCallback,
   GlobalSubscribeCallback,
 } from "../core/subscriber"
 import type { ValidateResult } from "../core/validator"
-import type { StandardSchemaV1 } from "../core/standardSchema"
 
 /**
  * 表单实例接口

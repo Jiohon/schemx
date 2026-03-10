@@ -6,20 +6,25 @@
       ref="formRef"
       v-model="formData"
       :columns="columns"
-      :footer="true"
-      submit-button-text="注册"
       @finish="handleSubmit"
       @finish-failed="handleSubmitFailed"
     />
 
-    <button @click="handleEmil">验证邮箱</button>
+    <div class="form-actions">
+      <button class="btn btn-primary" @click="formRef?.submit()">注册</button>
+      <button class="btn" @click="formRef?.validate()">校验</button>
+      <button class="btn" @click="formRef?.reset()">重置</button>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
   import { ref } from "vue"
+
   import { z } from "zod"
+
   import SchemaForm from "@"
+
   import type { SchemaColumn, SchemaFormInstance } from "@"
 
   const formRef = ref<SchemaFormInstance>()
@@ -30,6 +35,7 @@
     // 模拟异步检查
     await new Promise((resolve) => setTimeout(resolve, 500))
     const existingUsers = ["admin", "test", "user"]
+
     return !existingUsers.includes(value.toLowerCase())
   }
 
@@ -52,6 +58,7 @@
         .refine(
           async (val) => {
             if (!val) return true
+
             return await checkUsernameExists(val)
           },
           { message: "该用户名已被使用" }
@@ -64,6 +71,7 @@
       componentProps: {
         placeholder: "请输入邮箱地址",
       },
+      readonly: true,
       rules: "required",
     },
     {
@@ -75,6 +83,12 @@
         type: "text",
         placeholder: "请输入手机号",
         maxlength: 11,
+      },
+      dependencies: ["username"],
+      disabled: (values) => {
+        console.log(values)
+
+        return true
       },
       rules: z.string().regex(/^1[3-9]\d{9}$/, "请输入有效的手机号"),
     },
@@ -133,6 +147,7 @@
     // 跨字段验证：确认密码
     if (values.password !== values.confirmPassword) {
       alert("两次输入的密码不一致")
+
       return
     }
 
@@ -143,10 +158,6 @@
   // 提交失败处理
   const handleSubmitFailed = (errorInfo: any) => {
     console.error("验证失败:", errorInfo)
-  }
-
-  const handleEmil = () => {
-    formRef.value?.validateField("email")
   }
 </script>
 

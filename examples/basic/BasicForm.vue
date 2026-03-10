@@ -7,11 +7,15 @@
       v-model="formData"
       :columns="columns"
       :initial-values="initialValues"
-      :footer="true"
-      submit-button-text="提交"
       @onFinish="handleSubmit"
       @values-change="handleValuesChange"
     />
+
+    <div class="form-actions">
+      <button class="btn btn-primary" @click="formRef?.submit()">提交</button>
+      <button class="btn" @click="formRef?.validate()">校验</button>
+      <button class="btn" @click="formRef?.reset()">重置</button>
+    </div>
 
     <div class="form-data-preview">
       <h3>表单数据预览</h3>

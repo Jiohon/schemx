@@ -8,11 +8,11 @@
 
 import type { CSSProperties, DeepReadonly } from "vue"
 
-import type { CustomRules, DynamicProp, FormValues, ValidationTrigger } from "./base"
+import type { DynamicProp, FormValues, NamePath, ValidationTrigger } from "./base"
 import type { SchemaFormInstance } from "./instance"
-import type { SchemaBaseColumn, SchemaColumn, SchemaDependencyColumn } from "./schema"
-import type { ValidateError } from "../core/validator"
+import type { SchemaBaseColumn, SchemaColumn } from "./schema"
 import type { Registry } from "../core/registry"
+import type { ValidateError } from "../core/validator"
 
 /**
  * 通用组件 Props 基础接口
@@ -61,11 +61,13 @@ export interface SchemaFormProps<T extends FormValues = FormValues> {
   /** 标签图标 */
   labelIcon?: string
   /** 表单 label 排列方向 */
-  labelAlign?: "left" | "right" | "top"
+  labelAlign?: "left" | "center" | "right"
+  /** 表单 label 位置 */
+  labelPosition?: "left" | "top" | "right"
   /** 表单 label 宽度 */
   labelWidth?: string
   /** 表单内容排列方向 */
-  contentAlign?: "left" | "right" | "top"
+  contentAlign?: "left" | "center" | "right"
   /** 是否在 label 后面添加冒号 */
   colon?: boolean
   /** 是否只读 */
@@ -76,20 +78,17 @@ export interface SchemaFormProps<T extends FormValues = FormValues> {
   className?: string
   /** 自定义样式 */
   style?: CSSProperties
-  /** 提交成功回调 */
-  onFinish?: (values: DeepReadonly<T>) => void
-  /** 提交失败回调 */
-  onFinishFailed?: (errorInfo: ValidateError<T>) => void
-  /** 值变化回调 */
-  onValuesChange?: (changedValues: Partial<T>, latestValues: T) => void
-  /** 字段变化回调 */
-  onFieldsChange?: (changedFields: string[], allFields: string[]) => void
-  /** 是否显示底部按钮 */
-  footer?: boolean | object | (() => boolean)
-  /** 提交按钮文本 */
-  submitButtonText?: string
-  /** 提交按钮属性 */
-  submitButtonProps?: ComponentsProps
+  /** 表单提交校验通过后的回调 */
+  onFinish?: (values: DeepReadonly<T>) => void | Promise<void>
+  /** 表单提交校验失败后的回调 */
+  onFinishFailed?: (error: ValidateError<T>) => void
+  /** 字段值更新时触发的回调 */
+  onValuesChange?: (
+    changedValues: DeepReadonly<Partial<T>>,
+    latestSnapshot: DeepReadonly<T> | T
+  ) => void
+  /** 字段更新时触发的回调 */
+  onFieldsChange?: (changedFields: NamePath<T>[], allFields: NamePath<T>[]) => void
   /** 全局 HTTP 请求器，作为该表单实例内所有 useDictOptions 的默认请求器 */
   request?: (url: string) => Promise<any>
 }

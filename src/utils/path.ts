@@ -21,7 +21,7 @@
  * ```
  */
 
-import { get, set, has, unset } from "es-toolkit/compat"
+import { get, has, set, unset } from "es-toolkit/compat"
 
 import type { FormValues, NamePath, Value } from "../types"
 
