@@ -8,11 +8,12 @@
 
 import type { CSSProperties, DeepReadonly } from "vue"
 
-import type { DynamicProp, FormValues, NamePath, ValidationTrigger } from "./base"
+import type { FormValues, NamePath, ValidationTrigger } from "./base"
 import type { SchemaFormInstance } from "./instance"
 import type { SchemaBaseColumn, SchemaColumn } from "./schema"
 import type { Registry } from "../core/registry"
 import type { ValidateError } from "../core/validator"
+import type { DynamicProp } from "../utils/dynamic"
 
 /**
  * 通用组件 Props 基础接口

@@ -327,7 +327,7 @@ class CreateFormInstance<T extends FormValues = FormValues> {
   /**
    * 检查多个字段是否被修改
    */
-  private isFieldsTouched(path?: NamePath<T>): boolean {
+  private isFieldsTouched(path?: NamePath<T>[]): boolean {
     return this.store.isFieldsTouched(path)
   }
 
@@ -422,7 +422,7 @@ class CreateFormInstance<T extends FormValues = FormValues> {
     this.store.reset()
     this.validator.resetErrors()
     const latestValues = this.store.getFieldsValue()
-    this.notify(latestValues, prevSnapshot, prevSnapshot)
+    this.notify(latestValues, prevSnapshot, this.store.getFieldsSnapshot())
   }
 
   /**

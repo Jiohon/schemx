@@ -1,7 +1,10 @@
 <template>
   <div class="example-container">
     <h2>自定义渲染器示例</h2>
-    <p class="description">演示如何注册和使用自定义渲染器</p>
+    <p class="description">
+      演示自定义渲染器（color、starRating、tagInput）的注册和使用， 以及 useForm
+      创建表单实例、isFieldTouched / getTouchedFields 等 API
+    </p>
 
     <SchemaForm
       ref="formRef"
@@ -13,8 +16,8 @@
 
     <div class="form-actions">
       <button class="btn btn-primary" @click="formRef?.submit()">提交</button>
-      <button class="btn" @click="formRef?.validate()">校验</button>
       <button class="btn" @click="formRef?.reset()">重置</button>
+      <button class="btn" @click="checkTouched">检查修改状态</button>
     </div>
 
     <div class="form-data-preview">
@@ -26,9 +29,10 @@
 
 <script setup lang="ts">
   import { ref } from "vue"
-  import { z } from "zod"
-  import SchemaForm, { useForm } from "@"
 
+  import { z } from "zod"
+
+  import SchemaForm, { useForm } from "@"
   import type { SchemaColumn, SchemaFormInstance } from "@"
 
   // 注意：自定义渲染器（color、starRating、tagInput）在 main.ts 中通过 globalRegistry 注册
@@ -44,7 +48,7 @@
     {
       name: "color",
       label: "主题颜色",
-      componentType: "color", // 自定义渲染器
+      componentType: "color",
       componentProps: {
         colors: [
           "#1989fa",
@@ -58,11 +62,20 @@
       },
     },
     {
+      name: "rating",
+      label: "评分",
+      componentType: "starRating",
+      componentProps: {
+        max: 5,
+      },
+    },
+    {
       name: "tags",
       label: "标签",
-      componentType: "text",
+      componentType: "tagInput",
       componentProps: {
-        placeholder: "输入标签，用逗号分隔",
+        placeholder: "输入后按回车添加",
+        maxTags: 5,
       },
     },
     {
@@ -72,6 +85,7 @@
       componentProps: {
         placeholder: "请输入描述",
         maxlength: 200,
+        showWordLimit: true,
       },
     },
     {
@@ -88,14 +102,25 @@
   const formRef = ref<SchemaFormInstance>()
   const formData = ref<Record<string, any>>({
     color: "#1989fa",
+    rating: 3,
+    tags: [],
     priority: 5,
   })
 
   const form = useForm({ initialValues: formData.value, columns })
 
-  // 提交处理
   const handleSubmit = (values: Record<string, any>) => {
     console.log("提交数据:", values)
+    alert("提交成功！数据已打印到控制台")
+  }
+
+  // 检查字段修改状态
+  const checkTouched = () => {
+    const touched = form.getTouchedFields()
+    const titleTouched = form.isFieldTouched("title")
+    console.log("已修改字段:", touched)
+    console.log("标题是否修改:", titleTouched)
+    alert(`已修改字段: ${touched.length ? touched.join(", ") : "无"}`)
   }
 </script>
 

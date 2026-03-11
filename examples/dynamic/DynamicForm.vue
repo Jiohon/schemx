@@ -1,19 +1,20 @@
 <template>
   <div class="example-container">
     <h2>动态表单示例</h2>
-    <p class="description">演示 dependencies 声明式字段联动、条件显示等动态功能</p>
+    <p class="description">
+      演示 dependencies 声明式字段联动：动态 hidden、disabled、readonly、required、
+      componentProps 函数形式、条件显示/隐藏
+    </p>
 
     <SchemaForm
       ref="formRef"
       v-model="formData"
       :columns="columns"
       @finish="handleSubmit"
-      @finish-failed="handleFailed"
     />
 
     <div class="form-actions">
       <button class="btn btn-primary" @click="formRef?.submit()">提交</button>
-      <button class="btn" @click="formRef?.validate()">校验</button>
       <button class="btn" @click="formRef?.reset()">重置</button>
     </div>
 
@@ -25,8 +26,10 @@
 </template>
 
 <script setup lang="ts">
-  import { readonly, ref } from "vue"
+  import { ref } from "vue"
+
   import { z } from "zod"
+
   import SchemaForm from "@"
   import type { SchemaColumn, SchemaFormInstance } from "@"
 
@@ -35,8 +38,8 @@
     userType: "personal",
   })
 
-  // 表单配置 - 使用 dependencies 声明式依赖
   const columns: SchemaColumn[] = [
+    // 控制字段：用户类型
     {
       name: "userType",
       label: "用户类型",
@@ -44,24 +47,21 @@
       componentProps: {
         placeholder: "输入 personal 或 enterprise",
       },
-      initialValue: "enterprise",
+      initialValue: "personal",
     },
 
-    // 个人用户字段 - 通过 dependencies 声明依赖 userType
+    // 动态 hidden：个人用户才显示
     {
       name: "name",
       label: "姓名",
       componentType: "text",
       required: true,
       dependencies: "userType",
-      hidden: (values) => {
-        console.log(values)
-        return values.userType === "enterprise"
-      },
+      hidden: (values) => values.userType === "enterprise",
       rules: z.string().min(2, "姓名至少 2 个字符"),
     },
 
-    // 企业用户字段 - 依赖 userType
+    // 动态 hidden：企业用户才显示
     {
       name: "companyName",
       label: "企业名称",
@@ -71,6 +71,8 @@
       hidden: (values) => values.userType !== "enterprise",
       rules: z.string().min(2, "企业名称至少 2 个字符"),
     },
+
+    // 动态 required：企业用户时必填
     {
       name: "businessLicense",
       label: "营业执照号",
@@ -80,29 +82,8 @@
       required: (values) => values.userType === "enterprise",
       rules: z.string().min(15, "请输入有效的营业执照号").optional().or(z.literal("")),
     },
-    {
-      name: "contactPerson",
-      label: "联系人",
-      componentType: "text",
-      dependencies: "userType",
-      hidden: (values) => values.userType !== "enterprise",
-    },
 
-    // 通用字段
-    {
-      name: "phone",
-      label: "联系电话",
-      componentType: "input",
-      required: true,
-      componentProps: {
-        type: "text",
-        placeholder: "请输入手机号",
-        maxlength: 11,
-      },
-      rules: z.string().regex(/^1[3-9]\d{9}$/, "请输入有效的手机号"),
-    },
-
-    // 省市联动 - city 依赖 province
+    // 动态 componentProps 函数形式：省市联动
     {
       name: "province",
       label: "省份",
@@ -117,24 +98,12 @@
       componentType: "text",
       dependencies: "province",
       componentProps: (values) => ({
-        placeholder: values.province ? "请输入城市" : "请先输入省份",
+        placeholder: values.province ? `请输入${values.province}的城市` : "请先输入省份",
         disabled: !values.province,
       }),
     },
 
-    // 个人用户附加信息 - 依赖 userType
-    {
-      name: "companyInfo",
-      label: "公司信息",
-      componentType: "text",
-      dependencies: "userType",
-      hidden: (values) => values.userType === "enterprise",
-      componentProps: {
-        placeholder: "请输入您所在公司名称",
-      },
-    },
-
-    // 薪资 - 依赖 userType 控制禁用状态
+    // 动态 disabled
     {
       name: "salary",
       label: "期望薪资",
@@ -147,30 +116,24 @@
       },
     },
 
-    // 备注 - 依赖 userType 和 contactPerson 控制只读和占位符
+    // 动态 readonly + 动态 componentProps
     {
       name: "remark",
       label: "备注",
       componentType: "textarea",
-      dependencies: "userType",
-      readonly: (values) => values.userType === "enterprise" && !values.contactPerson,
+      dependencies: ["userType"],
+      readonly: (values) => values.userType === "enterprise",
       componentProps: (values) => ({
         placeholder:
-          values.userType === "enterprise" && !values.contactPerson
-            ? "请先填写联系人"
-            : "请输入备注信息",
+          values.userType === "enterprise" ? "企业用户备注为只读" : "请输入备注信息",
         maxlength: 200,
       }),
     },
   ]
 
-  // 提交处理
   const handleSubmit = (values: Record<string, any>) => {
     console.log("提交数据:", values)
-  }
-
-  const handleFailed = (errorInfo: any) => {
-    console.log(errorInfo)
+    alert("提交成功！数据已打印到控制台")
   }
 </script>
 

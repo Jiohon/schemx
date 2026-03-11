@@ -183,7 +183,7 @@ export class FormStore<T extends FormValues> {
   setFieldsValue(values: DeepReadonly<Partial<T>>): void {
     const paths = collectObjectPathsByLeaf(values)
 
-    for (const path in paths) {
+    for (const path of paths) {
       setByPath(this.state.values, path, getByPath(values, path))
     }
   }
@@ -228,7 +228,7 @@ export class FormStore<T extends FormValues> {
 
     const result = {} as Partial<T>
 
-    for (const path in paths) {
+    for (const path of paths) {
       setByPath(result, path, getByPath(this.state.initialValues, path))
     }
 
@@ -290,7 +290,7 @@ export class FormStore<T extends FormValues> {
    * store.isFieldsTouched()               // => true（任一字段被修改时）
    * ```
    */
-  isFieldsTouched(paths?: NamePath<T>): boolean {
+  isFieldsTouched(paths?: NamePath<T>[]): boolean {
     if (Array.isArray(paths) && paths?.length) {
       return paths.every((path) => this.isFieldTouched(path as NamePath<T>))
     }

@@ -147,6 +147,8 @@ export class Subscriber<T extends FormValues> {
    * ```
    */
   subscribe(path: NamePath<T>, callback: FieldSubscribeCallback<T>): () => void {
+    if (path === undefined || path === null) return () => {}
+
     if (!this.fieldSubscribers.has(path)) {
       this.fieldSubscribers.set(path, new Set())
     }
@@ -184,6 +186,8 @@ export class Subscriber<T extends FormValues> {
     paths: NamePath<T>[],
     callback: FieldsSubscribeCallback<T>
   ): () => void {
+    if (!paths || paths.length === 0) return () => {}
+
     // 排序后序列化作为 key，保证 ['name','age'] 和 ['age','name'] 是同一组
     const key = [...paths].sort().join("|")
 
@@ -194,7 +198,7 @@ export class Subscriber<T extends FormValues> {
       })
     }
 
-    this.fieldsSubscribers.get(key)!.callbacks.add(callback)
+    this.fieldsSubscribers.get(key)?.callbacks.add(callback)
 
     return () => {
       const sub = this.fieldsSubscribers.get(key)
@@ -400,6 +404,10 @@ export class Subscriber<T extends FormValues> {
     let count = 0
     for (const subscribers of this.fieldSubscribers.values()) {
       count += subscribers.size
+    }
+
+    for (const { callbacks } of this.fieldsSubscribers.values()) {
+      count += callbacks.size
     }
 
     return count + this.globalSubscribers.size

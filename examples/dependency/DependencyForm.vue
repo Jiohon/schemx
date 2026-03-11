@@ -1,20 +1,22 @@
 <template>
   <div class="example-container">
     <h2>FormDependency 示例</h2>
-    <p class="description">演示使用 FormDependency 组件实现复杂的字段联动</p>
+    <p class="description">
+      演示 componentType: "dependency" 实现复杂字段联动：
+      根据字段值动态生成不同的表单结构，多个 dependency 组合使用
+    </p>
 
     <SchemaForm
       ref="formRef"
       v-model="formData"
       :columns="columns"
-      :initial-values="{ orderType: 'standard', customRequirement: 'xx定制' }"
+      :initial-values="{ orderType: 'standard' }"
       @finish="handleSubmit"
       @finish-failed="handleSubmitFailed"
     />
 
     <div class="form-actions">
       <button class="btn btn-primary" @click="formRef?.submit()">提交</button>
-      <button class="btn" @click="formRef?.validate()">校验</button>
       <button class="btn" @click="formRef?.reset()">重置</button>
     </div>
 
@@ -31,7 +33,6 @@
   import { z } from "zod"
 
   import SchemaForm from "@"
-
   import type { SchemaColumn, SchemaFormInstance } from "@"
 
   const formRef = ref<SchemaFormInstance>()
@@ -39,7 +40,6 @@
     orderType: "standard",
   })
 
-  // 表单配置
   const columns: SchemaColumn[] = [
     {
       name: "orderType",
@@ -49,16 +49,16 @@
       componentProps: {
         placeholder: "输入 standard / express / custom",
       },
-      initialValue: "express",
+      initialValue: "standard",
     },
-    // 使用 dependency 类型实现复杂联动
+
+    // dependency：根据 orderType 动态生成不同字段
     {
       componentType: "dependency",
-      to: ["orderType"], // 依赖 orderType 字段
-      renderer: (values: Record<string, any>, form: SchemaFormInstance) => {
+      to: ["orderType"],
+      renderer: (values: Record<string, any>) => {
         const orderType = values.orderType
 
-        // 根据订单类型返回不同的字段配置
         if (orderType === "standard") {
           return [
             {
@@ -72,9 +72,7 @@
               name: "quantity",
               label: "数量",
               componentType: "number",
-              componentProps: {
-                min: 1,
-              },
+              componentProps: { min: 1 },
             },
             {
               name: "shippingAddress",
@@ -84,7 +82,9 @@
               rules: z.string().min(1, "请输入收货地址"),
             },
           ]
-        } else if (orderType === "express") {
+        }
+
+        if (orderType === "express") {
           return [
             {
               name: "productName",
@@ -99,17 +99,13 @@
               label: "数量",
               readonly: true,
               componentType: "number",
-              componentProps: {
-                min: 1,
-              },
+              componentProps: { min: 1 },
             },
             {
               name: "expressFee",
               label: "加急费用",
               componentType: "number",
-              componentProps: {
-                min: 0,
-              },
+              componentProps: { min: 0 },
             },
             {
               name: "shippingAddress",
@@ -119,57 +115,55 @@
               rules: z.string().min(1, "请输入收货地址"),
             },
           ]
-        } else {
-          return [
-            {
-              name: "customRequirement",
-              label: "定制需求",
-              componentType: "textarea",
-              required: true,
-              componentProps: {
-                placeholder: "请详细描述您的定制需求",
-                maxlength: 500,
-                showWordLimit: true,
-              },
-              rules: z.string().min(1, "请输入定制需求"),
-            },
-            {
-              name: "budget",
-              label: "预算",
-              componentType: "number",
-              componentProps: {
-                min: 0,
-              },
-            },
-            {
-              name: "contactInfo",
-              label: "联系方式",
-              componentType: "text",
-              required: true,
-              rules: z.string().min(1, "请输入联系方式"),
-            },
-          ]
         }
+
+        // custom
+        return [
+          {
+            name: "customRequirement",
+            label: "定制需求",
+            componentType: "textarea",
+            required: true,
+            componentProps: {
+              placeholder: "请详细描述您的定制需求",
+              maxlength: 500,
+              showWordLimit: true,
+            },
+            rules: z.string().min(1, "请输入定制需求"),
+          },
+          {
+            name: "budget",
+            label: "预算",
+            componentType: "number",
+            componentProps: { min: 0 },
+          },
+          {
+            name: "contactInfo",
+            label: "联系方式",
+            componentType: "text",
+            required: true,
+            rules: z.string().min(1, "请输入联系方式"),
+          },
+        ]
       },
     },
+
     {
       name: "price",
       label: "价格",
       componentType: "number",
       required: true,
-      componentProps: {
-        min: 0,
-      },
+      componentProps: { min: 0 },
       initialValue: null,
       rules: z.number({ error: "请输入价格" }).min(0.01, "价格必须大于 0"),
     },
-    // 另一个 dependency 示例：根据价格动态显示折扣信息
+
+    // 第二个 dependency：根据价格动态显示优惠码
     {
       componentType: "dependency",
       to: ["price"],
       renderer: (values: Record<string, any>) => {
         const price = values.price || 0
-
         if (price >= 1000) {
           return [
             {
@@ -182,10 +176,10 @@
             },
           ]
         }
-
         return []
       },
     },
+
     {
       name: "remark",
       label: "备注",
@@ -197,12 +191,11 @@
     },
   ]
 
-  // 提交处理
   const handleSubmit = (values: Record<string, any>) => {
     console.log("提交数据:", values)
+    alert("提交成功！数据已打印到控制台")
   }
 
-  // 提交失败处理
   const handleSubmitFailed = (errorInfo: any) => {
     console.error("验证失败:", errorInfo)
   }

@@ -158,7 +158,8 @@ export class Registry {
   /**
    * 移除渲染器
    *
-   * 如果移除的是当前默认类型，默认类型会重置为 'text'。
+   * 如果移除的是当前默认类型，会从剩余渲染器中智能选取新默认类型。
+   * 若无剩余渲染器则默认类型设为空字符串。
    *
    * @param type - 渲染器类型标识
    * @returns 是否成功移除
@@ -170,11 +171,15 @@ export class Registry {
    * ```
    */
   unregister(type: string): boolean {
-    if (type === this.defaultType) {
-      this.defaultType = "text"
+    const isDefault = type === this.defaultType
+    const deleted = this.renderers.delete(type)
+
+    if (isDefault && deleted) {
+      const firstKey = this.renderers.keys().next().value
+      this.defaultType = firstKey ?? ""
     }
 
-    return this.renderers.delete(type)
+    return deleted
   }
 
   /**

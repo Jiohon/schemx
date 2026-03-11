@@ -30,11 +30,12 @@ import { useField } from "../../hooks/useField"
 import { useFormContext } from "../../hooks/useFormContext"
 import { useRendererContext } from "../../hooks/useRenderer"
 import {
+  extractChildSlots,
   isDependencyColumn,
   isGroupColumn,
   isNestedColumn,
   resolveDynamicProp,
-  resolveDynamicPropByBoolean,
+  resolveSlot,
   shouldValidateOn,
 } from "../../utils"
 import FormDependency from "../FormDependency"
@@ -44,7 +45,7 @@ import FormNested from "../FormNested"
 import type { FormItemProps, SchemaBaseColumn, SchemaColumn } from "../../types"
 
 const FormItem = defineComponent({
-  name: "SchemaFormColumnRenderer",
+  name: "SchemaFormItem",
 
   props: {
     column: {
@@ -190,35 +191,31 @@ const FormItem = defineComponent({
           resolvedComponentProps.value = data
         })
 
-        resolveDynamicPropByBoolean(
+        resolveDynamicProp(
           baseColumn.readonly,
           latestSnapshot,
-          formContext.readonly
+          formContext.readonly as boolean
         ).then((data) => {
           resolvedReadonly.value = data
         })
 
-        resolveDynamicPropByBoolean(
+        resolveDynamicProp(
           baseColumn.disabled,
           latestSnapshot,
-          formContext.disabled
+          formContext.disabled as boolean
         ).then((data) => {
           resolvedDisabled.value = data
         })
 
-        resolveDynamicPropByBoolean(baseColumn.hidden, latestSnapshot, false).then(
+        resolveDynamicProp(baseColumn.hidden, latestSnapshot, false).then((data) => {
+          resolvedHidden.value = data
+        })
+
+        resolveDynamicProp(baseColumn.required, latestSnapshot, !!baseColumn.rules).then(
           (data) => {
-            resolvedHidden.value = data
+            resolvedRequired.value = data
           }
         )
-
-        resolveDynamicPropByBoolean(
-          baseColumn.required,
-          latestSnapshot,
-          !!baseColumn.rules
-        ).then((data) => {
-          resolvedRequired.value = data
-        })
       },
       {
         immediate: true,
@@ -267,9 +264,18 @@ const FormItem = defineComponent({
       if (Object.hasOwn(baseColumn, "initialValue")) {
         field.setInitialValue(baseColumn.initialValue)
         field.setValue(baseColumn.initialValue)
+      } else {
+        field.setInitialValue(undefined)
       }
     })
 
+    /**
+     * 渲染 required 星号。
+     *
+     * 当字段为必填且非禁用/只读状态时，在 label 前显示红色星号标记。
+     *
+     * @returns 星号 VNode 或空片段
+     */
     const renderRequired = () => {
       if (!resolvedRequired.value || resolvedDisabled.value || resolvedReadonly.value) {
         return <></>
@@ -278,73 +284,137 @@ const FormItem = defineComponent({
       return <span class="schema-form-item__required">*</span>
     }
 
+    /**
+     * 渲染 formItem label 区域。
+     *
+     * 优先使用 `{name}Label` 插槽（支持 camelCase / kebab-case），
+     * 未提供时渲染默认 label（含 required 星号、label 文本、冒号）。
+     *
+     * @returns label VNode
+     */
+    const renderLabel = () => {
+      const labelSlot = resolveSlot(slots, `${baseColumn.name}Label`)
+
+      if (labelSlot) {
+        return labelSlot(formItemProps.value)
+      }
+
+      const labelAlign = baseColumn.labelAlign || formContext.labelAlign
+      const labelWidth = baseColumn.labelWidth || formContext.labelWidth
+      const colon = baseColumn.colon ?? formContext.colon
+
+      return (
+        <label
+          class="schema-form-item__label"
+          style={{ width: labelWidth, textAlign: labelAlign }}
+        >
+          {renderRequired()}
+          <span class="schema-form-item__label-text">
+            {baseColumn.label}
+            {colon ? ":" : ""}
+          </span>
+        </label>
+      )
+    }
+
+    /**
+     * 渲染 formItem error 区域。
+     *
+     * 优先使用 `{name}Error` 插槽（支持 camelCase / kebab-case），
+     * 插槽参数包含 formItemProps 和 errors 数组。
+     * 未提供插槽时，仅在存在错误时显示第一条错误信息。
+     *
+     * @returns error VNode 或 null
+     */
+    const renderError = () => {
+      const errorSlot = resolveSlot(slots, `${baseColumn.name}Error`)
+
+      if (errorSlot) {
+        return errorSlot({
+          ...formItemProps.value,
+          errors: field.error.value,
+        })
+      }
+
+      if (!Array.isArray(field.error.value) || field.error.value.length === 0) {
+        return null
+      }
+
+      return <div class="schema-form-item__error">{field.error.value[0]}</div>
+    }
+
+    /**
+     * 渲染 formItem content 区域（仅控件）。
+     *
+     * 优先使用 `{name}Content` 插槽（支持 camelCase / kebab-case），
+     * 插槽参数包含 formItemProps 和 columnElement（渲染器 VNode）。
+     * 未提供插槽时，渲染默认控件布局。
+     *
+     * error 区域独立于 content，在 FormItem 层面与 content 平级渲染，
+     * 避免使用 Content 插槽后还需额外处理 error 的耦合问题。
+     *
+     * @returns content VNode
+     */
+    const renderContent = () => {
+      const component = rendererRegistry.getRenderer(baseColumn.componentType)
+
+      if (!component) {
+        throw new Error(
+          `[SchemaForm] Can not find component renderer of "${baseColumn.componentType}".`
+        )
+      }
+
+      // 提取子渲染器插槽（fieldName:slotName 格式）
+      const childSlots = extractChildSlots(String(baseColumn.name), slots)
+      const columnElement = h(component, processedComponentProps.value, childSlots)
+
+      const contentSlot = resolveSlot(slots, `${baseColumn.name}Content`)
+
+      if (contentSlot) {
+        return contentSlot({
+          ...formItemProps.value,
+          columnElement,
+        })
+      }
+
+      if (!columnElement) return null
+
+      return <div class="schema-form-item__control">{columnElement}</div>
+    }
+
     return () => {
       if (resolvedHidden.value) {
         return null
       }
 
-      const slotName = String(baseColumn.name)
+      // 整体插槽：完全接管渲染，不包裹任何默认结构
+      const itemSlot = resolveSlot(slots, String(baseColumn.name))
 
-      // 自定义 item slot (#nameItem) — 替换整个表单项
-      if (slots[`${slotName}Item`]) {
-        return slots[`${slotName}Item`]?.(formItemProps.value)
+      if (itemSlot) {
+        return itemSlot(formItemProps.value)
       }
 
-      // 确定内容元素: #name slot 或 renderer
-      let columnElement = null
-
-      if (slots[slotName]) {
-        columnElement = slots[slotName]?.(formItemProps.value)
-      } else {
-        const component = rendererRegistry.getRenderer(baseColumn.componentType)
-
-        if (!component) {
-          throw new Error(
-            `[SchemaForm] Can not find component renderer of "${baseColumn.componentType}".`
-          )
-        }
-
-        columnElement = h(component, processedComponentProps.value, slots)
-      }
-
-      if (!columnElement) return null
-
-      const labelAlign = baseColumn.labelAlign || formContext.labelAlign
       const labelPosition = baseColumn.labelPosition || formContext.labelPosition
-      const labelWidth = baseColumn.labelWidth || formContext.labelWidth
-      const colon = baseColumn.colon ?? formContext.colon
-      const readonlyClass = resolvedReadonly.value ? "is-readonly" : ""
-      const disabledClass = resolvedDisabled.value ? "is-disabled" : ""
 
       return (
-        <div class={classnames("schema-form-item-wrapper", disabledClass, readonlyClass)}>
+        <div
+          class={classnames("schema-form-item-wrapper", {
+            "is-readonly": resolvedReadonly.value,
+            "is-disabled": resolvedDisabled.value,
+          })}
+        >
           <div
             class={classnames(
               "schema-form-item",
               `schema-form-item--label-${labelPosition}`,
-
               baseColumn.className
             )}
           >
-            {baseColumn.label && (
-              <label
-                class="schema-form-item__label"
-                style={{ width: labelWidth, textAlign: labelAlign }}
-              >
-                {renderRequired()}
-                <span class="schema-form-item__label-text">
-                  {baseColumn.label}
-                  {colon ? ":" : ""}
-                </span>
-              </label>
-            )}
+            {renderLabel()}
 
             <div class="schema-form-item__content">
-              <div class="schema-form-item__control">{columnElement}</div>
-
-              {field.error.value && field.error.value.length > 0 && (
-                <div class="schema-form-item__error">{field.error.value[0]}</div>
-              )}
+              {renderContent()}
+              {renderError()}
             </div>
           </div>
         </div>

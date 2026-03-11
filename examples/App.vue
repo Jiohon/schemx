@@ -27,6 +27,8 @@
   import CustomRendererForm from "./custom-renderer/CustomRendererForm.vue"
   import DependencyForm from "./dependency/DependencyForm.vue"
   import DynamicForm from "./dynamic/DynamicForm.vue"
+  import SlotsForm from "./slots/SlotsForm.vue"
+  import SlotsFormJsx from "./slots/SlotsFormJsx"
   import ValidationForm from "./validation/ValidationForm.vue"
 
   const examples = [
@@ -35,9 +37,11 @@
     { id: "dynamic", name: "动态表单", component: markRaw(DynamicForm) },
     { id: "dependency", name: "字段联动", component: markRaw(DependencyForm) },
     { id: "custom", name: "自定义渲染器", component: markRaw(CustomRendererForm) },
+    { id: "slots", name: "插槽系统", component: markRaw(SlotsForm) },
+    { id: "slots-jsx", name: "插槽系统（JSX）", component: markRaw(SlotsFormJsx) },
   ]
 
-  const currentExample = ref("validation")
+  const currentExample = ref("basic")
 
   const currentComponent = computed(() => {
     const example = examples.find((e) => e.id === currentExample.value)
@@ -114,6 +118,7 @@
 
   .form-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     margin-top: 16px;
     padding: 0 16px;
@@ -143,5 +148,11 @@
 
   .btn-primary:hover {
     background: #1478de;
+  }
+
+  .example-container {
+    padding: 16px;
+    border-radius: 8px;
+    background-color: #fff;
   }
 </style>

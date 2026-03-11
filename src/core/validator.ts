@@ -346,6 +346,8 @@ export class Validator<T extends FormValues = FormValues> {
   async validate(latestValues: DeepReadonly<T>): Promise<ValidateResult<T>> {
     let allValid = true
 
+    this.state.errors.clear()
+
     for (const path of this.state.rules.keys()) {
       const result = await this.validateSingleRule(path, latestValues)
       if (!result.ok) allValid = false

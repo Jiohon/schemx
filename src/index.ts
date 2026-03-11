@@ -26,8 +26,8 @@ export { default as FormDependency } from "./components/FormDependency"
 
 /** 工具函数 */
 export {
+  type DynamicProp,
   resolveDynamicProp,
-  resolveDynamicPropByBoolean,
   isBaseColumn,
   isGroupColumn,
   isDependencyColumn,
@@ -42,7 +42,6 @@ export type {
   CustomRendererMap,
   RendererType,
   ValidationTrigger,
-  DynamicProp,
   SchemaColumn,
   SchemaBaseColumn,
   SchemaFormProps,

@@ -1,13 +1,21 @@
 <template>
   <div class="example-container">
     <h2>基础表单示例</h2>
+    <p class="description">
+      演示基础字段类型（text、input、number、textarea）、初始值、labelPosition、labelWidth、colon
+      等配置
+    </p>
 
     <SchemaForm
       ref="formRef"
       v-model="formData"
       :columns="columns"
       :initial-values="initialValues"
-      @onFinish="handleSubmit"
+      label-width="100px"
+      label-align="right"
+      label-position="left"
+      :colon="true"
+      @finish="handleSubmit"
       @values-change="handleValuesChange"
     />
 
@@ -15,6 +23,8 @@
       <button class="btn btn-primary" @click="formRef?.submit()">提交</button>
       <button class="btn" @click="formRef?.validate()">校验</button>
       <button class="btn" @click="formRef?.reset()">重置</button>
+      <button class="btn" @click="handleSetValues">设置值</button>
+      <button class="btn" @click="handleGetSnapshot">获取快照</button>
     </div>
 
     <div class="form-data-preview">
@@ -26,8 +36,9 @@
 
 <script setup lang="ts">
   import { ref } from "vue"
-  import { z } from "zod"
+
   import SchemaForm from "@"
+
   import type { SchemaColumn, SchemaFormInstance } from "@"
 
   const formRef = ref<SchemaFormInstance>()
@@ -39,37 +50,25 @@
     age: 25,
   }
 
-  // 表单配置（使用 Zod schema 作为验证规则）
+  // 表单配置
   const columns: SchemaColumn[] = [
     {
       name: "username",
       label: "用户名",
       componentType: "text",
       required: true,
-      rules: z.string().min(2, "用户名至少 2 个字符").max(20, "用户名最多 20 个字符"),
+      componentProps: {
+        placeholder: "请输入用户名",
+        clearable: true,
+      },
     },
     {
-      name: "email",
-      label: "邮箱",
-      componentType: "text",
+      name: "nickname",
+      label: "昵称",
+      componentType: "input",
       componentProps: {
-        placeholder: "请输入邮箱地址",
+        placeholder: "请输入昵称",
       },
-      rules: z.string().email("请输入有效的邮箱地址").optional().or(z.literal("")),
-    },
-    {
-      name: "phone",
-      label: "手机号",
-      componentType: "text",
-      componentProps: {
-        placeholder: "请输入手机号",
-        maxlength: 11,
-      },
-      rules: z
-        .string()
-        .regex(/^1[3-9]\d{9}$/, "请输入有效的手机号")
-        .optional()
-        .or(z.literal("")),
     },
     {
       name: "age",
@@ -79,7 +78,14 @@
         min: 0,
         max: 150,
       },
-      rules: z.number().min(0, "年龄不能为负数").max(150, "年龄不能超过 150"),
+    },
+    {
+      name: "email",
+      label: "邮箱",
+      componentType: "text",
+      componentProps: {
+        placeholder: "请输入邮箱地址",
+      },
     },
     {
       name: "bio",
@@ -99,17 +105,22 @@
         placeholder: "请输入个人网站地址",
       },
     },
+    // labelPosition: top 示例
+    {
+      name: "address",
+      label: "详细地址",
+      componentType: "textarea",
+      labelPosition: "top",
+      componentProps: {
+        placeholder: "请输入详细地址",
+      },
+    },
   ]
 
   // 提交处理
-  const handleSubmit = (values: Record<string, any>, done: () => void) => {
+  const handleSubmit = (values: Record<string, any>) => {
     console.log("表单提交:", values)
-
-    // 模拟异步提交
-    setTimeout(() => {
-      alert("提交成功！")
-      done()
-    }, 1000)
+    alert("提交成功！数据已打印到控制台")
   }
 
   // 值变化处理
@@ -120,15 +131,21 @@
     console.log("值变化:", changedValues, latestValues)
   }
 
-  // 暴露方法供外部调用
-  defineExpose({
-    // 重置表单
-    reset: () => formRef.value?.reset(),
-    // 获取表单数据
-    getData: () => formRef.value?.getFieldsValue(),
-    // 设置表单数据
-    setData: (values: Record<string, any>) => formRef.value?.setFieldsValue(values),
-  })
+  // 手动设置值
+  const handleSetValues = () => {
+    formRef.value?.setFieldsValue({
+      username: "李四",
+      age: 30,
+      email: "example@test.com",
+    })
+  }
+
+  // 获取快照
+  const handleGetSnapshot = () => {
+    const snapshot = formRef.value?.getFieldsSnapshot()
+    console.log("表单快照:", snapshot)
+    alert("快照已打印到控制台")
+  }
 </script>
 
 <style scoped>
@@ -139,8 +156,14 @@
   }
 
   .example-container h2 {
-    margin-bottom: 20px;
+    margin-bottom: 8px;
     color: #333;
+  }
+
+  .description {
+    margin-bottom: 20px;
+    color: #666;
+    font-size: 14px;
   }
 
   .form-data-preview {

@@ -8,7 +8,7 @@
 export { isBaseColumn, isGroupColumn, isDependencyColumn, isNestedColumn } from "./schema"
 
 /** 动态属性解析 */
-export { resolveDynamicProp, resolveDynamicPropByBoolean } from "./dynamic"
+export { type DynamicProp, resolveDynamicProp } from "./dynamic"
 
 /** 校验触发工具 */
 export { shouldValidateOn } from "./validation"
@@ -21,3 +21,16 @@ export { withLock } from "./async"
 
 /** 单例工具 */
 export { createStrictSingleton } from "./single"
+
+/** 插槽工具 */
+export {
+  isCamelCase,
+  isKebabCase,
+  isLowerCase,
+  camelToKebab,
+  kebabToCamel,
+  normalizeToKebab,
+  normalizeToCamel,
+  resolveSlot,
+  extractChildSlots,
+} from "./slot"

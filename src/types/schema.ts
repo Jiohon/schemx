@@ -9,17 +9,11 @@
 
 import type { CSSProperties } from "vue"
 
-import type {
-  CustomRules,
-  DynamicProp,
-  FormValues,
-  NamePath,
-  ValidationTrigger,
-  Value,
-} from "./base"
+import type { CustomRules, FormValues, NamePath, ValidationTrigger, Value } from "./base"
 import type { SchemaFormInstance } from "./instance"
 import type { CustomRendererMap } from "./renderer"
 import type { StandardSchemaV1 } from "../core/standardSchema"
+import type { DynamicProp } from "../utils/dynamic"
 
 /**
  * 基础字段配置
@@ -59,8 +53,7 @@ export interface SchemaBaseColumn<
   /**
    * 依赖的字段路径
    *
-   * 当指定字段的值发生变化时，会触发当前字段的动态属性
-   * （如 `componentProps`、`hidden`、`disabled` 等）重新计算。
+   * 所依赖的 values 变化后，触发 `componentProps`、`placeholder`、`required`、`readonly`、`disabled`、`hidden` 重新执行
    */
   dependencies?: NamePath<T>
 
@@ -69,6 +62,10 @@ export interface SchemaBaseColumn<
    *
    * 类型根据 `componentType` 自动收窄为对应组件的 Props 类型。
    * 支持函数形式 `(values) => props`，在依赖字段变化时动态计算。
+   *
+   * @remarks
+   * 当使用函数形式时，需要配置  {@link dependencies}  指定依赖的字段，
+   * 否则不会响应值变化。
    */
   componentProps?: DynamicProp<CustomRendererMap[K]>
 
@@ -76,6 +73,10 @@ export interface SchemaBaseColumn<
    * 占位提示文本
    *
    * 支持函数形式 `(values) => string`，在依赖字段变化时动态计算。
+   *
+   * @remarks
+   * 当使用函数形式时，需要配置  {@link dependencies}  指定依赖的字段，
+   * 否则不会响应值变化。
    */
   placeholder?: DynamicProp<string>
 
@@ -87,7 +88,8 @@ export interface SchemaBaseColumn<
    * 支持函数形式 `(values) => boolean`，在依赖字段变化时动态计算。
    *
    * @remarks
-   * 注意：需要配置 `dependencies` 字段
+   * 当使用函数形式时，需要配置  {@link dependencies}  指定依赖的字段，
+   * 否则不会响应值变化。
    */
   required?: DynamicProp<boolean>
 
@@ -99,7 +101,8 @@ export interface SchemaBaseColumn<
    * 支持函数形式 `(values) => boolean`，在依赖字段变化时动态计算。
    *
    * @remarks
-   * 注意：需要配置 `dependencies` 字段
+   * 当使用函数形式时，需要配置  {@link dependencies}  指定依赖的字段，
+   * 否则不会响应值变化。
    */
   readonly?: DynamicProp<boolean>
 
@@ -111,7 +114,8 @@ export interface SchemaBaseColumn<
    * 支持函数形式 `(values) => boolean`，在依赖字段变化时动态计算。
    *
    * @remarks
-   * 注意：需要配置 `dependencies` 字段
+   * 当使用函数形式时，需要配置  {@link dependencies}  指定依赖的字段，
+   * 否则不会响应值变化。
    */
   disabled?: DynamicProp<boolean>
 
@@ -122,7 +126,8 @@ export interface SchemaBaseColumn<
    * 支持函数形式 `(values) => boolean`，在依赖字段变化时动态计算。
    *
    * @remarks
-   * 注意：需要配置 `dependencies` 字段
+   * 当使用函数形式时，需要配置  {@link dependencies}  指定依赖的字段，
+   * 否则不会响应值变化。
    */
   hidden?: DynamicProp<boolean>
 

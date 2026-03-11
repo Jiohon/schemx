@@ -283,7 +283,7 @@ export interface SchemaFormInstance<T extends FormValues = FormValues> {
    * form.isFieldsTouched()                  // 任一字段被修改即返回 true
    * ```
    */
-  isFieldsTouched: (names?: NamePath<T>) => boolean
+  isFieldsTouched: (names?: NamePath<T>[]) => boolean
 
   /**
    * 获取所有被修改的字段路径

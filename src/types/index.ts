@@ -5,15 +5,7 @@
  */
 
 /** 基础类型 */
-export type {
-  ResolveDynamic,
-  Value,
-  FormValues,
-  NamePath,
-  ValidationTrigger,
-  DynamicProp,
-  CustomRules,
-} from "./base"
+export type { Value, FormValues, NamePath, ValidationTrigger, CustomRules } from "./base"
 
 /** 渲染器类型 */
 export type { RendererType, CustomRendererMap } from "./renderer"

@@ -36,32 +36,5 @@ export type ValidationTrigger =
   | "change"
   | "submit"
 
-/**
- * 动态属性类型
- *
- * 支持静态值或函数形式，函数接收当前表单值并返回属性值（支持异步）。
- *
- * @typeParam T - 属性值类型
- *
- * @example
- * ```ts
- * // 静态值
- * const prop: DynamicProp<boolean> = true
- *
- * // 动态函数
- * const prop: DynamicProp<boolean> = (values) => values.age > 18
- * ```
- */
-export type DynamicProp<T> = ((values: FormValues) => T | Promise<T>) | T
-
-/**
- * 将对象中所有 DynamicProp 类型解析为其静态值类型
- *
- * @typeParam T - 包含 DynamicProp 属性的对象类型
- */
-export type ResolveDynamic<T> = {
-  [K in keyof T]: T[K] extends DynamicProp<infer U> ? U : T[K]
-}
-
 /** 自定义校验规则快捷方式 */
 export type CustomRules = "required"

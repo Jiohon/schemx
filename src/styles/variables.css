@@ -46,8 +46,8 @@
   --schema-form-border-radius-lg: 12px;
 
   /* 表单项 */
-  --schema-form-item-line-height: 36px;
-  --schema-form-item-error-line-height: 1.6;
+  --schema-form-item-line-height: 1.6;
+  --schema-form-item-error-line-height: 1.5714285714285714;
   --schema-form-item-label-color: #666666;
   --schema-form-input-align: end;
   --schema-form-error-align: right;
