@@ -252,7 +252,7 @@ export const createWatchAll = (
   if (options.immediate) {
     const payload = { changedPaths: [], changedValues: {}, prevValues: {} }
 
-    callback(payload, {}, form.getFieldsSnapshot)
+    callback(payload, {}, form.getFieldsSnapshot())
   }
 
   return unsubscribe
