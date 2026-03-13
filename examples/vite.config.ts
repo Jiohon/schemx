@@ -9,7 +9,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": resolve(__dirname, "../packages/core/src"),
-      "schemaForm-core": resolve(__dirname, "../packages/core/src"),
+      "@jonhn/schema-form-core": resolve(__dirname, "../packages/core/src"),
     },
   },
   css: {

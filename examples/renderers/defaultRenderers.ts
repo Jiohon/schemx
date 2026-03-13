@@ -1,6 +1,6 @@
 import type { Component } from "vue"
 
-import { defineRenderers } from "schemaForm-core"
+import { defineRenderers } from "@jonhn/schema-form-core"
 
 import { InputRenderer, NumberRenderer, TextAreaRenderer, TextRenderer } from "."
 

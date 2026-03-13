@@ -17,6 +17,7 @@ module.exports = {
     extraFileExtensions: [".vue"],
     tsconfigRootDir: __dirname,
     project: [
+      "./tsconfig.json",
       "./packages/core/tsconfig.json",
       "./packages/vant/tsconfig.json",
       "./examples/tsconfig.json",
@@ -38,10 +39,14 @@ module.exports = {
       typescript: {
         alwaysTryTypes: true,
         project: [
+          "./tsconfig.json",
           "./packages/core/tsconfig.json",
           "./packages/vant/tsconfig.json",
           "./examples/tsconfig.json",
         ],
+      },
+      node: {
+        extensions: [".js", ".jsx", ".ts", ".tsx", ".vue", ".d.ts"],
       },
     },
     "import/internal-regex": "^@/|^src/",

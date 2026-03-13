@@ -1,5 +1,9 @@
 {
   "files": [],
 
-  "references": [{ "path": "./packages/core" }, { "path": "./packages/vant" }]
+  "references": [
+    { "path": "./packages/core" },
+    { "path": "./packages/vant" },
+    { "path": "./examples" }
+  ]
 }

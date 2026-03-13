@@ -1,8 +1,16 @@
 {
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
-    "types": ["vite/client"]
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["../packages/core/src/*"],
+      "@": ["../packages/core/src"],
+      "@jonhn/schema-form-core/*": ["../packages/core/src/*"],
+      "@jonhn/schema-form-core": ["../packages/core/src"]
+    },
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "types": ["vite/client", "node"]
   },
-  "include": ["./**/*.ts", "./**/*.tsx", "./**/*.vue"],
+  "include": ["./**/*.ts", "./**/*.tsx", "./**/*.vue", "./**/*.d.ts"],
   "exclude": ["node_modules"]
 }

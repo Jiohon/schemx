@@ -30,8 +30,9 @@
 <script setup lang="ts">
   import { ref } from "vue"
 
-  import SchemaForm, { useForm } from "schemaForm-core"
   import { z } from "zod"
+
+  import SchemaForm, { useForm } from "@jonhn/schema-form-core"
 
   import type { SchemaColumn, SchemaFormInstance } from "@"
 

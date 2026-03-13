@@ -14,10 +14,10 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["packages/core/src/*"],
-      "@": ["packages/core/src"],
-      "schemaForm-core/*": ["packages/core/src/*"],
-      "schemaForm-core": ["packages/core/src"]
+      "@/*": ["./src/*"],
+      "@": ["./src"],
+      "@jonhn/schema-form-core/*": ["packages/core/src/*"],
+      "@jonhn/schema-form-core": ["packages/core/src"]
     }
   }
 }
