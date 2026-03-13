@@ -1,40 +1,5 @@
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "moduleResolution": "bundler",
-    "strict": true,
-    "jsx": "preserve",
-    "jsxImportSource": "vue",
-    "declaration": true,
-    "declarationDir": "./dist",
-    "emitDeclarationOnly": false,
-    "sourceMap": true,
-    "outDir": "./dist",
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"],
-      "@": ["src"],
-      "@Jonhn/schemaForm": ["./src/index.ts"],
-      "@Jonhn/schemaForm/es/*": ["src/*"],
-      "@Jonhn/schemaForm/lib/*": ["src/*"]
-    },
-    "resolveJsonModule": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "types": ["vite/client"]
-  },
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.tsx",
-    "src/**/*.vue",
-    "examples/**/*.ts",
-    "examples/**/*.tsx",
-    "examples/**/*.vue",
-    "renderers/**/*.ts",
-    "renderers/**/*.tsx"
-  ],
-  "exclude": ["node_modules", "dist"]
+  "files": [],
+
+  "references": [{ "path": "./packages/core" }, { "path": "./packages/vant" }]
 }

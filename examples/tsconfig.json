@@ -1,24 +1,6 @@
 {
+  "extends": "../tsconfig.base.json",
   "compilerOptions": {
-    "target": "ESNext",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "strict": true,
-    "jsx": "preserve",
-    "jsxImportSource": "vue",
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["../src/*"],
-      "@": ["../src"],
-      "schemaForm/*": ["../src"],
-      "schemaForm": ["../src"]
-    },
     "types": ["vite/client"]
   },
   "include": ["./**/*.ts", "./**/*.tsx", "./**/*.vue"],

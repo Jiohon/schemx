@@ -1,13 +1,8 @@
 import type { Component } from "vue"
 
-import type { Registry } from "@/core/registry"
+import { defineRenderers } from "schemaForm-core"
 
-import {
-  InputRendererWrapped,
-  NumberRendererWrapped,
-  TextAreaRendererWrapped,
-  TextRendererWrapped,
-} from "."
+import { InputRenderer, NumberRenderer, TextAreaRenderer, TextRenderer } from "."
 
 /**
  * 默认渲染器类型列表
@@ -31,27 +26,12 @@ export interface RendererRegistrationConfig {
 
 /**
  * 注册默认渲染器到指定的渲染器实例
- *
- * 注册的是经过 createRenderWrapper 包装的组件，
- * 包含状态合并、默认属性、占位符生成等增强逻辑。
  */
-export const registerDefaultRenderers = (renderer: Registry): void => {
-  renderer.register("input", InputRendererWrapped)
-  renderer.register("text", TextRendererWrapped)
-  renderer.register("textarea", TextAreaRendererWrapped)
-  renderer.register("number", NumberRendererWrapped)
-}
-
-/**
- * 检查是否所有默认渲染器都已注册
- */
-export const hasAllDefaultRenderers = (renderer: Registry): boolean => {
-  return DEFAULT_RENDERER_TYPES.every((type) => renderer.hasRenderer(type))
-}
-
-/**
- * 获取缺失的默认渲染器类型
- */
-export const getMissingDefaultRenderers = (renderer: Registry): string[] => {
-  return DEFAULT_RENDERER_TYPES.filter((type) => !renderer.hasRenderer(type))
+export const registerDefaultRenderers = (): void => {
+  defineRenderers({
+    input: InputRenderer,
+    text: TextRenderer,
+    textarea: TextAreaRenderer,
+    number: NumberRenderer,
+  })
 }

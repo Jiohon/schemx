@@ -1,10 +1,8 @@
-// 导入独立渲染器组件（原始组件，用于向后兼容）
-export { default as InputRenderer, InputRendererWrapped } from "./InputRenderer"
-export { default as TextRenderer, TextRendererWrapped } from "./TextRenderer"
-export { default as TextAreaRenderer, TextAreaRendererWrapped } from "./TextAreaRenderer"
-export { default as NumberRenderer, NumberRendererWrapped } from "./NumberRenderer"
+export { default as InputRenderer } from "./InputRenderer"
+export { default as TextRenderer } from "./TextRenderer"
+export { default as TextAreaRenderer } from "./TextAreaRenderer"
+export { default as NumberRenderer } from "./NumberRenderer"
 
-// 导出类型
 export type { InputRendererProps } from "./InputRenderer"
 export type { TextRendererProps } from "./TextRenderer"
 export type { TextAreaRendererProps } from "./TextAreaRenderer"

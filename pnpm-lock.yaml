@@ -7,16 +7,6 @@ settings:
 importers:
 
   .:
-    dependencies:
-      classnames:
-        specifier: ^2.5.1
-        version: 2.5.1
-      dayjs:
-        specifier: ^1.11.19
-        version: 1.11.19
-      es-toolkit:
-        specifier: ^1.44.0
-        version: 1.44.0
     devDependencies:
       '@eslint/js':
         specifier: ^8.57.1
@@ -96,6 +86,33 @@ importers:
       zod:
         specifier: ^4.3.6
         version: 4.3.6
+
+  packages/core:
+    dependencies:
+      classnames:
+        specifier: ^2.5.1
+        version: 2.5.1
+      dayjs:
+        specifier: ^1.11.19
+        version: 1.11.19
+      es-toolkit:
+        specifier: ^1.44.0
+        version: 1.45.1
+      vue:
+        specifier: ^3.0.0
+        version: 3.5.27(typescript@5.9.3)
+
+  packages/vant:
+    dependencies:
+      '@jonhn/schema-form-core':
+        specifier: workspace:*
+        version: link:../core
+      vant:
+        specifier: ^4.0.0
+        version: 4.9.22(vue@3.5.27(typescript@5.9.3))
+      vue:
+        specifier: ^3.0.0
+        version: 3.5.27(typescript@5.9.3)
 
 packages:
 
@@ -1477,8 +1494,8 @@ packages:
     resolution: {integrity: sha512-w+5mJ3GuFL+NjVtJlvydShqE1eN3h3PbI7/5LAsYJP/2qtuMXjfL2LpHSRqo4b4eSF5K/DH1JXKUAHSB2UW50g==}
     engines: {node: '>= 0.4'}
 
-  es-toolkit@1.44.0:
-    resolution: {integrity: sha512-6penXeZalaV88MM3cGkFZZfOoLGWshWWfdy0tWw/RlVVyhvMaWSBTOvXNeiW3e5FwdS5ePW0LGEu17zT139ktg==}
+  es-toolkit@1.45.1:
+    resolution: {integrity: sha512-/jhoOj/Fx+A+IIyDNOvO3TItGmlMKhtX8ISAHKE90c4b/k1tqaqEZ+uUqfpU8DMnW5cgNJv606zS55jGvza0Xw==}
 
   esbuild@0.21.5:
     resolution: {integrity: sha512-mg3OPMV4hXywwpoDxu3Qda5xCKQi+vCTZq8S9J/EpkhB2HzKXq4SNFZE3+NK93JYxc8VMSep+lOUSC/RVKaBqw==}
@@ -4145,7 +4162,7 @@ snapshots:
       is-date-object: 1.1.0
       is-symbol: 1.1.1
 
-  es-toolkit@1.44.0: {}
+  es-toolkit@1.45.1: {}
 
   esbuild@0.21.5:
     optionalDependencies:

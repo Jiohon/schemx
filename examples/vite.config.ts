@@ -8,7 +8,8 @@ export default defineConfig({
   root: __dirname,
   resolve: {
     alias: {
-      "@": resolve(__dirname, "../src"),
+      "@": resolve(__dirname, "../packages/core/src"),
+      "schemaForm-core": resolve(__dirname, "../packages/core/src"),
     },
   },
   css: {

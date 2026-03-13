@@ -18,6 +18,7 @@
       <button class="btn btn-primary" @click="formRef?.submit()">注册</button>
       <button class="btn" @click="formRef?.validate()">全量校验</button>
       <button class="btn" @click="validateSingle">校验用户名</button>
+      <button class="btn" @click="validatePhone">校验手机号</button>
       <button class="btn" @click="formRef?.reset()">重置</button>
     </div>
 
@@ -31,9 +32,9 @@
 <script setup lang="ts">
   import { ref } from "vue"
 
+  import SchemaForm from "schemaForm-core"
   import { z } from "zod"
 
-  import SchemaForm from "@"
   import type { SchemaColumn, SchemaFormInstance } from "@"
 
   const formRef = ref<SchemaFormInstance>()
@@ -43,6 +44,7 @@
   const checkUsernameExists = async (value: string): Promise<boolean> => {
     await new Promise((resolve) => setTimeout(resolve, 500))
     const existingUsers = ["admin", "test", "user"]
+
     return !existingUsers.includes(value.toLowerCase())
   }
 
@@ -54,21 +56,23 @@
       componentType: "text",
       required: true,
       validationTrigger: "onChange",
-      rules: z
-        .string()
-        .min(3, "用户名长度为 3-16 个字符")
-        .max(16, "用户名长度为 3-16 个字符")
-        .regex(
-          /^[a-zA-Z][a-zA-Z0-9_]*$/,
-          "用户名必须以字母开头，只能包含字母、数字和下划线"
-        )
-        .refine(
-          async (val) => {
-            if (!val) return true
-            return await checkUsernameExists(val)
-          },
-          { message: "该用户名已被使用" }
-        ),
+      rules: "required",
+
+      // rules: z
+      //   .string()
+      //   .min(3, "用户名长度为 3-16 个字符")
+      //   .max(16, "用户名长度为 3-16 个字符")
+      //   .regex(
+      //     /^[a-zA-Z][a-zA-Z0-9_]*$/,
+      //     "用户名必须以字母开头，只能包含字母、数字和下划线"
+      //   )
+      //   .refine(
+      //     async (val) => {
+      //       if (!val) return true
+      //       return await checkUsernameExists(val)
+      //     },
+      //     { message: "该用户名已被使用" }
+      //   ),
     },
     // rules: "required" 快捷方式 + readonly 状态
     {
@@ -94,7 +98,7 @@
       },
       dependencies: ["username"],
       disabled: (values) => !!values.username,
-      rules: z.string().regex(/^1[3-9]\d{9}$/, "请输入有效的手机号"),
+      rules: ["required", z.string().regex(/^1[3-9]\d{9}$/, "请输入有效的手机号")],
     },
     // labelPosition: top + 密码复杂度校验
     {
@@ -154,8 +158,10 @@
   const handleSubmit = (values: Record<string, any>) => {
     if (values.password !== values.confirmPassword) {
       formRef.value?.setFieldError("confirmPassword", ["两次输入的密码不一致"])
+
       return
     }
+
     console.log("注册信息:", values)
     alert("注册成功！")
   }
@@ -168,6 +174,12 @@
   const validateSingle = async () => {
     const result = await formRef.value?.validateField("username")
     console.log("用户名校验结果:", result)
+  }
+
+  // 单字段校验
+  const validatePhone = async () => {
+    const result = await formRef.value?.validateField("phone")
+    console.log("手机号校验结果:", result)
   }
 </script>
 

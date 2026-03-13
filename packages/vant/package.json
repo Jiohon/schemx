@@ -1,0 +1,39 @@
+{
+  "type": "module",
+  "name": "@jonhn/schema-form-vant",
+  "version": "0.1.0",
+  "description": "基于 Vant 组件库的 SchemaForm 渲染器适配包",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "vue": "^3.0.0",
+    "vant": "^4.0.0"
+  },
+  "dependencies": {
+    "@jonhn/schema-form-core": "workspace:*"
+  },
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest run --passWithNoTests",
+    "lint": "eslint \"src/**/*.{ts,tsx,vue,js,jsx}\"",
+    "prepublishOnly": "pnpm run build"
+  },
+  "license": "MIT"
+}

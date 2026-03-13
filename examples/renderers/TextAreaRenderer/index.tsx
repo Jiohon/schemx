@@ -2,7 +2,6 @@ import { computed, defineComponent, PropType, ref, SetupContext } from "vue"
 
 import classNames from "classnames"
 
-import { createRenderWrapper } from "@/renderer/rendererWrapper"
 import InputRenderer from "../InputRenderer"
 import "./index.scss"
 
@@ -31,9 +30,6 @@ export interface TextAreaRendererProps {
  * 文本域输入渲染器组件
  * 基于 InputRenderer 实现
  *
- * - Requirement 13.3: THE migrated renderers SHALL support the new state merging logic
- * - Requirement 13.4: THE migrated renderers SHALL support the new slot merging logic
- * - Requirement 13.5: THE migrated renderers SHALL maintain backward compatibility with existing componentProps
  */
 const TextAreaRendererComponent = defineComponent({
   name: "TextAreaRendererComponent",
@@ -185,30 +181,6 @@ const TextAreaRendererComponent = defineComponent({
   },
 })
 
-/**
- * TextAreaRenderer - 使用 createRenderWrapper 工厂函数创建的文本域渲染器
- *
- * 通过 createRenderWrapper 包装 TextAreaRendererComponent，提供：
- * - 状态合并（readonly, disabled）从 props、formItemProps 和 formContext
- * - 插槽合并（模板插槽和配置插槽）
- * - 值绑定（value, onChange）
- * - 错误显示
- * - 默认占位符生成
- *
- * - Requirement 13.3: THE migrated renderers SHALL support the new state merging logic
- * - Requirement 13.4: THE migrated renderers SHALL support the new slot merging logic
- * - Requirement 13.5: THE migrated renderers SHALL maintain backward compatibility with existing componentProps
- */
-// 导出原始组件（用于向后兼容）
 export { TextAreaRendererComponent }
 
-// 默认导出原始组件以保持向后兼容性
 export default TextAreaRendererComponent
-
-// 导出包装后的渲染器（用于 RendererRegistry 注册）
-export const TextAreaRendererWrapped = createRenderWrapper({
-  component: TextAreaRendererComponent,
-  defaultProps: {
-    align: "right",
-  },
-})

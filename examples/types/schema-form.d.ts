@@ -21,5 +21,7 @@ export interface DefaultRendererPropsMap {
 declare module "@" {
   interface CustomRendererMap extends DefaultRendererPropsMap {
     color: { colors: any }
+    starRating: { max: number }
+    tagInput: { placeholder: string; maxTags: number }
   }
 }

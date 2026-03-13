@@ -15,7 +15,12 @@ module.exports = {
       jsx: true,
     },
     extraFileExtensions: [".vue"],
-    project: ["./tsconfig.json", "./examples/tsconfig.json"],
+    tsconfigRootDir: __dirname,
+    project: [
+      "./packages/core/tsconfig.json",
+      "./packages/vant/tsconfig.json",
+      "./examples/tsconfig.json",
+    ],
   },
   plugins: ["@typescript-eslint", "import", "unused-imports", "jsx-a11y"],
   extends: [
@@ -32,7 +37,11 @@ module.exports = {
     "import/resolver": {
       typescript: {
         alwaysTryTypes: true,
-        project: "./tsconfig.json",
+        project: [
+          "./packages/core/tsconfig.json",
+          "./packages/vant/tsconfig.json",
+          "./examples/tsconfig.json",
+        ],
       },
     },
     "import/internal-regex": "^@/|^src/",
@@ -45,6 +54,8 @@ module.exports = {
     "static/**",
     "**/*.d.ts",
     ".eslintrc.cjs",
+    "**/vite.config.ts",
+    "**/vitest.config.ts",
   ],
   rules: {
     // 导入排序
@@ -110,12 +121,13 @@ module.exports = {
       },
     ],
     "@typescript-eslint/no-explicit-any": "off",
+    "@typescript-eslint/no-explicit-any": "off",
     "@typescript-eslint/explicit-function-return-type": "off",
     "@typescript-eslint/no-non-null-assertion": "warn",
-    "@typescript-eslint/ban-ts-comment": "warn",
+    "@typescript-eslint/no-namespace": "off",
 
     // 通用规则
-    "no-console": ["error", { allow: ["warn", "error"] }],
+    "no-console": "warn",
     "no-debugger": "warn",
 
     // 函数/模块之间空行

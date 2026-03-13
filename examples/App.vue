@@ -41,7 +41,7 @@
     { id: "slots-jsx", name: "插槽系统（JSX）", component: markRaw(SlotsFormJsx) },
   ]
 
-  const currentExample = ref("basic")
+  const currentExample = ref("validation")
 
   const currentComponent = computed(() => {
     const example = examples.find((e) => e.id === currentExample.value)

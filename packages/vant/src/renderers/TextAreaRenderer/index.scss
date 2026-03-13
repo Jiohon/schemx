@@ -1,0 +1,13 @@
+.schema-form-textarea-renderer {
+  padding: 0;
+
+  .van-field__value {
+    .van-field__body {
+      flex: 1;
+    }
+
+    .van-field__word-limit {
+      --van-field-word-limit-color: #999999;
+    }
+  }
+}

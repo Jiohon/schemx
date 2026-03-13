@@ -1,0 +1,37 @@
+.schema-form-slider-renderer {
+  &--disabled {
+    opacity: 0.6;
+  }
+
+  &--readonly {
+    .schema-form-slider-renderer__readonly {
+      padding: 8px 0;
+    }
+  }
+
+  &__readonly {
+    display: flex;
+    align-items: center;
+    min-height: 24px;
+
+    &-value {
+      font-size: 14px;
+      color: #323233;
+      font-weight: 500;
+    }
+  }
+
+  // Vant Slider 组件的自定义样式
+  .van-slider {
+    margin: 16px 0;
+  }
+
+  .van-slider__bar {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+
+  .van-slider__button {
+    border: 2px solid #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+}

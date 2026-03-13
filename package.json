@@ -1,48 +1,11 @@
 {
+  "private": true,
   "type": "module",
-  "name": "schema-form",
-  "version": "1.0.0",
   "description": "基于 JSON Schema 配置的 Vue 3 动态表单组件",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.mjs"
-      },
-      "require": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.cjs"
-      }
-    },
-    "./style.css": "./dist/style.css",
-    "./dist/*": "./dist/*"
-  },
-  "files": [
-    "dist",
-    "README.md",
-    "CHANGELOG.md"
-  ],
   "sideEffects": [
     "**/*.css",
     "**/*.scss"
   ],
-  "peerDependencies": {
-    "vant": "^4.0.0",
-    "vue": "^3.0.0"
-  },
-  "peerDependenciesMeta": {
-    "vant": {
-      "optional": false
-    }
-  },
-  "dependencies": {
-    "classnames": "^2.5.1",
-    "dayjs": "^1.11.19",
-    "es-toolkit": "^1.44.0"
-  },
   "devDependencies": {
     "@eslint/js": "^8.57.1",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
@@ -73,15 +36,14 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "pnpm -r run build",
     "preview": "vite preview",
     "type-check": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "pnpm -r run test",
     "test:watch": "vitest",
-    "lint": "eslint \"src/**/*.{ts,tsx,vue,js,jsx}\"",
-    "lint:fix": "eslint \"src/**/*.{ts,tsx,vue,js,jsx}\" --fix",
-    "format": "prettier --write \"src/**/*.{vue,ts,tsx,js,jsx,json,css,scss}\"",
-    "prepublishOnly": "npm run build"
+    "lint": "pnpm -r run lint",
+    "lint:fix": "eslint \"packages/*/src/**/*.{ts,tsx,vue,js,jsx}\" --fix",
+    "format": "prettier --write \"packages/*/src/**/*.{vue,ts,tsx,js,jsx,json,css,scss}\""
   },
   "repository": {
     "type": "git",

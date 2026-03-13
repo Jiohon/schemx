@@ -3,10 +3,10 @@
  */
 import { createApp } from "vue"
 
-import { globalRegistry } from "@"
-
 // 导入 SchemaForm 样式
-import "../src/styles/index.css"
+import "../packages/core/src/styles/index.css"
+
+import { defineRenderers } from "../packages/core/src/core/rendererRegistry"
 
 import App from "./App.vue"
 import { ColorPickerRenderer } from "./components/custom/ColorPickerRenderer"
@@ -14,13 +14,13 @@ import { StarRatingRenderer } from "./components/custom/StarRatingRenderer"
 import { TagInputRenderer } from "./components/custom/TagInputRenderer"
 import { registerDefaultRenderers } from "./renderers/defaultRenderers"
 
-registerDefaultRenderers(globalRegistry)
+registerDefaultRenderers()
 
 const app = createApp(App)
 
 app.mount("#app")
 
-globalRegistry.registerAll({
+defineRenderers({
   color: ColorPickerRenderer,
   starRating: StarRatingRenderer,
   tagInput: TagInputRenderer,

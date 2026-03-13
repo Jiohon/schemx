@@ -8,8 +8,8 @@
 
     <SchemaForm
       ref="formRef"
-      :form="form"
       v-model="formData"
+      :form="form"
       :columns="columns"
       @finish="handleSubmit"
     />
@@ -30,12 +30,12 @@
 <script setup lang="ts">
   import { ref } from "vue"
 
+  import SchemaForm, { useForm } from "schemaForm-core"
   import { z } from "zod"
 
-  import SchemaForm, { useForm } from "@"
   import type { SchemaColumn, SchemaFormInstance } from "@"
 
-  // 注意：自定义渲染器（color、starRating、tagInput）在 main.ts 中通过 globalRegistry 注册
+  // 注意：自定义渲染器（color、starRating、tagInput）在 main.ts 中通过 rendererRegistry 注册
 
   const columns: SchemaColumn[] = [
     {
