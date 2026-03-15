@@ -36,7 +36,7 @@ function isValidTrigger(v: TriggerConfig | undefined): v is TriggerConfig {
  * 按优先级从高到低取值：列级配置 > 表单上下文配置 > 默认值。
  * 跳过 undefined 和空数组，确保空数组不会意外覆盖后续配置。
  *
- * @param columnTrigger - 列级配置的触发时机
+ * @param schemaTrigger - 列级配置的触发时机
  * @param contextTrigger - 表单上下文配置的触发时机
  * @param defaultTrigger - 兜底默认值
  *
@@ -49,11 +49,11 @@ function isValidTrigger(v: TriggerConfig | undefined): v is TriggerConfig {
  * mergeTrigger(undefined, undefined, "onSubmit")        // => "onSubmit"
  */
 export function mergeTrigger(
-  columnTrigger: TriggerConfig | undefined,
+  schemaTrigger: TriggerConfig | undefined,
   contextTrigger: TriggerConfig | undefined,
   defaultTrigger: TriggerConfig
 ): TriggerConfig {
-  if (isValidTrigger(columnTrigger)) return columnTrigger
+  if (isValidTrigger(schemaTrigger)) return schemaTrigger
 
   if (isValidTrigger(contextTrigger)) return contextTrigger
 

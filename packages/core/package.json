@@ -1,8 +1,8 @@
 {
   "type": "module",
-  "name": "@jonhn/schema-form-core",
+  "name": "@schemx/core",
   "version": "0.1.0",
-  "description": "基于 JSON Schema 配置的 Vue 3 动态表单引擎（UI 无关核心）",
+  "description": "框架无关的表单引擎核心（Framework-agnostic form engine core）",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -16,23 +16,13 @@
         "types": "./dist/index.d.ts",
         "default": "./dist/index.cjs"
       }
-    },
-    "./style.css": "./dist/style.css"
+    }
   },
   "files": [
     "dist",
     "README.md"
   ],
-  "sideEffects": [
-    "**/*.css",
-    "**/*.scss"
-  ],
-  "peerDependencies": {
-    "vue": "^3.0.0"
-  },
   "dependencies": {
-    "classnames": "^2.5.1",
-    "dayjs": "^1.11.19",
     "es-toolkit": "^1.44.0"
   },
   "scripts": {

@@ -1,0 +1,306 @@
+/**
+ * schema 列配置类型
+ *
+ * 定义表单字段的 Schema 配置结构，包括基础字段、嵌套字段、
+ * 分组字段、依赖字段，以及规范化后的配置类型。
+ *
+ * @module types/schema
+ */
+
+import * as CSS from "csstype"
+
+import type { FormValues, NamePath, ValidationTrigger, Value } from "./form"
+import type { SchemxFormInstance } from "./form"
+import type { CustomRendererMap } from "./renderer"
+import type { Rules } from "./rule"
+import type { Dynamic } from "../utils/dynamic"
+
+/**
+ * 渲染器组件通用扩展属性
+ *
+ * 所有渲染器组件都会自动注入的公共 props，
+ * 与 {@link CustomRendererMap} 中各组件的专属 Props 交叉后，
+ * 作为 `componentProps` 的最终类型。
+ */
+export interface BaseComponentProps {
+  /** 自定义类名 */
+  className?: string
+  /** 自定义样式 */
+  style?: CSS.Properties
+  /** 占位符 */
+  placeholder?: string
+}
+
+/**
+ * 渲染器组件完整 Props 类型
+ *
+ * 将 {@link CustomRendererMap} 中对应组件的专属 Props 与 {@link BaseComponentProps} 交叉，
+ * 得到传递给渲染组件的完整属性类型。
+ *
+ * @typeParam K - 组件类型键
+ */
+export type ComponentProps<K extends keyof CustomRendererMap = keyof CustomRendererMap> =
+  CustomRendererMap[K] & BaseComponentProps
+
+/**
+ * 基础字段配置
+ *
+ * 描述单个表单字段的完整配置，包括组件类型、校验规则、动态属性等。
+ *
+ * @typeParam T - 表单值类型
+ * @typeParam K - 组件类型键，用于收窄 componentProps 类型
+ */
+export interface SchemaBase<
+  T extends FormValues = FormValues,
+  K extends keyof CustomRendererMap = keyof CustomRendererMap,
+> {
+  /**
+   * 字段名称
+   *
+   * 支持嵌套路径语法，如 `'user.name'`、`['user', 'address', 'city']`。
+   * 用于在 FormStore 中定位字段值的存取路径。
+   */
+  name: NamePath<T>
+
+  /**
+   * 字段标签文本
+   *
+   * 显示在表单项左侧的描述文字，不设置时不渲染 label 区域。
+   */
+  label: string
+
+  /**
+   * 渲染组件类型
+   *
+   * 对应 CustomRendererMap 中注册的组件键名，
+   * 用于从 rendererRegistry 中查找并渲染对应的表单控件。
+   */
+  component: K
+
+  /**
+   * 依赖的字段路径
+   *
+   * 所依赖的 values 变化后，触发 `componentProps`、`placeholder`、`required`、`readonly`、`disabled`、`visible` 重新执行
+   */
+  dependencies?: NamePath<T>[]
+
+  /**
+   * 传递给渲染组件的属性
+   *
+   * 类型根据 `component` 自动收窄为对应组件的 Props 类型。
+   * 支持函数形式 `(values) => props`，在依赖字段变化时动态计算。
+   *
+   * @remarks
+   * 当使用函数形式时，需要配置  {@link dependencies}  指定依赖的字段，
+   * 否则不会响应值变化。
+   */
+  componentProps?: Dynamic<ComponentProps<K>>
+
+  /**
+   * 占位提示文本
+   *
+   * 支持函数形式 `(values) => string`，在依赖字段变化时动态计算。
+   *
+   * @remarks
+   * 当使用函数形式时，需要配置  {@link dependencies}  指定依赖的字段，
+   * 否则不会响应值变化。
+   */
+  placeholder?: Dynamic<string>
+
+  /**
+   * 是否必填
+   *
+   * 控制必填标记（红色星号）的显示。
+   * 若未设置，会根据 `rules` 中的校验规则自动推断。
+   * 支持函数形式 `(values) => boolean`，在依赖字段变化时动态计算。
+   *
+   * @remarks
+   * 当使用函数形式时，需要配置  {@link dependencies}  指定依赖的字段，
+   * 否则不会响应值变化。
+   */
+  required?: Dynamic<boolean>
+
+  /**
+   * 是否只读
+   *
+   * 只读状态下字段可见但不可编辑。
+   * 未设置时继承 FormContext 的全局 `readonly` 配置。
+   * 支持函数形式 `(values) => boolean`，在依赖字段变化时动态计算。
+   *
+   * @remarks
+   * 当使用函数形式时，需要配置  {@link dependencies}  指定依赖的字段，
+   * 否则不会响应值变化。
+   */
+  readonly?: Dynamic<boolean>
+
+  /**
+   * 是否禁用
+   *
+   * 禁用状态下字段不可交互。
+   * 未设置时继承 FormContext 的全局 `disabled` 配置。
+   * 支持函数形式 `(values) => boolean`，在依赖字段变化时动态计算。
+   *
+   * @remarks
+   * 当使用函数形式时，需要配置  {@link dependencies}  指定依赖的字段，
+   * 否则不会响应值变化。
+   */
+  disabled?: Dynamic<boolean>
+
+  /**
+   * 是否隐藏
+   *
+   * 隐藏时字段不渲染，同时会清除校验规则和错误信息。
+   * 支持函数形式 `(values) => boolean`，在依赖字段变化时动态计算。
+   *
+   * @remarks
+   * 当使用函数形式时，需要配置  {@link dependencies}  指定依赖的字段，
+   * 否则不会响应值变化。
+   */
+  visible?: Dynamic<boolean>
+
+  /**
+   * 字段初始值
+   *
+   * 组件挂载时写入 FormStore，同时作为 `reset()` 的还原目标。
+   */
+  initialValue?: Value
+
+  /**
+   * 校验规则
+   *
+   * 支持 StandardSchemaV1 实例（如 Zod、Valibot 等实现了 Standard Schema 接口的验证库）
+   * 或内置快捷方式（如 `"required"`）。
+   * 校验在 `submit` 或触发时机（`validationTrigger`）到达时执行。
+   */
+  rules?: Rules | Rules[]
+
+  /**
+   * 自定义 CSS 类名
+   *
+   * 追加到表单项容器元素上，与内置类名合并。
+   */
+  className?: string
+
+  /**
+   * 自定义内联样式
+   *
+   * 应用到表单项容器元素上。
+   */
+  style?: CSS.Properties
+
+  /**
+   * 标签图标
+   *
+   * 显示在 label 文本旁的图标标识。
+   */
+  labelIcon?: string
+
+  /**
+   * 标签对齐方式
+   *
+   * 未设置时继承 FormContext 的全局 `labelAlign` 配置。
+   */
+  labelAlign?: "left" | "center" | "right"
+
+  /**
+   * 标签位置
+   *
+   * 未设置时继承 FormContext 的全局 `labelPosition` 配置。
+   */
+  labelPosition?: "left" | "top" | "right"
+
+  /**
+   * 标签宽度
+   *
+   * 未设置时继承 FormContext 的全局 `labelWidth` 配置。
+   */
+  labelWidth?: string
+
+  /**
+   * 内容区域对齐方式
+   */
+  contentAlign?: "left" | "center" | "right"
+
+  /**
+   * 校验触发时机
+   *
+   * 支持单个或多个触发时机组合，如 `'change'`、`'blur'`、`['change', 'blur']`。
+   * 未设置时继承 FormContext 的全局 `validationTrigger` 配置。
+   */
+  validationTrigger?: ValidationTrigger | ValidationTrigger[]
+
+  /**
+   * 是否在标签后显示冒号
+   *
+   * 未设置时继承 FormContext 的全局 `colon` 配置。
+   */
+  colon?: boolean
+}
+
+/**
+ * 分组字段配置
+ *
+ * 将多个字段组织为可折叠的分组，componentType 固定为 `"group"`。
+ *
+ * @typeParam T - 表单值类型
+ */
+export interface SchemaGroupField<T extends FormValues = FormValues> {
+  /** 分组标签 */
+  label: string
+  /** 组件类型（固定为 group） */
+  component: "group"
+  /** 分组内的列配置 */
+  children: SchemaField<T>[]
+  /** 是否可折叠 */
+  collapsible?: boolean
+  /** 默认是否折叠 */
+  defaultCollapsed?: boolean
+}
+
+/**
+ * 依赖字段配置
+ *
+ * 根据其他字段的值动态生成列配置，componentType 固定为 `"dependency"`。
+ *
+ * @typeParam T - 表单值类型
+ */
+export interface SchemaDependencyField<T extends FormValues = FormValues> {
+  /** 组件类型（固定为 dependency） */
+  component: "dependency"
+  /** 依赖的字段路径 */
+  to: NamePath<T>[]
+  /** 动态列配置生成函数 */
+  renderer: (
+    values: T,
+    form: SchemxFormInstance<T>
+  ) => SchemaField<T>[] | Promise<SchemaField<T>[]>
+}
+
+/**
+ * FormItem 组件 Props
+ */
+export type FormItemProps = Omit<SchemaBase, "componentProps">
+
+/**
+ * 基础字段配置的分布式联合类型
+ *
+ * 将每个 component 展开为独立的 SchemaBaseField 变体，
+ * 使 schemas 数组中每个元素根据 component 获得精确的 componentProps 类型推断。
+ *
+ * @typeParam T - 表单值类型
+ */
+export type SchemaBaseField<T extends FormValues = FormValues> = {
+  [K in keyof CustomRendererMap]: SchemaBase<T, K>
+}[keyof CustomRendererMap]
+
+/**
+ * 字段配置联合类型
+ *
+ * 表单 schemas 数组中每个元素的类型。
+ *
+ * @typeParam T - 表单值类型
+ */
+export type SchemaField<T extends FormValues = FormValues> =
+  | SchemaBaseField<T>
+  | SchemaGroupField<T>
+  | SchemaDependencyField<T>

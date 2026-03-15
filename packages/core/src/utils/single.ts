@@ -48,10 +48,14 @@ export function createStrictSingleton<T, Args extends any[] = []>(
 
     /** 重置单例，仅测试环境可用 */
     reset() {
-      if (import.meta.env?.PROD) {
-        console.warn("[Singleton] reset() 不应在生产环境调用")
+      try {
+        if (typeof process !== "undefined" && process.env?.NODE_ENV === "production") {
+          console.warn("[Singleton] reset() 不应在生产环境调用")
 
-        return
+          return
+        }
+      } catch {
+        /* 环境不支持时优雅降级 */
       }
 
       instance = undefined

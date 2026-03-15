@@ -25,8 +25,8 @@ export type BuiltinRules = "required" | "selectRequired" | "uploadRequired"
  *
  * @example
  * ```ts
- * // 在项目中创建 schema-form.d.ts
- * declare module '@jonhn/schema-form-core' {
+ * // 在项目中创建 schemx.d.ts
+ * declare module '@schemx/core' {
  *   interface CustomRuleMap {
  *     'phone': StandardSchemaV1<string>
  *     'email': StandardSchemaV1<string>

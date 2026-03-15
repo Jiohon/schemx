@@ -1,45 +1,90 @@
 /**
- * SchemaForm 统一导出入口
+ * core 模块统一导出
  *
- * @module @Jonhn/schemaForm
+ * 聚合 FormStore、Subscriber、Validator、RendererRegistry、SchemaRegistry 五个核心模块的公开 API。
+ *
+ * @module core
  */
 
-import "./styles/index.css"
-
-/** 默认导出 */
-export { default } from "./SchemaForm"
-export { default as SchemaForm } from "./SchemaForm"
-
-/** 核心功能 */
-export * from "./core"
-
-/** Hooks */
-export * from "./hooks"
-export { FORM_CONTEXT_KEY } from "./hooks/useFormContext"
-
-/** 组件 */
-export { default as FormItem } from "./components/FormItem"
-export { default as FormDependency } from "./components/FormDependency"
-
-/** 工具函数 */
+// FormStore - 纯状态管理
 export {
-  type DynamicProp,
-  resolveDynamicProp,
-  isBaseColumn,
-  isGroupColumn,
-  isDependencyColumn,
-  isNestedColumn,
-  shouldValidateOn,
-} from "./utils"
+  FormStore,
+  createFormStore,
+  type FormStoreState,
+  type FormStoreOptions,
+} from "./store"
 
-/** 类型导出 */
-export type {
-  FormValues,
-  SchemaFormInstance,
-  CustomRendererMap,
-  RendererType,
-  ValidationTrigger,
-  SchemaColumn,
-  SchemaBaseColumn,
-  SchemaFormProps,
-} from "./types"
+// Subscriber - 发布订阅
+export {
+  Subscriber,
+  createSubscriber,
+  type FieldSubscribeCallback,
+  type GlobalSubscribeCallback,
+} from "./subscriber"
+
+// Validator - 校验
+export {
+  Validator,
+  createValidator,
+  type RulesMap,
+  type ValidateResult,
+  type ValidateError,
+  type FieldError,
+} from "./validator"
+
+// RendererRegistry - 渲染器注册
+export {
+  RendererRegistry,
+  rendererRegistry,
+  createLocalRendererRegistry,
+  defineRenderer,
+  defineRenderers,
+  type RegistryOptions,
+  type RendererMap,
+} from "./rendererRegistry"
+
+// createFormInstance - 表单实例工厂
+export { createFormInstance, type CreateFormInstanceOptions } from "./createForm"
+
+// createWatch - 纯函数版本的字段监听
+export {
+  createWatchField,
+  createWatchFields,
+  createWatchAll,
+  type SingleFieldCallback,
+  type MultiFieldCallback,
+  type GlobalCallback,
+  type useWatchOptions,
+  type CreateWatchReturn,
+} from "./createWatch"
+
+// createDependency - 依赖计算纯函数
+export {
+  createDependency,
+  type CreateDependencyOptions,
+  type CreateDependencyReturn,
+} from "./createDependency"
+
+// RulesRegistry - 校验schema注册
+export {
+  RulesRegistry,
+  rulesRegistry,
+  createLocalSchemaRegistry,
+  defineSchema,
+  defineSchemas,
+  type SchemaRegistryOptions,
+  type SchemaMap,
+  type SchemaFactory,
+  type SchemaEntry,
+  type SchemaEntryMap,
+} from "./rulesRegistry"
+
+// requestProvider - 全局请求器管理与解析
+export {
+  _setGlobalRequest,
+  _getGlobalRequest,
+  _clearGlobalRequest,
+  resolveRequester,
+  type RequestFn,
+  type HasRequest,
+} from "./requestProvider"

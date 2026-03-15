@@ -4,11 +4,11 @@
  * @module utils
  */
 
-/** column 列配置工具 */
-export { isBaseColumn, isGroupColumn, isDependencyColumn, isNestedColumn } from "./column"
+/** schema 列配置工具 */
+export { isBaseColumn, isGroupColumn, isDependencyColumn } from "./schema"
 
 /** 动态属性解析 */
-export { type DynamicProp, resolveDynamicProp } from "./dynamic"
+export { type Dynamic, resolveDynamicProp } from "./dynamic"
 
 /** 校验触发工具 */
 export { shouldValidateOn } from "./validation"
@@ -22,7 +22,7 @@ export { withLock } from "./async"
 /** 单例工具 */
 export { createStrictSingleton } from "./single"
 
-/** 插槽工具 */
+/** 命名转换工具 */
 export {
   isCamelCase,
   isKebabCase,
@@ -31,6 +31,4 @@ export {
   kebabToCamel,
   normalizeToKebab,
   normalizeToCamel,
-  resolveSlot,
-  extractChildSlots,
-} from "./slot"
+} from "./naming"

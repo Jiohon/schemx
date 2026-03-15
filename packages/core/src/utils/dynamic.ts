@@ -2,7 +2,7 @@
  * 动态属性解析工具
  *
  * 支持将函数类型或静态值统一解析为最终属性值，
- * 用于 SchemaForm 列配置中的动态属性（如 disabled、hidden、placeholder 等）。
+ * 用于 schemx 列配置中的动态属性（如 disabled、hidden、placeholder 等）。
  *
  * @module utils/dynamic
  */
@@ -19,20 +19,20 @@ import type { FormValues } from "../types"
  * @example
  * ```ts
  * // 静态值
- * const prop: DynamicProp<boolean> = true
+ * const prop: Dynamic<boolean> = true
  *
  * // 动态函数
- * const prop: DynamicProp<boolean> = (values) => values.age > 18
+ * const prop: Dynamic<boolean> = (values) => values.age > 18
  * ```
  */
-export type DynamicProp<T, V extends FormValues = FormValues> =
+export type Dynamic<T, V extends FormValues = FormValues> =
   | ((values: V) => T | Promise<T>)
   | T
 
 /**
  * 解析泛型动态属性
  *
- * 将 `DynamicProp<T>`（函数或静态值）统一解析为 `T`。
+ * 将 `Dynamic<T>`（函数或静态值）统一解析为 `T`。
  * 当 value 为函数时调用并传入表单值，捕获错误返回默认值；
  * 当 value 为 null/undefined 时返回默认值。
  *
@@ -60,7 +60,7 @@ export type DynamicProp<T, V extends FormValues = FormValues> =
  * ```
  */
 export async function resolveDynamicProp<T>(
-  value: DynamicProp<T> | undefined | null,
+  value: Dynamic<T> | undefined | null,
   formValues: FormValues,
   defaultValue: T
 ): Promise<T> {

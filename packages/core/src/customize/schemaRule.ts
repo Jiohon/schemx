@@ -4,7 +4,7 @@
  * 提供轻量的内置校验 schema 构造函数，
  * 用于替代直接依赖 Zod 等第三方库构造必填规则。
  *
- * @module utils/standardSchema
+ * @module utils/schemaRule
  */
 
 import type { SchemaBaseField } from "@/types/schema"

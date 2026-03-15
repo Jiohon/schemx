@@ -22,7 +22,7 @@ export default defineConfig({
   build: {
     lib: {
       entry: resolve(__dirname, "src/index.ts"),
-      name: "SchemaFormCore",
+      name: "schemxCore",
       formats: ["es", "cjs", "umd"],
       fileName: (format) => {
         if (format === "es") return "index.mjs"
