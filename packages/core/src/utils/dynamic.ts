@@ -2,7 +2,7 @@
  * 动态属性解析工具
  *
  * 支持将函数类型或静态值统一解析为最终属性值，
- * 用于 schemx 列配置中的动态属性（如 disabled、hidden、placeholder 等）。
+ * 用于 schemx 列配置中的动态属性（如 disabled、visible、placeholder 等）。
  *
  * @module utils/dynamic
  */

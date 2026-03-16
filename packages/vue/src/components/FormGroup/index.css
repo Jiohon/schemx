@@ -1,0 +1,39 @@
+/**
+ * FormGroup 组件样式
+ */
+
+.schemx-group {
+  margin-bottom: var(--schemx-padding-sm);
+}
+
+.schemx-group__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--schemx-padding-sm) var(--schemx-padding-md);
+  user-select: none;
+}
+
+.schemx-group__header--clickable {
+  cursor: pointer;
+}
+
+.schemx-group__title {
+  font-size: var(--schemx-font-size-lg);
+  font-weight: 500;
+  color: var(--schemx-text-color);
+}
+
+.schemx-group__arrow {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 5px solid var(--schemx-text-color-secondary);
+  transition: transform 0.2s ease;
+}
+
+.schemx-group__arrow--down {
+  transform: rotate(180deg);
+}

@@ -5,7 +5,7 @@
  * 避免 SchemaBaseField 因 `keyof CustomRendererMap` 为 `never` 而坍塌。
  *
  * 消费者通过声明合并注册真实渲染器类型后，`__stub` 只是联合类型中多出的一个成员，
- * 不影响实际的 component 类型收窄。
+ * 不影响实际的 componentType 类型收窄。
  */
 import type { CustomRendererMap } from "./renderer"
 import type { CustomRuleMap } from "./rule"

@@ -14,10 +14,10 @@ import { defineComponent } from "vue"
 import * as fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import { createRequiredSchema } from "../utils/standardSchema"
-import { RendererRegistry } from "../core/rendererRegistry"
+import { RendererRegistry } from "../rendererRegistry"
 import { FormStore } from "../store"
-import { createSubscriber } from "../core/subscriber"
+import { createSubscriber } from "../subscriber"
+import { createRequiredSchema } from "../utils/standardSchema"
 import { Validator } from "../validator"
 
 /** 用于测试的简单 Vue 组件 */

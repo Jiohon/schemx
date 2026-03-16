@@ -5,7 +5,7 @@
  */
 
 /** schema 列配置工具 */
-export { isBaseColumn, isGroupColumn, isDependencyColumn } from "./schema"
+export { isBaseSchema, isGroupSchema, isDependencySchema } from "./schema"
 
 /** 动态属性解析 */
 export { type Dynamic, resolveDynamicProp } from "./dynamic"

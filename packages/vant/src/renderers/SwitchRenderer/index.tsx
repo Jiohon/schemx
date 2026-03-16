@@ -127,7 +127,7 @@ const SwitchRendererComponent = defineComponent({
       if (readonly.value) {
         return (
           <div
-            class={classNames("schema-form-switch-renderer", props.className)}
+            class={classNames("schemx-switch-renderer", props.className)}
             style={{
               justifyContent: getFieldProps(
                 attrs as Record<string, any>,
@@ -144,12 +144,12 @@ const SwitchRendererComponent = defineComponent({
       return (
         <div
           class={classNames(
-            "schema-form-renderer",
-            "schema-form-switch-renderer",
+            "schemx-renderer",
+            "schemx-switch-renderer",
             props.className,
             {
-              "schema-form-renderer-readonly": readonly.value,
-              "schema-form-renderer-disabled": disabled.value,
+              "schemx-renderer-readonly": readonly.value,
+              "schemx-renderer-disabled": disabled.value,
             }
           )}
           style={{

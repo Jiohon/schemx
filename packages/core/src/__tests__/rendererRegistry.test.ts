@@ -12,7 +12,7 @@ import { defineComponent } from "vue"
 
 import { describe, expect, it } from "vitest"
 
-import { createLocalRendererRegistry, RendererRegistry } from "../core/rendererRegistry"
+import { createLocalRendererRegistry, RendererRegistry } from "../rendererRegistry"
 
 const Comp1 = defineComponent({ render: () => null })
 const Comp2 = defineComponent({ render: () => null })

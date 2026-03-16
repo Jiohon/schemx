@@ -1,0 +1,69 @@
+/**
+ * schemx CSS 变量定义
+ *
+ * 用于主题定制，支持通过 CSS 自定义属性覆盖默认值。
+ */
+
+:root {
+  /* 主色调 */
+  --schemx-primary-color: #2f6bff;
+  --schemx-primary-color-light: #eaf2ff;
+
+  /* 文本颜色 */
+  --schemx-text-color: #323233;
+  --schemx-text-color-secondary: #666666;
+  --schemx-text-color-placeholder: #c8c9cc;
+  --schemx-text-color-disabled: #c8c9cc;
+
+  /* 背景颜色 */
+  --schemx-background-color: #ffffff;
+  --schemx-background-color-light: #f3f4f6;
+
+  /* 边框颜色 */
+  --schemx-border-color: #ebedf0;
+
+  /* 状态颜色 */
+  --schemx-danger-color: #ee0a24;
+  --schemx-success-color: #07c160;
+  --schemx-warning-color: #ff976a;
+
+  /* 间距 */
+  --schemx-padding-base: 4px;
+  --schemx-padding-xs: 8px;
+  --schemx-padding-sm: 12px;
+  --schemx-padding-md: 16px;
+  --schemx-padding-lg: 24px;
+
+  /* 字体大小 */
+  --schemx-font-size-xs: 10px;
+  --schemx-font-size-sm: 12px;
+  --schemx-font-size-md: 14px;
+  --schemx-font-size-lg: 16px;
+
+  /* 圆角 */
+  --schemx-border-radius-sm: 4px;
+  --schemx-border-radius-md: 8px;
+  --schemx-border-radius-lg: 12px;
+
+  /* 表单项 */
+  --schemx-item-line-height: 1.6;
+  --schemx-item-error-line-height: 1.5714285714285714;
+  --schemx-item-label-color: #666666;
+  --schemx-input-align: end;
+  --schemx-error-align: right;
+
+  /* 图标 */
+  --schemx-icon-size: 18px;
+  --schemx-icon-color: #969799;
+  --schemx-clear-icon-color: #c8c9cc;
+
+  /* 评分组件 */
+  --schemx-rate-star-size: 20px;
+  --schemx-rate-star-color: #ddd;
+  --schemx-rate-star-active-color: #ffd21e;
+
+  /* 选择器组件 */
+  --schemx-selector-gap: 12px;
+  --schemx-selector-option-min-width: 80px;
+  --schemx-selector-option-padding: 8px 18px;
+}

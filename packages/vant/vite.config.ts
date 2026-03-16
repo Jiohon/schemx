@@ -5,6 +5,11 @@ import dts from "vite-plugin-dts"
 import { resolve } from "path"
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      "@": resolve(__dirname, "src"),
+    },
+  },
   plugins: [
     vue(),
     vueJsx(),
@@ -17,7 +22,7 @@ export default defineConfig({
   build: {
     lib: {
       entry: resolve(__dirname, "src/index.ts"),
-      name: "SchemaFormVant",
+      name: "schemxVant",
       formats: ["es", "cjs"],
       fileName: (format) => {
         if (format === "es") return "index.mjs"
@@ -25,12 +30,12 @@ export default defineConfig({
       },
     },
     rollupOptions: {
-      external: ["vue", "vant", "@jonhn/schema-form-core"],
+      external: ["vue", "vant", "@schemx/core", "@schemx/vue", "classnames", "dayjs"],
       output: {
         globals: {
           vue: "Vue",
           vant: "Vant",
-          "@jonhn/schema-form-core": "SchemaFormCore",
+          "@schemx/core": "schemxCore",
         },
         exports: "named",
       },

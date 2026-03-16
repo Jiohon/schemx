@@ -75,8 +75,8 @@ const StepperRendererComponent = defineComponent({
     }
 
     const renderReadonly = () => (
-      <div class="schema-form-stepper-renderer__readonly">
-        <span class="schema-form-stepper-renderer__readonly-value">
+      <div class="schemx-stepper-renderer__readonly">
+        <span class="schemx-stepper-renderer__readonly-value">
           {formatDisplayValue(props.value)}
         </span>
       </div>
@@ -87,8 +87,8 @@ const StepperRendererComponent = defineComponent({
         return (
           <div
             class={classNames(
-              "schema-form-stepper-renderer",
-              "schema-form-stepper-renderer--readonly",
+              "schemx-stepper-renderer",
+              "schemx-stepper-renderer--readonly",
               props.className
             )}
           >
@@ -99,8 +99,8 @@ const StepperRendererComponent = defineComponent({
 
       return (
         <div
-          class={classNames("schema-form-stepper-renderer", props.className, {
-            "schema-form-stepper-renderer--disabled": finalDisabled.value,
+          class={classNames("schemx-stepper-renderer", props.className, {
+            "schemx-stepper-renderer--disabled": finalDisabled.value,
           })}
         >
           <Stepper

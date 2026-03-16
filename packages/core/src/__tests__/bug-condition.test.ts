@@ -16,10 +16,10 @@ import { describe, expect, it } from "vitest"
 
 import type { NamePath } from "@/types"
 
-import { createRequiredSchema } from "../utils/standardSchema"
-import { RendererRegistry } from "../core/rendererRegistry"
+import { RendererRegistry } from "../rendererRegistry"
 import { FormStore } from "../store"
-import { createSubscriber } from "../core/subscriber"
+import { createSubscriber } from "../subscriber"
+import { createRequiredSchema } from "../utils/standardSchema"
 import { Validator } from "../validator"
 
 /** 用于测试的简单 Vue 组件 */

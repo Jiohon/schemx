@@ -155,15 +155,10 @@ const TextRendererComponent = defineComponent({
 
     return () => (
       <div
-        class={classNames(
-          "schema-form-renderer",
-          "schema-form-text-renderer",
-          props.className,
-          {
-            "schema-form-renderer-readonly": readonly.value,
-            "schema-form-renderer-disabled": disabled.value,
-          }
-        )}
+        class={classNames("schemx-renderer", "schemx-text-renderer", props.className, {
+          "schemx-renderer-readonly": readonly.value,
+          "schemx-renderer-disabled": disabled.value,
+        })}
       >
         <InputRenderer
           ref={inputRef}
@@ -197,7 +192,7 @@ const TextRendererComponent = defineComponent({
               ? () => (
                   <Icon
                     name={passwordIcon.value}
-                    class="schema-form-text-renderer__password-icon"
+                    class="schemx-text-renderer__password-icon"
                     onClick={handleTogglePassword}
                   />
                 )

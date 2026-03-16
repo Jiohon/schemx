@@ -95,26 +95,26 @@ const RateRendererComponent = defineComponent({
     const renderReadonly = () => {
       if (!props.value) {
         return (
-          <span class="schema-form-rate-renderer__readonly-placeholder">
+          <span class="schemx-rate-renderer__readonly-placeholder">
             {props.readonlyPlaceholder}
           </span>
         )
       }
 
       return (
-        <div class="schema-form-rate-renderer__readonly">
+        <div class="schemx-rate-renderer__readonly">
           {Array.from({ length: props.count }, (_, index) => (
             <Icon
               key={index}
               name={index < props.value ? "star" : "star-o"}
               class={classNames(
-                "schema-form-rate-renderer__star",
-                "schema-form-rate-renderer__star--readonly",
-                index < props.value && "schema-form-rate-renderer__star--active"
+                "schemx-rate-renderer__star",
+                "schemx-rate-renderer__star--readonly",
+                index < props.value && "schemx-rate-renderer__star--active"
               )}
             />
           ))}
-          <span class="schema-form-rate-renderer__readonly-text">({props.value})</span>
+          <span class="schemx-rate-renderer__readonly-text">({props.value})</span>
         </div>
       )
     }
@@ -124,8 +124,8 @@ const RateRendererComponent = defineComponent({
         return (
           <div
             class={classNames(
-              "schema-form-rate-renderer",
-              "schema-form-rate-renderer--readonly",
+              "schemx-rate-renderer",
+              "schemx-rate-renderer--readonly",
               props.className
             )}
           >
@@ -136,19 +136,19 @@ const RateRendererComponent = defineComponent({
 
       return (
         <div
-          class={classNames("schema-form-rate-renderer", props.className, {
-            "schema-form-rate-renderer--disabled": finalDisabled.value,
+          class={classNames("schemx-rate-renderer", props.className, {
+            "schemx-rate-renderer--disabled": finalDisabled.value,
           })}
         >
-          <div class="schema-form-rate-renderer__stars">
+          <div class="schemx-rate-renderer__stars">
             {Array.from({ length: props.count }, (_, index) => (
               <Icon
                 key={index}
                 name={index < props.value ? "star" : "star-o"}
                 class={classNames(
-                  "schema-form-rate-renderer__star",
-                  index < props.value && "schema-form-rate-renderer__star--active",
-                  finalDisabled.value && "schema-form-rate-renderer__star--disabled"
+                  "schemx-rate-renderer__star",
+                  index < props.value && "schemx-rate-renderer__star--active",
+                  finalDisabled.value && "schemx-rate-renderer__star--disabled"
                 )}
                 onClick={() => handleStarClick(index)}
               />

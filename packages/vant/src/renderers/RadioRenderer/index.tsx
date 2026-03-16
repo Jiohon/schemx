@@ -107,7 +107,7 @@ const RadioRendererComponent = defineComponent({
       if (props.readonly) {
         return (
           <div
-            class={classNames("schema-form-radio-renderer", props.className)}
+            class={classNames("schemx-radio-renderer", props.className)}
             style={{
               textAlign: getFieldProps(attrs as Record<string, any>, "align", "right"),
             }}
@@ -119,15 +119,10 @@ const RadioRendererComponent = defineComponent({
 
       return (
         <div
-          class={classNames(
-            "schema-form-renderer",
-            "schema-form-radio-renderer",
-            props.className,
-            {
-              "schema-form-renderer-readonly": props.readonly,
-              "schema-form-renderer-disabled": props.disabled,
-            }
-          )}
+          class={classNames("schemx-renderer", "schemx-radio-renderer", props.className, {
+            "schemx-renderer-readonly": props.readonly,
+            "schemx-renderer-disabled": props.disabled,
+          })}
         >
           <RadioGroup
             {...attrs}

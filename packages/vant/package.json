@@ -1,8 +1,8 @@
 {
   "type": "module",
-  "name": "@jonhn/schema-form-vant",
+  "name": "@schemx/vant",
   "version": "0.1.0",
-  "description": "基于 Vant 组件库的 SchemaForm 渲染器适配包",
+  "description": "基于 Vant 组件库的 schemx 渲染器适配包",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -27,7 +27,8 @@
     "vant": "^4.0.0"
   },
   "dependencies": {
-    "@jonhn/schema-form-core": "workspace:*"
+    "@schemx/core": "workspace:*",
+    "@schemx/vue": "workspace:*"
   },
   "scripts": {
     "build": "vite build",

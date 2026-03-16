@@ -87,8 +87,63 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
 
+  examples/vant-demo:
+    dependencies:
+      '@schemx/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@schemx/vant':
+        specifier: workspace:*
+        version: link:../../packages/vant
+      '@schemx/vue':
+        specifier: workspace:*
+        version: link:../../packages/vue
+      vant:
+        specifier: ^4.9.0
+        version: 4.9.22(vue@3.5.27(typescript@5.9.3))
+      vue:
+        specifier: ^3.4.0
+        version: 3.5.27(typescript@5.9.3)
+    devDependencies:
+      '@vitejs/plugin-vue':
+        specifier: ^5.0.0
+        version: 5.2.4(vite@5.4.21(@types/node@25.2.0)(sass@1.97.3)(terser@5.46.0))(vue@3.5.27(typescript@5.9.3))
+      '@vitejs/plugin-vue-jsx':
+        specifier: ^4.0.0
+        version: 4.2.0(vite@5.4.21(@types/node@25.2.0)(sass@1.97.3)(terser@5.46.0))(vue@3.5.27(typescript@5.9.3))
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
+      vite:
+        specifier: ^5.0.0
+        version: 5.4.21(@types/node@25.2.0)(sass@1.97.3)(terser@5.46.0)
+
   packages/core:
     dependencies:
+      es-toolkit:
+        specifier: ^1.44.0
+        version: 1.45.1
+
+  packages/vant:
+    dependencies:
+      '@schemx/core':
+        specifier: workspace:*
+        version: link:../core
+      '@schemx/vue':
+        specifier: workspace:*
+        version: link:../vue
+      vant:
+        specifier: ^4.0.0
+        version: 4.9.22(vue@3.5.27(typescript@5.9.3))
+      vue:
+        specifier: ^3.0.0
+        version: 3.5.27(typescript@5.9.3)
+
+  packages/vue:
+    dependencies:
+      '@schemx/core':
+        specifier: workspace:*
+        version: link:../core
       classnames:
         specifier: ^2.5.1
         version: 2.5.1
@@ -98,18 +153,6 @@ importers:
       es-toolkit:
         specifier: ^1.44.0
         version: 1.45.1
-      vue:
-        specifier: ^3.0.0
-        version: 3.5.27(typescript@5.9.3)
-
-  packages/vant:
-    dependencies:
-      '@jonhn/schema-form-core':
-        specifier: workspace:*
-        version: link:../core
-      vant:
-        specifier: ^4.0.0
-        version: 4.9.22(vue@3.5.27(typescript@5.9.3))
       vue:
         specifier: ^3.0.0
         version: 3.5.27(typescript@5.9.3)

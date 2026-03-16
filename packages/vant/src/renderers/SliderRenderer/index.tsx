@@ -120,8 +120,8 @@ const SliderRendererComponent = defineComponent({
     // 渲染只读状态
     const renderReadonly = () => {
       return (
-        <div class="schema-form-slider-renderer__readonly">
-          <span class="schema-form-slider-renderer__readonly-value">
+        <div class="schemx-slider-renderer__readonly">
+          <span class="schemx-slider-renderer__readonly-value">
             {formatDisplayValue(props.value)}
           </span>
         </div>
@@ -133,8 +133,8 @@ const SliderRendererComponent = defineComponent({
         return (
           <div
             class={classNames(
-              "schema-form-slider-renderer",
-              "schema-form-slider-renderer--readonly",
+              "schemx-slider-renderer",
+              "schemx-slider-renderer--readonly",
               props.className
             )}
           >
@@ -145,8 +145,8 @@ const SliderRendererComponent = defineComponent({
 
       return (
         <div
-          class={classNames("schema-form-slider-renderer", props.className, {
-            "schema-form-slider-renderer--disabled": finalDisabled.value,
+          class={classNames("schemx-slider-renderer", props.className, {
+            "schemx-slider-renderer--disabled": finalDisabled.value,
           })}
         >
           <Slider

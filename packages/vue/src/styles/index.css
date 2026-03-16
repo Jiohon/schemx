@@ -1,0 +1,43 @@
+/**
+ * schemx 主样式入口
+ */
+
+@import "./variables.css";
+
+/**
+ * 组件样式
+ */
+@import "../components/FormItem/index.css";
+@import "../components/FormGroup/index.css";
+
+/**
+ * schemx 容器
+ */
+.schemx {
+  --schemx-input-align: end;
+
+  box-sizing: border-box;
+  padding-bottom: 15px;
+}
+
+.schemx-schemas {
+  background-color: var(--schemx-background-color);
+  padding: var(--schemx-padding-md) 6px;
+  border-radius: var(--schemx-border-radius-lg);
+}
+
+.schemx-schemas-title {
+  display: flex;
+  align-items: center;
+  padding-left: var(--schemx-padding-md);
+  padding-bottom: var(--schemx-padding-xs);
+}
+
+.schemx-schemas-title-icon {
+  margin-right: var(--schemx-padding-xs);
+}
+
+.schemx-schemas-title-label {
+  font-size: var(--schemx-font-size-md);
+  color: var(--schemx-text-color);
+}

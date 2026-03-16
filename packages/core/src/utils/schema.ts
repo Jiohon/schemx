@@ -22,34 +22,34 @@ import type {
  * @param schema - 列配置
  * @returns 是否为基础字段
  */
-export function isBaseColumn<T extends FormValues = FormValues>(
+export function isBaseSchema<T extends FormValues = FormValues>(
   schema: SchemaField<T>
 ): schema is SchemaBaseField<T> {
-  return !isGroupColumn(schema) && !isDependencyColumn(schema)
+  return !isGroupSchema(schema) && !isDependencySchema(schema)
 }
 
 /**
  * 类型守卫：判断是否为分组列配置
  *
  * @param schema - 列配置
- * @returns 是否为 `component === "group"` 的分组列
+ * @returns 是否为 `componentType === "group"` 的分组列
  */
-export function isGroupColumn<T extends FormValues = FormValues>(
+export function isGroupSchema<T extends FormValues = FormValues>(
   schema: SchemaField<T>
 ): schema is SchemaGroupField<T> {
-  return schema.component === "group"
+  return schema.componentType === "group"
 }
 
 /**
  * 类型守卫：判断是否为依赖列配置
  *
  * @param schema - 列配置
- * @returns 是否为 `component === "dependency"` 的依赖列
+ * @returns 是否为 `componentType === "dependency"` 的依赖列
  */
-export function isDependencyColumn<T extends FormValues = FormValues>(
+export function isDependencySchema<T extends FormValues = FormValues>(
   schema: SchemaField<T>
 ): schema is SchemaDependencyField<T> {
-  return schema.component === "dependency"
+  return schema.componentType === "dependency"
 }
 
 /**
@@ -70,11 +70,11 @@ export function findSchema<T extends FormValues = FormValues>(
   name: string
 ): SchemaBaseField<T> | undefined {
   for (const schema of schemas) {
-    if (isBaseColumn(schema) && String(schema.name) === name) {
+    if (isBaseSchema(schema) && String(schema.name) === name) {
       return schema
     }
 
-    if (isGroupColumn(schema)) {
+    if (isGroupSchema(schema)) {
       const found = findSchema<T>(schema.children as SchemaField<T>[], name)
 
       if (found) return found

@@ -148,15 +148,10 @@ const DateRendererComponent = defineComponent({
 
     return () => (
       <div
-        class={classNames(
-          "schema-form-renderer",
-          "schema-form-date-renderer",
-          props.className,
-          {
-            "schema-form-renderer-readonly": readonly.value,
-            "schema-form-renderer-disabled": disabled.value,
-          }
-        )}
+        class={classNames("schemx-renderer", "schemx-date-renderer", props.className, {
+          "schemx-renderer-readonly": readonly.value,
+          "schemx-renderer-disabled": disabled.value,
+        })}
       >
         <Field
           placeholder={readonly.value ? props.readonlyPlaceholder : placeholder.value}
@@ -177,7 +172,7 @@ const DateRendererComponent = defineComponent({
           <Popup
             v-model:show={showPicker.value}
             position="bottom"
-            class={classNames("schema-form-date-popup-renderer", props.popupClassName)}
+            class={classNames("schemx-date-popup-renderer", props.popupClassName)}
             teleport="body"
           >
             <DatePicker

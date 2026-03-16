@@ -4,8 +4,10 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@jonhn/schema-form-core": ["../../packages/core/src/index.ts"],
-      "@jonhn/schema-form-core/*": ["../../packages/core/src/*"]
+      "@schemx/core": ["../../packages/core/src/index.ts"],
+      "@schemx/core/*": ["../../packages/core/src/*"],
+      "@schemx/vue": ["../../packages/vue/src/index.ts"],
+      "@schemx/vue/*": ["../../packages/vue/src/*"]
     },
     "declarationDir": "./dist",
     "outDir": "./dist",

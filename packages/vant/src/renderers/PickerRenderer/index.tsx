@@ -2,7 +2,7 @@ import { computed, defineComponent, PropType, ref, SetupContext, watchEffect } f
 
 import { Field, Picker, Popup } from "vant"
 
-import { useDictOptions } from "@jonhn/schema-form-core/hooks/useDictOptions"
+import { useDictOptions } from "@schemx/vue"
 import classNames from "classnames"
 
 import { findTreeItem, getFieldProps } from "@/utils"
@@ -129,7 +129,7 @@ const PickerRendererComponent = defineComponent({
     /**
      * 数据源
      */
-    const columns = computed(() => {
+    const schemas = computed(() => {
       if (Array.isArray(remoteOptions.value) && remoteOptions.value?.length > 0) {
         return remoteOptions.value
       }
@@ -138,7 +138,7 @@ const PickerRendererComponent = defineComponent({
         return props.options
       }
 
-      return (attrs as Record<string, any>)?.columns || []
+      return (attrs as Record<string, any>)?.schemas || []
     })
 
     /**
@@ -152,7 +152,7 @@ const PickerRendererComponent = defineComponent({
      * 获取字段值
      */
     const fieldValue = computed(() => {
-      const result = findTreeItem(columns.value, props.value, {
+      const result = findTreeItem(schemas.value, props.value, {
         labelKey: fieldNames.value?.text,
         valueKey: fieldNames.value?.value,
         childrenKey: fieldNames.value?.children,
@@ -207,15 +207,10 @@ const PickerRendererComponent = defineComponent({
 
     return () => (
       <div
-        class={classNames(
-          "schema-form-renderer",
-          "schema-form-picker-renderer",
-          props.className,
-          {
-            "schema-form-renderer-readonly": readonly.value,
-            "schema-form-renderer-disabled": disabled.value,
-          }
-        )}
+        class={classNames("schemx-renderer", "schemx-picker-renderer", props.className, {
+          "schemx-renderer-readonly": readonly.value,
+          "schemx-renderer-disabled": disabled.value,
+        })}
       >
         <Field
           placeholder={readonly.value ? props.readonlyPlaceholder : placeholder.value}
@@ -238,7 +233,7 @@ const PickerRendererComponent = defineComponent({
             round
             position="bottom"
             safe-area-inset-bottom
-            class={classNames("schema-form-picker-popup-renderer", props.popupClassName)}
+            class={classNames("schemx-picker-popup-renderer", props.popupClassName)}
             teleport="body"
           >
             <Picker
@@ -247,10 +242,10 @@ const PickerRendererComponent = defineComponent({
               {...attrs}
               modelValue={modelValue.value}
               title={props.title || placeholder.value}
-              columns={columns.value}
-              columns-field-names={fieldNames.value}
+              schemas={schemas.value}
+              schemas-field-names={fieldNames.value}
               v-slots={{
-                empty: () => <div class="schema-form-picker-empty">No data</div>,
+                empty: () => <div class="schemx-picker-empty">No data</div>,
               }}
             />
           </Popup>

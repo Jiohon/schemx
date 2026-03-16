@@ -1,4 +1,4 @@
-.schema-form-rate-renderer {
+.schemx-rate-renderer {
   &__stars {
     display: flex;
     align-items: center;
@@ -34,7 +34,7 @@
   }
 
   &--readonly {
-    .schema-form-rate-renderer__star {
+    .schemx-rate-renderer__star {
       cursor: default;
     }
   }

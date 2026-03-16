@@ -312,7 +312,7 @@ export const rendererRegistry = createStrictSingleton(
  *
  * // 在 schemas 中通过名称引用
  * const schemas = [
- *   { name: 'username', component: 'input', label: '用户名' },
+ *   { name: 'username', componentType: 'input', label: '用户名' },
  * ]
  * ```
  */

@@ -143,12 +143,12 @@ const TextAreaRendererComponent = defineComponent({
     return () => (
       <div
         class={classNames(
-          "schema-form-renderer",
-          "schema-form-textarea-renderer",
+          "schemx-renderer",
+          "schemx-textarea-renderer",
           props.className,
           {
-            "schema-form-renderer-readonly": readonly.value,
-            "schema-form-renderer-disabled": disabled.value,
+            "schemx-renderer-readonly": readonly.value,
+            "schemx-renderer-disabled": disabled.value,
           }
         )}
       >

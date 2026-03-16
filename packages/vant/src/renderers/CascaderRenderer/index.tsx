@@ -2,7 +2,7 @@ import { computed, defineComponent, PropType, ref, SetupContext, watchEffect } f
 
 import { Cascader, Field, Popup } from "vant"
 
-import { useDictOptions } from "@jonhn/schema-form-core/hooks/useDictOptions"
+import { useDictOptions } from "@schemx/vue"
 import classNames from "classnames"
 
 import { findTreeItem, getFieldProps } from "@/utils"
@@ -128,7 +128,7 @@ const CascaderRendererComponent = defineComponent({
     /**
      * 数据源
      */
-    const columns = computed(() => {
+    const schemas = computed(() => {
       if (Array.isArray(remoteOptions.value) && remoteOptions.value?.length > 0) {
         return remoteOptions.value
       }
@@ -137,7 +137,7 @@ const CascaderRendererComponent = defineComponent({
         return props.options
       }
 
-      return (attrs as Record<string, any>)?.columns
+      return (attrs as Record<string, any>)?.schemas
     })
 
     /**
@@ -148,7 +148,7 @@ const CascaderRendererComponent = defineComponent({
         ? props.value[props.value.length - 1]
         : props.value
 
-      const result = findTreeItem(columns.value, value, {
+      const result = findTreeItem(schemas.value, value, {
         labelKey: fieldNames.value.text,
         valueKey: fieldNames.value.value,
         childrenKey: fieldNames.value.children,
@@ -204,12 +204,12 @@ const CascaderRendererComponent = defineComponent({
     return () => (
       <div
         class={classNames(
-          "schema-form-renderer",
-          "schema-form-cascader-renderer",
+          "schemx-renderer",
+          "schemx-cascader-renderer",
           props.className,
           {
-            "schema-form-renderer-readonly": readonly.value,
-            "schema-form-renderer-disabled": disabled.value,
+            "schemx-renderer-readonly": readonly.value,
+            "schemx-renderer-disabled": disabled.value,
           }
         )}
       >
@@ -233,15 +233,12 @@ const CascaderRendererComponent = defineComponent({
             v-model:show={showCascader.value}
             round
             position="bottom"
-            class={classNames(
-              "schema-form-cascader-popup-renderer",
-              props.popupClassName
-            )}
+            class={classNames("schemx-cascader-popup-renderer", props.popupClassName)}
             safe-area-inset-bottom
           >
             <Cascader
               modelValue={cascaderValue.value}
-              options={columns.value}
+              options={schemas.value}
               title={props.title ?? placeholder.value}
               placeholder={placeholder.value}
               onFinish={handleConfirm}

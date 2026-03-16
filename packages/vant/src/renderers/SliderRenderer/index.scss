@@ -1,10 +1,10 @@
-.schema-form-slider-renderer {
+.schemx-slider-renderer {
   &--disabled {
     opacity: 0.6;
   }
 
   &--readonly {
-    .schema-form-slider-renderer__readonly {
+    .schemx-slider-renderer__readonly {
       padding: 8px 0;
     }
   }

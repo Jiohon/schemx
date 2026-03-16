@@ -125,7 +125,7 @@ const CheckboxRendererComponent = defineComponent({
       if (readonly.value) {
         return (
           <div
-            class={classNames("schema-form-checkbox-renderer", props.className)}
+            class={classNames("schemx-checkbox-renderer", props.className)}
             style={{
               textAlign: getFieldProps(attrs as Record<string, any>, "align", "right"),
             }}
@@ -138,12 +138,12 @@ const CheckboxRendererComponent = defineComponent({
       return (
         <div
           class={classNames(
-            "schema-form-renderer",
-            "schema-form-checkbox-renderer",
+            "schemx-renderer",
+            "schemx-checkbox-renderer",
             props.className,
             {
-              "schema-form-renderer-disabled": disabled.value,
-              "schema-form-renderer-readonly": readonly.value,
+              "schemx-renderer-disabled": disabled.value,
+              "schemx-renderer-readonly": readonly.value,
             }
           )}
         >

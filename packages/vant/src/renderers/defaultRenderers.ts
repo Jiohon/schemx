@@ -17,7 +17,7 @@ import TextAreaRenderer from "./TextAreaRenderer"
 import TextRenderer from "./TextRenderer"
 import UploadRenderer from "./UploadRenderer"
 
-import type { RendererRegistry } from "@jonhn/schema-form-core/core/rendererRegistry"
+import type { RendererRegistry } from "@schemx/core"
 
 /**
  * 默认渲染器类型列表

@@ -12,14 +12,14 @@
  *
  * 用户通过声明合并（declaration merging）扩展此接口，
  * 将自定义渲染器类型字符串映射到其对应的 Props 接口，
- * 从而实现 `component` 与 `componentProps` 之间的严格类型关联。
+ * 从而实现 `componentType` 与 `componentProps` 之间的严格类型关联。
  *
  * @module types/rendererPropsMap
  *
  * @example
  * ```ts
  * // 在项目中创建 schemx.d.ts
- * declare module '@schemx' {
+ * declare module '@schemx/core' {
  *   interface CustomRendererMap {
  *     'my-input': MyInputProps
  *     'rich-editor': RichEditorProps
@@ -29,7 +29,7 @@
  *
  * @remarks
  * 扩展后，`RendererType` 会自动推导出所有已注册的渲染器类型字符串，
- * `SchemaBaseColumn` 的 `componentProps` 也会根据 `component` 自动关联对应的 Props 类型。
+ * `SchemaBaseColumn` 的 `componentProps` 也会根据 `componentType` 自动关联对应的 Props 类型。
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface CustomRendererMap {}

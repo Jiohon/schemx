@@ -75,7 +75,7 @@ export interface SchemaBase<
    * 对应 CustomRendererMap 中注册的组件键名，
    * 用于从 rendererRegistry 中查找并渲染对应的表单控件。
    */
-  component: K
+  componentType: K
 
   /**
    * 依赖的字段路径
@@ -87,7 +87,7 @@ export interface SchemaBase<
   /**
    * 传递给渲染组件的属性
    *
-   * 类型根据 `component` 自动收窄为对应组件的 Props 类型。
+   * 类型根据 `componentType` 自动收窄为对应组件的 Props 类型。
    * 支持函数形式 `(values) => props`，在依赖字段变化时动态计算。
    *
    * @remarks
@@ -248,7 +248,7 @@ export interface SchemaGroupField<T extends FormValues = FormValues> {
   /** 分组标签 */
   label: string
   /** 组件类型（固定为 group） */
-  component: "group"
+  componentType: "group"
   /** 分组内的列配置 */
   children: SchemaField<T>[]
   /** 是否可折叠 */
@@ -266,7 +266,7 @@ export interface SchemaGroupField<T extends FormValues = FormValues> {
  */
 export interface SchemaDependencyField<T extends FormValues = FormValues> {
   /** 组件类型（固定为 dependency） */
-  component: "dependency"
+  componentType: "dependency"
   /** 依赖的字段路径 */
   to: NamePath<T>[]
   /** 动态列配置生成函数 */
@@ -284,8 +284,11 @@ export type FormItemProps = Omit<SchemaBase, "componentProps">
 /**
  * 基础字段配置的分布式联合类型
  *
- * 将每个 component 展开为独立的 SchemaBaseField 变体，
- * 使 schemas 数组中每个元素根据 component 获得精确的 componentProps 类型推断。
+ * 将每个 componentType 展开为独立的 SchemaBaseField 变体，
+ * 使 schemas 数组中每个元素根据 componentType 获得精确的 componentProps 类型推断。
+ *
+ * 当 CustomRendererMap 未注册任何渲染器时，回退为宽松的 SchemaBase 类型，
+ * 避免因 keyof 为 never 导致整个类型坍塌。
  *
  * @typeParam T - 表单值类型
  */

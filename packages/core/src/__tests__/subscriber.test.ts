@@ -9,7 +9,7 @@
 
 import { describe, expect, it, vi } from "vitest"
 
-import { createSubscriber, Subscriber } from "../core/subscriber"
+import { createSubscriber, Subscriber } from "../subscriber"
 
 interface TestForm {
   name: string

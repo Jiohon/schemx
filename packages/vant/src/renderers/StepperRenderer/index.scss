@@ -1,10 +1,10 @@
-.schema-form-stepper-renderer {
+.schemx-stepper-renderer {
   &--disabled {
     opacity: 0.6;
   }
 
   &--readonly {
-    .schema-form-stepper-renderer__readonly {
+    .schemx-stepper-renderer__readonly {
       padding: 8px 0;
     }
   }

@@ -47,20 +47,20 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-org/vue-schema-form.git"
+    "url": "https://github.com/your-org/schemx.git"
   },
   "keywords": [
     "vue",
     "vue3",
     "form",
-    "schema-form",
+    "schemx",
     "dynamic-form",
     "vant",
     "json-schema"
   ],
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/your-org/vue-schema-form/issues"
+    "url": "https://github.com/your-org/schemx/issues"
   },
-  "homepage": "https://github.com/your-org/vue-schema-form#readme"
+  "homepage": "https://github.com/your-org/schemx#readme"
 }

@@ -298,11 +298,7 @@ const UploadRendererComponent = defineComponent({
           multiple={true}
           {...attrs}
           ref={uploadRef}
-          class={classNames(
-            "schema-form-renderer",
-            "schema-form-upload-renderer",
-            props.className
-          )}
+          class={classNames("schemx-renderer", "schemx-upload-renderer", props.className)}
           modelValue={innerFileList.value}
           showUpload={showUpload.value}
           deletable={deletable.value}

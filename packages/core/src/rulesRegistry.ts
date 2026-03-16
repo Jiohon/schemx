@@ -18,8 +18,8 @@
  *
  * // 在 schema 中使用名称
  * const schemas = [
- *   { name: 'phone', component: 'input', rules: 'phone' },
- *   { name: 'email', component: 'input', rules: 'email' },
+ *   { name: 'phone', componentType: 'input', rules: 'phone' },
+ *   { name: 'email', componentType: 'input', rules: 'email' },
  * ]
  * ```
  */

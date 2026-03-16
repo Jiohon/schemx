@@ -58,13 +58,6 @@ export {
   type CreateWatchReturn,
 } from "./createWatch"
 
-// createDependency - 依赖计算纯函数
-export {
-  createDependency,
-  type CreateDependencyOptions,
-  type CreateDependencyReturn,
-} from "./createDependency"
-
 // RulesRegistry - 校验schema注册
 export {
   RulesRegistry,
@@ -88,3 +81,33 @@ export {
   type RequestFn,
   type HasRequest,
 } from "./requestProvider"
+
+// Utils - 工具函数
+export { isBaseSchema, isGroupSchema, isDependencySchema } from "./utils"
+
+// Types - 类型定义
+export type {
+  Value,
+  FormValues,
+  NamePath,
+  ValidationTrigger,
+  SchemxFormInstance,
+  SchemxProps,
+  GlobalContext,
+  CustomRules,
+  BuiltinRules,
+  Rules,
+  RendererType,
+  CustomRendererMap,
+  BaseComponentProps,
+  ComponentProps,
+  SchemaBase,
+  SchemaGroupField,
+  SchemaDependencyField,
+  SchemaBaseField,
+  SchemaField,
+  FormItemProps,
+  DeepNamePath,
+  DeepReadonly,
+  CSSProperties,
+} from "./types"

@@ -129,15 +129,10 @@ const NumberRendererComponent = defineComponent({
 
     return () => (
       <div
-        class={classNames(
-          "schema-form-renderer",
-          "schema-form-number-renderer",
-          props.className,
-          {
-            "schema-form-renderer-readonly": readonly.value,
-            "schema-form-renderer-disabled": disabled.value,
-          }
-        )}
+        class={classNames("schemx-renderer", "schemx-number-renderer", props.className, {
+          "schemx-renderer-readonly": readonly.value,
+          "schemx-renderer-disabled": disabled.value,
+        })}
       >
         <InputRenderer
           ref={inputRef}

@@ -1,6 +1,6 @@
 import { computed, defineComponent, PropType, SetupContext } from "vue"
 
-import { useDictOptions } from "@jonhn/schema-form-core/hooks/useDictOptions"
+import { useDictOptions } from "@schemx/vue"
 import classNames from "classnames"
 
 import { getFieldProps } from "@/utils"
@@ -97,7 +97,7 @@ const SelectorRendererComponent = defineComponent({
     /**
      * 数据源
      */
-    const columns = computed(() => {
+    const schemas = computed(() => {
       if (Array.isArray(remoteOptions.value) && remoteOptions.value?.length > 0) {
         return remoteOptions.value
       }
@@ -106,7 +106,7 @@ const SelectorRendererComponent = defineComponent({
         return props.options
       }
 
-      return (attrs as Record<string, any>)?.columns || []
+      return (attrs as Record<string, any>)?.schemas || []
     })
 
     const fieldValue = computed(() => {
@@ -114,7 +114,7 @@ const SelectorRendererComponent = defineComponent({
     })
 
     const getOption = (v: any, key: string): any => {
-      const option = columns.value.find(
+      const option = schemas.value.find(
         (option: SelectorOption) => option[valueName.value] === v
       )
 
@@ -125,7 +125,7 @@ const SelectorRendererComponent = defineComponent({
       if (readonly.value) {
         return (
           <div
-            class={classNames("schema-form-selector-renderer", props.className)}
+            class={classNames("schemx-selector-renderer", props.className)}
             style={{
               textAlign: getFieldProps(attrs as Record<string, any>, "align", "right"),
             }}
@@ -138,18 +138,18 @@ const SelectorRendererComponent = defineComponent({
       return (
         <div
           class={classNames(
-            "schema-form-renderer",
-            "schema-form-selector-renderer",
+            "schemx-renderer",
+            "schemx-selector-renderer",
             props.className,
             {
-              "schema-form-renderer-readonly": readonly.value,
-              "schema-form-renderer-disabled": disabled.value,
+              "schemx-renderer-readonly": readonly.value,
+              "schemx-renderer-disabled": disabled.value,
             }
           )}
         >
           <Selector
             {...attrs}
-            options={columns.value}
+            options={schemas.value}
             fieldNames={props.fieldNames}
             disabled={disabled.value}
             style={{

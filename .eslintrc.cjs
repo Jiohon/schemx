@@ -19,8 +19,8 @@ module.exports = {
     project: [
       "./tsconfig.json",
       "./packages/core/tsconfig.json",
+      "./packages/vue/tsconfig.json",
       "./packages/vant/tsconfig.json",
-      "./examples/tsconfig.json",
     ],
   },
   plugins: ["@typescript-eslint", "import", "unused-imports", "jsx-a11y"],
@@ -41,6 +41,7 @@ module.exports = {
         project: [
           "./tsconfig.json",
           "./packages/core/tsconfig.json",
+          "./packages/vue/tsconfig.json",
           "./packages/vant/tsconfig.json",
           "./examples/tsconfig.json",
         ],

@@ -16,8 +16,8 @@
     "paths": {
       "@/*": ["./src/*"],
       "@": ["./src"],
-      "@jonhn/schema-form-core/*": ["packages/core/src/*"],
-      "@jonhn/schema-form-core": ["packages/core/src"]
+      "@schemx/core/*": ["packages/core/src/*"],
+      "@schemx/core": ["packages/core/src"]
     }
   }
 }
