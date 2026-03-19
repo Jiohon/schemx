@@ -22,6 +22,13 @@ export { withLock } from "./async"
 /** 单例工具 */
 export { createStrictSingleton } from "./single"
 
+/** 批量调度器 */
+export {
+  createBatchScheduler,
+  type BatchScheduler,
+  type BatchSchedulerOptions,
+} from "./batchScheduler"
+
 /** 命名转换工具 */
 export {
   isCamelCase,

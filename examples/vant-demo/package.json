@@ -4,13 +4,12 @@
   "name": "vant-demo",
   "version": "0.0.0",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "dev": " npx vite --config vite.config.ts "
   },
   "dependencies": {
     "vue": "^3.4.0",
     "vant": "^4.9.0",
+    "zod": "^3.24.0",
     "@schemx/core": "workspace:*",
     "@schemx/vue": "workspace:*",
     "@schemx/vant": "workspace:*"

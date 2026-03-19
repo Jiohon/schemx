@@ -1,7 +1,8 @@
 /**
  * 表单实例工厂 - 框架无关的核心实现
  *
- * 组合 Store、Validator、Subscriber，提供统一的表单操作接口。
+ * 组合 Store、Validator，提供统一的表单操作接口。
+ * 订阅能力由 Store 内部的 Signal 机制提供。
  *
  * @module core/createForm
  *
@@ -18,28 +19,24 @@
  * await form.submit()
  * ```
  */
+import { batch as signalBatch, effect as signalEffect } from "@preact/signals-core"
 
 import {
-  createLocalSchemaRegistry,
-  defineSchemas,
+  createLocalRuleRegistry,
+  defineRules,
   rulesRegistry,
   RulesRegistry,
 } from "./rulesRegistry"
 import { createFormStore, FormStore } from "./store"
-import {
-  createSubscriber,
-  type FieldsSubscribeCallback,
-  FieldSubscribeCallback,
-  GlobalSubscribeCallback,
-  Subscriber,
-} from "./subscriber"
 import { withLock } from "./utils/async"
-import { collectObjectPathsByLeaf } from "./utils/path"
+import { type BatchScheduler, createBatchScheduler } from "./utils/batchScheduler"
+import { diff } from "./utils/diff"
+import { collectObjectPathsByLeaf, getByPath } from "./utils/path"
 import { findSchema } from "./utils/schema"
 import {
-  createRequiredSchema,
-  createSelectRequiredSchema,
-  createUploadRequiredSchema,
+  createRequiredRule,
+  createSelectRequiredRule,
+  createUploadRequiredRule,
 } from "./utils/standardSchema"
 import {
   createValidator,
@@ -54,7 +51,7 @@ import type {
   Rules,
   SchemaBaseField,
   SchemaField,
-  SchemxFormInstance,
+  SchemxInstance,
   Value,
 } from "./types"
 import type { StandardSchemaV1 } from "./types/standardSchema"
@@ -102,8 +99,8 @@ export interface CreateFormInstanceOptions<T extends FormValues> {
 /**
  * 表单实例核心类
  *
- * 组合 FormStore（状态管理）、Validator（校验）、Subscriber（订阅）三个模块，
- * 对外提供统一的表单操作 API。实现 SchemxFormInstance 接口。
+ * 组合 FormStore（状态管理 + 订阅）和 Validator（校验）两个模块，
+ * 对外提供统一的表单操作 API。实现 SchemxInstance 接口。
  *
  * @typeParam T - 表单值类型，默认为 FormValues
  *
@@ -120,21 +117,18 @@ export interface CreateFormInstanceOptions<T extends FormValues> {
  * ```
  *
  * @remarks
- * 内部通过 Subscriber 实现发布-订阅模式，所有值变更都会通知相关订阅者。
+ * 内部通过 Store 的 Signal 机制实现发布-订阅，所有值变更自动通知相关订阅者。
  * 提交操作通过 withLock 防止重复提交。
  */
 class CreateFormInstance<T extends FormValues = FormValues> {
   /** 表单列配置，用于提取初始值和校验规则 */
   private schemas: SchemaField<T>[]
 
-  /** 表单状态存储，管理字段值和初始值 */
+  /** 表单状态存储，管理字段值、初始值和订阅 */
   private store: FormStore<T>
 
   /** 表单校验器，管理校验规则和错误信息 */
   private validator: Validator<T>
-
-  /** 发布订阅管理器，管理字段级和全局订阅 */
-  private subscriber: Subscriber<T>
 
   /** 校验规则注册中心，管理校验规则和错误信息 */
   private rulesRegistry: RulesRegistry<T>
@@ -142,19 +136,18 @@ class CreateFormInstance<T extends FormValues = FormValues> {
   /** 回调函数集合（onValuesChange / onFinish / onFinishFailed / onFieldsChange） */
   private callbacks: Callbacks<T> = {}
 
+  /** 所有 effect 的 dispose 函数，destroy 时统一清理 */
+  private disposers = new Set<() => void>()
+
+  /** 字段初始化批量调度器，将多个 FormItem 的 onMounted 初始化合并为一次 signalBatch */
+  private scheduler: BatchScheduler<{ name: NamePath<T>; value: Value }>
+
   /**
    * 创建表单实例
    *
-   * 初始化 Store、Subscriber、Validator 三个核心模块。
+   * 初始化 Store 和 Validator 两个核心模块。
    *
    * @param options - 表单配置选项
-   *
-   * @example
-   * ```typescript
-   * const form = new CreateFormInstance({
-   *   initialValues: { email: '' },
-   * })
-   * ```
    */
   constructor(options: CreateFormInstanceOptions<T> = {}) {
     const { initialValues = {} as T, schemas = [] as SchemaField<T>[] } = options
@@ -167,53 +160,74 @@ class CreateFormInstance<T extends FormValues = FormValues> {
       onFieldsChange: options.onFieldsChange,
     })
 
-    // 注册内置校验 schema 工厂
-    defineSchemas({
-      required: createRequiredSchema,
-      selectRequired: createSelectRequiredSchema,
-      uploadRequired: createUploadRequiredSchema,
+    // 注册内置校验规则工厂
+    defineRules({
+      required: createRequiredRule,
+      selectRequired: createSelectRequiredRule,
+      uploadRequired: createUploadRequiredRule,
     })
 
     // RulesRegistry: 创建局部注册中心，继承全局规则
-    this.rulesRegistry = createLocalSchemaRegistry<T>(rulesRegistry)
+    this.rulesRegistry = createLocalRuleRegistry<T>(rulesRegistry)
 
-    // Store: 初始化状态管理
+    // Store: 初始化状态管理（含订阅能力）
     this.store = createFormStore<T>({ initialValues })
-
-    // Subscriber: 初始化订阅管理
-    this.subscriber = createSubscriber<T>()
 
     // Validator: 初始化校验器
     this.validator = createValidator<T>()
 
-    // 注册值变化回调
-    if (this.callbacks?.onValuesChange || this.callbacks?.onFieldsChange) {
-      this.subscriber.subscribeAll((payload, _prevSnapshot, latestSnapshot) => {
-        this.callbacks.onValuesChange?.(payload.changedValues, latestSnapshot)
+    // 初始化批量调度器：收集多个 FormItem 的 onMounted 初始化，microtask 时统一 batch flush
+    this.scheduler = createBatchScheduler<{
+      name: SchemaBaseField["name"]
+      value: Value
+    }>({
+      flush: (tasks) => {
+        signalBatch(() => {
+          for (const t of tasks) {
+            this.store.setInitialValues({ [t.name]: t.value } as Partial<T>)
+            this.store.setFieldValue(t.name as NamePath<T>, t.value)
+          }
+        })
+      },
+      dedupKey: (t) => t.name,
+    })
 
-        this.callbacks?.onFieldsChange?.(
-          payload.changedPaths,
-          collectObjectPathsByLeaf(latestSnapshot)
-        )
+    // 注册值变化回调（通过 store.effect 自动追踪依赖）
+    if (this.callbacks?.onValuesChange || this.callbacks?.onFieldsChange) {
+      let prevSnapshot = this.store.getFieldsSnapshot()
+
+      signalEffect(() => {
+        const latestSnapshot = this.store.getFieldsValue()
+        const changedValues = diff(latestSnapshot, prevSnapshot)
+        const changedPaths = collectObjectPathsByLeaf<NamePath<T>>(changedValues)
+
+        if (changedPaths.length > 0) {
+          this.callbacks.onValuesChange?.(changedValues, latestSnapshot)
+
+          this.callbacks.onFieldsChange?.(
+            changedPaths,
+            collectObjectPathsByLeaf(latestSnapshot)
+          )
+        }
+
+        prevSnapshot = { ...latestSnapshot } as T
       })
     }
   }
 
   /**
-   * 导出符合 SchemxFormInstance 接口的纯对象
+   * 导出符合 SchemxInstance 接口的纯对象
    *
    * 将类实例的公共方法绑定到当前实例后，以普通对象形式返回。
    *
-   * @returns SchemxFormInstance 对象
-   *
-   * @remarks
-   * `createFormInstance` 通过 `new CreateFormInstance(options).getForm()` 调用此方法。
+   * @returns SchemxInstance 对象
    */
-  public getForm = (): SchemxFormInstance<T> => ({
+  public getForm = (): SchemxInstance<T> => ({
     setFieldValue: this.setFieldValue.bind(this),
     setFieldsValue: this.setFieldsValue.bind(this),
     getFieldValue: this.getFieldValue.bind(this),
     getFieldsValue: this.getFieldsValue.bind(this),
+    getFieldSnapshot: this.getFieldSnapshot.bind(this),
     getFieldsSnapshot: this.getFieldsSnapshot.bind(this),
     getInitialValues: this.getInitialValues.bind(this),
     setInitialValues: this.setInitialValues.bind(this),
@@ -226,12 +240,11 @@ class CreateFormInstance<T extends FormValues = FormValues> {
     isFieldTouched: this.isFieldTouched.bind(this),
     isFieldsTouched: this.isFieldsTouched.bind(this),
     getTouchedFields: this.getTouchedFields.bind(this),
-    subscribe: this.subscribe.bind(this),
-    subscribeFields: this.subscribeFields.bind(this),
-    subscribeAll: this.subscribeAll.bind(this),
-    reset: this.reset.bind(this),
     resetFields: this.resetFields.bind(this),
+    reset: this.reset.bind(this),
     submit: this.submit.bind(this),
+    effect: this.effect.bind(this),
+    batch: this.batch.bind(this),
     destroy: this.destroy.bind(this),
   })
 
@@ -245,27 +258,17 @@ class CreateFormInstance<T extends FormValues = FormValues> {
   }
 
   /**
-   * 设置单个字段值并通知订阅者
+   * 设置单个字段值（Store 内部自动通知订阅者）
    */
   private setFieldValue(name: NamePath<T>, value: Value): void {
-    const prevSnapshot = this.store.getFieldsSnapshot()
-
     this.store.setFieldValue(name, value)
-
-    const values = this.store.getFieldsValue([name])
-
-    this.notify(values, prevSnapshot, this.store.getFieldsSnapshot())
   }
 
   /**
-   * 批量设置字段值并通知订阅者
+   * 批量设置字段值（Store 内部自动通知订阅者）
    */
   private setFieldsValue(values: Readonly<Partial<T>>): void {
-    const prevSnapshot = this.store.getFieldsSnapshot()
-
     this.store.setFieldsValue(values as Partial<T>)
-
-    this.notify(values as Partial<T>, prevSnapshot, this.store.getFieldsSnapshot())
   }
 
   /**
@@ -287,16 +290,23 @@ class CreateFormInstance<T extends FormValues = FormValues> {
   }
 
   /**
+   * 获取单个字段值的快照
+   */
+  private getFieldSnapshot(path: NamePath<T>): Value {
+    return this.store.getFieldSnapshot(path)
+  }
+
+  /**
    * 获取当前表单值的快照
    */
-  private getFieldsSnapshot(): T {
-    return this.store.getFieldsSnapshot()
+  private getFieldsSnapshot(paths?: NamePath<T>[]): any {
+    return this.store.getFieldsSnapshot(paths as any)
   }
 
   /**
    * 获取字段的初始值
    */
-  private getInitialValues(paths?: NamePath<T>[]): T | Partial<T> {
+  private getInitialValues(paths?: NamePath<T>[]): any {
     if (!paths) {
       return this.store.getInitialValues()
     }
@@ -308,23 +318,10 @@ class CreateFormInstance<T extends FormValues = FormValues> {
    * 设置字段的初始值
    */
   private setInitialValues(values: Partial<T>): void {
-    this.store.setInitialValues(values)
-  }
+    const paths = collectObjectPathsByLeaf<NamePath<T>>(values)
 
-  /**
-   * 注册字段校验规则
-   */
-  private registerRules(
-    path: NamePath<T>,
-    rules: Rules | Rules[],
-    defaultMessage?: string
-  ): void {
-    const schema = findSchema(this.schemas, String(path))
-
-    const resolved = this.resolveRules(rules, schema)
-
-    if (resolved.length > 0) {
-      this.validator.registerRules(path, resolved, defaultMessage)
+    for (const path of paths) {
+      this.scheduler.batch({ name: path, value: getByPath(values, path) })
     }
   }
 
@@ -347,7 +344,7 @@ class CreateFormInstance<T extends FormValues = FormValues> {
 
     for (const rule of list) {
       if (typeof rule === "string") {
-        if (this.rulesRegistry.hasSchema(rule)) {
+        if (this.rulesRegistry.hasRule(rule)) {
           const schemaRule = this.rulesRegistry.resolve(rule, schema)
 
           if (schemaRule) resolved.push(schemaRule)
@@ -360,6 +357,23 @@ class CreateFormInstance<T extends FormValues = FormValues> {
     }
 
     return resolved
+  }
+
+  /**
+   * 注册字段校验规则
+   */
+  private registerRules(
+    path: NamePath<T>,
+    rules: Rules | Rules[],
+    defaultMessage?: string
+  ): void {
+    const schema = findSchema(this.schemas, path)
+
+    const resolved = this.resolveRules(rules, schema)
+
+    if (resolved.length > 0) {
+      this.validator.registerRules(path, resolved, defaultMessage)
+    }
   }
 
   /**
@@ -405,43 +419,6 @@ class CreateFormInstance<T extends FormValues = FormValues> {
   }
 
   /**
-   * 订阅单个字段变化
-   */
-  private subscribe(path: NamePath<T>, callback: FieldSubscribeCallback<T>): () => void {
-    return this.subscriber.subscribe(path, callback)
-  }
-
-  /**
-   * 订阅多个字段变化
-   */
-  private subscribeFields(
-    paths: NamePath<T>[],
-    callback: FieldsSubscribeCallback<T>
-  ): () => void {
-    return this.subscriber.subscribeFields(paths, callback)
-  }
-
-  /**
-   * 订阅所有字段变化
-   */
-  private subscribeAll(callback: GlobalSubscribeCallback<T>): () => void {
-    return this.subscriber.subscribeAll(callback)
-  }
-
-  /**
-   * 批量通知所有相关订阅者（字段级、多字段组、全局）
-   *
-   * 依次执行：逐字段精确通知 → 多字段组通知 → 全局通知。
-   *
-   * @param changedValues - 已变化的字段值对象（部分）
-   * @param prevSnapshot - 变化前的全量值快照
-   * @param latestSnapshot - 变化后的全量值快照
-   */
-  private notify(changedValues: Partial<T>, prevSnapshot: T, latestSnapshot: T): void {
-    this.subscriber.notify(changedValues, prevSnapshot, latestSnapshot)
-  }
-
-  /**
    * 校验指定字段
    */
   private async validateField(name: string | string[]): Promise<ValidateResult<T>> {
@@ -463,31 +440,6 @@ class CreateFormInstance<T extends FormValues = FormValues> {
   })
 
   /**
-   * 重置指定字段到初始值并通知订阅者
-   */
-  private resetFields(names: NamePath<T>[]): void {
-    const prevSnapshot = this.store.getFieldsSnapshot()
-
-    names.forEach((name) => {
-      this.store.resetField(name)
-    })
-    const newValues = this.store.getFieldsValue(names)
-
-    this.notify(newValues, prevSnapshot, prevSnapshot)
-  }
-
-  /**
-   * 重置整个表单到初始值并通知订阅者
-   */
-  private reset(): void {
-    const prevSnapshot = this.store.getFieldsSnapshot()
-    this.store.reset()
-    this.validator.resetErrors()
-    const latestValues = this.store.getFieldsValue()
-    this.notify(latestValues, prevSnapshot, this.store.getFieldsSnapshot())
-  }
-
-  /**
    * 提交表单
    */
   private submit = withLock(async (): Promise<void> => {
@@ -500,25 +452,74 @@ class CreateFormInstance<T extends FormValues = FormValues> {
   })
 
   /**
+   * 重置指定字段到初始值
+   */
+  private resetFields(names: NamePath<T>[]): void {
+    names.forEach((name) => {
+      this.store.resetField(name)
+    })
+  }
+
+  /**
+   * 重置整个表单到初始值
+   */
+  private reset(): void {
+    this.store.reset()
+    this.validator.reset()
+  }
+
+  /**
+   * 创建 Signal effect，直接使用 @preact/signals-core 的 effect。
+   *
+   * 回调内调用 getFieldValue / getFieldError 时自动追踪依赖，
+   * 跨越 store 和 validator 两个 SignalMap。
+   * dispose 函数由 createForm 层面统一管理，destroy 时清理。
+   */
+  private effect(fn: () => void): () => void {
+    const dispose = signalEffect(fn)
+    this.disposers.add(dispose)
+
+    return () => {
+      dispose()
+      this.disposers.delete(dispose)
+    }
+  }
+
+  /**
+   * 批量更新，直接使用 @preact/signals-core 的 batch。
+   *
+   * 将多次 signal 写入合并为一次 effect 触发，
+   * 跨越 store 和 validator 两个 SignalMap。
+   */
+  private batch(fn: () => void): void {
+    signalBatch(fn)
+  }
+
+  /**
    * 销毁表单实例
    *
-   * 清除所有订阅回调，释放资源。通常在组件卸载时调用。
+   * 清除所有订阅回调和 effect，释放资源。通常在组件卸载时调用。
    */
   private destroy(): void {
-    this.subscriber.clear()
+    for (const dispose of this.disposers) {
+      dispose()
+    }
+
+    this.disposers.clear()
+    this.store.destroy()
   }
 }
 
 /**
- * 创建 SchemxFormInstance 实例的工厂函数
+ * 创建 SchemxInstance 实例的工厂函数
  *
- * 组合 FormStore、Validator、Subscriber 提供统一的表单操作接口。
+ * 组合 FormStore、Validator 提供统一的表单操作接口。
  * 框架无关，可在任意 JavaScript 运行时中使用。
  *
  * @typeParam T - 表单值类型
  *
  * @param options - 表单配置选项
- * @returns 符合 SchemxFormInstance 接口的表单实例
+ * @returns 符合 SchemxInstance 接口的表单实例
  *
  * @example
  * ```typescript
@@ -530,6 +531,6 @@ class CreateFormInstance<T extends FormValues = FormValues> {
  */
 export function createFormInstance<T extends FormValues>(
   options: CreateFormInstanceOptions<T> = {}
-): SchemxFormInstance<T> {
+): SchemxInstance<T> {
   return new CreateFormInstance<T>(options).getForm()
 }

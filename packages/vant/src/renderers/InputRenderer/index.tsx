@@ -433,7 +433,6 @@ const InputRendererComponent = defineComponent({
       if (value !== String(props.value ?? "")) {
         props.onChange?.(value)
         emit("update:value", value)
-        emit("change", value)
       }
     }
 

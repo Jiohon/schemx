@@ -8,6 +8,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": resolve(__dirname, "src"),
+      "@schemx/core": resolve(__dirname, "../core/src"),
     },
   },
   test: {

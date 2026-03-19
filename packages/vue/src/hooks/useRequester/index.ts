@@ -9,9 +9,10 @@
  * @module hooks/useRequester
  */
 
-import { useFormContext } from "../useFormContext"
+import { resolveRequester } from "@schemx/core"
+import { _getGlobalRequest, type RequestFn } from "@schemx/core"
 
-import { _getGlobalRequest, type RequestFn } from "./globalRequestProvider"
+import { useFormContext } from "../useFormContext"
 
 interface HasRequest {
   request?: RequestFn
@@ -40,42 +41,4 @@ export function useRequester(attrs: HasRequest): RequestFn | undefined {
   const globalRequest = _getGlobalRequest()
 
   return resolveRequester(attrs, formContext, globalRequest)
-}
-
-/**
- * 解析请求器（纯函数版本）
- *
- * 按三级优先级依次查找可用的请求器：
- * 1. schema 级别（attrs.request）
- * 2. schemx 级别（context.request）
- * 3. 全局级别（globalRequest）
- *
- * @param attrs - schema 级别属性
- * @param context - schemx 级别上下文
- * @param globalRequest - 全局级别请求器
- * @returns 解析后的请求器函数，三级均无则返回 undefined
- *
- * @example
- * ```ts
- * const requester = resolveRequester(attrs, formContext, globalRequest)
- * ```
- */
-export function resolveRequester(
-  attrs: HasRequest,
-  context: HasRequest,
-  globalRequest: RequestFn | undefined
-): RequestFn | undefined {
-  if (typeof attrs.request === "function") {
-    return attrs.request
-  }
-
-  if (typeof context.request === "function") {
-    return context.request
-  }
-
-  if (typeof globalRequest === "function") {
-    return globalRequest
-  }
-
-  return undefined
 }

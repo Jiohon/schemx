@@ -12,7 +12,7 @@ import type { StandardSchemaV1 } from "@/types/standardSchema"
 /**
  * 内置校验规则快捷方式。
  *
- * `"required"` 会被 FormItem 自动转换为 `createRequiredSchema` 生成的 StandardSchemaV1 实例。
+ * `"required"` 会被 FormItem 自动转换为 `createRequiredRule` 生成的 StandardSchemaV1 实例。
  */
 export type BuiltinRules = "required" | "selectRequired" | "uploadRequired"
 

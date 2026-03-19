@@ -14,7 +14,7 @@ import { useFormInstance } from "../useForm"
 import { useWatchFields } from "../useWatch"
 
 import type { FormValues, SchemaDependencyField, SchemaField } from "@schemx/core"
-import type { SchemxFormInstance } from "@schemx/core"
+import type { SchemxInstance } from "@schemx/core"
 
 /**
  * useDependency 返回值
@@ -23,7 +23,7 @@ export interface UseDependencyReturn {
   /** 动态生成的列配置（响应式） */
   schemas: Ref<SchemaField[]>
   /** 表单实例 */
-  form: SchemxFormInstance
+  form: SchemxInstance
   /** 当前表单值（响应式） */
   values: Ref<FormValues>
 }
@@ -63,7 +63,7 @@ export function useDependency(
   // 订阅依赖字段变化，触发响应式更新
   useWatchFields(
     to,
-    async (payload, prevSnapshot, latestSnapshot) => {
+    async (currentValues, latestSnapshot) => {
       values.value = latestSnapshot
 
       if (renderer) {

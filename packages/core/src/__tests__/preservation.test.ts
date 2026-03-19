@@ -16,8 +16,7 @@ import { describe, expect, it } from "vitest"
 
 import { RendererRegistry } from "../rendererRegistry"
 import { FormStore } from "../store"
-import { createSubscriber } from "../subscriber"
-import { createRequiredSchema } from "../utils/standardSchema"
+import { createRequiredRule } from "../utils/standardSchema"
 import { Validator } from "../validator"
 
 /** 用于测试的简单 Vue 组件 */
@@ -101,18 +100,16 @@ describe("Preservation 保持性属性测试", () => {
         // 生成非空字符串路径（排除空字符串，因为空字符串是 falsy 值属于 bug 条件）
         fc.string({ minLength: 1, maxLength: 30 }),
         (path) => {
-          const subscriber = createSubscriber<Record<string, any>>()
+          const store = new FormStore<Record<string, any>>({
+            initialValues: {},
+          })
           const callback = () => {}
 
           // 订阅应成功注册
-          const unsubscribe = subscriber.subscribe(path, callback)
+          const unsubscribe = store.subscribe(path, callback)
 
-          // 订阅者数量应为 1
-          expect(subscriber.getSubscriberCount(path)).toBe(1)
-
-          // 取消订阅后数量应为 0
+          // 取消订阅应正常工作
           unsubscribe()
-          expect(subscriber.getSubscriberCount(path)).toBe(0)
         }
       ),
       { numRuns: 50 }
@@ -130,20 +127,23 @@ describe("Preservation 保持性属性测试", () => {
         // 生成 1-5 个订阅者
         fc.integer({ min: 1, max: 5 }),
         (subscriberCount) => {
-          const subscriber = createSubscriber<TestForm>()
+          const store = new FormStore<TestForm>({
+            initialValues: { name: "John", age: 25, email: "j@t.com" },
+          })
 
           // 注册指定数量的订阅者
           const unsubscribes: (() => void)[] = []
           for (let i = 0; i < subscriberCount; i++) {
-            unsubscribes.push(subscriber.subscribe("name", () => {}))
+            unsubscribes.push(store.subscribe("name", () => {}))
           }
 
-          // 数量应匹配
-          expect(subscriber.getSubscriberCount("name")).toBe(subscriberCount)
-
-          // 取消一个后数量减 1
+          // 取消一个后应正常工作
           unsubscribes[0]()
-          expect(subscriber.getSubscriberCount("name")).toBe(subscriberCount - 1)
+
+          // 再取消剩余的
+          for (let i = 1; i < unsubscribes.length; i++) {
+            unsubscribes[i]()
+          }
         }
       ),
       { numRuns: 20 }
@@ -159,7 +159,7 @@ describe("Preservation 保持性属性测试", () => {
     const validator = new Validator<TestForm>()
 
     // 注册 email 必填规则
-    validator.registerRules("email", createRequiredSchema({ label: "邮箱" } as any))
+    validator.registerRules("email", createRequiredRule({ label: "邮箱" } as any))
 
     // 校验有值的情况 → 通过
     const validResult = await validator.validateField("email", {

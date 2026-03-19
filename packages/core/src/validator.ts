@@ -2,7 +2,7 @@
  * 表单校验器。
  *
  * 管理校验规则（rules）和校验错误（errors），基于 Standard Schema 接口进行字段校验。
- * 使用纯 Map 管理校验规则和错误状态。
+ * 使用 SignalMap 管理错误状态，支持 effect 自动追踪依赖。
  * 支持所有实现了 StandardSchemaV1 接口的验证库（Zod v4、Valibot、ArkType 等）。
  *
  * @module core/validator
@@ -25,6 +25,7 @@
  * ```
  */
 
+import { SignalMap } from "./signalMap"
 import { getByPath } from "./utils/path"
 
 import type { FormValues, NamePath, Value } from "./types"
@@ -66,18 +67,6 @@ export interface RuleEntry {
   defaultMessage?: string
 }
 
-/** 规则映射表 */
-export type RulesMap<T extends FormValues> = Map<NamePath<T>, RuleEntry>
-
-/** 错误映射表 */
-export type ErrorsMap<T extends FormValues> = Map<NamePath<T>, string[]>
-
-/** Validator 响应式状态 */
-export interface ValidatorState<T extends FormValues> {
-  rules: RulesMap<T>
-  errors: ErrorsMap<T>
-}
-
 /**
  * 表单校验器。
  *
@@ -99,22 +88,15 @@ export interface ValidatorState<T extends FormValues> {
  * ```
  *
  * @remarks
- * 校验状态（rules / errors）通过纯 Map 管理，框架无关。
+ * 校验规则通过纯 Map 管理，错误状态通过 SignalMap 管理，
+ * 在 effect 内调用 getFieldError 时自动追踪依赖。
  */
 export class Validator<T extends FormValues = FormValues> {
-  public state: ValidatorState<T>
+  /** 校验规则映射表：字段路径 → 规则条目 */
+  private rules = new Map<NamePath<T>, RuleEntry>()
 
-  /**
-   * 创建 Validator 实例。
-   *
-   * 初始化空的 rules 和 errors 映射表。
-   */
-  constructor() {
-    this.state = {
-      rules: new Map(),
-      errors: new Map(),
-    }
-  }
+  /** 校验错误映射表：字段路径 → 错误信息数组（响应式） */
+  private errors = new SignalMap<NamePath<T>, string[]>()
 
   /**
    * 注册单个字段的校验规则。
@@ -137,7 +119,7 @@ export class Validator<T extends FormValues = FormValues> {
     defaultMessage?: string
   ): void {
     const schemas = Array.isArray(rules) ? rules : [rules]
-    const existing = this.state.rules.get(path)
+    const existing = this.rules.get(path)
 
     if (existing) {
       existing.schemas.push(...schemas)
@@ -146,7 +128,7 @@ export class Validator<T extends FormValues = FormValues> {
         existing.defaultMessage = defaultMessage
       }
     } else {
-      this.state.rules.set(path, { schemas, defaultMessage })
+      this.rules.set(path, { schemas, defaultMessage })
     }
   }
 
@@ -161,8 +143,8 @@ export class Validator<T extends FormValues = FormValues> {
    * ```
    */
   public unregisterRules(path: NamePath<T>): void {
-    this.state.rules.delete(path)
-    this.state.errors.delete(path)
+    this.rules.delete(path)
+    this.errors.delete(path)
   }
 
   /**
@@ -177,7 +159,7 @@ export class Validator<T extends FormValues = FormValues> {
    * ```
    */
   public getFieldError(path: NamePath<T>): string[] | undefined {
-    return this.state.errors.get(path)
+    return this.errors.get(path)
   }
 
   /**
@@ -192,123 +174,7 @@ export class Validator<T extends FormValues = FormValues> {
    * ```
    */
   public setFieldError(path: NamePath<T>, errors: string[]): void {
-    this.state.errors.set(path, errors)
-  }
-
-  /**
-   * 重置所有字段的校验错误。
-   *
-   * 清空 errors 映射表，不影响已注册的校验规则。
-   *
-   * @example
-   * ```typescript
-   * validator.resetErrors()
-   * ```
-   */
-  public resetErrors(): void {
-    this.state.errors.clear()
-  }
-
-  /**
-   * 记录字段错误并返回失败结果。
-   *
-   * @param path - 字段路径
-   * @param messages - 错误信息数组
-   * @param latestValues - 当前表单全量值
-   * @returns 失败的校验结果
-   */
-  private failResult(
-    path: NamePath<T>,
-    messages: string[],
-    latestValues: T
-  ): ValidateResult<T> {
-    this.state.errors.set(path, messages)
-
-    return {
-      ok: false,
-      error: {
-        errors: [{ field: String(path), message: messages }],
-        values: latestValues,
-      },
-    }
-  }
-
-  /**
-   * 校验单个字段的所有规则。
-   *
-   * 依次执行该字段注册的所有 schema，遇到第一个失败即返回错误。
-   * 若值为 undefined/null 且配置了 defaultMessage，直接返回失败结果。
-   *
-   * @param path - 字段路径
-   * @param latestValues - 当前表单全量值
-   * @returns 校验结果
-   */
-  private async validateSingleRule(
-    path: NamePath<T>,
-    latestValues: T
-  ): Promise<ValidateResult<T>> {
-    const entry = this.state.rules.get(path)
-
-    if (!entry || entry.schemas.length === 0) {
-      this.state.errors.delete(path)
-
-      return { ok: true, values: latestValues }
-    }
-
-    const value: Value = getByPath(latestValues, path)
-
-    const allMessages: string[] = []
-
-    // 空值拦截：当值为 undefined/null 且配置了 defaultMessage 时，
-    // 直接返回该字段的默认错误提示，避免验证库报类型错误
-    if ((value === undefined || value === null) && entry.defaultMessage) {
-      allMessages.push(entry.defaultMessage)
-    }
-
-    for (const schema of entry.schemas) {
-      try {
-        const result = await schema["~standard"].validate(value)
-
-        if (result.issues) {
-          allMessages.push(...result.issues.map((i: { message: any }) => i.message))
-        }
-      } catch (error) {
-        console.warn(`[Validator] 校验字段 "${String(path)}" 时发生错误:`, error)
-        allMessages.push("校验失败")
-      }
-    }
-
-    if (allMessages.length > 0) {
-      return this.failResult(path, allMessages, latestValues)
-    }
-
-    this.state.errors.delete(path)
-
-    return { ok: true, values: latestValues }
-  }
-
-  /**
-   * 根据校验结果构建 ValidateResult 返回值。
-   *
-   * @param ok - 校验是否全部通过
-   * @param latestValues - 当前表单全量值
-   * @returns 统一的校验结果对象
-   */
-  private buildResult(ok: boolean, latestValues: T): ValidateResult<T> {
-    if (ok) {
-      return { ok: true, values: latestValues }
-    }
-
-    return {
-      ok: false,
-      error: {
-        errors: Array.from(this.state.errors.entries()).map(([field, message]) => ({
-          field: String(field),
-          message,
-        })),
-        values: latestValues,
-      },
-    }
+    this.errors.set(path, errors)
   }
 
   /**
@@ -331,6 +197,9 @@ export class Validator<T extends FormValues = FormValues> {
     latestValues: T
   ): Promise<ValidateResult<T>> {
     const paths = Array.isArray(path) ? path : [path]
+
+    this.reset(paths)
+
     let allValid = true
 
     for (const p of paths) {
@@ -358,14 +227,153 @@ export class Validator<T extends FormValues = FormValues> {
   async validate(latestValues: T): Promise<ValidateResult<T>> {
     let allValid = true
 
-    this.state.errors.clear()
+    this.reset()
 
-    for (const path of this.state.rules.keys()) {
+    for (const path of this.rules.keys()) {
       const result = await this.validateSingleRule(path, latestValues)
       if (!result.ok) allValid = false
     }
 
     return this.buildResult(allValid, latestValues)
+  }
+
+  /**
+   * 重置所有字段的校验错误。
+   *
+   * 清空 errors 映射表，不影响已注册的校验规则。
+   *
+   * @example
+   * ```typescript
+   * validator.resetErrors()
+   * ```
+   */
+  public reset(paths?: NamePath<T>[]): void {
+    if (paths) {
+      this.errors.batch(() => {
+        for (const key of paths) {
+          this.errors.set(key, [])
+        }
+      })
+
+      return
+    }
+
+    // 无参数时：为所有已注册 rules 的字段初始化 error Signal（设为 []），
+    // 确保 effect 能追踪到具体字段的 Signal 而非仅依赖 version。
+    // 同时清除不在 rules 中但已有 error 的字段（如手动 setFieldError 的残留）。
+    this.errors.batch(() => {
+      for (const key of this.rules.keys()) {
+        this.errors.set(key, [])
+      }
+
+      for (const key of [...this.errors.keys()]) {
+        if (!this.rules.has(key)) {
+          this.errors.delete(key)
+        }
+      }
+    })
+  }
+
+  /**
+   * 根据校验结果构建 ValidateResult 返回值。
+   *
+   * @param ok - 校验是否全部通过
+   * @param latestValues - 当前表单全量值
+   * @returns 统一的校验结果对象
+   */
+  private buildResult(ok: boolean, latestValues: T): ValidateResult<T> {
+    if (ok) {
+      return { ok: true, values: latestValues }
+    }
+
+    return {
+      ok: false,
+      error: {
+        errors: Array.from(this.errors.keys()).map((field) => ({
+          field: field,
+          message: this.errors.peek(field) || [],
+        })),
+        values: latestValues,
+      },
+    }
+  }
+
+  /**
+   * 记录字段错误并返回失败结果。
+   *
+   * @param path - 字段路径
+   * @param messages - 错误信息数组
+   * @param latestValues - 当前表单全量值
+   * @returns 失败的校验结果
+   */
+  private failResult(
+    path: NamePath<T>,
+    messages: string[],
+    latestValues: T
+  ): ValidateResult<T> {
+    this.errors.set(path, messages)
+
+    return {
+      ok: false,
+      error: {
+        errors: [{ field: path, message: messages }],
+        values: latestValues,
+      },
+    }
+  }
+
+  /**
+   * 校验单个字段的所有规则。
+   *
+   * 依次执行该字段注册的所有 schema，遇到第一个失败即返回错误。
+   * 若值为 undefined/null 且配置了 defaultMessage，直接返回失败结果。
+   *
+   * @param path - 字段路径
+   * @param latestValues - 当前表单全量值
+   * @returns 校验结果
+   */
+  private async validateSingleRule(
+    path: NamePath<T>,
+    latestValues: T
+  ): Promise<ValidateResult<T>> {
+    const entry = this.rules.get(path)
+
+    if (!entry || entry.schemas.length === 0) {
+      this.errors.delete(path)
+
+      return { ok: true, values: latestValues }
+    }
+
+    const value: Value = getByPath(latestValues, path)
+
+    const allMessages: string[] = []
+
+    // 空值拦截：当值为 undefined/null 且配置了 defaultMessage 时，
+    // 直接返回该字段的默认错误提示，避免验证库报类型错误
+    if ((value === undefined || value === null) && entry.defaultMessage) {
+      allMessages.push(entry.defaultMessage)
+    }
+
+    for (const schema of entry.schemas) {
+      try {
+        const result = await schema["~standard"].validate(value)
+
+        if (result.issues) {
+          allMessages.push(...result.issues.map((i: { message: any }) => i.message))
+        }
+      } catch (error) {
+        console.warn(`[Validator] 校验字段 "${path}" 时发生错误:`, error)
+        allMessages.push("校验失败")
+      }
+    }
+
+    if (allMessages.length > 0) {
+      return this.failResult(path, allMessages, latestValues)
+    }
+
+    this.errors.delete(path)
+
+    return { ok: true, values: latestValues }
   }
 }
 

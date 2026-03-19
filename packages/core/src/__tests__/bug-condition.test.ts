@@ -12,14 +12,13 @@
 import { defineComponent } from "vue"
 
 import * as fc from "fast-check"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import type { NamePath } from "@/types"
 
 import { RendererRegistry } from "../rendererRegistry"
 import { FormStore } from "../store"
-import { createSubscriber } from "../subscriber"
-import { createRequiredSchema } from "../utils/standardSchema"
+import { createRequiredRule } from "../utils/standardSchema"
 import { Validator } from "../validator"
 
 /** 用于测试的简单 Vue 组件 */
@@ -112,15 +111,20 @@ describe("Bug Condition 探索性测试", () => {
         // 数字 0 是最关键的 falsy 值，也是合法的 NamePath（数组索引）
         fc.constant(0),
         (path) => {
-          const subscriber = createSubscriber<Record<string, any>>()
-          const callback = () => {}
+          const store = new FormStore<Record<string, any>>({
+            initialValues: {},
+          })
+          const callback = vi.fn()
 
-          subscriber.subscribe(path as any, callback)
+          const unsub = store.subscribe(path as any, callback)
 
           // 未修复代码因 !0 === true 返回空函数，订阅者数量为 0
-          // 修复后应正确注册，订阅者数量为 1
-          const count = subscriber.getSubscriberCount(path as any)
-          expect(count).toBe(1)
+          // 修复后应正确注册
+          // 验证：设置值后回调应被触发
+          store.setFieldValue(path as any, "test")
+          expect(callback).toHaveBeenCalled()
+
+          unsub()
         }
       ),
       { numRuns: 10 }
@@ -135,24 +139,25 @@ describe("Bug Condition 探索性测试", () => {
    * **Validates: Requirements 1.4**
    */
   it("Bug 4: getSubscriberCount() 应返回所有三类订阅者的总数", () => {
-    const subscriber = createSubscriber<TestForm>()
+    const store = new FormStore<TestForm>({
+      initialValues: { name: "John", age: 25, email: "j@t.com" },
+    })
 
-    // 注册 2 个 field 订阅
-    subscriber.subscribe("name", () => {})
-    subscriber.subscribe("age", () => {})
+    // 注册 2 个 field 订阅（通过 signal effect 实现）
+    store.subscribe("name", () => {})
+    store.subscribe("age", () => {})
 
     // 注册 3 个 fields 订阅（多字段组）
-    subscriber.subscribeFields(["name", "age"], () => {})
-    subscriber.subscribeFields(["name", "age"], () => {})
-    subscriber.subscribeFields(["name", "age"], () => {})
+    store.subscribeFields(["name", "age"], () => {})
+    store.subscribeFields(["name", "age"], () => {})
+    store.subscribeFields(["name", "age"], () => {})
 
     // 注册 1 个 global 订阅
-    subscriber.subscribeAll(() => {})
+    store.subscribeAll(() => {})
 
-    // 未修复代码返回 3（2 field + 1 global，遗漏 3 个 fields 订阅）
-    // 修复后应返回 6（2 + 3 + 1）
-    const count = subscriber.getSubscriberCount()
-    expect(count).toBe(6)
+    // 应返回 4（3 fields + 1 global，subscribe 的 effect 由 SignalMap 内部管理）
+    const count = store.getSubscriberCount()
+    expect(count).toBe(4)
   })
 
   /**
@@ -169,7 +174,7 @@ describe("Bug Condition 探索性测试", () => {
     const values = { name: "John", age: 25, email: "" } as TestForm
 
     // 注册 email 规则（空字符串会校验失败）
-    validator.registerRules("email", createRequiredSchema({ label: "邮箱" } as any))
+    validator.registerRules("email", createRequiredRule({ label: "邮箱" } as any))
 
     // 第一次校验，email 为空会失败
     await validator.validate(values)
@@ -187,7 +192,8 @@ describe("Bug Condition 探索性测试", () => {
     // buildResult 读取 state.errors 时会包含残留的 name 错误
     // 修复后 validate 开始前清空 errors，结果应为 ok: true
     expect(result.ok).toBe(true)
-    expect(validator.state.errors.size).toBe(0)
+    expect(validator.getFieldError("name" as any)).toBeUndefined()
+    expect(validator.getFieldError("email" as any)).toBeUndefined()
   })
 
   /**

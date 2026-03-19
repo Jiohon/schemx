@@ -70,7 +70,7 @@ export function findSchema<T extends FormValues = FormValues>(
   name: string
 ): SchemaBaseField<T> | undefined {
   for (const schema of schemas) {
-    if (isBaseSchema(schema) && String(schema.name) === name) {
+    if (isBaseSchema(schema) && schema.name === name) {
       return schema
     }
 

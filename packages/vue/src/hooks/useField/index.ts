@@ -1,34 +1,33 @@
 /**
  * useField - 字段控制 Hook
  *
- * 将 SchemxFormInstance 的方法作用域限定到指定字段，
- * 提供单字段的读写、校验、订阅等能力。
+ * 将 SchemxInstance 的方法作用域限定到指定字段，
+ * 通过 @preact/signals-core 的 effect 桥接 core Signal 与 Vue 响应式系统，
+ * 提供单字段的读写、校验等能力。
  *
  * @module hooks/useField
+ *
+ * @remarks
+ * core 层的 FormStore 和 Validator 使用 Signal 管理状态，不具备 Vue 响应式能力。
+ * useField 通过 signal effect 监听字段值和错误的 Signal 变化，
+ * 将值同步到 Vue shallowRef 中，使 computed/watchEffect/render 能自动追踪变化。
  */
 
-import { computed } from "vue"
+import { computed, onUnmounted, shallowRef } from "vue"
 import type { DeepReadonly } from "vue"
 
 import { getByPath, setByPath } from "@/utils"
 
 import { useFormInstance } from "../useForm"
 
-import type {
-  FieldSubscribeCallback,
-  FormValues,
-  NamePath,
-  Rules,
-  ValidateResult,
-  Value,
-} from "@schemx/core"
+import type { FormValues, NamePath, Rules, ValidateResult, Value } from "@schemx/core"
 
 /**
  * 获取单个字段的控制能力
  *
- * 将 SchemxFormInstance 的方法作用域限定到指定字段，
- * FormStore 的 state 是 Vue reactive 对象，
- * getFieldValue / getFieldsValue 在 computed 中使用时自动建立响应式依赖。
+ * 通过 @preact/signals-core effect 监听字段 Signal 变化，
+ * 将值同步到 Vue shallowRef，实现框架无关 core 与 Vue 响应式系统的桥接。
+ * 错误状态同样通过 signal effect 自动同步。
  *
  * @param name - 字段名（支持嵌套路径，如 'user.address.city'）
  * @returns 字段状态和操作方法
@@ -37,45 +36,79 @@ import type {
  * ```typescript
  * const field = useField('username')
  *
- * // 读写值
+ * // 响应式值（在 computed/watchEffect/template 中自动追踪）
  * field.getValue()
+ *
+ * // 响应式错误
+ * field.error.value   // string[] | undefined
+ *
+ * // 响应式脏状态
+ * field.dirty.value   // boolean
+ *
+ * // 写入值
  * field.setValue('new value')
  *
  * // 校验
  * const result = await field.validate()
- *
- * // 响应式状态
- * field.error.value   // string[] | undefined
- * field.dirty.value   // boolean
- *
- * // 规则管理
- * field.registerRules(z.string().min(3))
- * field.unregisterRules()
- *
- * // 订阅
- * const unsub = field.subscribe((payload, prevSnapshot, latestSnapshot) => { ... })
  * ```
  */
 export const useField = <T extends FormValues = FormValues>(name: NamePath<T>) => {
-  /**
-   * 表单实例引用
-   *
-   * @example
-   * ```typescript
-   * field.form.validate()
-   * ```
-   */
   const form = useFormInstance<T>()
 
   /**
+   * 字段当前值（响应式）
+   *
+   * 通过 signal effect 自动同步更新，在 computed/watchEffect/render 中自动追踪。
+   */
+  const fieldValue = shallowRef<Value>(form?.getFieldValue(name))
+
+  /**
    * 字段错误信息（响应式）
+   *
+   * 通过 signal effect 自动同步更新。
    *
    * @example
    * ```typescript
    * field.error.value // => ['用户名不能为空'] 或 undefined
    * ```
    */
-  const error = computed(() => form?.getFieldError(name))
+  const fieldError = shallowRef<string[] | undefined>(form?.getFieldError(name))
+
+  /**
+   * signal effect 桥接 core Signal → Vue shallowRef（字段值）
+   *
+   * effect 内部读取 form.getFieldValue(name)，自动追踪底层 Signal 依赖。
+   * 当字段 Signal 值变化时 effect 重新执行，更新 Vue ref，驱动 Vue 响应式链路。
+   */
+  const disposeValueEffect = form.effect(() => {
+    fieldValue.value = form?.getFieldValue(name)
+    console.log("disposeValueEffect", name, form.getFieldsSnapshot())
+  })
+
+  /**
+   * signal effect 桥接 core Signal → Vue shallowRef（错误信息）
+   *
+   * effect 内部读取 form.getFieldError(name)，自动追踪 Validator 的 errors SignalMap 依赖。
+   * 当校验错误变化时 effect 重新执行，自动同步到 fieldError ref。
+   */
+  const disposeErrorEffect = form.effect(() => {
+    fieldError.value = form?.getFieldError(name)
+  })
+
+  onUnmounted(() => {
+    disposeValueEffect()
+    disposeErrorEffect()
+  })
+
+  /**
+   * 字段错误信息（响应式，只读）
+   *
+   * @example
+   * ```typescript
+   * field.error.value // => ['用户名不能为空'] 或 undefined
+   * ```
+   */
+  const error = computed(() => fieldError.value)
 
   /**
    * 值是否与初始值不同（响应式）
@@ -85,7 +118,12 @@ export const useField = <T extends FormValues = FormValues>(name: NamePath<T>) =
    * field.dirty.value // => true（值已修改）
    * ```
    */
-  const dirty = computed(() => form?.isFieldTouched(name) ?? false)
+  const dirty = computed(() => {
+    // 触发对 fieldValue 的依赖追踪
+    void fieldValue.value
+
+    return form?.isFieldTouched(name) ?? false
+  })
 
   /**
    * 值未被修改（dirty 的反义，响应式）
@@ -98,16 +136,18 @@ export const useField = <T extends FormValues = FormValues>(name: NamePath<T>) =
   const pristine = computed(() => !dirty.value)
 
   /**
-   * 获取当前字段值
+   * 获取当前字段值（响应式）
    *
-   * @returns 字段当前值（响应式，在 computed/render 中自动追踪）
+   * 返回 shallowRef 中的值，在 computed/watchEffect/render 中自动追踪变化。
+   *
+   * @returns 字段当前值
    *
    * @example
    * ```typescript
    * const value = field.getValue() // => 'hello'
    * ```
    */
-  const getValue = () => form?.getFieldValue(name)
+  const getValue = () => fieldValue.value
 
   /**
    * 设置当前字段值
@@ -139,9 +179,9 @@ export const useField = <T extends FormValues = FormValues>(name: NamePath<T>) =
   }
 
   /**
-   * 获取字段初始值
+   * 设置字段初始值
    *
-   * @returns 字段初始值
+   * @param value - 要设置的初始值
    *
    * @example
    * ```typescript
@@ -169,9 +209,9 @@ export const useField = <T extends FormValues = FormValues>(name: NamePath<T>) =
   const getValues = () => form?.getFieldsValue()
 
   /**
-   * 获取表单全量值
+   * 获取表单全量值快照
    *
-   * @returns 所有字段的原始值，调用toRaw返回
+   * @returns 所有字段的原始值深拷贝
    * @see https://vuejs.org/api/reactivity-advanced.html#toraw
    *
    * @example
@@ -182,7 +222,7 @@ export const useField = <T extends FormValues = FormValues>(name: NamePath<T>) =
   const getSnapshot = () => form?.getFieldsSnapshot()
 
   /**
-   * 校验当前字段
+   * 校验当前字段并同步错误状态
    *
    * @returns 校验结果，包含 ok 和 values/error
    *
@@ -194,7 +234,7 @@ export const useField = <T extends FormValues = FormValues>(name: NamePath<T>) =
    */
   const validate = async (): Promise<ValidateResult<T>> => {
     if (form) {
-      return form.validateField([name])
+      return await form.validateField([name])
     }
 
     return { ok: true, values: {} as DeepReadonly<T> } as ValidateResult<T>
@@ -210,10 +250,12 @@ export const useField = <T extends FormValues = FormValues>(name: NamePath<T>) =
    * field.getError() // => ['最少3个字符'] 或 undefined
    * ```
    */
-  const getError = () => form?.getFieldError(name)
+  const getError = () => {
+    return form?.getFieldError(name)
+  }
 
   /**
-   * 手动设置错误信息
+   * 手动设置错误信息并同步响应式状态
    *
    * @param errors - 错误信息数组
    *
@@ -292,26 +334,8 @@ export const useField = <T extends FormValues = FormValues>(name: NamePath<T>) =
     form?.resetFields([name])
   }
 
-  /**
-   * 订阅当前字段变化
-   *
-   * @param callback - 变化时的回调函数
-   * @returns 取消订阅的函数
-   *
-   * @example
-   * ```typescript
-   * const unsub = field.subscribe((payload, prevSnapshot, latestSnapshot) => {
-   *   console.log(`${payload.path} changed to`, payload.value)
-   * })
-   * unsub() // 取消订阅
-   * ```
-   */
-  const subscribe = (callback: FieldSubscribeCallback<T>) => {
-    return form?.subscribe(name, callback) ?? (() => {})
-  }
-
   return {
-    // 状态
+    // 响应式状态
     error,
     dirty,
     pristine,
@@ -334,8 +358,6 @@ export const useField = <T extends FormValues = FormValues>(name: NamePath<T>) =
     isTouched,
     // 重置
     reset,
-    // 订阅
-    subscribe,
   }
 }
 

@@ -9,6 +9,9 @@
       "@schemx/vue": ["../../packages/vue/src/index.ts"],
       "@schemx/vue/*": ["../../packages/vue/src/*"]
     },
+    "noEmit": false,
+    "declaration": true,
+    "declaration": true,
     "declarationDir": "./dist",
     "outDir": "./dist",
     "types": ["vite/client"]

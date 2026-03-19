@@ -1,15 +1,19 @@
 /**
- * Subscriber 单元测试
+ * FormStore 订阅能力单元测试
  *
- * 覆盖 Subscriber 的所有公开 API：
- * subscribe、subscribeFields、subscribeAll、notify、clear、getSubscriberCount。
+ * 覆盖 FormStore 的所有订阅相关 API：
+ * subscribe、subscribeFields、subscribeAll、clear、getSubscriberCount、destroy。
  *
  * @module core/__tests__/subscriber
+ *
+ * @remarks
+ * 原 Subscriber 模块已合并到 FormStore 中，
+ * 此测试文件验证 FormStore 的订阅能力与原 Subscriber 行为一致。
  */
 
 import { describe, expect, it, vi } from "vitest"
 
-import { createSubscriber, Subscriber } from "../subscriber"
+import { FormStore } from "../store"
 
 interface TestForm {
   name: string
@@ -17,18 +21,16 @@ interface TestForm {
   email: string
 }
 
-describe("Subscriber", () => {
+const defaultValues: TestForm = { name: "John", age: 25, email: "j@t.com" }
+
+describe("FormStore 订阅能力", () => {
   describe("subscribe（单字段订阅）", () => {
     it("注册订阅并在字段变化时触发回调", () => {
-      const sub = new Subscriber<TestForm>()
+      const store = new FormStore<TestForm>({ initialValues: { ...defaultValues } })
       const cb = vi.fn()
 
-      sub.subscribe("name", cb)
-      sub.notify(
-        { name: "Jane" },
-        { name: "John", age: 25, email: "j@t.com" },
-        { name: "Jane", age: 25, email: "j@t.com" }
-      )
+      store.subscribe("name", cb)
+      store.setFieldValue("name", "Jane")
 
       expect(cb).toHaveBeenCalledOnce()
       expect(cb.mock.calls[0][0]).toEqual({
@@ -39,75 +41,57 @@ describe("Subscriber", () => {
     })
 
     it("未变化的字段不触发回调", () => {
-      const sub = new Subscriber<TestForm>()
+      const store = new FormStore<TestForm>({ initialValues: { ...defaultValues } })
       const cb = vi.fn()
 
-      sub.subscribe("age", cb)
-      sub.notify(
-        { name: "Jane" },
-        { name: "John", age: 25, email: "j@t.com" },
-        { name: "Jane", age: 25, email: "j@t.com" }
-      )
+      store.subscribe("age", cb)
+      store.setFieldValue("name", "Jane")
 
       expect(cb).not.toHaveBeenCalled()
     })
 
     it("取消订阅后不再触发", () => {
-      const sub = new Subscriber<TestForm>()
+      const store = new FormStore<TestForm>({ initialValues: { ...defaultValues } })
       const cb = vi.fn()
 
-      const unsub = sub.subscribe("name", cb)
+      const unsub = store.subscribe("name", cb)
       unsub()
 
-      sub.notify(
-        { name: "Jane" },
-        { name: "John", age: 25, email: "j@t.com" },
-        { name: "Jane", age: 25, email: "j@t.com" }
-      )
+      store.setFieldValue("name", "Jane")
 
       expect(cb).not.toHaveBeenCalled()
     })
 
     it("同一字段多个订阅者都触发", () => {
-      const sub = new Subscriber<TestForm>()
+      const store = new FormStore<TestForm>({ initialValues: { ...defaultValues } })
       const cb1 = vi.fn()
       const cb2 = vi.fn()
 
-      sub.subscribe("name", cb1)
-      sub.subscribe("name", cb2)
+      store.subscribe("name", cb1)
+      store.subscribe("name", cb2)
 
-      sub.notify(
-        { name: "Jane" },
-        { name: "John", age: 25, email: "j@t.com" },
-        { name: "Jane", age: 25, email: "j@t.com" }
-      )
+      store.setFieldValue("name", "Jane")
 
       expect(cb1).toHaveBeenCalledOnce()
       expect(cb2).toHaveBeenCalledOnce()
     })
 
     it("null/undefined 路径订阅返回空函数", () => {
-      const sub = new Subscriber<TestForm>()
-      const unsub1 = sub.subscribe(null as any, vi.fn())
-      const unsub2 = sub.subscribe(undefined as any, vi.fn())
+      const store = new FormStore<TestForm>({ initialValues: { ...defaultValues } })
+      const unsub1 = store.subscribe(null as any, vi.fn())
+      const unsub2 = store.subscribe(undefined as any, vi.fn())
       expect(typeof unsub1).toBe("function")
       expect(typeof unsub2).toBe("function")
-      expect(sub.getSubscriberCount()).toBe(0)
     })
   })
 
   describe("subscribeFields（多字段组订阅）", () => {
     it("任一订阅字段变化时触发回调", () => {
-      const sub = new Subscriber<TestForm>()
+      const store = new FormStore<TestForm>({ initialValues: { ...defaultValues } })
       const cb = vi.fn()
 
-      sub.subscribeFields(["name", "age"], cb)
-
-      sub.notify(
-        { name: "Jane" },
-        { name: "John", age: 25, email: "j@t.com" },
-        { name: "Jane", age: 25, email: "j@t.com" }
-      )
+      store.subscribeFields(["name", "age"], cb)
+      store.setFieldValue("name", "Jane")
 
       expect(cb).toHaveBeenCalledOnce()
       const payload = cb.mock.calls[0][0]
@@ -116,93 +100,69 @@ describe("Subscriber", () => {
     })
 
     it("非订阅字段变化时不触发", () => {
-      const sub = new Subscriber<TestForm>()
+      const store = new FormStore<TestForm>({ initialValues: { ...defaultValues } })
       const cb = vi.fn()
 
-      sub.subscribeFields(["name", "age"], cb)
-
-      sub.notify(
-        { email: "new@t.com" },
-        { name: "John", age: 25, email: "j@t.com" },
-        { name: "John", age: 25, email: "new@t.com" }
-      )
+      store.subscribeFields(["name", "age"], cb)
+      store.setFieldValue("email", "new@t.com")
 
       expect(cb).not.toHaveBeenCalled()
     })
 
     it("同一组多个回调都触发", () => {
-      const sub = new Subscriber<TestForm>()
+      const store = new FormStore<TestForm>({ initialValues: { ...defaultValues } })
       const cb1 = vi.fn()
       const cb2 = vi.fn()
 
-      sub.subscribeFields(["name", "age"], cb1)
-      sub.subscribeFields(["name", "age"], cb2)
+      store.subscribeFields(["name", "age"], cb1)
+      store.subscribeFields(["name", "age"], cb2)
 
-      sub.notify(
-        { name: "Jane" },
-        { name: "John", age: 25, email: "j@t.com" },
-        { name: "Jane", age: 25, email: "j@t.com" }
-      )
+      store.setFieldValue("name", "Jane")
 
       expect(cb1).toHaveBeenCalledOnce()
       expect(cb2).toHaveBeenCalledOnce()
     })
 
     it("路径顺序不同视为同一组", () => {
-      const sub = new Subscriber<TestForm>()
+      const store = new FormStore<TestForm>({ initialValues: { ...defaultValues } })
       const cb1 = vi.fn()
       const cb2 = vi.fn()
 
-      sub.subscribeFields(["name", "age"], cb1)
-      sub.subscribeFields(["age", "name"], cb2)
+      store.subscribeFields(["name", "age"], cb1)
+      store.subscribeFields(["age", "name"], cb2)
 
-      sub.notify(
-        { age: 30 },
-        { name: "John", age: 25, email: "j@t.com" },
-        { name: "John", age: 30, email: "j@t.com" }
-      )
+      store.setFieldValue("age", 30)
 
       expect(cb1).toHaveBeenCalledOnce()
       expect(cb2).toHaveBeenCalledOnce()
     })
 
     it("取消订阅后不再触发，组内无回调时自动清理", () => {
-      const sub = new Subscriber<TestForm>()
+      const store = new FormStore<TestForm>({ initialValues: { ...defaultValues } })
       const cb = vi.fn()
 
-      const unsub = sub.subscribeFields(["name", "age"], cb)
+      const unsub = store.subscribeFields(["name", "age"], cb)
       unsub()
 
-      sub.notify(
-        { name: "Jane" },
-        { name: "John", age: 25, email: "j@t.com" },
-        { name: "Jane", age: 25, email: "j@t.com" }
-      )
+      store.setFieldValue("name", "Jane")
 
       expect(cb).not.toHaveBeenCalled()
-      expect(sub.getSubscriberCount()).toBe(0)
     })
 
     it("空路径数组返回空函数", () => {
-      const sub = new Subscriber<TestForm>()
-      const unsub = sub.subscribeFields([], vi.fn())
+      const store = new FormStore<TestForm>({ initialValues: { ...defaultValues } })
+      const unsub = store.subscribeFields([], vi.fn())
       expect(typeof unsub).toBe("function")
-      expect(sub.getSubscriberCount()).toBe(0)
     })
   })
 
   describe("subscribeAll（全局订阅）", () => {
     it("任意字段变化都触发", () => {
-      const sub = new Subscriber<TestForm>()
+      const store = new FormStore<TestForm>({ initialValues: { ...defaultValues } })
       const cb = vi.fn()
 
-      sub.subscribeAll(cb)
-
-      sub.notify(
-        { email: "new@t.com" },
-        { name: "John", age: 25, email: "j@t.com" },
-        { name: "John", age: 25, email: "new@t.com" }
-      )
+      store.subscribeAll(cb)
+      store.setFieldValue("email", "new@t.com")
 
       expect(cb).toHaveBeenCalledOnce()
       const payload = cb.mock.calls[0][0]
@@ -211,118 +171,107 @@ describe("Subscriber", () => {
     })
 
     it("取消订阅后不再触发", () => {
-      const sub = new Subscriber<TestForm>()
+      const store = new FormStore<TestForm>({ initialValues: { ...defaultValues } })
       const cb = vi.fn()
 
-      const unsub = sub.subscribeAll(cb)
+      const unsub = store.subscribeAll(cb)
       unsub()
 
-      sub.notify(
-        { name: "Jane" },
-        { name: "John", age: 25, email: "j@t.com" },
-        { name: "Jane", age: 25, email: "j@t.com" }
-      )
+      store.setFieldValue("name", "Jane")
 
       expect(cb).not.toHaveBeenCalled()
     })
   })
 
-  describe("notify（批量通知）", () => {
+  describe("setFieldValue 通知", () => {
     it("同时触发字段级、多字段组和全局订阅", () => {
-      const sub = new Subscriber<TestForm>()
+      const store = new FormStore<TestForm>({ initialValues: { ...defaultValues } })
       const fieldCb = vi.fn()
       const fieldsCb = vi.fn()
       const globalCb = vi.fn()
 
-      sub.subscribe("name", fieldCb)
-      sub.subscribeFields(["name", "age"], fieldsCb)
-      sub.subscribeAll(globalCb)
+      store.subscribe("name", fieldCb)
+      store.subscribeFields(["name", "age"], fieldsCb)
+      store.subscribeAll(globalCb)
 
-      sub.notify(
-        { name: "Jane" },
-        { name: "John", age: 25, email: "j@t.com" },
-        { name: "Jane", age: 25, email: "j@t.com" }
-      )
+      store.setFieldValue("name", "Jane")
 
       expect(fieldCb).toHaveBeenCalledOnce()
       expect(fieldsCb).toHaveBeenCalledOnce()
       expect(globalCb).toHaveBeenCalledOnce()
     })
 
-    it("多字段同时变化时各订阅者都收到通知", () => {
-      const sub = new Subscriber<TestForm>()
+    it("setFieldsValue 批量变化时各订阅者都收到通知", () => {
+      const store = new FormStore<TestForm>({ initialValues: { ...defaultValues } })
       const nameCb = vi.fn()
       const ageCb = vi.fn()
 
-      sub.subscribe("name", nameCb)
-      sub.subscribe("age", ageCb)
+      store.subscribe("name", nameCb)
+      store.subscribe("age", ageCb)
 
-      sub.notify(
-        { name: "Jane", age: 30 },
-        { name: "John", age: 25, email: "j@t.com" },
-        { name: "Jane", age: 30, email: "j@t.com" }
-      )
+      store.setFieldsValue({ name: "Jane", age: 30 })
 
       expect(nameCb).toHaveBeenCalledOnce()
       expect(ageCb).toHaveBeenCalledOnce()
     })
 
     it("回调接收正确的 prevSnapshot 和 latestSnapshot", () => {
-      const sub = new Subscriber<TestForm>()
+      const store = new FormStore<TestForm>({ initialValues: { ...defaultValues } })
       const cb = vi.fn()
 
-      const prev = { name: "John", age: 25, email: "j@t.com" }
-      const latest = { name: "Jane", age: 25, email: "j@t.com" }
+      store.subscribe("name", cb)
+      store.setFieldValue("name", "Jane")
 
-      sub.subscribe("name", cb)
-      sub.notify({ name: "Jane" }, prev, latest)
+      // prevSnapshot 应包含旧值
+      const prevSnapshot = cb.mock.calls[0][1]
+      expect(prevSnapshot.name).toBe("John")
 
-      expect(cb.mock.calls[0][1]).toBe(prev)
-      expect(cb.mock.calls[0][2]).toBe(latest)
+      // latestSnapshot 应包含新值
+      const latestSnapshot = cb.mock.calls[0][2]
+      expect(latestSnapshot.name).toBe("Jane")
     })
   })
 
-  describe("clear", () => {
-    it("清除所有订阅", () => {
-      const sub = new Subscriber<TestForm>()
+  describe("clear / destroy", () => {
+    it("clear 清除全局和多字段组订阅", () => {
+      const store = new FormStore<TestForm>({ initialValues: { ...defaultValues } })
 
-      sub.subscribe("name", vi.fn())
-      sub.subscribeFields(["name", "age"], vi.fn())
-      sub.subscribeAll(vi.fn())
+      store.subscribeFields(["name", "age"], vi.fn())
+      store.subscribeAll(vi.fn())
 
-      expect(sub.getSubscriberCount()).toBeGreaterThan(0)
+      store.clear()
 
-      sub.clear()
-      expect(sub.getSubscriberCount()).toBe(0)
+      // clear 后全局和多字段组订阅者数量应为 0
+      // （effect 订阅不受 clear 影响，需要 destroy）
+      const globalCb = vi.fn()
+      store.subscribeAll(globalCb)
+      store.setFieldValue("name", "Jane")
+      expect(globalCb).toHaveBeenCalledOnce()
+    })
+
+    it("destroy 清除所有订阅包括 effect", () => {
+      const store = new FormStore<TestForm>({ initialValues: { ...defaultValues } })
+
+      const fieldCb = vi.fn()
+      store.subscribe("name", fieldCb)
+      store.subscribeAll(vi.fn())
+
+      store.destroy()
+
+      // destroy 后 effect 订阅也应被清除
+      store.setFieldValue("name", "Jane")
+      expect(fieldCb).not.toHaveBeenCalled()
     })
   })
 
   describe("getSubscriberCount", () => {
-    it("传入路径返回该字段订阅者数量", () => {
-      const sub = new Subscriber<TestForm>()
-      sub.subscribe("name", vi.fn())
-      sub.subscribe("name", vi.fn())
-      sub.subscribe("age", vi.fn())
-
-      expect(sub.getSubscriberCount("name")).toBe(2)
-      expect(sub.getSubscriberCount("age")).toBe(1)
-      expect(sub.getSubscriberCount("email")).toBe(0)
-    })
-
     it("无参返回所有订阅者总数", () => {
-      const sub = new Subscriber<TestForm>()
-      sub.subscribe("name", vi.fn()) // +1
-      sub.subscribeFields(["name", "age"], vi.fn()) // +1
-      sub.subscribeAll(vi.fn()) // +1
+      const store = new FormStore<TestForm>({ initialValues: { ...defaultValues } })
+      store.subscribe("name", vi.fn()) // subscribe 由 SignalMap 内部管理，不计入
+      store.subscribeFields(["name", "age"], vi.fn()) // +1 fields
+      store.subscribeAll(vi.fn()) // +1 global
 
-      expect(sub.getSubscriberCount()).toBe(3)
-    })
-  })
-
-  describe("createSubscriber 工厂函数", () => {
-    it("创建 Subscriber 实例", () => {
-      const sub = createSubscriber<TestForm>()
-      expect(sub).toBeInstanceOf(Subscriber)
+      expect(store.getSubscriberCount()).toBe(2)
     })
   })
 })

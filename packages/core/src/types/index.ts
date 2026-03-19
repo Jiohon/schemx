@@ -10,7 +10,7 @@ export type {
   FormValues,
   NamePath,
   ValidationTrigger,
-  SchemxFormInstance,
+  SchemxInstance,
 } from "./form"
 export type { CustomRules, BuiltinRules, Rules } from "./rule"
 

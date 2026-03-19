@@ -14,11 +14,6 @@ import { Rules } from "./rule"
 import type { DeepReadonly } from "./readonly"
 import type { SchemaField } from "./schema"
 import type { RendererRegistry } from "../rendererRegistry"
-import type {
-  FieldsSubscribeCallback,
-  FieldSubscribeCallback,
-  GlobalSubscribeCallback,
-} from "../subscriber"
 import type { ValidateResult } from "../validator"
 import type { ValidateError } from "../validator"
 
@@ -35,7 +30,7 @@ export type FormValues = Record<string, Value>
  *
  * @typeParam T - 表单值类型，用于路径类型推断
  */
-export type NamePath<T = any> = DeepNamePath<T>
+export type NamePath<T = FormValues> = DeepNamePath<T>
 
 /**
  * 验证规则触发时机
@@ -63,7 +58,7 @@ export interface SchemxProps<T extends FormValues = FormValues> {
   /** 表单字段配置 */
   schemas: SchemaField[]
   /** 表单实例 */
-  form?: SchemxFormInstance
+  form?: SchemxInstance
   /** 渲染器注册实例 */
   rendererRegistry?: RendererRegistry
   /** 验证触发时机 */
@@ -107,11 +102,11 @@ export interface SchemxProps<T extends FormValues = FormValues> {
  * 表单实例接口
  *
  * 定义表单的所有操作方法，是 useForm 返回值的基础接口。
- * SchemxFormInstance 类实现此接口，提供完整的表单操作能力。
+ * SchemxInstance 类实现此接口，提供完整的表单操作能力。
  *
  * @typeParam T - 表单值类型，默认为 FormValues
  */
-export interface SchemxFormInstance<T extends FormValues = FormValues> {
+export interface SchemxInstance<T extends FormValues = FormValues> {
   /**
    * 设置单个字段值并通知订阅者
    *
@@ -159,6 +154,21 @@ export interface SchemxFormInstance<T extends FormValues = FormValues> {
   getFieldValue: (name: NamePath<T>) => Readonly<Value>
 
   /**
+   * 获取单个字段值的快照
+   *
+   * 返回深拷贝的值，不收集依赖，适用于需要脱离响应式的场景。
+   *
+   * @param name - 字段路径
+   * @returns 该字段当前值的深拷贝
+   *
+   * @example
+   * ```typescript
+   * const name = form.getFieldSnapshot('name') // => 'John'（深拷贝）
+   * ```
+   */
+  getFieldSnapshot: (name: NamePath<T>) => Value
+
+  /**
    * 获取多个字段值
    *
    * 不传参数返回所有值（Readonly 只读引用），传入路径数组返回指定字段的值。
@@ -172,7 +182,10 @@ export interface SchemxFormInstance<T extends FormValues = FormValues> {
    * const partial = form.getFieldsValue(['name', 'email'])
    * ```
    */
-  getFieldsValue: (names?: NamePath<T>[]) => Readonly<Partial<T>>
+  getFieldsValue: {
+    (): Readonly<T>
+    (names: NamePath<T>[]): Readonly<Partial<T>>
+  }
 
   /**
    * 获取当前表单值的快照
@@ -188,7 +201,10 @@ export interface SchemxFormInstance<T extends FormValues = FormValues> {
    * JSON.stringify(snapshot)
    * ```
    */
-  getFieldsSnapshot: () => T
+  getFieldsSnapshot: {
+    (): T
+    (paths: NamePath<T>[]): Partial<T>
+  }
 
   /**
    * 获取表单初始值。
@@ -204,7 +220,10 @@ export interface SchemxFormInstance<T extends FormValues = FormValues> {
    * form.getInitialValues(['name']) // => { name: 'John' }
    * ```
    */
-  getInitialValues: (path?: NamePath<T>[]) => T | Partial<T>
+  getInitialValues: {
+    (): T
+    (paths: NamePath<T>[]): Partial<T>
+  }
 
   /**
    * 批量设置多个字段的初始值。
@@ -393,63 +412,40 @@ export interface SchemxFormInstance<T extends FormValues = FormValues> {
   getTouchedFields: () => string[]
 
   /**
-   * 订阅单个字段变化
+   * 创建 Signal effect 监听字段或错误变化。
    *
-   * 当订阅的字段或其父/子路径发生变化时，都会收到通知。
+   * 回调内调用 getFieldValue/getFieldError 时自动追踪依赖，
+   * 当依赖的 Signal 变化时 effect 自动重新执行。
    *
-   * @param path - 要订阅的字段路径
-   * @param callback - 变化时的回调函数
-   * @returns 取消订阅的函数
+   * @param fn - effect 回调函数
+   * @returns 取消 effect 的函数
    *
    * @example
    * ```typescript
-   * const unsubscribe = form.subscribe('name', (payload, prevSnapshot, latestSnapshot) => {
-   *   console.log(`${payload.path} changed to ${payload.value}`)
+   * const dispose = form.effect(() => {
+   *   console.log('name:', form.getFieldValue('name'))
    * })
-   * unsubscribe()
+   * // 当 name 字段变化时 effect 自动重新执行
+   * dispose() // 取消 effect
    * ```
    */
-  subscribe: (path: NamePath<T>, callback: FieldSubscribeCallback<T>) => () => void
+  effect: (fn: () => void) => () => void
 
   /**
-   * 订阅多个字段变化
+   * 批量更新字段值，多次 set 合并为一次 effect 触发。
    *
-   * 当任一指定字段变化时，收集所有订阅字段的当前值快照和上一次快照，传给回调。
-   *
-   * @param paths - 要订阅的字段路径数组
-   * @param callback - 变化时的回调函数，接收 (payload, prevSnapshot, latestSnapshot)
-   * @returns 取消所有订阅的函数
+   * @param fn - 批量操作函数
    *
    * @example
    * ```typescript
-   * const unsubscribe = form.subscribeFields(['name', 'email'], (payload, prevSnapshot, latestSnapshot) => {
-   *   console.log('subscribed fields:', payload.changedValues)
+   * form.batch(() => {
+   *   form.setFieldValue('name', 'Bob')
+   *   form.setFieldValue('age', 30)
    * })
-   * unsubscribe()
+   * // 依赖 name 或 age 的 effect 只触发一次
    * ```
    */
-  subscribeFields: (
-    paths: NamePath<T>[],
-    callback: FieldsSubscribeCallback<T>
-  ) => () => void
-
-  /**
-   * 订阅所有字段变化
-   *
-   * 当任何字段值变化时都会收到通知。
-   *
-   * @param callback - 变化时的回调函数
-   * @returns 取消订阅的函数
-   *
-   * @example
-   * ```typescript
-   * const unsubscribe = form.subscribeAll((payload, prevSnapshot, latestSnapshot) => {
-   *   console.log('Changed:', payload.changedValues)
-   * })
-   * unsubscribe()
-   * ```
-   */
-  subscribeAll: (callback: GlobalSubscribeCallback<T>) => () => void
+  batch: (fn: () => void) => void
 
   /**
    * 销毁表单实例

@@ -10,16 +10,13 @@ import { App, CSSProperties, defineComponent, PropType } from "vue"
 
 import { rendererRegistry } from "@schemx/core"
 import { isBaseSchema } from "@schemx/core"
+import { _clearGlobalRequest, _setGlobalRequest } from "@schemx/core"
 import classnames from "classnames"
 
 import FormItem from "./components/FormItem"
 import { useForm } from "./hooks/useForm"
 import { createFormContext } from "./hooks/useFormContext"
 import { createRenderer } from "./hooks/useRenderer"
-import {
-  _clearGlobalRequest,
-  _setGlobalRequest,
-} from "./hooks/useRequester/globalRequestProvider"
 import { collectObjectPathsByLeaf } from "./utils/path"
 
 import type { SchemxProps } from "@schemx/core"

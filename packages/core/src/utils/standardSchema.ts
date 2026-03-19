@@ -21,13 +21,13 @@ import type { StandardSchemaV1 } from "@/types/standardSchema"
  * @returns 符合 StandardSchemaV1 接口的必填校验 schema
  *
  * @example
- * const schema = createRequiredSchema({ label: '用户名', ... })
+ * const schema = createRequiredRule({ label: '用户名', ... })
  *
  * schema['~standard'].validate('')        // => { issues: [{ message: '请输入用户名' }] }
  * schema['~standard'].validate(undefined) // => { issues: [{ message: '请输入用户名' }] }
  * schema['~standard'].validate('hello')   // => { value: 'hello' }
  */
-export function createRequiredSchema(
+export function createRequiredRule(
   schema?: SchemaBaseField
 ): StandardSchemaV1<unknown, unknown> {
   return {
@@ -58,7 +58,7 @@ export function createRequiredSchema(
  * @returns 符合 StandardSchemaV1 接口的选择必填校验 schema
  *
  * @example
- * const schema = createSelectRequiredSchema({ label: '城市', ... })
+ * const schema = createSelectRequiredRule({ label: '城市', ... })
  *
  * schema['~standard'].validate(undefined) // => { issues: [{ message: '请选择城市' }] }
  * schema['~standard'].validate(null)      // => { issues: [{ message: '请选择城市' }] }
@@ -67,7 +67,7 @@ export function createRequiredSchema(
  * schema['~standard'].validate('beijing') // => { value: 'beijing' }
  * schema['~standard'].validate([1, 2])    // => { value: [1, 2] }
  */
-export function createSelectRequiredSchema(schema?: SchemaBaseField): StandardSchemaV1 {
+export function createSelectRequiredRule(schema?: SchemaBaseField): StandardSchemaV1 {
   return {
     "~standard": {
       version: 1,
@@ -101,14 +101,14 @@ export function createSelectRequiredSchema(schema?: SchemaBaseField): StandardSc
  * @returns 符合 StandardSchemaV1 接口的上传必填校验 schema
  *
  * @example
- * const schema = createUploadRequiredSchema({ label: '文件', ... })
+ * const schema = createUploadRequiredRule({ label: '文件', ... })
  *
  * schema['~standard'].validate(undefined) // => { issues: [{ message: '请上传文件' }] }
  * schema['~standard'].validate(null)      // => { issues: [{ message: '请上传文件' }] }
  * schema['~standard'].validate([])        // => { issues: [{ message: '请上传文件' }] }
  * schema['~standard'].validate([file])    // => { value: [file] }
  */
-export function createUploadRequiredSchema(
+export function createUploadRequiredRule(
   schema?: SchemaBaseField
 ): StandardSchemaV1<unknown, unknown> {
   return {

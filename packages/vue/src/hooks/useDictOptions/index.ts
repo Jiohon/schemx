@@ -9,7 +9,7 @@
 
 import { onMounted, Ref, ref, watch } from "vue"
 
-import { SchemxFormInstance } from "@schemx/core"
+import { SchemxInstance } from "@schemx/core"
 
 import { useFormInstance } from "../useForm"
 import { useRequester } from "../useRequester"
@@ -45,7 +45,7 @@ export interface DictOptionsAttrs {
   /** 动态查询参数生成函数 */
   dictQuery?: () => Record<string, any> | Promise<Record<string, any>>
   /** 响应数据格式化函数，将原始响应转换为组件所需的选项格式 */
-  dictFormatter?: (res: any, form: SchemxFormInstance | undefined) => any | Promise<any>
+  dictFormatter?: (res: any, form: SchemxInstance | undefined) => any | Promise<any>
   /** HTTP 请求器（schema 级别，最高优先级） */
   request?: (url: string) => Promise<any>
   [key: string]: any

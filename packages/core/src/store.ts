@@ -1,53 +1,31 @@
 /**
- * FormStore - 表单数据存储
+ * FormStore - 基于 SignalMap 的纯 Signal 表单数据存储中心
  *
- * 管理表单字段值（values）和初始值（initialValues）。
+ * 使用 SignalMap 封装 @preact/signals-core 的响应式状态管理，
+ * 每个字段路径对应一个独立的 Signal，支持自动依赖追踪和精确更新。
+ * 所有状态变更通过 Signal effect 自动感知，无需手动订阅。
  *
  * @module core/store
  *
  * @example
  * ```typescript
- * import { createFormStore } from './FormStore'
+ * const store = new FormStore({ initialValues: { name: 'John', age: 25 } })
  *
- * // 创建 store
- * const store = createFormStore({
- *   initialValues: { name: 'John', age: 25 }
- * })
- *
- * // 获取/设置值
+ * // 读写值
  * store.getFieldValue('name') // => 'John'
  * store.setFieldValue('name', 'Jane')
  *
  * // 批量操作
  * store.setFieldsValue({ name: 'Bob', age: 30 })
- * store.getFieldsValue(['name', 'age']) // => { name: 'Bob', age: 30 }
- *
- * // 检查字段是否被修改
- * store.isFieldTouched('name') // => true
- *
- * // 重置
- * store.reset()
- * store.resetField('name')
  * ```
  */
 
 import { cloneDeep, isEqual } from "es-toolkit"
 
+import { SignalMap } from "./signalMap"
 import { collectObjectPathsByLeaf, getByPath, setByPath } from "./utils/path"
 
 import type { FormValues, NamePath, Value } from "./types"
-
-/**
- * FormStore 状态接口。
- *
- * @typeParam T - 表单值类型
- */
-export interface FormStoreState<T extends FormValues> {
-  /** 当前表单值 */
-  values: T
-  /** 初始值 */
-  initialValues: T
-}
 
 /**
  * FormStore 配置选项。
@@ -60,11 +38,22 @@ export interface FormStoreOptions<T extends FormValues> {
 }
 
 /**
- * 表单数据存储。
+ * FormStore 状态接口（兼容旧代码引用）。
  *
- * 使用 Vue reactive 实现响应式状态，所有通过 getFieldValue / getFieldsValue
- * 读取的值都会自动建立响应式依赖，在 computed / watch / render 中使用时
- * 能自动追踪变化并触发更新。
+ * @typeParam T - 表单值类型
+ */
+export interface FormStoreState<T extends FormValues> {
+  /** 当前表单值 */
+  values: T
+  /** 初始值 */
+  initialValues: T
+}
+
+/**
+ * 基于 SignalMap 的纯 Signal 表单数据存储中心。
+ *
+ * 每个字段路径对应一个独立的 Signal，通过 SignalMap 封装 @preact/signals-core 实现
+ * 自动依赖追踪。所有状态变更通过 Signal effect 自动感知，无需手动订阅。
  *
  * @typeParam T - 表单值类型，默认为 FormValues
  *
@@ -73,35 +62,38 @@ export interface FormStoreOptions<T extends FormValues> {
  * const store = new FormStore({ initialValues: { name: 'John' } })
  * store.getFieldValue('name') // => 'John'
  * ```
- *
- * @remarks
- * 内部状态通过 Vue reactive 包装，类型层面不暴露 Reactive 以避免 UnwrapRef 问题。
  */
 export class FormStore<T extends FormValues> {
-  /** 响应式状态（运行时为 reactive，类型层面不暴露 Reactive 以避免 UnwrapRef 问题） */
-  private state: FormStoreState<T>
+  /** SignalMap 存储：每个字段路径对应一个 Signal，由 SignalMap 统一管理 */
+  private signalMap = new SignalMap<string, any>()
+
+  /** 初始值 */
+  private initialValues: T
 
   /**
    * 创建 FormStore 实例。
    *
    * 对 initialValues 进行深拷贝，确保内部状态与外部引用隔离。
+   * 为每个初始字段路径创建对应的 Signal。
    *
    * @param options - 配置选项
    */
   constructor(options: FormStoreOptions<T> = {}) {
     const initialValues = (options.initialValues ?? {}) as T
+    this.initialValues = cloneDeep(initialValues)
 
-    // 使用 Vue reactive 让 state 成为响应式对象
-    this.state = {
-      values: cloneDeep(initialValues),
-      initialValues: cloneDeep(initialValues),
+    // 为初始值的每个叶子路径创建 Signal
+    const paths = collectObjectPathsByLeaf(initialValues)
+    for (const path of paths) {
+      const value = getByPath(initialValues, path)
+      this.signalMap.set(path, cloneDeep(value))
     }
   }
 
   /**
    * 获取指定路径的字段值。
    *
-   * 返回响应式引用，在 computed/watch 中使用时自动追踪变化。
+   * 读取对应 Signal 的值，在 signal effect 中使用时自动收集依赖。
    *
    * @param path - 字段路径，支持嵌套路径如 'user.name'
    * @returns 字段当前值
@@ -109,18 +101,17 @@ export class FormStore<T extends FormValues> {
    * @example
    * ```typescript
    * store.getFieldValue('name')         // => 'John'
-   * store.getFieldValue('user.address') // => { user: { address: 'Beijing' } }
+   * store.getFieldValue('user.address') // => { city: 'Beijing', zip: '100000' }
    * ```
    */
   getFieldValue(path: NamePath<T>): Value {
-    const raw = getByPath(this.state.values, path)
-
-    // 原始类型无法被 readonly() 包装，直接返回
-    return raw
+    return this.signalMap.get(path)
   }
 
   /**
    * 设置指定路径的字段值。
+   *
+   * 直接写入对应 Signal，自动触发依赖该 Signal 的 effect。
    *
    * @param path - 字段路径
    * @param value - 要设置的值
@@ -132,14 +123,14 @@ export class FormStore<T extends FormValues> {
    * ```
    */
   setFieldValue(path: NamePath<T>, value: Value): void {
-    setByPath(this.state.values, path, value)
+    this.signalMap.set(path, value)
   }
 
   /**
    * 获取多个字段的值。
    *
    * 不传参返回全量值，传入路径数组返回指定字段的值。
-   * 直接返回响应式引用，Vue 的 computed/watch 能自动追踪变化。
+   * 读取 Signal 值时会收集依赖。
    *
    * @param paths - 可选，要获取的字段路径数组
    * @returns 全量值或指定字段的值
@@ -154,11 +145,15 @@ export class FormStore<T extends FormValues> {
   getFieldsValue(paths: NamePath<T>[]): Partial<T>
   getFieldsValue(paths?: NamePath<T>[]): any {
     if (!paths) {
-      return this.state.values
+      const result = {} as T
+      for (const key of this.signalMap.keys()) {
+        setByPath(result, key, this.signalMap.get(key))
+      }
+
+      return result
     }
 
     const result: Partial<T> = {}
-
     for (const path of paths) {
       ;(result as any)[path] = this.getFieldValue(path as NamePath<T>)
     }
@@ -169,6 +164,8 @@ export class FormStore<T extends FormValues> {
   /**
    * 批量设置多个字段的值。
    *
+   * 使用 SignalMap.batch 包裹，确保多次 Signal 写入只触发一次 effect 执行。
+   *
    * @param values - 要设置的字段值对象
    *
    * @example
@@ -178,40 +175,86 @@ export class FormStore<T extends FormValues> {
    */
   setFieldsValue(values: Partial<T>): void {
     const paths = collectObjectPathsByLeaf(values)
+    this.signalMap.batch(() => {
+      for (const path of paths) {
+        this.signalMap.set(path, getByPath(values, path))
+      }
+    })
+  }
 
-    for (const path of paths) {
-      setByPath(this.state.values, path, getByPath(values, path))
-    }
+  /**
+   * 获取单个字段值的快照。
+   *
+   * 使用 SignalMap.peek() 避免收集依赖，返回深拷贝的值。
+   *
+   * @param path - 字段路径
+   *
+   * @returns 该字段当前值的深拷贝
+   *
+   * @example
+   * ```typescript
+   * const name = store.getFieldSnapshot('name') // => 'John'（深拷贝）
+   * ```
+   */
+  getFieldSnapshot(path: NamePath<T>): Value {
+    return cloneDeep(this.signalMap.peek(path))
   }
 
   /**
    * 获取当前表单值的快照。
    *
-   * 用于序列化、提交等场景，返回解除 reactive 代理后的原始对象。
+   * 使用 SignalMap.peek() 避免收集依赖，返回深拷贝的普通对象。
+   * 传入 paths 时只返回指定字段的快照。
    *
-   * @returns 当前表单值的原始对象（解除 reactive 代理）
+   * @param paths - 可选的字段路径数组，不传则返回全部字段
+   *
+   * @returns 当前表单值的原始对象（深拷贝）
    *
    * @example
    * ```typescript
    * const snapshot = store.getFieldsSnapshot()
-   * JSON.stringify(snapshot)
+   * const partial = store.getFieldsSnapshot(['name', 'age'])
    * ```
    */
-  getFieldsSnapshot(): T {
-    return cloneDeep(this.state.values) as T
+  getFieldsSnapshot(): T
+  getFieldsSnapshot(paths: NamePath<T>[]): Partial<T>
+  getFieldsSnapshot(paths?: NamePath<T>[]): T | Partial<T> {
+    const keys = paths ?? this.signalMap.keys()
+    const result = {} as T
+
+    for (const key of keys) {
+      setByPath(result, key as string, cloneDeep(this.signalMap.peek(key as string)))
+    }
+
+    return result
+  }
+
+  /**
+   * 获取指定字段的初始值。
+   *
+   * @param path - 字段路径
+   * @returns 字段初始值，不存在时返回 undefined
+   *
+   * @example
+   * ```typescript
+   * store.getInitialValue('name') // => 'John'
+   * ```
+   */
+  getInitialValue(path: NamePath<T>): Value {
+    return getByPath(this.initialValues, path)
   }
 
   /**
    * 获取表单初始值。
    *
-   * 不传参返回全量初始值的深拷贝，传入路径返回指定字段的初始值。
+   * 不传参返回全量初始值的深拷贝，传入路径数组返回指定字段的初始值。
    *
-   * @param path - 可选，字段路径
+   * @param paths - 可选，字段路径数组
    * @returns 全量初始值或指定字段的初始值
    *
    * @example
    * ```typescript
-   * store.getInitialValues()       // => { name: 'John', age: 25 }
+   * store.getInitialValues()         // => { name: 'John', age: 25 }
    * store.getInitialValues(['name']) // => { name: 'John' }
    * ```
    */
@@ -219,16 +262,30 @@ export class FormStore<T extends FormValues> {
   getInitialValues(paths: NamePath<T>[]): Partial<T>
   getInitialValues(paths?: NamePath<T>[]): T | Partial<T> {
     if (paths === undefined) {
-      return cloneDeep(this.state.initialValues) as T
+      return cloneDeep(this.initialValues) as T
     }
 
     const result = {} as Partial<T>
-
     for (const path of paths) {
-      setByPath(result, path, getByPath(this.state.initialValues, path))
+      setByPath(result, path, getByPath(this.initialValues, path))
     }
 
     return result
+  }
+
+  /**
+   * 设置指定字段的初始值。
+   *
+   * @param path - 字段路径
+   * @param value - 要设置的初始值
+   *
+   * @example
+   * ```typescript
+   * store.setInitialValue('name', 'Bob')
+   * ```
+   */
+  setInitialValue(path: NamePath<T>, value: Value): void {
+    setByPath(this.initialValues, path, value)
   }
 
   /**
@@ -243,11 +300,10 @@ export class FormStore<T extends FormValues> {
    */
   setInitialValues(values: Partial<T>): void {
     const paths = collectObjectPathsByLeaf(values)
-
     if (!paths.length) return
 
     for (const path of paths) {
-      setByPath(this.state.initialValues, path, getByPath(values, path))
+      setByPath(this.initialValues, path, getByPath(values, path))
     }
   }
 
@@ -266,8 +322,8 @@ export class FormStore<T extends FormValues> {
    * ```
    */
   isFieldTouched(path: NamePath<T>): boolean {
-    const currentValue = this.getFieldValue(path)
-    const initialValue = getByPath(this.state.initialValues, path)
+    const currentValue = this.signalMap.peek(path)
+    const initialValue = getByPath(this.initialValues, path)
 
     return !isEqual(currentValue, initialValue)
   }
@@ -297,7 +353,7 @@ export class FormStore<T extends FormValues> {
   /**
    * 获取所有被修改的字段路径。
    *
-   * 递归遍历当前值和初始值，收集所有与初始值不同的叶子路径。
+   * 遍历所有 Signal，与初始值比较，收集不同的路径。
    *
    * @returns 被修改的字段路径数组
    *
@@ -308,59 +364,13 @@ export class FormStore<T extends FormValues> {
    */
   getTouchedFields(): string[] {
     const touchedFields: string[] = []
-
-    const collectPaths = (obj: any, prefix = ""): void => {
-      if (obj === null || typeof obj !== "object") return
-      for (const key of Object.keys(obj)) {
-        const path = prefix ? `${prefix}.${key}` : key
-        const value = obj[key]
-        if (value !== null && typeof value === "object" && !Array.isArray(value)) {
-          collectPaths(value, path)
-        } else if (this.isFieldTouched(path as NamePath<T>)) {
-          touchedFields.push(path)
-        }
+    for (const key of this.signalMap.keys()) {
+      if (this.isFieldTouched(key as NamePath<T>)) {
+        touchedFields.push(key)
       }
     }
 
-    collectPaths(this.state.values)
-    collectPaths(this.state.initialValues)
-
-    return [...new Set(touchedFields)]
-  }
-
-  /**
-   * 重置表单到初始状态。
-   *
-   * 不传参时恢复到构造时的初始值，传入 values 时同时更新初始值。
-   * 通过清空再赋值的方式保持 reactive 引用不变。
-   *
-   * @param values - 可选，新的初始值
-   *
-   * @example
-   * ```typescript
-   * store.reset()                              // 恢复到构造时的初始值
-   * store.reset({ name: 'New', age: 0 })       // 重置并更新初始值
-   * ```
-   */
-  reset(values?: Partial<T>): void {
-    const resetValues = values ?? this.state.initialValues
-
-    // 清空当前 values 并重新赋值，保持 reactive 引用
-    const keys = Object.keys(this.state.values)
-    for (const key of keys) {
-      delete (this.state.values as any)[key]
-    }
-
-    Object.assign(this.state.values, cloneDeep(resetValues))
-
-    if (values) {
-      const initKeys = Object.keys(this.state.initialValues)
-      for (const key of initKeys) {
-        delete (this.state.initialValues as any)[key]
-      }
-
-      Object.assign(this.state.initialValues, cloneDeep(values))
-    }
+    return touchedFields
   }
 
   /**
@@ -374,8 +384,59 @@ export class FormStore<T extends FormValues> {
    * ```
    */
   resetField(path: NamePath<T>): void {
-    const initialValue = getByPath(this.state.initialValues, path)
-    setByPath(this.state.values, path, cloneDeep(initialValue))
+    const initialValue = getByPath(this.initialValues, path)
+    this.setFieldValue(path, cloneDeep(initialValue))
+  }
+
+  /**
+   * 重置表单到初始状态（diff 式更新）。
+   *
+   * 不传参时恢复到构造时的初始值，传入 values 时同时更新初始值。
+   * 使用 SignalMap.batch 包裹，在 batch 内对比新旧路径集合：
+   * 复用已有 key（set 更新 Signal.value）、删除多余 key、创建新 key。
+   * 不调用 signalMap.clear()，确保 effect 依赖追踪不断裂。
+   *
+   * @param values - 可选，新的初始值
+   *
+   * @example
+   * ```typescript
+   * store.reset()                              // 恢复到构造时的初始值
+   * store.reset({ name: 'New', age: 0 })       // 重置并更新初始值
+   * ```
+   */
+  reset(values?: Partial<T>): void {
+    const resetValues = values ?? this.initialValues
+
+    if (values) {
+      this.initialValues = cloneDeep(values) as T
+    }
+
+    this.signalMap.batch(() => {
+      const newPaths = new Set(collectObjectPathsByLeaf(resetValues).map(String))
+
+      // 1. 删除不在目标值中的 key
+      for (const key of [...this.signalMap.keys()]) {
+        if (!newPaths.has(key)) {
+          this.signalMap.delete(key)
+        } else {
+          this.signalMap.set(key, cloneDeep(getByPath(resetValues, key)))
+        }
+      }
+    })
+  }
+
+  /**
+   * 销毁 Store 实例。
+   *
+   * 通过 SignalMap.destroy() 清理所有内部 effect 和 signal，释放资源。
+   *
+   * @example
+   * ```typescript
+   * store.destroy()
+   * ```
+   */
+  destroy(): void {
+    this.signalMap.destroy()
   }
 }
 

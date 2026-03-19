@@ -4,10 +4,15 @@ import vueJsx from "@vitejs/plugin-vue-jsx"
 import dts from "vite-plugin-dts"
 import { resolve } from "path"
 
+const useSource = process.env.VITE_USE_SOURCE === "true"
+
 export default defineConfig({
   resolve: {
     alias: {
       "@": resolve(__dirname, "src"),
+      ...(useSource
+        ? { "@schemx/core": resolve(__dirname, "../core/src/index.ts") }
+        : {}),
     },
   },
   plugins: [
@@ -16,7 +21,7 @@ export default defineConfig({
     dts({
       include: ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"],
       outDir: "dist",
-      rollupTypes: true,
+      // rollupTypes: true,
     }),
   ],
   build: {
@@ -31,7 +36,9 @@ export default defineConfig({
       },
     },
     rollupOptions: {
-      external: ["vue", "@schemx/core", "classnames", "dayjs", "es-toolkit"],
+      external: useSource
+        ? ["vue", "classnames", "dayjs", "es-toolkit", "@preact/signals-core"]
+        : ["vue", "@schemx/core", "classnames", "dayjs", "es-toolkit"],
       output: {
         globals: {
           vue: "Vue",

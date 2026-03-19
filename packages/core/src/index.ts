@@ -1,7 +1,7 @@
 /**
  * core 模块统一导出
  *
- * 聚合 FormStore、Subscriber、Validator、RendererRegistry、SchemaRegistry 五个核心模块的公开 API。
+ * 聚合 FormStore、Validator、RendererRegistry、SchemaRegistry 四个核心模块的公开 API。
  *
  * @module core
  */
@@ -14,19 +14,13 @@ export {
   type FormStoreOptions,
 } from "./store"
 
-// Subscriber - 发布订阅
-export {
-  Subscriber,
-  createSubscriber,
-  type FieldSubscribeCallback,
-  type GlobalSubscribeCallback,
-} from "./subscriber"
+// SignalMap - 响应式键值存储
+export { SignalMap } from "./signalMap"
 
 // Validator - 校验
 export {
   Validator,
   createValidator,
-  type RulesMap,
   type ValidateResult,
   type ValidateError,
   type FieldError,
@@ -51,25 +45,24 @@ export {
   createWatchField,
   createWatchFields,
   createWatchAll,
-  type SingleFieldCallback,
-  type MultiFieldCallback,
-  type GlobalCallback,
+  type WatchFieldCallback,
+  type WatchFieldsCallback,
+  type WatchAllCallback,
   type useWatchOptions,
   type CreateWatchReturn,
 } from "./createWatch"
 
-// RulesRegistry - 校验schema注册
+// RulesRegistry - 校验规则注册
 export {
   RulesRegistry,
   rulesRegistry,
-  createLocalSchemaRegistry,
-  defineSchema,
-  defineSchemas,
-  type SchemaRegistryOptions,
-  type SchemaMap,
-  type SchemaFactory,
-  type SchemaEntry,
-  type SchemaEntryMap,
+  createLocalRuleRegistry,
+  defineRule,
+  defineRules,
+  type RuleRegistryOptions,
+  type RuleFactory,
+  type RuleEntry,
+  type RuleEntryMap,
 } from "./rulesRegistry"
 
 // requestProvider - 全局请求器管理与解析
@@ -85,13 +78,20 @@ export {
 // Utils - 工具函数
 export { isBaseSchema, isGroupSchema, isDependencySchema } from "./utils"
 
+// BatchScheduler - 批量调度器
+export {
+  createBatchScheduler,
+  type BatchScheduler,
+  type BatchSchedulerOptions,
+} from "./utils/batchScheduler"
+
 // Types - 类型定义
 export type {
   Value,
   FormValues,
   NamePath,
   ValidationTrigger,
-  SchemxFormInstance,
+  SchemxInstance,
   SchemxProps,
   GlobalContext,
   CustomRules,

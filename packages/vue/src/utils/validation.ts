@@ -6,7 +6,7 @@
  * @module utils/validation
  */
 
-import type { ValidationTrigger } from "../types"
+import type { ValidationTrigger } from "@schemx/core"
 
 /** 触发时机类型（支持单个或数组） */
 type TriggerConfig = ValidationTrigger | ValidationTrigger[]

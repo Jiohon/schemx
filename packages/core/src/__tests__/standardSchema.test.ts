@@ -1,7 +1,7 @@
 /**
  * StandardSchema 单元测试
  *
- * 覆盖 createRequiredSchema 工厂函数的所有分支：
+ * 覆盖 createRequiredRule 工厂函数的所有分支：
  * undefined、null、空字符串、有效值、数字 0、布尔 false。
  *
  * @module core/__tests__/standardSchema
@@ -9,10 +9,10 @@
 
 import { describe, expect, it } from "vitest"
 
-import { createRequiredSchema } from "../utils/standardSchema"
+import { createRequiredRule } from "../utils/standardSchema"
 
-describe("createRequiredSchema", () => {
-  const schema = createRequiredSchema({ label: "用户名" } as any)
+describe("createRequiredRule", () => {
+  const schema = createRequiredRule({ label: "用户名" } as any)
 
   it("符合 StandardSchemaV1 接口", () => {
     expect(schema["~standard"]).toBeDefined()
@@ -58,7 +58,7 @@ describe("createRequiredSchema", () => {
   })
 
   it("不同 label 生成不同提示", () => {
-    const schema2 = createRequiredSchema({ label: "邮箱" } as any)
+    const schema2 = createRequiredRule({ label: "邮箱" } as any)
     const result = schema2["~standard"].validate("")
     expect(result).toEqual({ issues: [{ message: "请输入邮箱" }] })
   })

@@ -1,7 +1,11 @@
 /**
- * createWatch - 纯函数版本的字段监听工具
+ * createWatch - 基于 Signal effect 的字段监听工具
  *
- * 提供不依赖任何 UI 框架的字段监听能力，适用于非组件场景（如工具函数、外部逻辑）。
+ * 提供不依赖任何 UI 框架的字段监听能力，基于 form.effect() 自动依赖追踪。
+ * 适用于非组件场景（如工具函数、外部逻辑）。
+ *
+ * 所有回调采用 payload 模式：`(payload, latestSnapshot)`，
+ * payload 包含变更的详细信息，latestSnapshot 为变更后的表单完整快照。
  *
  * @module core/createWatch
  *
@@ -10,76 +14,82 @@
  * import { createWatchField, createWatchFields, createWatchAll } from '@schemx/core'
  *
  * // 监听单个字段
- * const unsubscribe = createWatchField(form, 'username', (payload, prev, latest) => {
- *   console.log(`username: ${payload.prevValue} -> ${payload.value}`)
+ * const dispose = createWatchField(form, 'username', (payload, snapshot) => {
+ *   console.log(`${payload.path}: ${payload.prevValue} -> ${payload.value}`)
  * }, { immediate: true })
  *
  * // 监听多个字段
- * const unsubscribe = createWatchFields(form, ['firstName', 'lastName'], (payload, prev, latest) => {
+ * const dispose = createWatchFields(form, ['firstName', 'lastName'], (payload, snapshot) => {
  *   console.log('changed:', payload.changedValues)
  * }, {})
  *
  * // 监听所有字段
- * const unsubscribe = createWatchAll(form, (payload, prev, latest) => {
- *   console.log('paths:', payload.changedPaths)
+ * const dispose = createWatchAll(form, (payload, snapshot) => {
+ *   console.log('changed paths:', payload.changedPaths)
  * }, {})
  *
- * // 取消订阅
- * unsubscribe()
+ * // 取消监听
+ * dispose()
  * ```
  */
 
-import { isEqual } from "es-toolkit"
+import { isEqual } from "es-toolkit/compat"
 
-import {
-  type FieldsSubscribeCallback,
-  type FieldSubscribeCallback,
-  type GlobalSubscribeCallback,
-} from "./subscriber"
-import { pickByPaths } from "./utils"
+import { diff } from "./utils/diff"
+import { collectObjectPathsByLeaf } from "./utils/path"
 
-import type { FormValues, NamePath } from "./types"
-import type { SchemxFormInstance } from "./types/form"
+import type { FormValues, NamePath, SchemxInstance, Value } from "./types"
+
+/** 单字段订阅回调的载荷 */
+type FieldPayload = {
+  /** 变更后的字段值 */
+  value: Value
+  /** 变更前的字段值 */
+  prevValue: Value
+}
+
+/** 多字段订阅回调的载荷 */
+type FieldsPayload<T> = {
+  /** 本次变更涉及的所有字段路径 */
+  changedPaths: NamePath<T>[]
+  /** 本次变更涉及的字段值（部分表单数据） */
+  changedValues: Partial<T>
+  /** 变更前对应字段的旧值（部分表单数据） */
+  prevValues: Partial<T>
+}
+
+/** 全局订阅回调的载荷 */
+type GlobalPayload<T> = {
+  /** 本次变更涉及的所有字段路径 */
+  changedPaths: NamePath<T>[]
+  /** 本次变更涉及的字段值（部分表单数据） */
+  changedValues: Partial<T>
+  /** 变更前对应字段的旧值（部分表单数据） */
+  prevValues: Partial<T>
+}
 
 /**
- * 单字段监听回调
+ * 订阅回调的基础类型。
  *
- * @typeParam T - 表单值类型，默认为 {@link FormValues}
- *
- * @see {@link FieldSubscribeCallback} 底层回调类型
+ * 回调接收两个参数：变更载荷（payload）和变更后的表单完整快照（latestSnapshot）。
  */
-export type SingleFieldCallback<T extends FormValues = FormValues> =
-  FieldSubscribeCallback<T>
+type BaseSubscribeCallback<T, P> = (payload: P, latestSnapshot: T) => void
 
-/**
- * 多字段监听回调
- *
- * @typeParam T - 表单值类型，默认为 {@link FormValues}
- *
- * @see {@link FieldsSubscribeCallback} 底层回调类型
- */
-export type MultiFieldCallback<T extends FormValues = FormValues> =
-  FieldsSubscribeCallback<T>
+/** 单字段订阅回调类型，监听指定字段的变更 */
+export type WatchFieldCallback<T> = BaseSubscribeCallback<T, FieldPayload>
 
-/**
- * 全局监听回调
- *
- * @typeParam T - 表单值类型，默认为 {@link FormValues}
- *
- * @see {@link GlobalSubscribeCallback} 底层回调类型
- */
-export type GlobalCallback<T extends FormValues = FormValues> = GlobalSubscribeCallback<T>
+/** 多字段订阅回调类型，监听一组字段的变更 */
+export type WatchFieldsCallback<T> = BaseSubscribeCallback<T, FieldsPayload<T>>
+
+/** 全局订阅回调类型，监听表单中任意字段的变更 */
+export type WatchAllCallback<T> = BaseSubscribeCallback<T, GlobalPayload<T>>
 
 /**
  * useWatch / createWatch 选项
  */
 export interface useWatchOptions {
   /**
-   * 是否在订阅后立即执行一次回调
-   *
-   * 立即执行时，回调接收的 payload 中 `value` / `prevValue`（单字段）
-   * 或 `changedValues` / `prevValues`（多字段/全局）均为 `undefined` / 空对象，
-   * `latestSnapshot` 为当前表单快照。
+   * 是否在创建后立即执行一次回调
    *
    * @default false
    */
@@ -97,162 +107,186 @@ export interface useWatchOptions {
 }
 
 /**
- * createWatch 系列函数的返回类型 —— 取消订阅函数
+ * createWatch 系列函数的返回类型 - 取消监听函数
  *
- * 调用后将移除对应的订阅，不再接收后续变更通知。
+ * 调用后将移除对应的 effect，不再接收后续变更通知。
  */
 export type CreateWatchReturn = () => void
 
 /**
- * 监听单个字段变化（纯函数版本）
+ * 监听单个字段变化（基于 Signal effect）
  *
- * 订阅指定字段的值变更，当字段值（或其父/子路径）发生变化时触发回调。
- * 支持 `immediate`（立即执行）和 `inequality`（值相等时跳过）选项。
+ * 在 effect 内调用 form.getFieldValue(name) 建立依赖追踪，
+ * 当字段值变化时 effect 自动重新执行并触发回调。
  *
- * @param form - 表单实例，通过 `useForm` 或 `createFormInstance` 获取
- * @param name - 要监听的字段路径，如 `'username'` 或 `'user.address.city'`
- * @param callback - 字段变化时的回调函数，接收 `(payload, prevSnapshot, latestSnapshot)`
- *   - `payload.path` - 发生变更的字段路径
- *   - `payload.value` - 变更后的字段值
- *   - `payload.prevValue` - 变更前的字段值
- *   - `prevSnapshot` - 变更前的表单完整快照
- *   - `latestSnapshot` - 变更后的表单最新快照
+ * @param form - 表单实例
+ * @param name - 要监听的字段路径
+ * @param callback - 字段变化时的回调函数，接收 (payload, latestSnapshot)
  * @param options - 监听选项
- * @returns 取消订阅函数，调用后停止监听
+ * @returns 取消监听函数
  *
  * @example
  * ```ts
- * const unsubscribe = createWatchField(form, 'email', (payload, prevSnapshot, latestSnapshot) => {
- *   console.log(`email changed: ${payload.prevValue} -> ${payload.value}`)
- *   console.log('current form snapshot:', latestSnapshot)
+ * const dispose = createWatchField(form, 'email', (payload, snapshot) => {
+ *   console.log(`${payload.path}: ${payload.prevValue} -> ${payload.value}`)
  * }, { immediate: true, inequality: true })
- *
- * // 不再需要时取消订阅
- * unsubscribe()
+ * dispose()
  * ```
  */
 export const createWatchField = <T extends FormValues>(
-  form: SchemxFormInstance<T>,
+  form: SchemxInstance<T>,
   name: NamePath<T>,
-  callback: SingleFieldCallback<T>,
+  callback: WatchFieldCallback<T>,
   options: useWatchOptions
 ): CreateWatchReturn => {
-  const unsubscribe = form.subscribe(name, (payload, prevSnapshot, latestSnapshot) => {
-    if (options.inequality && isEqual(payload.value, payload.prevValue)) return
+  let prev: Value = form.getFieldSnapshot(name)
+  let isFirst = true
 
-    callback(payload, prevSnapshot, latestSnapshot)
+  const dispose = form.effect(() => {
+    const current = form.getFieldValue(name)
+    const latestSnapshot = form.getFieldsSnapshot()
+
+    if (isFirst) {
+      isFirst = false
+      if (options.immediate) {
+        callback({ value: current, prevValue: undefined }, latestSnapshot)
+      }
+
+      prev = current
+
+      return
+    }
+
+    if (options.inequality && isEqual(current, prev)) return
+
+    callback({ value: current, prevValue: prev }, latestSnapshot)
+
+    prev = current
   })
 
-  if (options.immediate) {
-    const payload = { path: name, value: undefined, prevValue: undefined }
-
-    callback(payload, {} as T, form.getFieldsSnapshot())
-  }
-
-  return unsubscribe
+  return dispose
 }
 
 /**
- * 监听多个字段变化（纯函数版本）
+ * 监听多个字段变化（基于 Signal effect）
  *
- * 订阅一组字段的值变更，当任一指定字段发生变化时触发回调。
- * 聚合快照逻辑由 `form.subscribeFields` 处理，
- * 此处只负责 `immediate` 和 `inequality` 选项。
+ * 在 effect 内调用多个 form.getFieldValue 建立依赖追踪，
+ * 当任一被监听字段变化时 effect 自动重新执行并触发回调。
  *
- * @param form - 表单实例，通过 `useForm` 或 `createFormInstance` 获取
- * @param names - 要监听的字段路径数组，如 `['firstName', 'lastName']`
- * @param callback - 字段变化时的回调函数，接收 `(payload, prevSnapshot, latestSnapshot)`
- *   - `payload.changedValues` - 本次变更涉及的字段值（部分表单数据）
- *   - `prevSnapshot` - 变更前的表单完整快照
- *   - `latestSnapshot` - 变更后的表单最新快照
+ * @param form - 表单实例
+ * @param names - 要监听的字段路径数组
+ * @param callback - 字段变化时的回调函数，接收 (payload, latestSnapshot)
  * @param options - 监听选项
- * @returns 取消订阅函数，调用后停止监听
+ * @returns 取消监听函数
  *
  * @example
  * ```ts
- * const unsubscribe = createWatchFields(
- *   form,
- *   ['firstName', 'lastName'],
- *   (payload, prevSnapshot, latestSnapshot) => {
- *     console.log('changed:', payload.changedValues)
- *   },
- *   { inequality: true }
- * )
- *
- * // 不再需要时取消订阅
- * unsubscribe()
+ * const dispose = createWatchFields(form, ['firstName', 'lastName'], (payload, snapshot) => {
+ *   console.log('changed:', payload.changedValues)
+ *   console.log('prev:', payload.prevValues)
+ * }, { inequality: true })
+ * dispose()
  * ```
  */
 export const createWatchFields = <T extends FormValues>(
-  form: SchemxFormInstance<T>,
+  form: SchemxInstance<T>,
   names: NamePath<T>[],
-  callback: MultiFieldCallback<T>,
+  callback: WatchFieldsCallback<T>,
   options: useWatchOptions
 ): CreateWatchReturn => {
-  const unsubscribe = form.subscribeFields(
-    names,
-    (payload, prevSnapshot, latestSnapshot) => {
-      if (options.inequality && isEqual(payload.changedValues, payload.prevValues)) return
+  let prevValues: Partial<T> = form.getFieldsSnapshot(names)
+  let isFirst = true
 
-      callback(payload, prevSnapshot, latestSnapshot)
+  const dispose = form.effect(() => {
+    const currentValues: Partial<T> = form.getFieldsValue(names)
+    const latestSnapshot = form.getFieldsSnapshot()
+
+    if (isFirst) {
+      isFirst = false
+
+      if (options.immediate) {
+        callback(
+          { changedPaths: names, changedValues: currentValues, prevValues: {} },
+          latestSnapshot
+        )
+      }
+
+      prevValues = { ...currentValues }
+
+      return
     }
-  )
 
-  if (options.immediate) {
-    const payload = { changedValues: {}, prevValues: {} }
+    if (options.inequality && isEqual(currentValues, prevValues)) return
 
-    callback(payload, {} as T, form.getFieldsSnapshot())
-  }
+    const changedValues = diff<Partial<T>>(currentValues, prevValues)
+    const changedPaths = collectObjectPathsByLeaf<NamePath<T>>(changedValues)
 
-  return unsubscribe
+    callback({ changedPaths, changedValues, prevValues }, latestSnapshot)
+
+    prevValues = { ...currentValues }
+  })
+
+  return dispose
 }
 
 /**
- * 监听所有字段变化（纯函数版本）
+ * 监听所有字段变化（基于 Signal effect）
  *
- * 订阅表单中任意字段的值变更，当任何字段发生变化时触发回调。
- * 适用于需要全局感知表单变化的场景，如自动保存、表单脏检测等。
+ * 在 effect 内调用 form.getFieldsValue() 建立依赖追踪，
+ * 当任何字段变化时 effect 自动重新执行并触发回调。
  *
- * @param form - 表单实例，通过 `useForm` 或 `createFormInstance` 获取
- * @param callback - 字段变化时的回调函数，接收 `(payload, prevSnapshot, latestSnapshot)`
- *   - `payload.changedPaths` - 本次变更涉及的所有字段路径
- *   - `payload.changedValues` - 本次变更涉及的字段值（部分表单数据）
- *   - `payload.prevValues` - 变更前对应字段的旧值（部分表单数据）
- *   - `prevSnapshot` - 变更前的表单完整快照
- *   - `latestSnapshot` - 变更后的表单最新快照
+ * @param form - 表单实例
+ * @param callback - 字段变化时的回调函数，接收 (payload, latestSnapshot)
  * @param options - 监听选项
- * @returns 取消订阅函数，调用后停止监听
+ * @returns 取消监听函数
  *
  * @example
  * ```ts
- * const unsubscribe = createWatchAll(form, (payload, prevSnapshot, latestSnapshot) => {
+ * const dispose = createWatchAll(form, (payload, snapshot) => {
  *   console.log('changed paths:', payload.changedPaths)
  *   console.log('changed values:', payload.changedValues)
- *   console.log('previous values:', payload.prevValues)
  * }, { immediate: true })
- *
- * // 不再需要时取消订阅
- * unsubscribe()
+ * dispose()
  * ```
  */
 export const createWatchAll = <T extends FormValues>(
-  form: SchemxFormInstance<T>,
-  callback: GlobalCallback<T>,
+  form: SchemxInstance<T>,
+  callback: WatchAllCallback<T>,
   options: useWatchOptions
 ): CreateWatchReturn => {
-  const unsubscribe = form.subscribeAll((payload, prevSnapshot, latestSnapshot) => {
-    const prevValues = pickByPaths(prevSnapshot, new Set([...payload.changedPaths]))
+  let isFirst = true
+  let prevValues: T = form.getFieldsSnapshot()
 
-    if (options.inequality && isEqual(payload.changedValues, prevValues)) return
+  const dispose = form.effect(() => {
+    const latestSnapshot = form.getFieldsSnapshot()
 
-    callback(payload, prevSnapshot, latestSnapshot)
+    if (isFirst) {
+      isFirst = false
+      if (options.immediate) {
+        callback(
+          {
+            changedPaths: [],
+            changedValues: latestSnapshot,
+            prevValues: {} as Partial<T>,
+          },
+          latestSnapshot
+        )
+      }
+
+      prevValues = { ...latestSnapshot }
+
+      return
+    }
+
+    if (options.inequality && isEqual(latestSnapshot, prevValues)) return
+
+    const changedValues = diff<Partial<T>>(latestSnapshot, prevValues)
+    const changedPaths = collectObjectPathsByLeaf<NamePath<T>>(changedValues)
+
+    callback({ changedPaths, changedValues, prevValues }, latestSnapshot)
+
+    prevValues = { ...latestSnapshot }
   })
 
-  if (options.immediate) {
-    const payload = { changedPaths: [], changedValues: {}, prevValues: {} }
-
-    callback(payload, {} as T, form.getFieldsSnapshot())
-  }
-
-  return unsubscribe
+  return dispose
 }

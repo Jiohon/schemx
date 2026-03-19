@@ -5,29 +5,18 @@
  */
 
 /** 动态属性解析 */
-export { type DynamicProp, resolveDynamicProp } from "./dynamic"
+export {
+  type DynamicProp,
+  type DynamicPropEntry,
+  resolveDynamicProp,
+  resolveDynamicPropBatch,
+} from "./dynamic"
 
 /** 校验触发工具 */
 export { shouldValidateOn } from "./validation"
 
 /** 路径工具 */
-export { getByPath, setByPath, collectObjectPaths, pickByPaths } from "./path"
-
-/** 异步工具 */
-export { withLock } from "./async"
-
-/** 单例工具 */
-export { createStrictSingleton } from "./single"
+export { getByPath, setByPath } from "./path"
 
 /** 插槽工具 */
-export {
-  isCamelCase,
-  isKebabCase,
-  isLowerCase,
-  camelToKebab,
-  kebabToCamel,
-  normalizeToKebab,
-  normalizeToCamel,
-  resolveSlot,
-  extractChildSlots,
-} from "./slot"
+export { resolveSlot, extractChildSlots } from "./slot"

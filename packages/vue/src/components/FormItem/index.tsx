@@ -31,7 +31,7 @@ import { useFormContext } from "@/hooks/useFormContext"
 import { useRendererContext } from "@/hooks/useRenderer"
 import {
   extractChildSlots,
-  resolveDynamicProp,
+  resolveDynamicPropBatch,
   resolveSlot,
   shouldValidateOn,
 } from "@/utils"
@@ -77,29 +77,39 @@ const FormItem = defineComponent({
 
     const rendererRegistry = useRendererContext()
     const formContext = useFormContext()
-    const baseColumn = props.schema as SchemaBase
-    const field = useField(baseColumn.name)
+    const baseSchema = props.schema as SchemaBase
+    const field = useField(baseSchema.name)
 
     const dependencies = computed<NamePath[]>(() => {
-      if (Object.hasOwn(baseColumn, "dependencies")) {
-        return Array.isArray(baseColumn.dependencies)
-          ? baseColumn.dependencies
-          : [baseColumn.dependencies]
+      if (Object.hasOwn(baseSchema, "dependencies") && baseSchema.dependencies != null) {
+        return Array.isArray(baseSchema.dependencies)
+          ? baseSchema.dependencies
+          : [baseSchema.dependencies]
       }
 
       return []
     })
 
-    const resolvedVisible = ref(false)
+    const resolvedVisible = ref(true)
     const resolvedReadonly = ref(false)
     const resolvedDisabled = ref(false)
     const resolvedRequired = ref(false)
     const resolvedPlaceholder = ref("")
     const resolvedComponentProps = ref<any>({})
 
+    // 创建 debounced 批量动态属性解析器
+    const resolveDynamicProps = resolveDynamicPropBatch<{
+      placeholder: string
+      componentProps: Record<string, unknown>
+      readonly: boolean
+      disabled: boolean
+      visible: boolean
+      required: boolean
+    }>()
+
     // 合并 trigger
     const trigger = mergeTrigger(
-      baseColumn.validationTrigger,
+      baseSchema.validationTrigger,
       formContext.validationTrigger,
       "onChange"
     )
@@ -107,33 +117,47 @@ const FormItem = defineComponent({
     // 使用 shallowRef + watchEffect 避免每次生成新对象引用
     const processedComponentProps = shallowRef<FormItemProps>({} as FormItemProps)
 
-    /** 值变化处理，设置值后根据触发时机决定是否校验 */
-    const handleChange = (v: unknown) => {
-      field.setValue(v)
-      if (shouldValidateOn("change", trigger)) {
-        field.validate()
-      }
-    }
-
-    /** 失焦处理，根据触发时机决定是否校验 */
-    const handleBlur = () => {
-      if (shouldValidateOn("blur", trigger)) {
-        field.validate()
-      }
-    }
-
     const formItemProps = computed<FormItemProps>(() => {
       return {
-        ...omit(baseColumn, ["componentProps"]),
-        name: baseColumn.name,
-        componentType: baseColumn.componentType,
-        class: classnames("schemx-item", baseColumn.className),
+        ...omit(baseSchema, ["componentProps"]),
+        name: baseSchema.name,
+        componentType: baseSchema.componentType,
+        class: classnames("schemx-item", baseSchema.className),
         required: resolvedRequired.value,
         readonly: resolvedReadonly.value,
         disabled: resolvedDisabled.value,
         visible: resolvedVisible.value,
       }
     })
+
+    /**
+     * 是否需要进行校验。
+     *
+     * 当字段不可见、只读或禁用时，无需进行校验。
+     *
+     * @returns boolean
+     */
+    const canVerified = computed(() => {
+      const isOperate =
+        resolvedVisible.value && !resolvedReadonly.value && !resolvedDisabled.value
+
+      return !!(isOperate && Object.hasOwn(baseSchema, "rules"))
+    })
+
+    /** 值变化处理，设置值后根据触发时机决定是否校验 */
+    const handleChange = (v: unknown) => {
+      field.setValue(v)
+      if (canVerified.value && shouldValidateOn("change", trigger)) {
+        field.validate()
+      }
+    }
+
+    /** 失焦处理，根据触发时机决定是否校验 */
+    const handleBlur = () => {
+      if (canVerified.value && shouldValidateOn("blur", trigger)) {
+        field.validate()
+      }
+    }
 
     watchEffect(() => {
       const next: FormItemProps = {
@@ -153,45 +177,45 @@ const FormItem = defineComponent({
       }
     })
 
-    // 解析所有的动态属性
+    // 解析所有的动态属性（debounced 批量解析，高频触发时只执行最后一次）
     useWatchFields(
       dependencies.value,
-      (payload, prevSnapshot, latestSnapshot) => {
-        resolveDynamicProp(
-          baseColumn.placeholder,
+      (_payload, latestSnapshot) => {
+        resolveDynamicProps(
+          {
+            placeholder: {
+              value: baseSchema.placeholder,
+              defaultValue: `${baseSchema.label}为必填项`,
+            },
+            componentProps: {
+              value: baseSchema.componentProps,
+              defaultValue: {},
+            },
+            readonly: {
+              value: baseSchema.readonly,
+              defaultValue: formContext.readonly as boolean,
+            },
+            disabled: {
+              value: baseSchema.disabled,
+              defaultValue: formContext.disabled as boolean,
+            },
+            visible: {
+              value: baseSchema.visible,
+              defaultValue: true,
+            },
+            required: {
+              value: baseSchema.required,
+              defaultValue: !!baseSchema.rules,
+            },
+          },
           latestSnapshot,
-          `${baseColumn.label}为必填项`
-        ).then((data) => {
-          resolvedPlaceholder.value = data
-        })
-
-        resolveDynamicProp(baseColumn.componentProps, latestSnapshot, {}).then((data) => {
-          resolvedComponentProps.value = data
-        })
-
-        resolveDynamicProp(
-          baseColumn.readonly,
-          latestSnapshot,
-          formContext.readonly as boolean
-        ).then((data) => {
-          resolvedReadonly.value = data
-        })
-
-        resolveDynamicProp(
-          baseColumn.disabled,
-          latestSnapshot,
-          formContext.disabled as boolean
-        ).then((data) => {
-          resolvedDisabled.value = data
-        })
-
-        resolveDynamicProp(baseColumn.visible, latestSnapshot, false).then((data) => {
-          resolvedVisible.value = data
-        })
-
-        resolveDynamicProp(baseColumn.required, latestSnapshot, !!baseColumn.rules).then(
-          (data) => {
-            resolvedRequired.value = data
+          (results) => {
+            resolvedPlaceholder.value = results.placeholder
+            resolvedComponentProps.value = results.componentProps
+            resolvedReadonly.value = results.readonly
+            resolvedDisabled.value = results.disabled
+            resolvedVisible.value = results.visible
+            resolvedRequired.value = results.required
           }
         )
       },
@@ -208,46 +232,39 @@ const FormItem = defineComponent({
      * 同时将 placeholder 作为 defaultMessage 传给 registerRule，
      * 用于空值拦截时的错误提示。
      *
-     * @param baseColumn - 字段基础配置
+     * @param baseSchema - 字段基础配置
      */
-    const extractAndRegisterRules = (baseColumn: SchemaBase) => {
-      if (!Object.hasOwn(baseColumn, "rules")) return
+    const extractAndRegisterRules = (baseSchema: SchemaBase) => {
+      if (!canVerified.value) return
 
       const defaultMessage =
         resolvedComponentProps.value?.placeholder || resolvedPlaceholder.value
 
-      if (baseColumn.rules) {
-        field.registerRules(baseColumn.rules, defaultMessage)
+      if (baseSchema.rules) {
+        field.registerRules(baseSchema.rules, defaultMessage)
       }
     }
 
     // 设置默认的必填rule
     watch(
-      [
-        resolvedVisible,
-        resolvedDisabled,
-        resolvedReadonly,
-        resolvedComponentProps,
-        resolvedPlaceholder,
-      ],
+      [canVerified, resolvedComponentProps, resolvedPlaceholder],
       () => {
-        if (resolvedVisible.value || resolvedReadonly.value || resolvedDisabled.value) {
+        if (!canVerified.value) {
           field.clearError()
           field.unregisterRules()
         } else {
-          extractAndRegisterRules(baseColumn)
+          extractAndRegisterRules(baseSchema)
         }
       },
       { immediate: true }
     )
 
     onMounted(() => {
-      if (Object.hasOwn(baseColumn, "initialValue")) {
-        field.setInitialValue(baseColumn.initialValue)
-        field.setValue(baseColumn.initialValue)
-      } else {
-        field.setInitialValue(undefined)
-      }
+      const value = Object.hasOwn(baseSchema, "initialValue")
+        ? baseSchema.initialValue
+        : undefined
+
+      field.setInitialValue(value)
     })
 
     /**
@@ -274,15 +291,15 @@ const FormItem = defineComponent({
      * @returns label VNode
      */
     const renderLabel = () => {
-      const labelSlot = resolveSlot(slots, `${baseColumn.name}Label`)
+      const labelSlot = resolveSlot(slots, `${baseSchema.name}Label`)
 
       if (labelSlot) {
         return labelSlot(formItemProps.value)
       }
 
-      const labelAlign = baseColumn.labelAlign || formContext.labelAlign
-      const labelWidth = baseColumn.labelWidth || formContext.labelWidth
-      const colon = baseColumn.colon ?? formContext.colon
+      const labelAlign = baseSchema.labelAlign || formContext.labelAlign
+      const labelWidth = baseSchema.labelWidth || formContext.labelWidth
+      const colon = baseSchema.colon ?? formContext.colon
 
       return (
         <label
@@ -291,7 +308,7 @@ const FormItem = defineComponent({
         >
           {renderRequired()}
           <span class="schemx-item__label-text">
-            {baseColumn.label}
+            {baseSchema.label}
             {colon ? ":" : ""}
           </span>
         </label>
@@ -308,19 +325,19 @@ const FormItem = defineComponent({
      * @returns content VNode
      */
     const renderContent = () => {
-      const component = rendererRegistry.getRenderer(baseColumn.componentType)
+      const component = rendererRegistry.getRenderer(baseSchema.componentType)
 
       if (!component) {
         throw new Error(
-          `[schemx] Can not find component renderer of "${baseColumn.componentType}".`
+          `[schemx] Can not find component renderer of "${baseSchema.componentType}".`
         )
       }
 
       // 提取子渲染器插槽（fieldName:slotName 格式）
-      const childSlots = extractChildSlots(String(baseColumn.name), slots)
+      const childSlots = extractChildSlots(baseSchema.name, slots)
       const columnElement = h(component, processedComponentProps.value, childSlots)
 
-      const contentSlot = resolveSlot(slots, `${baseColumn.name}Content`)
+      const contentSlot = resolveSlot(slots, `${baseSchema.name}Content`)
 
       if (contentSlot) {
         return contentSlot({
@@ -344,7 +361,7 @@ const FormItem = defineComponent({
      * @returns error VNode 或 null
      */
     const renderError = () => {
-      const errorSlot = resolveSlot(slots, `${baseColumn.name}Error`)
+      const errorSlot = resolveSlot(slots, `${baseSchema.name}Error`)
 
       if (errorSlot) {
         return errorSlot({
@@ -361,18 +378,18 @@ const FormItem = defineComponent({
     }
 
     return () => {
-      if (resolvedVisible.value) {
+      if (!resolvedVisible.value) {
         return null
       }
 
       // 整体插槽：完全接管渲染，不包裹任何默认结构
-      const itemSlot = resolveSlot(slots, String(baseColumn.name))
+      const itemSlot = resolveSlot(slots, baseSchema.name)
 
       if (itemSlot) {
         return itemSlot(formItemProps.value)
       }
 
-      const labelPosition = baseColumn.labelPosition || formContext.labelPosition
+      const labelPosition = baseSchema.labelPosition || formContext.labelPosition
 
       return (
         <div
@@ -385,7 +402,7 @@ const FormItem = defineComponent({
             class={classnames(
               "schemx-item",
               `schemx-item--label-${labelPosition}`,
-              baseColumn.className
+              baseSchema.className
             )}
           >
             {renderLabel()}

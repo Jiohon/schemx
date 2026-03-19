@@ -10,7 +10,7 @@
 import * as CSS from "csstype"
 
 import type { FormValues, NamePath, ValidationTrigger, Value } from "./form"
-import type { SchemxFormInstance } from "./form"
+import type { SchemxInstance } from "./form"
 import type { CustomRendererMap } from "./renderer"
 import type { Rules } from "./rule"
 import type { Dynamic } from "../utils/dynamic"
@@ -272,7 +272,7 @@ export interface SchemaDependencyField<T extends FormValues = FormValues> {
   /** 动态列配置生成函数 */
   renderer: (
     values: T,
-    form: SchemxFormInstance<T>
+    form: SchemxInstance<T>
   ) => SchemaField<T>[] | Promise<SchemaField<T>[]>
 }
 

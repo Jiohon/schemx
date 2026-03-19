@@ -11,12 +11,30 @@ export { default } from "./schemx"
 export { default as schemx } from "./schemx"
 
 /** Hooks */
-export * from "./hooks"
+export {
+  useForm,
+  useField,
+  useWatch,
+  useWatchField,
+  useWatchFields,
+  useWatchAll,
+  useDependency,
+  type UseDependencyReturn,
+  useDictOptions,
+  type DictOptionsAttrs,
+  type UseDictOptionsReturn,
+  type FormContextProps,
+  useFormContext,
+  createRenderer,
+  useRendererContext,
+  useRequester,
+} from "./hooks"
 export { FORM_CONTEXT_KEY } from "./hooks/useFormContext"
 
 /** 组件 */
 export { default as FormItem } from "./components/FormItem"
 export { default as FormDependency } from "./components/FormDependency"
+export { default as FormGroup } from "./components/FormGroup"
 
-/** 工具函数 */
-export { type DynamicProp, resolveDynamicProp, shouldValidateOn } from "./utils"
+/** schemx/core 导出 */
+export * from "@schemx/core"

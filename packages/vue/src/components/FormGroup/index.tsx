@@ -82,7 +82,7 @@ const FormGroup = defineComponent({
           <div class="schemx-group__body">
             {props.children.map((schema, index) => {
               const key = isBaseSchema(schema)
-                ? `${String(schema.name)}-${index}`
+                ? `${schema.name}-${index}`
                 : `group-${index}`
 
               return <FormItem key={key} schema={schema} v-slots={slots} />

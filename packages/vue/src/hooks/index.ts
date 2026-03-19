@@ -30,4 +30,4 @@ export { type FormContextProps, useFormContext } from "./useFormContext"
 export { createRenderer, useRendererContext } from "./useRenderer"
 
 /** useRequester - 三级优先级请求器解析 */
-export { resolveRequester, useRequester } from "./useRequester"
+export { useRequester } from "./useRequester"

@@ -29,7 +29,7 @@ type BaseNamePath = string | number | boolean | (string | number | boolean)[]
  * }
  *
  * // 合法路径：'user' | ['user', 'name'] | ['user', 'address'] | ['user', 'address', 'city'] | 'tags' | ['tags', number]
- * type Path = DeepNamePath<FormData>
+ * type Path = DeepNamePathArray<FormData>
  * ```
  *
  * @remarks
@@ -38,7 +38,7 @@ type BaseNamePath = string | number | boolean | (string | number | boolean)[]
  * - 数组类型的子路径使用 `number` 作为索引
  * - 函数类型的属性会被排除
  */
-export type DeepNamePath<
+export type DeepNamePathArray<
   Store = any,
   ParentNamePath extends any[] = [],
 > = ParentNamePath["length"] extends 5
@@ -54,7 +54,7 @@ export type DeepNamePath<
       ? // 数组路径：如 { a: { b: string }[] }
           // 推导出：[a] | [a, number] | [a, number, b]
           | [...ParentNamePath, number]
-          | DeepNamePath<Store[number], [...ParentNamePath, number]>
+          | DeepNamePathArray<Store[number], [...ParentNamePath, number]>
       : keyof Store extends never // unknown 类型兜底
         ? Store
         : {
@@ -65,5 +65,68 @@ export type DeepNamePath<
               :
                   | (ParentNamePath["length"] extends 0 ? FieldKey : never) // 顶层允许单独使用 key
                   | [...ParentNamePath, FieldKey] // 拼接父级路径
-                  | DeepNamePath<Required<Store>[FieldKey], [...ParentNamePath, FieldKey]> // 递归子属性
+                  | DeepNamePathArray<
+                      Required<Store>[FieldKey],
+                      [...ParentNamePath, FieldKey]
+                    > // 递归子属性
           }[keyof Store]
+
+/**
+ * 点号分隔的深层路径字符串类型推导。
+ *
+ * 根据 Store 类型递归推导所有合法的点号分隔字段路径字符串，
+ * 支持嵌套对象、数组索引，最大递归深度为 5 层。
+ *
+ * @typeParam Store - 表单数据类型
+ * @typeParam Prefix - 当前路径前缀，由递归自动生成，无需手动传入
+ * @typeParam Depth - 递归深度计数元组，由递归自动生成，无需手动传入
+ *
+ * @example
+ * ```ts
+ * interface FormData {
+ *   user: {
+ *     name: string
+ *     address: { city: string }
+ *   }
+ *   tags: string[]
+ * }
+ *
+ * // 合法路径：'user' | 'user.name' | 'user.address' | 'user.address.city' | 'tags' | `tags.${number}`
+ * type Path = DeepNamePath<FormData>
+ * ```
+ *
+ * @remarks
+ * - 递归深度限制为 5 层，超出后返回 `never`
+ * - 使用点号（`.`）连接各层路径
+ * - 数组类型的子路径使用 `${number}` 作为索引（如 `tags.0`）
+ * - 函数类型的属性会被排除
+ */
+export type DeepNamePath<
+  Store = any,
+  Prefix extends string = "",
+  Depth extends any[] = [],
+> = Depth["length"] extends 5
+  ? never
+  : Store extends any[]
+    ? // 数组路径：拼接数字索引并递归元素类型
+        | (Prefix extends "" ? `${number}` : `${Prefix}.${number}`)
+        | DeepNamePath<
+            Store[number],
+            Prefix extends "" ? `${number}` : `${Prefix}.${number}`,
+            [...Depth, 1]
+          >
+    : Store extends object
+      ? {
+          // eslint-disable-next-line @typescript-eslint/ban-types
+          [K in keyof Store & string]: Store[K] extends Function
+            ? never // 排除函数类型属性
+            : // 当前 key 路径
+                | (Prefix extends "" ? K : `${Prefix}.${K}`)
+                // 递归子属性
+                | DeepNamePath<
+                    Required<Store>[K],
+                    Prefix extends "" ? K : `${Prefix}.${K}`,
+                    [...Depth, 1]
+                  >
+        }[keyof Store & string]
+      : never

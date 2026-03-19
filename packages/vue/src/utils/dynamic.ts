@@ -4,10 +4,16 @@
  * 支持将函数类型或静态值统一解析为最终属性值，
  * 用于 schemx 列配置中的动态属性（如 disabled、visible、placeholder 等）。
  *
+ * 提供两个核心函数：
+ * - {@link resolveDynamicProp} — 解析单个动态属性
+ * - {@link resolveDynamicPropBatch} — 创建 debounced 批量解析器，合并高频调用
+ *
  * @module utils/dynamic
  */
 
-import type { FormValues } from "../types"
+import { debounce } from "es-toolkit"
+
+import type { FormValues } from "@schemx/core"
 
 /**
  * 动态属性类型
@@ -28,6 +34,29 @@ import type { FormValues } from "../types"
 export type DynamicProp<T, V extends FormValues = FormValues> =
   | ((values: V) => T | Promise<T>)
   | T
+
+/**
+ * 批量解析的单个属性条目
+ *
+ * @typeParam T - 属性值类型
+ */
+export interface DynamicPropEntry<T> {
+  /** 动态属性值（函数、静态值、null 或 undefined） */
+  value: DynamicProp<T> | undefined | null
+  /** 默认值，当 value 为空或函数返回 nullish 时使用 */
+  defaultValue: T
+}
+
+/**
+ * 批量解析的属性条目映射表类型
+ *
+ * 将属性名映射到对应的 {@link DynamicPropEntry}。
+ *
+ * @typeParam M - 属性名到值类型的映射
+ */
+type DynamicPropEntries<M extends Record<string, unknown>> = {
+  [K in keyof M]: DynamicPropEntry<M[K]>
+}
 
 /**
  * 解析泛型动态属性
@@ -74,11 +103,93 @@ export async function resolveDynamicProp<T>(
 
       return result ?? defaultValue
     } catch (error) {
-      console.error("[SchemaRenderer] Error evaluating dynamic prop:", error)
+      console.error("[schemx] 解析动态属性时发生错误:", error)
 
       return defaultValue
     }
   }
 
   return value
+}
+
+/**
+ * 创建 debounced 批量动态属性解析器
+ *
+ * 返回一个函数，每次调用时传入属性配置映射表、表单值和回调。
+ * 高频调用时只保留最后一次的参数，debounce 窗口结束后一次性
+ * 通过 `Promise.all` 并行解析所有属性，将结果通过回调分发。
+ *
+ * @typeParam M - 属性名到值类型的映射
+ *
+ * @param wait - debounce 等待时间（毫秒），默认 16ms（约一帧）
+ *
+ * @returns debounced 批量解析函数
+ *
+ * @example
+ * ```typescript
+ * const resolve = resolveDynamicPropBatch<{
+ *   visible: boolean
+ *   disabled: boolean
+ *   placeholder: string
+ * }>()
+ *
+ * // 在 watch 回调中调用，高频触发时只执行最后一次
+ * resolve(
+ *   {
+ *     visible:     { value: schema.visible, defaultValue: true },
+ *     disabled:    { value: schema.disabled, defaultValue: false },
+ *     placeholder: { value: schema.placeholder, defaultValue: '' },
+ *   },
+ *   latestSnapshot,
+ *   (results) => {
+ *     resolvedVisible.value = results.visible
+ *     resolvedDisabled.value = results.disabled
+ *     resolvedPlaceholder.value = results.placeholder
+ *   }
+ * )
+ * ```
+ *
+ * @remarks
+ * 内部使用 es-toolkit 的 debounce 实现调用合并。
+ * 适用于 signal effect / watch 回调中批量解析动态属性的场景，
+ * 避免多个字段同时变化时重复解析。
+ */
+export function resolveDynamicPropBatch<M extends Record<string, unknown>>(
+  wait = 16
+): (
+  entries: DynamicPropEntries<M>,
+  formValues: FormValues,
+  callback: (results: M) => void
+) => void {
+  let pending: {
+    entries: DynamicPropEntries<M>
+    formValues: FormValues
+    callback: (results: M) => void
+  } | null = null
+
+  const flush = debounce(async () => {
+    if (!pending) return
+
+    const { entries, formValues, callback } = pending
+    pending = null
+
+    const keys = Object.keys(entries) as (keyof M & string)[]
+    const promises = keys.map((key) =>
+      resolveDynamicProp(entries[key].value, formValues, entries[key].defaultValue)
+    )
+
+    const values = await Promise.all(promises)
+
+    const results = {} as M
+    keys.forEach((key, i) => {
+      ;(results as any)[key] = values[i]
+    })
+
+    callback(results)
+  }, wait)
+
+  return (entries, formValues, callback) => {
+    pending = { entries, formValues, callback }
+    flush()
+  }
 }

@@ -223,11 +223,11 @@ export function collectObjectPaths(obj: Record<string, any>, prefix = ""): NameP
  * // => ['matrix[0][0]', 'matrix[0][1]', 'matrix[1][0]']
  * ```
  */
-export function collectObjectPathsByLeaf(
+export function collectObjectPathsByLeaf<T extends NamePath>(
   obj: Record<string, any>,
   prefix = ""
-): NamePath[] {
-  const paths: NamePath[] = []
+): T[] {
+  const paths: T[] = []
 
   for (const key of Object.keys(obj)) {
     const path = prefix ? `${prefix}.${key}` : key
@@ -235,17 +235,17 @@ export function collectObjectPathsByLeaf(
 
     if (Array.isArray(value)) {
       value.forEach((item, index) => {
-        const itemPath = `${path}[${index}]`
+        const itemPath = `${path}[${index}]` as T
         if (item !== null && typeof item === "object") {
-          paths.push(...collectObjectPathsByLeaf(item, itemPath))
+          paths.push(...(collectObjectPathsByLeaf(item, itemPath) as T[]))
         } else {
           paths.push(itemPath)
         }
       })
     } else if (value !== null && typeof value === "object") {
-      paths.push(...collectObjectPathsByLeaf(value, path))
+      paths.push(...(collectObjectPathsByLeaf(value, path) as T[]))
     } else {
-      paths.push(path)
+      paths.push(path as T)
     }
   }
 
