@@ -33,14 +33,14 @@
   import schemx from "@schemx/vue"
   import { z } from "zod"
 
-  import type { SchemaField, SchemxInstance } from "@schemx/vue"
+  import type { SchemxField, SchemxInstance } from "@schemx/vue"
 
   const formRef = ref<SchemxInstance>()
   const formData = ref<Record<string, any>>({
     orderType: "standard",
   })
 
-  const schemas: SchemaField[] = [
+  const schemas: SchemxField[] = [
     {
       name: "orderType",
       label: "订单类型",

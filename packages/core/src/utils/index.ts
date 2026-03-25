@@ -14,7 +14,13 @@ export { type Dynamic, resolveDynamicProp } from "./dynamic"
 export { shouldValidateOn } from "./validation"
 
 /** 路径工具 */
-export { getByPath, setByPath, collectObjectPaths, pickByPaths } from "./path"
+export {
+  getByPath,
+  setByPath,
+  collectObjectPaths,
+  collectObjectPathsByLeaf,
+  pickByPaths,
+} from "./path"
 
 /** 异步工具 */
 export { withLock } from "./async"
@@ -27,7 +33,7 @@ export {
   createBatchScheduler,
   type BatchScheduler,
   type BatchSchedulerOptions,
-} from "./batchScheduler"
+} from "../scheduler"
 
 /** 命名转换工具 */
 export {

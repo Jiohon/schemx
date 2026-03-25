@@ -1,7 +1,7 @@
 /**
  * core 模块统一导出
  *
- * 聚合 FormStore、Validator、RendererRegistry、SchemaRegistry 四个核心模块的公开 API。
+ * 聚合 FormStore、Validator、RendererRegistry、RulesRegistry 四个核心模块的公开 API。
  *
  * @module core
  */
@@ -15,7 +15,7 @@ export {
 } from "./store"
 
 // SignalMap - 响应式键值存储
-export { SignalMap } from "./signalMap"
+export { SignalMap } from "./signal"
 
 // Validator - 校验
 export {
@@ -35,10 +35,18 @@ export {
   defineRenderers,
   type RegistryOptions,
   type RendererMap,
-} from "./rendererRegistry"
+} from "./registry/rendererRegistry"
 
 // createFormInstance - 表单实例工厂
 export { createFormInstance, type CreateFormInstanceOptions } from "./createForm"
+
+// createEffect - 底层通用 Signal effect
+export {
+  createEffect,
+  type CleanupFn,
+  type EffectCallback,
+  type CreateEffectReturn,
+} from "./createEffect"
 
 // createWatch - 纯函数版本的字段监听
 export {
@@ -48,7 +56,7 @@ export {
   type WatchFieldCallback,
   type WatchFieldsCallback,
   type WatchAllCallback,
-  type useWatchOptions,
+  type CreateWatchOptions,
   type CreateWatchReturn,
 } from "./createWatch"
 
@@ -63,27 +71,26 @@ export {
   type RuleFactory,
   type RuleEntry,
   type RuleEntryMap,
-} from "./rulesRegistry"
-
-// requestProvider - 全局请求器管理与解析
-export {
-  _setGlobalRequest,
-  _getGlobalRequest,
-  _clearGlobalRequest,
-  resolveRequester,
-  type RequestFn,
-  type HasRequest,
-} from "./requestProvider"
+} from "./registry/rulesRegistry"
 
 // Utils - 工具函数
-export { isBaseSchema, isGroupSchema, isDependencySchema } from "./utils"
+export {
+  isBaseSchema,
+  isGroupSchema,
+  isDependencySchema,
+  getByPath,
+  setByPath,
+  collectObjectPaths,
+  collectObjectPathsByLeaf,
+  pickByPaths,
+} from "./utils"
 
 // BatchScheduler - 批量调度器
 export {
   createBatchScheduler,
   type BatchScheduler,
   type BatchSchedulerOptions,
-} from "./utils/batchScheduler"
+} from "./scheduler"
 
 // Types - 类型定义
 export type {
@@ -96,16 +103,17 @@ export type {
   GlobalContext,
   CustomRules,
   BuiltinRules,
-  Rules,
+  SchemxRules,
   RendererType,
-  CustomRendererMap,
+  CustomRenderer,
+  CustomField,
   BaseComponentProps,
   ComponentProps,
   SchemaBase,
-  SchemaGroupField,
-  SchemaDependencyField,
-  SchemaBaseField,
-  SchemaField,
+  SchemxGroupField,
+  SchemxDependencyField,
+  SchemxBaseField,
+  SchemxField,
   FormItemProps,
   DeepNamePath,
   DeepReadonly,

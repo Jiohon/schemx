@@ -33,7 +33,7 @@
 .schemx-item {
   display: flex;
   align-items: flex-start;
-  padding: var(--schemx-padding-xs) var(--schemx-padding-sm);
+  padding: var(--schemx-padding-sm) var(--schemx-padding-sm);
   line-height: var(--schemx-item-line-height);
 }
 
@@ -42,6 +42,7 @@
  */
 .schemx-item--label-left {
   flex-direction: row;
+  align-items: center;
 }
 
 /**

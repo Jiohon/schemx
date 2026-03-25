@@ -167,27 +167,31 @@ export function isChildPath(path: string, candidate: string): boolean {
  * // => ['tags', 'tags[0]', 'tags[1]']
  * ```
  */
-export function collectObjectPaths(obj: Record<string, any>, prefix = ""): NamePath[] {
-  const paths: NamePath[] = []
+export function collectObjectPaths<T extends NamePath>(
+  obj: Record<string, any>,
+  prefix = ""
+): T[] {
+  const paths: T[] = []
 
   for (const key of Object.keys(obj)) {
-    const path = prefix ? `${prefix}.${key}` : key
+    const path = (prefix ? `${prefix}.${key}` : key) as T
     const value = obj[key]
 
     if (Array.isArray(value)) {
       paths.push(path)
+
       value.forEach((item, index) => {
         const itemPath = `${path}[${index}]`
         if (item !== null && typeof item === "object") {
-          paths.push(itemPath)
-          paths.push(...collectObjectPaths(item, itemPath))
+          paths.push(itemPath as T)
+          paths.push(...(collectObjectPaths(item, itemPath) as T[]))
         } else {
-          paths.push(itemPath)
+          paths.push(itemPath as T)
         }
       })
     } else if (value !== null && typeof value === "object") {
       paths.push(path)
-      paths.push(...collectObjectPaths(value, path))
+      paths.push(...(collectObjectPaths(value, path) as T[]))
     } else {
       paths.push(path)
     }

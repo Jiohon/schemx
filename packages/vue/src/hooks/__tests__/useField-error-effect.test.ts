@@ -8,13 +8,14 @@
  * 测试通过 defineComponent + mount 模拟真实 Vue 组件环境，
  * 使用 provide/inject 注入 SchemxInstance。
  */
-import { describe, it, expect } from "vitest"
 import { defineComponent, h, nextTick } from "vue"
-import { mount } from "@vue/test-utils"
-import { createFormInstance } from "@schemx/core"
 
-import { FORM_INSTANCE_KEY } from "../useForm"
+import { createFormInstance } from "@schemx/core"
+import { mount } from "@vue/test-utils"
+import { describe, expect, it } from "vitest"
+
 import { useField } from "../useField"
+import { FORM_INSTANCE_KEY } from "../useForm"
 
 import type { SchemxInstance } from "@schemx/core"
 

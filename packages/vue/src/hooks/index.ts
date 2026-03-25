@@ -13,21 +13,21 @@ export { useField } from "./useField"
 /** useWatch - 字段变化监听 */
 export { useWatch, useWatchField, useWatchFields, useWatchAll } from "./useWatch"
 
+/** useEffect - 通用 Signal effect */
+export { useEffect } from "./useEffect"
+
 /** useDependency - 依赖字段动态渲染 */
 export { useDependency, type UseDependencyReturn } from "./useDependency"
 
-/** useDictOptions - 远程字典选项加载 */
+/** useDictionary - 远程字典选项加载 */
 export {
-  useDictOptions,
-  type DictOptionsAttrs,
+  useDictionary,
+  type UseDictionaryOptions,
   type UseDictOptionsReturn,
-} from "./useDictOptions"
+} from "./useDictionary"
 
-/** useFormContext - 表单上下文注入与消费 */
-export { type FormContextProps, useFormContext } from "./useFormContext"
+/** useContext - 表单上下文注入与消费 */
+export { type FormContextProps, useContext } from "./useContext"
 
 /** useRenderer - 渲染器注册中心 */
 export { createRenderer, useRendererContext } from "./useRenderer"
-
-/** useRequester - 三级优先级请求器解析 */
-export { useRequester } from "./useRequester"

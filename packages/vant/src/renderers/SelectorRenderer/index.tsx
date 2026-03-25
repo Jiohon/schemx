@@ -1,6 +1,6 @@
 import { computed, defineComponent, PropType, SetupContext } from "vue"
 
-import { useDictOptions } from "@schemx/vue"
+import { useDictionary } from "@schemx/vue"
 import classNames from "classnames"
 
 import { getFieldProps } from "@/utils"
@@ -86,7 +86,7 @@ const SelectorRendererComponent = defineComponent({
     },
   },
   setup(props, { attrs }: SetupContext) {
-    const { remoteOptions } = useDictOptions(attrs as Record<string, any>)
+    const { list } = useDictionary(attrs as Record<string, any>)
 
     const labelName = computed(() => props.fieldNames?.label || "label")
     const valueName = computed(() => props.fieldNames?.value || "value")
@@ -98,8 +98,8 @@ const SelectorRendererComponent = defineComponent({
      * 数据源
      */
     const schemas = computed(() => {
-      if (Array.isArray(remoteOptions.value) && remoteOptions.value?.length > 0) {
-        return remoteOptions.value
+      if (Array.isArray(list.value) && list.value?.length > 0) {
+        return list.value
       }
 
       if (Array.isArray(props.options) && props.options?.length > 0) {

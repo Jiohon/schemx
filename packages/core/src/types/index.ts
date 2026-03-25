@@ -12,20 +12,21 @@ export type {
   ValidationTrigger,
   SchemxInstance,
 } from "./form"
-export type { CustomRules, BuiltinRules, Rules } from "./rule"
+export type { CustomRules, BuiltinRules, SchemxRules } from "./rule"
 
 /** 渲染器类型 */
-export type { RendererType, CustomRendererMap } from "./renderer"
+export type { RendererType, CustomRenderer } from "./renderer"
 
 /** Schema 列配置类型 */
 export type {
   BaseComponentProps,
   ComponentProps,
+  CustomField,
   SchemaBase,
-  SchemaGroupField,
-  SchemaDependencyField,
-  SchemaBaseField,
-  SchemaField,
+  SchemxGroupField,
+  SchemxDependencyField,
+  SchemxBaseField,
+  SchemxField,
   FormItemProps,
 } from "./schema"
 

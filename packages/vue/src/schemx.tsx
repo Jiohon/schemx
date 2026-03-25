@@ -10,16 +10,18 @@ import { App, CSSProperties, defineComponent, PropType } from "vue"
 
 import { rendererRegistry } from "@schemx/core"
 import { isBaseSchema } from "@schemx/core"
-import { _clearGlobalRequest, _setGlobalRequest } from "@schemx/core"
 import classnames from "classnames"
+import { omit } from "es-toolkit"
+
+import type { SchemxFormProps } from "@/types/form"
+import { requestProvider } from "@/utils/requestProvider"
 
 import FormItem from "./components/FormItem"
+import { createContext } from "./hooks/useContext"
 import { useForm } from "./hooks/useForm"
-import { createFormContext } from "./hooks/useFormContext"
 import { createRenderer } from "./hooks/useRenderer"
 import { collectObjectPathsByLeaf } from "./utils/path"
 
-import type { SchemxProps } from "@schemx/core"
 import type { RendererRegistry } from "@schemx/core"
 
 import "./styles/index.css"
@@ -30,76 +32,76 @@ import "./styles/index.css"
  * 基于 Schema 配置驱动的表单，内部通过 useForm 管理状态，
  * 并自动向子组件提供 FormContext。
  */
-const SchemxForm = defineComponent<SchemxProps>({
+const SchemxForm = defineComponent<SchemxFormProps>({
   name: "SchemxForm",
 
   props: {
     modelValue: {
-      type: Object as PropType<SchemxProps["modelValue"]>,
+      type: Object as PropType<SchemxFormProps["modelValue"]>,
       default: () => ({}),
     },
     initialValues: {
-      type: Object as PropType<SchemxProps["initialValues"]>,
+      type: Object as PropType<SchemxFormProps["initialValues"]>,
       default: () => ({}),
     },
     validationTrigger: {
-      type: String as PropType<SchemxProps["validationTrigger"]>,
+      type: String as PropType<SchemxFormProps["validationTrigger"]>,
       default: "onBlur",
     },
     form: {
-      type: Object as PropType<SchemxProps["form"]>,
+      type: Object as PropType<SchemxFormProps["form"]>,
       default: undefined,
     },
     schemas: {
-      type: Array as PropType<SchemxProps["schemas"]>,
+      type: Array as PropType<SchemxFormProps["schemas"]>,
       default: () => [],
     },
     readonly: {
-      type: Boolean as PropType<SchemxProps["readonly"]>,
+      type: Boolean as PropType<SchemxFormProps["readonly"]>,
       default: false,
     },
     disabled: {
-      type: Boolean as PropType<SchemxProps["disabled"]>,
+      type: Boolean as PropType<SchemxFormProps["disabled"]>,
       default: false,
     },
     labelWidth: {
-      type: String as PropType<SchemxProps["labelWidth"]>,
+      type: String as PropType<SchemxFormProps["labelWidth"]>,
       default: "auto",
     },
     labelAlign: {
-      type: String as PropType<SchemxProps["labelAlign"]>,
+      type: String as PropType<SchemxFormProps["labelAlign"]>,
       default: "right",
     },
     labelPosition: {
-      type: String as PropType<SchemxProps["labelPosition"]>,
+      type: String as PropType<SchemxFormProps["labelPosition"]>,
       default: "left",
     },
     colon: {
-      type: Boolean as PropType<SchemxProps["colon"]>,
+      type: Boolean as PropType<SchemxFormProps["colon"]>,
       default: true,
     },
     className: {
-      type: String as PropType<SchemxProps["className"]>,
+      type: String as PropType<SchemxFormProps["className"]>,
       default: "",
     },
     style: {
-      type: Object as PropType<SchemxProps["style"]>,
+      type: Object as PropType<SchemxFormProps["style"]>,
       default: () => ({}),
     },
     onFinish: {
-      type: Function as PropType<SchemxProps["onFinish"]>,
+      type: Function as PropType<SchemxFormProps["onFinish"]>,
       default: null,
     },
     onFinishFailed: {
-      type: Function as PropType<SchemxProps["onFinishFailed"]>,
+      type: Function as PropType<SchemxFormProps["onFinishFailed"]>,
       default: null,
     },
     onValuesChange: {
-      type: Function as PropType<SchemxProps["onValuesChange"]>,
+      type: Function as PropType<SchemxFormProps["onValuesChange"]>,
       default: null,
     },
     onFieldsChange: {
-      type: Function as PropType<SchemxProps["onFieldsChange"]>,
+      type: Function as PropType<SchemxFormProps["onFieldsChange"]>,
       default: null,
     },
     rendererRegistry: {
@@ -107,7 +109,7 @@ const SchemxForm = defineComponent<SchemxProps>({
       default: undefined,
     },
     request: {
-      type: Function as PropType<SchemxProps["request"]>,
+      type: Function as PropType<SchemxFormProps["request"]>,
       default: undefined,
     },
   },
@@ -120,19 +122,17 @@ const SchemxForm = defineComponent<SchemxProps>({
      *
      * 为子组件提供表单配置信息。
      */
-    createFormContext({
-      validationTrigger: props.validationTrigger,
-      schemas: props.schemas,
-      readonly: props.readonly,
-      disabled: props.disabled,
-      labelAlign: props.labelAlign,
-      labelPosition: props.labelPosition,
-      labelWidth: props.labelWidth,
-      colon: props.colon,
-      className: props.className,
-      style: props.style,
-      request: props.request,
-    })
+    createContext(
+      omit(props, [
+        "modelValue",
+        "form",
+        "rendererRegistry",
+        "onFinish",
+        "onFinishFailed",
+        "onValuesChange",
+        "onFieldsChange",
+      ])
+    )
 
     /**
      * 获取或创建表单实例
@@ -238,8 +238,8 @@ Object.assign(SchemxForm, {
     app.component("SchemxForm", SchemxForm)
   },
   FormItem,
-  registerRequest: _setGlobalRequest,
-  clearRequest: _clearGlobalRequest,
+  registerRequest: requestProvider.register,
+  clearRequest: requestProvider.clear,
 })
 
 export default SchemxForm as SchemxFormType

@@ -9,11 +9,11 @@
 import * as CSS from "csstype"
 
 import { DeepNamePath } from "./namePathType"
-import { Rules } from "./rule"
+import { SchemxRules } from "./rule"
 
 import type { DeepReadonly } from "./readonly"
-import type { SchemaField } from "./schema"
-import type { RendererRegistry } from "../rendererRegistry"
+import type { SchemxField } from "./schema"
+import type { RendererRegistry } from "../registry/rendererRegistry"
 import type { ValidateResult } from "../validator"
 import type { ValidateError } from "../validator"
 
@@ -56,7 +56,7 @@ export interface SchemxProps<T extends FormValues = FormValues> {
   /** 初始值 */
   initialValues?: T
   /** 表单字段配置 */
-  schemas: SchemaField[]
+  schemas: SchemxField[]
   /** 表单实例 */
   form?: SchemxInstance
   /** 渲染器注册实例 */
@@ -94,8 +94,6 @@ export interface SchemxProps<T extends FormValues = FormValues> {
   ) => void
   /** 字段更新时触发的回调 */
   onFieldsChange?: (changedFields: NamePath<T>[], allFields: NamePath<T>[]) => void
-  /** 全局 HTTP 请求器，作为该表单实例内所有 useDictOptions 的默认请求器 */
-  request?: (url: string) => Promise<any>
 }
 
 /**
@@ -241,7 +239,7 @@ export interface SchemxInstance<T extends FormValues = FormValues> {
    * 注册字段校验规则
    *
    * @param name - 字段路径
-   * @param rules - Rules 校验规则
+   * @param rules - SchemxRules 校验规则
    * @param defaultMessage - 可选，空值时的默认错误提示
    *
    * @example
@@ -253,7 +251,7 @@ export interface SchemxInstance<T extends FormValues = FormValues> {
    */
   registerRules: (
     name: NamePath<T>,
-    rules: Rules | Rules[],
+    rules: SchemxRules | SchemxRules[],
     defaultMessage?: string
   ) => void
 

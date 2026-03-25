@@ -14,7 +14,7 @@ import classnames from "classnames"
 
 import FormItem from "../FormItem"
 
-import type { SchemaGroupField } from "@schemx/core"
+import type { SchemxGroupField } from "@schemx/core"
 
 const FormGroup = defineComponent({
   name: "SchemxGroup",
@@ -25,7 +25,7 @@ const FormGroup = defineComponent({
       default: undefined,
     },
     children: {
-      type: Array as PropType<SchemaGroupField["children"]>,
+      type: Array as PropType<SchemxGroupField["children"]>,
       required: true,
     },
     collapsible: {

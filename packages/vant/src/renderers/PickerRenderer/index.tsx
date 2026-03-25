@@ -2,7 +2,7 @@ import { computed, defineComponent, PropType, ref, SetupContext, watchEffect } f
 
 import { Field, Picker, Popup } from "vant"
 
-import { useDictOptions } from "@schemx/vue"
+import { useDictionary } from "@schemx/vue"
 import classNames from "classnames"
 
 import { findTreeItem, getFieldProps } from "@/utils"
@@ -110,7 +110,7 @@ const PickerRendererComponent = defineComponent({
     },
   },
   setup(props, { attrs, slots }: SetupContext) {
-    const { remoteOptions } = useDictOptions(attrs as Record<string, any>)
+    const { list } = useDictionary(attrs as Record<string, any>)
 
     const showPicker = ref(false)
 
@@ -130,8 +130,8 @@ const PickerRendererComponent = defineComponent({
      * 数据源
      */
     const schemas = computed(() => {
-      if (Array.isArray(remoteOptions.value) && remoteOptions.value?.length > 0) {
-        return remoteOptions.value
+      if (Array.isArray(list.value) && list.value?.length > 0) {
+        return list.value
       }
 
       if (Array.isArray(props.options) && props.options?.length > 0) {

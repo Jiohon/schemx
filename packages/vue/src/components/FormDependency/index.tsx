@@ -11,18 +11,18 @@ import { defineComponent, PropType } from "vue"
 
 import { isBaseSchema } from "@schemx/core"
 
-import { useDependency } from "@/hooks"
+import { useDependency } from "@/hooks/useDependency"
 
 import FormItem from "../FormItem"
 
-import type { SchemaDependencyField } from "@schemx/core"
+import type { SchemxDependencyField } from "@schemx/core"
 
 /**
  * FormDependency Props 接口
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface FormDependencyProps extends Omit<
-  SchemaDependencyField,
+  SchemxDependencyField,
   "componentType"
 > {}
 
@@ -47,11 +47,11 @@ const FormDependency = defineComponent({
 
   props: {
     to: {
-      type: Array as PropType<SchemaDependencyField["to"]>,
+      type: Array as PropType<SchemxDependencyField["to"]>,
       required: true,
     },
     renderer: {
-      type: Function as PropType<SchemaDependencyField["renderer"]>,
+      type: Function as PropType<SchemxDependencyField["renderer"]>,
       required: true,
     },
   },

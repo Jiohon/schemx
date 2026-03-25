@@ -20,16 +20,16 @@ export {
   useWatchAll,
   useDependency,
   type UseDependencyReturn,
-  useDictOptions,
-  type DictOptionsAttrs,
+  useDictionary,
+  type UseDictionaryOptions,
   type UseDictOptionsReturn,
   type FormContextProps,
-  useFormContext,
+  useContext,
   createRenderer,
   useRendererContext,
-  useRequester,
-} from "./hooks"
-export { FORM_CONTEXT_KEY } from "./hooks/useFormContext"
+} from "./hooks/useWatch"
+export { useEffect } from "./hooks/useEffect"
+export { FORM_CONTEXT_KEY } from "./hooks/useContext"
 
 /** 组件 */
 export { default as FormItem } from "./components/FormItem"

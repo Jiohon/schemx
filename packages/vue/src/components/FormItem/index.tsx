@@ -25,10 +25,11 @@ import { isDependencySchema, isGroupSchema } from "@schemx/core"
 import classnames from "classnames"
 import { omit } from "es-toolkit"
 
-import { useWatchFields } from "@/hooks"
+import { useDictionary } from "@/hooks"
+import { useContext } from "@/hooks/useContext"
 import { useField } from "@/hooks/useField"
-import { useFormContext } from "@/hooks/useFormContext"
 import { useRendererContext } from "@/hooks/useRenderer"
+import { useWatchFields } from "@/hooks/useWatch"
 import {
   extractChildSlots,
   resolveDynamicPropBatch,
@@ -41,14 +42,14 @@ import { mergeTrigger } from "@/utils/validation"
 import FormDependency from "../FormDependency"
 import FormGroup from "../FormGroup"
 
-import type { FormItemProps, NamePath, SchemaBase, SchemaField } from "@schemx/core"
+import type { FormItemProps, NamePath, SchemaBase, SchemxField } from "@schemx/core"
 
 const FormItem = defineComponent({
   name: "SchemxItem",
 
   props: {
     schema: {
-      type: Object as PropType<SchemaField>,
+      type: Object as PropType<SchemxField>,
       required: true,
     },
   },
@@ -76,7 +77,7 @@ const FormItem = defineComponent({
     }
 
     const rendererRegistry = useRendererContext()
-    const formContext = useFormContext()
+    const formContext = useContext()
     const baseSchema = props.schema as SchemaBase
     const field = useField(baseSchema.name)
 
@@ -96,6 +97,8 @@ const FormItem = defineComponent({
     const resolvedRequired = ref(false)
     const resolvedPlaceholder = ref("")
     const resolvedComponentProps = ref<any>({})
+
+    const { list } = useDictionary(baseSchema.dict)
 
     // 创建 debounced 批量动态属性解析器
     const resolveDynamicProps = resolveDynamicPropBatch<{
@@ -193,11 +196,11 @@ const FormItem = defineComponent({
             },
             readonly: {
               value: baseSchema.readonly,
-              defaultValue: formContext.readonly as boolean,
+              defaultValue: formContext.readonly ?? false,
             },
             disabled: {
               value: baseSchema.disabled,
-              defaultValue: formContext.disabled as boolean,
+              defaultValue: formContext.disabled ?? false,
             },
             visible: {
               value: baseSchema.visible,

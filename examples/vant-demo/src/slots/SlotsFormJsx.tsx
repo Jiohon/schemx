@@ -12,10 +12,10 @@ import "./slots.css"
 import schemx from "@schemx/vue"
 import { z } from "zod"
 
-import type { SchemaField, SchemxInstance } from "@schemx/vue"
+import type { SchemxField, SchemxInstance } from "@schemx/vue"
 
 /** 表单列配置 */
-const schemas: SchemaField[] = [
+const schemas: SchemxField[] = [
   // 普通字段（无插槽，作为对比）
   {
     name: "age",

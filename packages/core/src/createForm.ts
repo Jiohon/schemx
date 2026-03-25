@@ -26,31 +26,31 @@ import {
   defineRules,
   rulesRegistry,
   RulesRegistry,
-} from "./rulesRegistry"
+} from "./registry/rulesRegistry"
+import { type BatchScheduler, createBatchScheduler } from "./scheduler"
 import { createFormStore, FormStore } from "./store"
 import { withLock } from "./utils/async"
-import { type BatchScheduler, createBatchScheduler } from "./utils/batchScheduler"
 import { diff } from "./utils/diff"
 import { collectObjectPathsByLeaf, getByPath } from "./utils/path"
 import { findSchema } from "./utils/schema"
-import {
-  createRequiredRule,
-  createSelectRequiredRule,
-  createUploadRequiredRule,
-} from "./utils/standardSchema"
 import {
   createValidator,
   type ValidateError,
   type ValidateResult,
   Validator,
 } from "./validator"
+import {
+  createRequiredRule,
+  createSelectRequiredRule,
+  createUploadRequiredRule,
+} from "./validator/defaultRules"
 
 import type {
   FormValues,
   NamePath,
-  Rules,
-  SchemaBaseField,
-  SchemaField,
+  SchemxRules,
+  SchemxBaseField,
+  SchemxField,
   SchemxInstance,
   Value,
 } from "./types"
@@ -77,7 +77,7 @@ type Callbacks<T extends FormValues> = Pick<
  */
 export interface CreateFormInstanceOptions<T extends FormValues> {
   /** 表单列配置，用于提取初始值和校验规则 */
-  schemas?: SchemaField<T>[]
+  schemas?: SchemxField<T>[]
   /** 初始值，与 schemas 中的 initialValue 合并 */
   initialValues?: T
   /** 双向绑定的表单值（v-model） */
@@ -122,7 +122,7 @@ export interface CreateFormInstanceOptions<T extends FormValues> {
  */
 class CreateFormInstance<T extends FormValues = FormValues> {
   /** 表单列配置，用于提取初始值和校验规则 */
-  private schemas: SchemaField<T>[]
+  private schemas: SchemxField<T>[]
 
   /** 表单状态存储，管理字段值、初始值和订阅 */
   private store: FormStore<T>
@@ -150,7 +150,7 @@ class CreateFormInstance<T extends FormValues = FormValues> {
    * @param options - 表单配置选项
    */
   constructor(options: CreateFormInstanceOptions<T> = {}) {
-    const { initialValues = {} as T, schemas = [] as SchemaField<T>[] } = options
+    const { initialValues = {} as T, schemas = [] as SchemxField<T>[] } = options
     this.schemas = schemas
 
     this.setCallbacks({
@@ -178,7 +178,7 @@ class CreateFormInstance<T extends FormValues = FormValues> {
 
     // 初始化批量调度器：收集多个 FormItem 的 onMounted 初始化，microtask 时统一 batch flush
     this.scheduler = createBatchScheduler<{
-      name: SchemaBaseField["name"]
+      name: SchemxBaseField["name"]
       value: Value
     }>({
       flush: (tasks) => {
@@ -326,7 +326,7 @@ class CreateFormInstance<T extends FormValues = FormValues> {
   }
 
   /**
-   * 将 Rules | Rules[] 解析为 StandardSchemaV1 数组
+   * 将 SchemxRules | SchemxRules[] 解析为 StandardSchemaV1 数组
    *
    * 字符串规则通过 rulesRegistry 查找，StandardSchemaV1 实例直接保留。
    *
@@ -336,8 +336,8 @@ class CreateFormInstance<T extends FormValues = FormValues> {
    * @returns 解析后的 StandardSchemaV1 数组
    */
   private resolveRules(
-    rules: Rules | Rules[],
-    schema?: SchemaBaseField<T>
+    rules: SchemxRules | SchemxRules[],
+    schema?: SchemxBaseField<T>
   ): StandardSchemaV1[] {
     const list = Array.isArray(rules) ? rules : [rules]
     const resolved: StandardSchemaV1[] = []
@@ -364,7 +364,7 @@ class CreateFormInstance<T extends FormValues = FormValues> {
    */
   private registerRules(
     path: NamePath<T>,
-    rules: Rules | Rules[],
+    rules: SchemxRules | SchemxRules[],
     defaultMessage?: string
   ): void {
     const schema = findSchema(this.schemas, path)

@@ -39,7 +39,7 @@
 
   import schemx from "@schemx/vue"
 
-  import type { SchemaField, SchemxInstance } from "@schemx/vue"
+  import type { SchemxField, SchemxInstance } from "@schemx/vue"
 
   const formRef = ref<SchemxInstance>()
   const formData = ref<Record<string, any>>({})
@@ -51,7 +51,7 @@
   }
 
   // 表单配置
-  const schemas: SchemaField[] = [
+  const schemas: SchemxField[] = [
     {
       name: "username",
       label: "用户名",

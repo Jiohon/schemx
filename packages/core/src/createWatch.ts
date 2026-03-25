@@ -87,7 +87,7 @@ export type WatchAllCallback<T> = BaseSubscribeCallback<T, GlobalPayload<T>>
 /**
  * useWatch / createWatch 选项
  */
-export interface useWatchOptions {
+export interface CreateWatchOptions {
   /**
    * 是否在创建后立即执行一次回调
    *
@@ -137,7 +137,7 @@ export const createWatchField = <T extends FormValues>(
   form: SchemxInstance<T>,
   name: NamePath<T>,
   callback: WatchFieldCallback<T>,
-  options: useWatchOptions
+  options: CreateWatchOptions
 ): CreateWatchReturn => {
   let prev: Value = form.getFieldSnapshot(name)
   let isFirst = true
@@ -192,7 +192,7 @@ export const createWatchFields = <T extends FormValues>(
   form: SchemxInstance<T>,
   names: NamePath<T>[],
   callback: WatchFieldsCallback<T>,
-  options: useWatchOptions
+  options: CreateWatchOptions
 ): CreateWatchReturn => {
   let prevValues: Partial<T> = form.getFieldsSnapshot(names)
   let isFirst = true
@@ -252,7 +252,7 @@ export const createWatchFields = <T extends FormValues>(
 export const createWatchAll = <T extends FormValues>(
   form: SchemxInstance<T>,
   callback: WatchAllCallback<T>,
-  options: useWatchOptions
+  options: CreateWatchOptions
 ): CreateWatchReturn => {
   let isFirst = true
   let prevValues: T = form.getFieldsSnapshot()

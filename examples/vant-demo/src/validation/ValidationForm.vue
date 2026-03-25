@@ -35,7 +35,7 @@
   import schemx from "@schemx/vue"
   import { z } from "zod"
 
-  import type { SchemaField, SchemxInstance } from "@schemx/vue"
+  import type { SchemxField, SchemxInstance } from "@schemx/vue"
 
   const formRef = ref<SchemxInstance>()
   const formData = ref<Record<string, any>>({})
@@ -48,7 +48,7 @@
     return !existingUsers.includes(value.toLowerCase())
   }
 
-  const schemas: SchemaField[] = [
+  const schemas: SchemxField[] = [
     // Zod 规则 + 异步 refine + onChange 触发
     {
       name: "username",

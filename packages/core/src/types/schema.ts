@@ -11,15 +11,15 @@ import * as CSS from "csstype"
 
 import type { FormValues, NamePath, ValidationTrigger, Value } from "./form"
 import type { SchemxInstance } from "./form"
-import type { CustomRendererMap } from "./renderer"
-import type { Rules } from "./rule"
+import type { CustomRenderer } from "./renderer"
+import type { SchemxRules } from "./rule"
 import type { Dynamic } from "../utils/dynamic"
 
 /**
  * 渲染器组件通用扩展属性
  *
  * 所有渲染器组件都会自动注入的公共 props，
- * 与 {@link CustomRendererMap} 中各组件的专属 Props 交叉后，
+ * 与 {@link CustomRenderer} 中各组件的专属 Props 交叉后，
  * 作为 `componentProps` 的最终类型。
  */
 export interface BaseComponentProps {
@@ -34,13 +34,32 @@ export interface BaseComponentProps {
 /**
  * 渲染器组件完整 Props 类型
  *
- * 将 {@link CustomRendererMap} 中对应组件的专属 Props 与 {@link BaseComponentProps} 交叉，
+ * 将 {@link CustomRenderer} 中对应组件的专属 Props 与 {@link BaseComponentProps} 交叉，
  * 得到传递给渲染组件的完整属性类型。
  *
  * @typeParam K - 组件类型键
  */
-export type ComponentProps<K extends keyof CustomRendererMap = keyof CustomRendererMap> =
-  CustomRendererMap[K] & BaseComponentProps
+export type ComponentProps<K extends keyof CustomRenderer = keyof CustomRenderer> =
+  CustomRenderer[K] & BaseComponentProps
+
+/**
+ * 自定义 Schema 基础字段扩展接口
+ *
+ * 空接口占位，供业务方通过 TypeScript 声明合并（declaration merging）
+ * 向 {@link SchemaBase} 注入额外的自定义字段。
+ *
+ * @example
+ * ```ts
+ * declare module '@schemx/core' {
+ *   interface CustomField {
+ *     tooltip?: string
+ *     span?: number
+ *   }
+ * }
+ * ```
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface CustomField {}
 
 /**
  * 基础字段配置
@@ -52,8 +71,8 @@ export type ComponentProps<K extends keyof CustomRendererMap = keyof CustomRende
  */
 export interface SchemaBase<
   T extends FormValues = FormValues,
-  K extends keyof CustomRendererMap = keyof CustomRendererMap,
-> {
+  K extends keyof CustomRenderer = keyof CustomRenderer,
+> extends CustomField {
   /**
    * 字段名称
    *
@@ -72,7 +91,7 @@ export interface SchemaBase<
   /**
    * 渲染组件类型
    *
-   * 对应 CustomRendererMap 中注册的组件键名，
+   * 对应 CustomRenderer 中注册的组件键名，
    * 用于从 rendererRegistry 中查找并渲染对应的表单控件。
    */
   componentType: K
@@ -172,7 +191,7 @@ export interface SchemaBase<
    * 或内置快捷方式（如 `"required"`）。
    * 校验在 `submit` 或触发时机（`validationTrigger`）到达时执行。
    */
-  rules?: Rules | Rules[]
+  rules?: SchemxRules | SchemxRules[]
 
   /**
    * 自定义 CSS 类名
@@ -236,6 +255,20 @@ export interface SchemaBase<
    */
   colon?: boolean
 }
+/**
+ * 基础字段配置的分布式联合类型
+ *
+ * 将每个 componentType 展开为独立的 SchemxBaseField 变体，
+ * 使 schemas 数组中每个元素根据 componentType 获得精确的 componentProps 类型推断。
+ *
+ * 当 CustomRenderer 未注册任何渲染器时，回退为宽松的 SchemaBase 类型，
+ * 避免因 keyof 为 never 导致整个类型坍塌。
+ *
+ * @typeParam T - 表单值类型
+ */
+export type SchemxBaseField<T extends FormValues = FormValues> = {
+  [K in keyof CustomRenderer]: SchemaBase<T, K>
+}[keyof CustomRenderer]
 
 /**
  * 分组字段配置
@@ -244,13 +277,13 @@ export interface SchemaBase<
  *
  * @typeParam T - 表单值类型
  */
-export interface SchemaGroupField<T extends FormValues = FormValues> {
+export interface SchemxGroupField<T extends FormValues = FormValues> {
   /** 分组标签 */
   label: string
   /** 组件类型（固定为 group） */
   componentType: "group"
   /** 分组内的列配置 */
-  children: SchemaField<T>[]
+  children: SchemxField<T>[]
   /** 是否可折叠 */
   collapsible?: boolean
   /** 默认是否折叠 */
@@ -264,7 +297,7 @@ export interface SchemaGroupField<T extends FormValues = FormValues> {
  *
  * @typeParam T - 表单值类型
  */
-export interface SchemaDependencyField<T extends FormValues = FormValues> {
+export interface SchemxDependencyField<T extends FormValues = FormValues> {
   /** 组件类型（固定为 dependency） */
   componentType: "dependency"
   /** 依赖的字段路径 */
@@ -273,7 +306,7 @@ export interface SchemaDependencyField<T extends FormValues = FormValues> {
   renderer: (
     values: T,
     form: SchemxInstance<T>
-  ) => SchemaField<T>[] | Promise<SchemaField<T>[]>
+  ) => SchemxField<T>[] | Promise<SchemxField<T>[]>
 }
 
 /**
@@ -282,28 +315,13 @@ export interface SchemaDependencyField<T extends FormValues = FormValues> {
 export type FormItemProps = Omit<SchemaBase, "componentProps">
 
 /**
- * 基础字段配置的分布式联合类型
- *
- * 将每个 componentType 展开为独立的 SchemaBaseField 变体，
- * 使 schemas 数组中每个元素根据 componentType 获得精确的 componentProps 类型推断。
- *
- * 当 CustomRendererMap 未注册任何渲染器时，回退为宽松的 SchemaBase 类型，
- * 避免因 keyof 为 never 导致整个类型坍塌。
- *
- * @typeParam T - 表单值类型
- */
-export type SchemaBaseField<T extends FormValues = FormValues> = {
-  [K in keyof CustomRendererMap]: SchemaBase<T, K>
-}[keyof CustomRendererMap]
-
-/**
  * 字段配置联合类型
  *
  * 表单 schemas 数组中每个元素的类型。
  *
  * @typeParam T - 表单值类型
  */
-export type SchemaField<T extends FormValues = FormValues> =
-  | SchemaBaseField<T>
-  | SchemaGroupField<T>
-  | SchemaDependencyField<T>
+export type SchemxField<T extends FormValues = FormValues> =
+  | SchemxBaseField<T>
+  | SchemxGroupField<T>
+  | SchemxDependencyField<T>

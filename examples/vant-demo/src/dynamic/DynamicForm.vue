@@ -32,14 +32,14 @@
   import schemx from "@schemx/vue"
   import { z } from "zod"
 
-  import type { SchemaField, SchemxInstance } from "@schemx/vue"
+  import type { SchemxField, SchemxInstance } from "@schemx/vue"
 
   const formRef = ref<SchemxInstance>()
   const formData = ref<Record<string, any>>({
     userType: "personal",
   })
 
-  const schemas: SchemaField[] = [
+  const schemas: SchemxField[] = [
     // 控制字段：用户类型
     {
       name: "userType",
