@@ -38,13 +38,13 @@ export interface BaseComponentProps<T extends FormValues = FormValues> {
   /** 占位符 */
   placeholder?: string
   /** FormItem 组件 Props */
-  formItemProps: FormItemProps
+  formItemProps?: FormItemProps
   /** 字段值 */
-  value: Value
+  value?: Value
   /** 值变化处理 */
-  onChange: (value: Value, form: SchemxInstance<T>) => void
+  onChange?: (value: Value, form: SchemxInstance<T>) => void
   /** 失焦处理 */
-  onBlur: (value: Value, form: SchemxInstance<T>) => void
+  onBlur?: (value: Value, form: SchemxInstance<T>) => void
 }
 
 /**
