@@ -12,17 +12,19 @@ export type {
   ValidationTrigger,
   SchemxInstance,
 } from "./form"
-export type { CustomRules, BuiltinRules, SchemxRules } from "./rule"
+
+/** 规则类型 */
+export type { CustomRulesKey, BuiltinRules, SchemxRules } from "./rule"
 
 /** 渲染器类型 */
-export type { RendererType, CustomRenderer } from "./renderer"
+export type { RendererType, RendererDefinition } from "./renderer"
 
 /** Schema 列配置类型 */
 export type {
   BaseComponentProps,
   ComponentProps,
-  CustomField,
-  SchemaBase,
+  FieldDefinition,
+  SchemxBase,
   SchemxGroupField,
   SchemxDependencyField,
   SchemxBaseField,
@@ -38,3 +40,6 @@ export type { DeepNamePath } from "./namePathType"
 
 /** 框架无关的工具类型 */
 export type { DeepReadonly, CSSProperties } from "./readonly"
+
+/** TypeScript 工具类型 */
+export type { Exact } from "./utils"

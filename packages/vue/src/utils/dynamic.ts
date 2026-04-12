@@ -6,7 +6,7 @@
  *
  * 提供两个核心函数：
  * - {@link resolveDynamicProp} — 解析单个动态属性
- * - {@link resolveDynamicPropBatch} — 创建 debounced 批量解析器，合并高频调用
+ * - {@link batchResolveDynamicProp} — 创建 debounced 批量解析器，合并高频调用
  *
  * @module utils/dynamic
  */
@@ -127,7 +127,7 @@ export async function resolveDynamicProp<T>(
  *
  * @example
  * ```typescript
- * const resolve = resolveDynamicPropBatch<{
+ * const resolve = batchResolveDynamicProp<{
  *   visible: boolean
  *   disabled: boolean
  *   placeholder: string
@@ -154,7 +154,7 @@ export async function resolveDynamicProp<T>(
  * 适用于 signal effect / watch 回调中批量解析动态属性的场景，
  * 避免多个字段同时变化时重复解析。
  */
-export function resolveDynamicPropBatch<M extends Record<string, unknown>>(
+export function batchResolveDynamicProp<M extends Record<string, unknown>>(
   wait = 16
 ): (
   entries: DynamicPropEntries<M>,

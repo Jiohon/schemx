@@ -11,7 +11,7 @@ import * as CSS from "csstype"
 
 import type { FormValues, NamePath, ValidationTrigger, Value } from "./form"
 import type { SchemxInstance } from "./form"
-import type { CustomRenderer } from "./renderer"
+import type { RendererDefinition } from "./renderer"
 import type { SchemxRules } from "./rule"
 import type { Dynamic } from "../utils/dynamic"
 
@@ -19,39 +19,59 @@ import type { Dynamic } from "../utils/dynamic"
  * 渲染器组件通用扩展属性
  *
  * 所有渲染器组件都会自动注入的公共 props，
- * 与 {@link CustomRenderer} 中各组件的专属 Props 交叉后，
+ * 与 {@link RendererDefinition} 中各组件的专属 Props 交叉后，
  * 作为 `componentProps` 的最终类型。
  */
-export interface BaseComponentProps {
+export interface BaseComponentProps<T extends FormValues = FormValues> {
   /** 自定义类名 */
   className?: string
   /** 自定义样式 */
   style?: CSS.Properties
+  /** 是否必填 */
+  required?: Dynamic<boolean>
+  /** 是否只读 */
+  readonly?: Dynamic<boolean>
+  /** 是否禁用 */
+  disabled?: Dynamic<boolean>
+  /** 是否隐藏 */
+  visible?: Dynamic<boolean>
   /** 占位符 */
   placeholder?: string
+  /** FormItem 组件 Props */
+  formItemProps: FormItemProps
+  /** 字段值 */
+  value: Value
+  /** 值变化处理 */
+  onChange: (value: Value, form: SchemxInstance<T>) => void
+  /** 失焦处理 */
+  onBlur: (value: Value, form: SchemxInstance<T>) => void
 }
 
 /**
  * 渲染器组件完整 Props 类型
  *
- * 将 {@link CustomRenderer} 中对应组件的专属 Props 与 {@link BaseComponentProps} 交叉，
+ * 将 {@link RendererDefinition} 中对应组件的专属 Props 与 {@link BaseComponentProps} 交叉，
  * 得到传递给渲染组件的完整属性类型。
  *
  * @typeParam K - 组件类型键
  */
-export type ComponentProps<K extends keyof CustomRenderer = keyof CustomRenderer> =
-  CustomRenderer[K] & BaseComponentProps
+export type ComponentProps<
+  T extends FormValues = FormValues,
+  K extends keyof RendererDefinition = keyof RendererDefinition,
+> = [keyof RendererDefinition] extends [never]
+  ? BaseComponentProps<T>
+  : RendererDefinition[K] & BaseComponentProps<T>
 
 /**
  * 自定义 Schema 基础字段扩展接口
  *
  * 空接口占位，供业务方通过 TypeScript 声明合并（declaration merging）
- * 向 {@link SchemaBase} 注入额外的自定义字段。
+ * 向 {@link SchemxBase} 注入额外的自定义字段。
  *
  * @example
  * ```ts
  * declare module '@schemx/core' {
- *   interface CustomField {
+ *   interface FieldDefinition {
  *     tooltip?: string
  *     span?: number
  *   }
@@ -59,7 +79,7 @@ export type ComponentProps<K extends keyof CustomRenderer = keyof CustomRenderer
  * ```
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface CustomField {}
+export interface FieldDefinition {}
 
 /**
  * 基础字段配置
@@ -69,10 +89,10 @@ export interface CustomField {}
  * @typeParam T - 表单值类型
  * @typeParam K - 组件类型键，用于收窄 componentProps 类型
  */
-export interface SchemaBase<
+export interface SchemxBase<
   T extends FormValues = FormValues,
-  K extends keyof CustomRenderer = keyof CustomRenderer,
-> extends CustomField {
+  K extends keyof RendererDefinition = keyof RendererDefinition,
+> extends FieldDefinition {
   /**
    * 字段名称
    *
@@ -91,7 +111,7 @@ export interface SchemaBase<
   /**
    * 渲染组件类型
    *
-   * 对应 CustomRenderer 中注册的组件键名，
+   * 对应 RendererDefinition 中注册的组件键名，
    * 用于从 rendererRegistry 中查找并渲染对应的表单控件。
    */
   componentType: K
@@ -113,7 +133,7 @@ export interface SchemaBase<
    * 当使用函数形式时，需要配置  {@link dependencies}  指定依赖的字段，
    * 否则不会响应值变化。
    */
-  componentProps?: Dynamic<ComponentProps<K>>
+  componentProps?: Dynamic<ComponentProps<T, K>>
 
   /**
    * 占位提示文本
@@ -255,20 +275,28 @@ export interface SchemaBase<
    */
   colon?: boolean
 }
+
+/**
+ * FormItem 组件 Props
+ */
+export type FormItemProps = Omit<SchemxBase, "componentProps">
+
 /**
  * 基础字段配置的分布式联合类型
  *
  * 将每个 componentType 展开为独立的 SchemxBaseField 变体，
  * 使 schemas 数组中每个元素根据 componentType 获得精确的 componentProps 类型推断。
  *
- * 当 CustomRenderer 未注册任何渲染器时，回退为宽松的 SchemaBase 类型，
+ * 当 RendererDefinition 未注册任何渲染器时，回退为宽松的 SchemxBase 类型，
  * 避免因 keyof 为 never 导致整个类型坍塌。
  *
  * @typeParam T - 表单值类型
  */
-export type SchemxBaseField<T extends FormValues = FormValues> = {
-  [K in keyof CustomRenderer]: SchemaBase<T, K>
-}[keyof CustomRenderer]
+export type SchemxBaseField<T extends FormValues = FormValues> = [
+  keyof RendererDefinition,
+] extends [never]
+  ? SchemxBase<T>
+  : { [K in keyof RendererDefinition]: SchemxBase<T, K> }[keyof RendererDefinition]
 
 /**
  * 分组字段配置
@@ -308,11 +336,6 @@ export interface SchemxDependencyField<T extends FormValues = FormValues> {
     form: SchemxInstance<T>
   ) => SchemxField<T>[] | Promise<SchemxField<T>[]>
 }
-
-/**
- * FormItem 组件 Props
- */
-export type FormItemProps = Omit<SchemaBase, "componentProps">
 
 /**
  * 字段配置联合类型

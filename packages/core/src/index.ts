@@ -28,11 +28,11 @@ export {
 
 // RendererRegistry - 渲染器注册
 export {
-  RendererRegistry,
   rendererRegistry,
   createLocalRendererRegistry,
   defineRenderer,
   defineRenderers,
+  type RendererRegistry,
   type RegistryOptions,
   type RendererMap,
 } from "./registry/rendererRegistry"
@@ -62,11 +62,11 @@ export {
 
 // RulesRegistry - 校验规则注册
 export {
-  RulesRegistry,
   rulesRegistry,
   createLocalRuleRegistry,
   defineRule,
   defineRules,
+  type RulesRegistry,
   type RuleRegistryOptions,
   type RuleFactory,
   type RuleEntry,
@@ -101,15 +101,15 @@ export type {
   SchemxInstance,
   SchemxProps,
   GlobalContext,
-  CustomRules,
+  CustomRulesKey,
   BuiltinRules,
   SchemxRules,
   RendererType,
-  CustomRenderer,
-  CustomField,
+  RendererDefinition,
+  FieldDefinition,
   BaseComponentProps,
   ComponentProps,
-  SchemaBase,
+  SchemxBase,
   SchemxGroupField,
   SchemxDependencyField,
   SchemxBaseField,

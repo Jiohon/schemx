@@ -29,7 +29,8 @@
   "scripts": {
     "build": "vite build",
     "test": "vitest run",
-    "lint": "eslint \"src/**/*.{ts,tsx,vue,js,jsx}\"",
+    "lint": "eslint \"src/**/*.{ts,tsx,vue,js,jsx}\" --ignore-pattern \"**/__tests__/**\" --ignore-pattern \"**/*.test.*\" --ignore-pattern \"**/*.spec.*\"",
+    "type-check": "tsc -p tsconfig.check.json",
     "prepublishOnly": "pnpm run build"
   },
   "license": "MIT",

@@ -7,14 +7,14 @@
       "@schemx/core": ["../../packages/core/src/index.ts"],
       "@schemx/core/*": ["../../packages/core/src/*"],
       "@schemx/vue": ["../../packages/vue/src/index.ts"],
-      "@schemx/vue/*": ["../../packages/vue/src/*"]
+      "@schemx/vue/*": ["../../packages/vue/src/*"],
+      "@schemx/vant": ["../../packages/vant/src/index.ts"],
+      "@schemx/vant/*": ["../../packages/vant/src/*"]
     },
     "noEmit": false,
     "declaration": true,
-    "declaration": true,
     "declarationDir": "./dist",
-    "outDir": "./dist",
-    "types": ["vite/client"]
+    "outDir": "./dist"
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"],
   "exclude": ["node_modules", "dist"]

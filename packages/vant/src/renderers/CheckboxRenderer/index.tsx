@@ -2,9 +2,11 @@ import { computed, defineComponent, PropType, SetupContext } from "vue"
 
 import { Checkbox, CheckboxGroup } from "vant"
 
+import { WithRemoteOptions } from "@schemx/vue"
 import classNames from "classnames"
 
 import { getFieldProps } from "@/utils"
+
 import "./index.scss"
 
 export interface CheckboxOption {
@@ -92,12 +94,8 @@ const CheckboxRendererComponent = defineComponent({
     const valueName = computed(() => props.fieldNames?.value || "value")
     const disabledName = computed(() => props.fieldNames?.disabled || "disabled")
 
-    const disabled = computed(
-      () => (attrs as Record<string, any>)?.disabled || props.formItemProps?.disabled
-    )
-    const readonly = computed(
-      () => (attrs as Record<string, any>)?.readonly || props.formItemProps?.readonly
-    )
+    const disabled = computed(() => props?.disabled || props.formItemProps?.disabled)
+    const readonly = computed(() => props?.readonly || props.formItemProps?.readonly)
 
     const modelValue = computed(() => {
       if (!props.value) return []
@@ -181,4 +179,4 @@ const CheckboxRendererComponent = defineComponent({
   },
 })
 
-export default CheckboxRendererComponent
+export default WithRemoteOptions(CheckboxRendererComponent)

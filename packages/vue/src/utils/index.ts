@@ -9,7 +9,7 @@ export {
   type DynamicProp,
   type DynamicPropEntry,
   resolveDynamicProp,
-  resolveDynamicPropBatch,
+  batchResolveDynamicProp,
 } from "./dynamic"
 
 /** 校验触发工具 */

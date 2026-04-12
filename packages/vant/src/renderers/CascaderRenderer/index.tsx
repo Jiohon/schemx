@@ -2,7 +2,6 @@ import { computed, defineComponent, PropType, ref, SetupContext, watchEffect } f
 
 import { Cascader, Field, Popup } from "vant"
 
-import { useDictionary } from "@schemx/vue"
 import classNames from "classnames"
 
 import { findTreeItem, getFieldProps } from "@/utils"
@@ -116,8 +115,6 @@ const CascaderRendererComponent = defineComponent({
   setup(props, { attrs, slots }: SetupContext) {
     const showCascader = ref(false)
 
-    const { list } = useDictionary(attrs as Record<string, any>)
-
     const placeholder = computed(
       () => props.placeholder || `请选择${props.formItemProps.label}`
     )
@@ -129,10 +126,6 @@ const CascaderRendererComponent = defineComponent({
      * 数据源
      */
     const schemas = computed(() => {
-      if (Array.isArray(list.value) && list.value?.length > 0) {
-        return list.value
-      }
-
       if (Array.isArray(props.options) && props.options?.length > 0) {
         return props.options
       }

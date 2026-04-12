@@ -31,3 +31,16 @@ export { type FormContextProps, useContext } from "./useContext"
 
 /** useRenderer - 渲染器注册中心 */
 export { createRenderer, useRendererContext } from "./useRenderer"
+
+/** useStableRef - 引用稳定化的 shallowRef */
+export { useStableRef } from "./useStableRef"
+
+/** useResolvedProps - 动态属性解析 */
+export {
+  useResolvedProps,
+  type ResolvedProps,
+  type ResolvedPropEntries,
+} from "./useResolvedProps"
+
+/** useFieldHandler - 字段处理 */
+export { useFieldHandler, type UseFieldHandlerReturn } from "./useFieldHandler"

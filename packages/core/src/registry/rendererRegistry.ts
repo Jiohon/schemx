@@ -283,7 +283,7 @@ export function createLocalRendererRegistry(
  * import { rendererRegistry } from '@schemx/core'
  *
  * // 注册全局渲染器
- * rendererRegistry.register('custom', CustomRenderer)
+ * rendererRegistry.register('custom', RendererDefinition)
  *
  * // 在其他地方获取
  * const renderer = rendererRegistry.getRenderer('custom')
@@ -343,7 +343,7 @@ export function defineRenderer<R = unknown>(type: string, renderer: R): R {
  * })
  * ```
  */
-export function defineRenderers<R extends RendererMap<R>>(renderers: R): R {
+export function defineRenderers<R extends RendererMap>(renderers: R): R {
   rendererRegistry.registerAll(renderers)
 
   return renderers

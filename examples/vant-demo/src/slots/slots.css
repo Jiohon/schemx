@@ -42,6 +42,7 @@
   background: #fdf2f8;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 4px;
   font-size: 12px;
@@ -80,6 +81,7 @@
 .slot-demo__header {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 8px;
 }
@@ -172,7 +174,7 @@
 
 .slot-reference__grid {
   display: grid;
-  grid-template-schemas: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 10px;
 }
 
@@ -195,6 +197,9 @@
 }
 .slot-reference__card--orange {
   border-left-color: #e6a23c;
+}
+.slot-reference__card--purple {
+  border-left-color: #7232dd;
 }
 .slot-reference__card--pink {
   border-left-color: #eb5dba;

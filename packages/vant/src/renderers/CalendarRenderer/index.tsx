@@ -179,7 +179,7 @@ const CalendarRendererComponent = defineComponent({
             onConfirm={handleConfirm}
             showConfirm
             minDate={new Date(1970, 0, 1)}
-            maxDate={dayjs().batch(10, "year").toDate()}
+            maxDate={dayjs().add(10, "year").toDate()}
             {...attrs}
             title={title.value}
           />

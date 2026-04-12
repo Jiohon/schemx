@@ -2,6 +2,7 @@ import { computed, defineComponent, PropType, SetupContext } from "vue"
 
 import { Radio, RadioGroup } from "vant"
 
+import { WithRemoteOptions } from "@schemx/vue"
 import classNames from "classnames"
 
 import { getFieldProps } from "@/utils"
@@ -157,4 +158,4 @@ const RadioRendererComponent = defineComponent({
   },
 })
 
-export default RadioRendererComponent
+export default WithRemoteOptions(RadioRendererComponent)

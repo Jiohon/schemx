@@ -96,6 +96,14 @@ export default defineConfig(({ mode }) => {
           ]
         : [],
     },
+    css: {
+      preprocessorOptions: {
+        scss: { api: "modern-compiler" },
+      },
+    },
     plugins: [...(useSource ? [dynamicAtAlias(pkgRoots)] : []), vue(), vueJsx()],
+    server: {
+      host: "0.0.0.0",
+    },
   }
 })

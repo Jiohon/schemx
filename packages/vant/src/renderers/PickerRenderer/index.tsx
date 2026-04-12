@@ -2,10 +2,11 @@ import { computed, defineComponent, PropType, ref, SetupContext, watchEffect } f
 
 import { Field, Picker, Popup } from "vant"
 
-import { useDictionary } from "@schemx/vue"
+import { WithRemoteOptions } from "@schemx/vue"
 import classNames from "classnames"
 
 import { findTreeItem, getFieldProps } from "@/utils"
+
 import "./index.scss"
 
 export interface PickerRendererProps {
@@ -110,8 +111,6 @@ const PickerRendererComponent = defineComponent({
     },
   },
   setup(props, { attrs, slots }: SetupContext) {
-    const { list } = useDictionary(attrs as Record<string, any>)
-
     const showPicker = ref(false)
 
     const placeholder = computed(
@@ -130,10 +129,6 @@ const PickerRendererComponent = defineComponent({
      * 数据源
      */
     const schemas = computed(() => {
-      if (Array.isArray(list.value) && list.value?.length > 0) {
-        return list.value
-      }
-
       if (Array.isArray(props.options) && props.options?.length > 0) {
         return props.options
       }
@@ -242,7 +237,7 @@ const PickerRendererComponent = defineComponent({
               {...attrs}
               modelValue={modelValue.value}
               title={props.title || placeholder.value}
-              schemas={schemas.value}
+              columns={schemas.value}
               schemas-field-names={fieldNames.value}
               v-slots={{
                 empty: () => <div class="schemx-picker-empty">No data</div>,
@@ -255,4 +250,4 @@ const PickerRendererComponent = defineComponent({
   },
 })
 
-export default PickerRendererComponent
+export default WithRemoteOptions(PickerRendererComponent)

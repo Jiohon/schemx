@@ -2,23 +2,25 @@
   <div class="example-container">
     <h2>表单验证示例</h2>
     <p class="description">
-      演示 Zod 规则校验、rules: "required" 快捷方式、异步校验（refine）、
-      validationTrigger（onChange / onBlur）、跨字段校验、validateField 单字段校验
+      演示 Zod 规则校验、rules: "required" 快捷方式、rules 数组形式、
+      validationTrigger（onChange）、跨字段校验、validateField 单字段校验、 Zod email
+      邮箱格式校验
     </p>
 
-    <schemx
+    <Schemx
       ref="formRef"
       v-model="formData"
       :schemas="schemas"
       @finish="handleSubmit"
       @finish-failed="handleSubmitFailed"
+      @values-change="handleValuesChange"
     />
 
     <div class="form-actions">
-      <button class="btn btn-primary" @click="formRef?.submit()">注册</button>
-      <button class="btn" @click="formRef?.validate()">全量校验</button>
-      <button class="btn" @click="validateSingle">校验用户名</button>
-      <button class="btn" @click="validatePhone">校验手机号</button>
+      <button class="btn btn-primary" @click="formRef?.submit()">提交</button>
+      <button class="btn" @click="handleValidateAll">全量校验</button>
+      <button class="btn" @click="handleValidateUsername">校验用户名</button>
+      <button class="btn" @click="handleValidatePhone">校验手机号</button>
       <button class="btn" @click="formRef?.reset()">重置</button>
     </div>
 
@@ -32,77 +34,68 @@
 <script setup lang="ts">
   import { ref } from "vue"
 
-  import schemx from "@schemx/vue"
+  import Schemx from "@schemx/vant"
   import { z } from "zod"
 
-  import type { SchemxField, SchemxInstance } from "@schemx/vue"
+  import type { SchemxField, SchemxInstance } from "@schemx/vant"
 
+  /** 表单实例引用，提供 submit、validate、validateField、setFieldError 等方法 */
   const formRef = ref<SchemxInstance>()
+
+  /** 表单数据，通过 v-model 双向绑定实时同步 */
   const formData = ref<Record<string, any>>({})
 
-  // 模拟异步校验：检查用户名是否已存在（预留，取消注释 rules 中的 refine 即可启用）
-  const _checkUsernameExists = async (value: string): Promise<boolean> => {
-    await new Promise((resolve) => setTimeout(resolve, 500))
-    const existingUsers = ["admin", "test", "user"]
-
-    return !existingUsers.includes(value.toLowerCase())
-  }
-
+  /**
+   * 表单 Schema 配置
+   *
+   * 覆盖多种校验方式：Zod schema rules、"required" 快捷方式、rules 数组形式、
+   * validationTrigger onChange 触发、z.number() 类型校验、z.string().regex() 正则校验、
+   * z.string().email() 邮箱格式校验。
+   */
   const schemas: SchemxField[] = [
-    // Zod 规则 + 异步 refine + onChange 触发
+    // Zod string min/max/regex 校验 + validationTrigger: "onChange"
     {
       name: "username",
       label: "用户名",
       componentType: "text",
       required: true,
       validationTrigger: "onChange",
-      rules: "required",
-
-      // rules: z
-      //   .string()
-      //   .min(3, "用户名长度为 3-16 个字符")
-      //   .max(16, "用户名长度为 3-16 个字符")
-      //   .regex(
-      //     /^[a-zA-Z][a-zA-Z0-9_]*$/,
-      //     "用户名必须以字母开头，只能包含字母、数字和下划线"
-      //   )
-      //   .refine(
-      //     async (val) => {
-      //       if (!val) return true
-      //       return await checkUsernameExists(val)
-      //     },
-      //     { message: "该用户名已被使用" }
-      //   ),
+      rules: z
+        .string()
+        .min(3, "用户名长度为 3-16 个字符")
+        .max(16, "用户名长度为 3-16 个字符")
+        .regex(
+          /^[a-zA-Z][a-zA-Z0-9_]*$/,
+          "用户名必须以字母开头，只能包含字母、数字和下划线"
+        ),
+      componentProps: {
+        placeholder: "请输入用户名（字母开头，3-16位）",
+        clearable: true,
+      },
     },
-    // rules: "required" 快捷方式 + readonly 状态
+    // rules: "required" 快捷方式
     {
       name: "email",
       label: "邮箱",
       componentType: "text",
+      rules: "required",
       componentProps: {
         placeholder: "请输入邮箱地址",
       },
-      readonly: true,
-      rules: "required",
     },
-    // 依赖其他字段的 disabled 状态
+    // rules 数组形式：["required", z.string().regex(...)]
     {
       name: "phone",
       label: "手机号",
       componentType: "input",
-      required: true,
       componentProps: {
         type: "text",
         placeholder: "请输入手机号",
         maxlength: 11,
       },
-      dependencies: ["username"],
-      disabled: (values) => {
-        return !!values.username
-      },
       rules: ["required", z.string().regex(/^1[3-9]\d{9}$/, "请输入有效的手机号")],
     },
-    // labelPosition: top + 密码复杂度校验
+    // Zod string min + regex 密码复杂度校验
     {
       name: "password",
       label: "密码",
@@ -120,6 +113,7 @@
         .regex(/[a-z]/, "密码必须包含小写字母")
         .regex(/[A-Z]/, "密码必须包含大写字母"),
     },
+    // 确认密码字段，跨字段校验在 @finish 回调中通过 setFieldError 实现
     {
       name: "confirmPassword",
       label: "确认密码",
@@ -131,18 +125,19 @@
       },
       rules: z.string().min(1, "请确认密码"),
     },
-    // number 类型 + 范围校验
+    // Zod number min/max 数值范围校验
     {
       name: "age",
       label: "年龄",
-      componentType: "number",
+      componentType: "stepper",
       componentProps: {
         min: 0,
         max: 150,
+        integer: true,
       },
       rules: z.number().min(18, "年龄必须大于等于18岁").max(100, "年龄必须小于等于100岁"),
     },
-    // 正则校验
+    // Zod string regex 正则校验
     {
       name: "idCard",
       label: "身份证号",
@@ -154,9 +149,43 @@
       },
       rules: z.string().regex(/^\d{17}[\dXx]$/, "请输入有效的身份证号"),
     },
+    // Zod string email 邮箱格式校验（新增字段）
+    {
+      name: "contactEmail",
+      label: "联系邮箱",
+      componentType: "text",
+      required: true,
+      componentProps: {
+        placeholder: "请输入联系邮箱",
+        clearable: true,
+      },
+      rules: z.string().email("请输入有效的邮箱地址"),
+    },
   ]
 
-  // 提交处理（含跨字段校验）
+  /**
+   * 表单值变化回调
+   *
+   * 同步表单数据到预览区域。
+   *
+   * @param _changedValues - 本次变化的字段键值对
+   * @param latestValues - 变化后的完整表单数据
+   */
+  const handleValuesChange = (
+    _changedValues: Record<string, any>,
+    latestValues: Record<string, any>
+  ) => {
+    formData.value = latestValues
+  }
+
+  /**
+   * 表单提交回调（含跨字段校验）
+   *
+   * 校验通过后检查密码与确认密码是否一致，
+   * 不一致时调用 setFieldError 设置错误信息。
+   *
+   * @param values - 校验通过的表单数据
+   */
   const handleSubmit = (values: Record<string, any>) => {
     if (values.password !== values.confirmPassword) {
       formRef.value?.setFieldError("confirmPassword", ["两次输入的密码不一致"])
@@ -168,20 +197,45 @@
     alert("注册成功！")
   }
 
+  /**
+   * 表单校验失败回调
+   *
+   * 输出校验错误信息到控制台。
+   *
+   * @param errorInfo - 校验失败的错误信息对象
+   */
   const handleSubmitFailed = (errorInfo: any) => {
     console.error("验证失败:", errorInfo)
   }
 
-  // 单字段校验
-  const validateSingle = async () => {
+  /**
+   * 校验用户名字段
+   *
+   * 演示 formRef.validateField() 对单个字段进行校验的用法。
+   */
+  const handleValidateUsername = async () => {
     const result = await formRef.value?.validateField("username")
     console.log("用户名校验结果:", result)
   }
 
-  // 单字段校验
-  const validatePhone = async () => {
+  /**
+   * 校验手机号字段
+   *
+   * 演示 formRef.validateField() 对单个字段进行校验的用法。
+   */
+  const handleValidatePhone = async () => {
     const result = await formRef.value?.validateField("phone")
     console.log("手机号校验结果:", result)
+  }
+
+  /**
+   * 全量校验所有字段
+   *
+   * 演示 formRef.validate() 对全量字段进行校验的用法。
+   */
+  const handleValidateAll = async () => {
+    const result = await formRef.value?.validate()
+    console.log("全量校验结果:", result)
   }
 </script>
 

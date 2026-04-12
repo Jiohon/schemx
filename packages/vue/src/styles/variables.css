@@ -46,6 +46,7 @@
   --schemx-border-radius-lg: 12px;
 
   /* 表单项 */
+  --schemx-item-gap: 16px;
   --schemx-item-line-height: 1.6;
   --schemx-item-error-line-height: 1.5714285714285714;
   --schemx-item-label-color: #666666;

@@ -1,6 +1,6 @@
 import { computed, defineComponent, PropType, SetupContext } from "vue"
 
-import { useDictionary } from "@schemx/vue"
+import { useDictionary, WithRemoteOptions } from "@schemx/vue"
 import classNames from "classnames"
 
 import { getFieldProps } from "@/utils"
@@ -172,4 +172,4 @@ const SelectorRendererComponent = defineComponent({
   },
 })
 
-export default SelectorRendererComponent
+export default WithRemoteOptions(SelectorRendererComponent)

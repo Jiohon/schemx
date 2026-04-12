@@ -6,8 +6,8 @@
 
 .option {
   position: relative;
-  min-width: 80px;
-  padding: 8px 18px;
+  min-width: 70px;
+  padding: 4px 14px;
   border-radius: 8px;
   background: #f3f4f6;
   color: #333333;
@@ -15,6 +15,7 @@
   text-align: center;
   line-height: 20px;
   box-sizing: border-box;
+  cursor: pointer;
 }
 
 .option.active {

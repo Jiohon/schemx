@@ -16,6 +16,7 @@ export default defineConfig({
     dts({
       include: ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"],
       outDir: "dist",
+      rollupTypes: true,
     }),
   ],
   build: {
@@ -27,6 +28,19 @@ export default defineConfig({
         if (format === "es") return "index.mjs"
         if (format === "cjs") return "index.cjs"
         return "index.umd.js"
+      },
+    },
+    rollupOptions: {
+      external: ["vue"],
+      output: {
+        globals: {
+          vue: "Vue",
+        },
+        exports: "named",
+        assetFileNames: (assetInfo) => {
+          if (assetInfo.name === "style.css") return "style.css"
+          return assetInfo.name || "asset"
+        },
       },
     },
     sourcemap: true,

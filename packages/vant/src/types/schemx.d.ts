@@ -4,6 +4,8 @@
  * 将 Vant 渲染器的 componentType 和 componentProps 注册到 schemx 类型系统，
  * 使 schemas 配置获得完整的类型提示。
  */
+import { RendererDefinition } from "@schemx/core"
+
 import type {
   InputRendererProps,
   TextRendererProps,
@@ -21,7 +23,7 @@ import type {
   StepperRendererProps,
   UploadRendererProps,
   CascaderRendererProps,
-} from "@schemx/vant"
+} from "../renderers"
 
 declare module "@schemx/core" {
   interface RendererDefinition {

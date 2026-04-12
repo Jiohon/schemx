@@ -2,16 +2,17 @@
   <div class="example-container">
     <h2>动态表单示例</h2>
     <p class="description">
-      演示 dependencies 声明式字段联动：动态 visible、disabled、readonly、required、
-      componentProps 函数形式、条件显示/隐藏
+      演示 dependencies 声明式字段联动：通过"配送方式"单选控制其他字段的
+      visible、disabled、readonly、required、componentProps 动态状态
     </p>
 
-    <schemx
+    <Schemx
       ref="formRef"
       v-model="formData"
       :schemas="schemas"
       @finish="handleSubmit"
       @finish-failed="handleSubmitFailed"
+      @values-change="handleValuesChange"
     />
 
     <div class="form-actions">
@@ -29,114 +30,156 @@
 <script setup lang="ts">
   import { ref } from "vue"
 
-  import schemx from "@schemx/vue"
-  import { z } from "zod"
+  import Schemx from "@schemx/vant"
 
-  import type { SchemxField, SchemxInstance } from "@schemx/vue"
+  import type { SchemxField, SchemxInstance } from "@schemx/vant"
 
+  /** 表单实例引用，提供 submit、reset 等方法 */
   const formRef = ref<SchemxInstance>()
-  const formData = ref<Record<string, any>>({
-    userType: "personal",
-  })
 
+  /** 表单数据，通过 v-model 双向绑定实时同步联动效果 */
+  const formData = ref<Record<string, any>>({})
+
+  /**
+   * 表单 Schema 配置
+   *
+   * 通过 dependencies 声明字段依赖关系，展示五种动态属性联动：
+   * - visible 函数：快递配送时显示省市选择（picker）
+   * - disabled 函数：自提时禁用配送距离（slider）
+   * - readonly 函数：自提时购买数量只读（stepper）
+   * - required 函数：选择其他时备注必填（textarea）
+   * - componentProps 函数：服务评分 count 随配送方式动态变化（rate）
+   */
   const schemas: SchemxField[] = [
-    // 控制字段：用户类型
     {
-      name: "userType",
-      label: "用户类型",
-      componentType: "text",
+      name: "deliveryMethod",
+      label: "配送方式",
+      componentType: "radio",
+      initialValue: "express",
       componentProps: {
-        placeholder: "输入 personal 或 enterprise",
+        options: [
+          { label: "快递配送", value: "express" },
+          { label: "自提", value: "selfPickup" },
+          { label: "其他", value: "other" },
+        ],
       },
-      initialValue: "personal",
     },
 
-    // 动态 visible：个人用户才显示姓名
-    {
-      name: "name",
-      label: "姓名",
-      componentType: "text",
-      required: true,
-      dependencies: ["userType"],
-      visible: (values: Record<string, any>) => values.userType !== "enterprise",
-      rules: z.string().min(2, "姓名至少 2 个字符"),
-    },
-
-    // 动态 visible：企业用户才显示企业名称
-    {
-      name: "companyName",
-      label: "企业名称",
-      componentType: "text",
-      required: true,
-      dependencies: ["userType"],
-      visible: (values: Record<string, any>) => values.userType === "enterprise",
-      rules: z.string().min(2, "企业名称至少 2 个字符"),
-    },
-
-    // 动态 required：企业用户时必填
-    {
-      name: "businessLicense",
-      label: "营业执照号",
-      componentType: "text",
-      dependencies: ["userType"],
-      visible: (values: Record<string, any>) => values.userType === "enterprise",
-      required: (values: Record<string, any>) => values.userType === "enterprise",
-      rules: z.string().min(15, "请输入有效的营业执照号").optional().or(z.literal("")),
-    },
-
-    // 动态 componentProps 函数形式：省市联动
+    // visible 联动：仅快递配送时显示省市选择
     {
       name: "province",
-      label: "省份",
-      componentType: "text",
+      label: "省市选择",
+      componentType: "picker",
+      dependencies: ["deliveryMethod"],
+      visible: (values: Record<string, any>) => values.deliveryMethod === "express",
       componentProps: {
-        placeholder: "请输入省份",
+        options: [
+          { text: "广东省", value: "guangdong" },
+          { text: "浙江省", value: "zhejiang" },
+          { text: "北京市", value: "beijing" },
+          { text: "上海市", value: "shanghai" },
+          { text: "江苏省", value: "jiangsu" },
+        ],
       },
     },
-    {
-      name: "city",
-      label: "城市",
-      componentType: "text",
-      dependencies: ["province"],
-      componentProps: (values: Record<string, any>) => ({
-        placeholder: values.province ? `请输入${values.province}的城市` : "请先输入省份",
-        disabled: !values.province,
-      }),
-    },
 
-    // 动态 disabled
+    // disabled 联动：自提时禁用配送距离
     {
-      name: "salary",
-      label: "期望薪资",
-      componentType: "number",
-      dependencies: ["userType"],
-      disabled: (values: Record<string, any>) => values.userType === "enterprise",
+      name: "distance",
+      label: "配送距离",
+      componentType: "slider",
+      dependencies: ["deliveryMethod"],
+      disabled: (values: Record<string, any>) => values.deliveryMethod === "selfPickup",
       componentProps: {
         min: 0,
-        max: 1000000,
+        max: 50,
+        step: 1,
       },
     },
 
-    // 动态 readonly + 动态 componentProps
+    // readonly 联动：自提时购买数量只读
+    {
+      name: "quantity",
+      label: "购买数量",
+      componentType: "stepper",
+      dependencies: ["deliveryMethod"],
+      readonly: (values: Record<string, any>) => values.deliveryMethod === "selfPickup",
+      initialValue: 1,
+      componentProps: {
+        min: 1,
+        max: 99,
+        integer: true,
+      },
+    },
+
+    // required 联动：选择其他时备注必填
     {
       name: "remark",
       label: "备注",
       componentType: "textarea",
-      dependencies: ["userType"],
-      readonly: (values: Record<string, any>) => values.userType === "enterprise",
-      componentProps: (values: Record<string, any>) => ({
-        placeholder:
-          values.userType === "enterprise" ? "企业用户备注为只读" : "请输入备注信息",
+      dependencies: ["deliveryMethod"],
+      required: (values: Record<string, any>) => values.deliveryMethod === "other",
+      componentProps: {
         maxlength: 200,
-      }),
+        showWordLimit: true,
+        placeholder: "请输入备注信息",
+      },
+    },
+
+    // componentProps 联动：服务评分 count 随配送方式动态变化
+    {
+      name: "serviceRating",
+      label: "服务评分",
+      componentType: "rate",
+      dependencies: ["deliveryMethod"],
+      componentProps: (values: Record<string, any>) => {
+        const countMap: Record<string, number> = {
+          express: 5,
+          selfPickup: 3,
+          other: 10,
+        }
+
+        return {
+          count: countMap[values.deliveryMethod] ?? 5,
+        }
+      },
     },
   ]
 
+  /**
+   * 表单值变化回调
+   *
+   * 同步表单数据到预览区域。
+   *
+   * @param changedValues - 本次变化的字段键值对
+   * @param latestValues - 变化后的完整表单数据
+   */
+  const handleValuesChange = (
+    changedValues: Record<string, any>,
+    latestValues: Record<string, any>
+  ) => {
+    formData.value = latestValues
+  }
+
+  /**
+   * 表单提交回调
+   *
+   * 校验通过后触发，输出表单数据到控制台。
+   *
+   * @param values - 校验通过的表单数据
+   */
   const handleSubmit = (values: Record<string, any>) => {
     console.log("提交数据:", values)
     alert("提交成功！数据已打印到控制台")
   }
 
+  /**
+   * 表单校验失败回调
+   *
+   * 校验未通过时触发，输出错误信息到控制台。
+   *
+   * @param errorInfo - 校验失败的错误信息
+   */
   const handleSubmitFailed = (errorInfo: any) => {
     console.error("验证失败:", errorInfo)
   }

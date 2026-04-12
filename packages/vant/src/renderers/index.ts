@@ -31,3 +31,25 @@ export type { SwitchRendererProps } from "./SwitchRenderer"
 export type { UploadRendererProps, UploadFile } from "./UploadRenderer"
 export type { CascaderRendererProps } from "./CascaderRenderer"
 export type { SelectorRendererProps, SelectorOption } from "./SelectorRenderer"
+
+/**
+ * 默认渲染器类型列表
+ */
+export const DEFAULT_RENDERER_TYPES = [
+  "input",
+  "text",
+  "textarea",
+  "number",
+  "switch",
+  "radio",
+  "checkbox",
+  "date",
+  "calendar",
+  "picker",
+  "selector",
+  "rate",
+  "slider",
+  "stepper",
+  "upload",
+  "cascader",
+] as const

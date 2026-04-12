@@ -98,7 +98,7 @@ const Selector = defineComponent({
       <div class="selector">
         {options.value.map((item) => (
           <div
-            key={item?.[valueKey.value] as string | number}
+            key={item?.[valueKey.value]}
             class={optionClass(item)}
             onClick={() => handleClick(item)}
           >

@@ -2,7 +2,7 @@
  * 渲染器类型体系。
  *
  * 定义渲染器的类型注册、Props 映射和上下文接口。
- * 用户可通过声明合并扩展 {@link CustomRenderer} 来注册自定义渲染器类型。
+ * 用户可通过声明合并扩展 {@link RendererDefinition} 来注册自定义渲染器类型。
  *
  * @module types/renderer
  */
@@ -20,7 +20,7 @@
  * ```ts
  * // 在项目中创建 schemx.d.ts
  * declare module '@schemx/core' {
- *   interface CustomRenderer {
+ *   interface RendererDefinition {
  *     'my-input': MyInputProps
  *     'rich-editor': RichEditorProps
  *   }
@@ -32,18 +32,18 @@
  * `SchemaBaseColumn` 的 `componentProps` 也会根据 `componentType` 自动关联对应的 Props 类型。
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface CustomRenderer {}
+export interface RendererDefinition {}
 
 /**
  * 渲染器类型。
  *
- * 由 {@link CustomRenderer} 的键自动推导，
- * 用户通过声明合并扩展 `CustomRenderer` 后，此类型会自动包含所有已注册的渲染器类型字符串。
+ * 由 {@link RendererDefinition} 的键自动推导，
+ * 用户通过声明合并扩展 `RendererDefinition` 后，此类型会自动包含所有已注册的渲染器类型字符串。
  *
  * @example
  * ```ts
- * // 扩展 CustomRenderer 后自动可用
+ * // 扩展 RendererDefinition 后自动可用
  * const type: RendererType = 'my-input'
  * ```
  */
-export type RendererType = keyof CustomRenderer
+export type RendererType = keyof RendererDefinition

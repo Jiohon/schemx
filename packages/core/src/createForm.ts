@@ -25,7 +25,7 @@ import {
   createLocalRuleRegistry,
   defineRules,
   rulesRegistry,
-  RulesRegistry,
+  type RulesRegistry,
 } from "./registry/rulesRegistry"
 import { type BatchScheduler, createBatchScheduler } from "./scheduler"
 import { createFormStore, FormStore } from "./store"
@@ -48,10 +48,10 @@ import {
 import type {
   FormValues,
   NamePath,
-  SchemxRules,
   SchemxBaseField,
   SchemxField,
   SchemxInstance,
+  SchemxRules,
   Value,
 } from "./types"
 import type { StandardSchemaV1 } from "./types/standardSchema"

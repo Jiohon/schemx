@@ -7,8 +7,8 @@
 import "./styles/index.css"
 
 /** 默认导出 */
-export { default } from "./schemx"
-export { default as schemx } from "./schemx"
+export { default } from "./form"
+export { default as schemxForm } from "./form"
 
 /** Hooks */
 export {
@@ -19,17 +19,19 @@ export {
   useWatchFields,
   useWatchAll,
   useDependency,
-  type UseDependencyReturn,
   useDictionary,
-  type UseDictionaryOptions,
-  type UseDictOptionsReturn,
-  type FormContextProps,
   useContext,
   createRenderer,
   useRendererContext,
-} from "./hooks/useWatch"
-export { useEffect } from "./hooks/useEffect"
-export { FORM_CONTEXT_KEY } from "./hooks/useContext"
+  useEffect,
+  type UseDependencyReturn,
+  type UseDictionaryOptions,
+  type UseDictOptionsReturn,
+  type FormContextProps,
+} from "./hooks"
+
+/** 高阶组件 */
+export { WithRemoteOptions } from "./hocs"
 
 /** 组件 */
 export { default as FormItem } from "./components/FormItem"

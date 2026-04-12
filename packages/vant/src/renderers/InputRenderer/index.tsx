@@ -112,15 +112,15 @@ const InputRendererComponent = defineComponent({
     },
     onChange: {
       type: Function as PropType<InputRendererProps["onChange"]>,
-      default: () => {},
+      default: undefined,
     },
     onBlur: {
       type: Function as PropType<InputRendererProps["onBlur"]>,
-      default: null,
+      default: undefined,
     },
     onFocus: {
       type: Function as PropType<InputRendererProps["onFocus"]>,
-      default: null,
+      default: undefined,
     },
     type: {
       type: String as PropType<InputRendererProps["type"]>,
@@ -164,7 +164,7 @@ const InputRendererComponent = defineComponent({
     },
     formatter: {
       type: Function as PropType<InputRendererProps["formatter"]>,
-      default: null,
+      default: undefined,
     },
     formatTrigger: {
       type: String as PropType<InputRendererProps["formatTrigger"]>,
@@ -333,7 +333,7 @@ const InputRendererComponent = defineComponent({
 
         const selectionEnd = inputRef.value?.selectionEnd
 
-        if (state.focused && selectionEnd) {
+        if (state.focused && selectionEnd != null && selectionEnd >= 0) {
           const valueArr = [...value]
           const exceededLength = valueArr.length - +maxlength
           valueArr.splice(selectionEnd - exceededLength, exceededLength)
@@ -385,7 +385,7 @@ const InputRendererComponent = defineComponent({
       // 自定义格式化
       let formatterDiffLen = 0
 
-      if (props.formatter !== null && trigger === props.formatTrigger) {
+      if (props.formatter && trigger === props.formatTrigger) {
         const { formatter, maxlength } = props
         value = formatter(value)
 
@@ -461,9 +461,7 @@ const InputRendererComponent = defineComponent({
 
     // 键盘事件
     const handleKeypress = (event: KeyboardEvent): void => {
-      const ENTER_CODE = 13
-
-      if (event.keyCode === ENTER_CODE) {
+      if (event.key === "Enter") {
         if (props.type !== "textarea") {
           event.preventDefault()
         }
@@ -626,7 +624,7 @@ const InputRendererComponent = defineComponent({
             ref={clearIconRef}
             name={props.clearIcon}
             class="schema-input__clear"
-            // @ts-ignore - Vant Icon supports these events
+            // @ts-expect-error - Vant Icon supports these events
             onTouchstart={handleClear}
             onMousedown={handleClear}
           />

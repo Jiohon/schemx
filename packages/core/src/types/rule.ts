@@ -2,7 +2,7 @@
  * 校验规则类型体系。
  *
  * 定义表单字段的校验规则类型，支持 Standard Schema、内置快捷方式和用户自定义扩展。
- * 用户可通过声明合并扩展 {@link CustomRule} 来注册自定义规则类型。
+ * 用户可通过声明合并扩展 {@link RuleDefinition} 来注册自定义规则类型。
  *
  * @module types/rule
  */
@@ -27,7 +27,7 @@ export type BuiltinRules = "required" | "selectRequired" | "uploadRequired"
  * ```ts
  * // 在项目中创建 schemx.d.ts
  * declare module '@schemx/core' {
- *   interface CustomRule {
+ *   interface RuleDefinition {
  *     'phone': StandardSchemaV1<string>
  *     'email': StandardSchemaV1<string>
  *   }
@@ -35,19 +35,20 @@ export type BuiltinRules = "required" | "selectRequired" | "uploadRequired"
  * ```
  *
  * @remarks
- * 扩展后，`CustomRules` 会自动推导出所有已注册的规则名称字符串，
+ * 扩展后，`CustomRulesKey` 会自动推导出所有已注册的规则名称字符串，
  * `SchemxRules` 类型也会随之包含这些名称。
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface CustomRule {}
+export interface RuleDefinition {}
 
 /**
  * 自定义规则名称类型。
  *
- * 由 {@link CustomRule} 的键自动推导，
+ * 由 {@link RuleDefinition} 的键自动推导，
  * 代表所有已注册的自定义规则名称字符串。
+ * 当 RuleDefinition 为空时自动降级为 never，不影响 SchemxRules 联合类型。
  */
-export type CustomRules = keyof CustomRule
+export type CustomRulesKey = keyof RuleDefinition
 
 /**
  * 校验规则类型。
@@ -55,6 +56,10 @@ export type CustomRules = keyof CustomRule
  * 支持三种形式：
  * - `StandardSchemaV1` — 任何实现了 Standard Schema 接口的验证库实例
  * - `BuiltinRules` — 内置快捷方式（如 `"required"`）
- * - `CustomRules` — 用户通过声明合并注册的自定义规则名称
+ * - `CustomRulesKey` — 用户通过声明合并注册的自定义规则名称
+ *
+ * 当 RuleDefinition 未注册任何规则时，自动降级为 `StandardSchemaV1 | BuiltinRules`。
  */
-export type SchemxRules = StandardSchemaV1 | BuiltinRules | CustomRules
+export type SchemxRules = [keyof RuleDefinition] extends [never]
+  ? StandardSchemaV1 | BuiltinRules
+  : StandardSchemaV1 | BuiltinRules | CustomRulesKey

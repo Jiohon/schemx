@@ -6,7 +6,7 @@
       和 kebab-case 两种格式。
     </p>
 
-    <schemx
+    <Schemx
       ref="formRef"
       v-model="formData"
       :schemas="schemas"
@@ -126,7 +126,7 @@
           </span>
         </div>
       </template>
-    </schemx>
+    </Schemx>
 
     <div class="form-actions">
       <button class="btn btn-primary" @click="formRef?.submit()">提交</button>
@@ -167,6 +167,12 @@
           <div class="slot-reference__desc">替换内容区域</div>
           <div class="slot-reference__params">参数: formItemProps + columnElement</div>
         </div>
+        <div class="slot-reference__card slot-reference__card--purple">
+          <div class="slot-reference__title">kebab-case 插槽</div>
+          <code class="slot-reference__code">#user-levelLabel</code>
+          <div class="slot-reference__desc">连字符字段名插槽</div>
+          <div class="slot-reference__params">参数: formItemProps</div>
+        </div>
         <div class="slot-reference__card slot-reference__card--pink">
           <div class="slot-reference__title">子渲染器插槽</div>
           <code class="slot-reference__code">#{ name }:{ childSlot }</code>
@@ -183,19 +189,34 @@
 
   import "./slots.css"
 
-  import schemx from "@schemx/vue"
+  import Schemx from "@schemx/vant"
   import { z } from "zod"
 
-  import type { SchemxField, SchemxInstance } from "@schemx/vue"
+  import type { SchemxField, SchemxInstance } from "@schemx/vant"
 
+  /** 表单实例引用，提供 submit、validate、reset 等方法 */
   const formRef = ref<SchemxInstance>()
+
+  /** 表单数据，通过 v-model 双向绑定实时同步 */
   const formData = ref<Record<string, any>>({})
 
-  /** 处理 username 输入（整体插槽内使用） */
+  /**
+   * 处理 username 输入事件
+   *
+   * 整体插槽完全接管渲染后，需手动同步输入值到表单状态。
+   *
+   * @param e - 原生 input 事件
+   */
   const handleUsernameInput = (e: Event) => {
     formRef.value?.setFieldValue("username", (e.target as HTMLInputElement).value)
   }
 
+  /**
+   * 表单 Schema 配置
+   *
+   * 包含 6 个字段，分别用于演示整体插槽、Label 插槽、Error 插槽、
+   * Content 插槽、kebab-case 插槽和子渲染器插槽。
+   */
   const schemas: SchemxField[] = [
     // 普通字段（无插槽，作为对比）
     {
@@ -207,14 +228,14 @@
         max: 150,
       },
     },
-    // 1. 整体插槽演示
+    // 1. 整体插槽演示 — #username（蓝色）
     {
       name: "username",
       label: "用户名",
       componentType: "text",
       required: true,
     },
-    // 2 & 3. Label + Error 插槽演示
+    // 2 & 3. Label + Error 插槽演示 — #emailLabel（绿色）+ #emailError（红色）
     {
       name: "email",
       label: "邮箱",
@@ -223,7 +244,7 @@
       rules: z.string().email("请输入有效的邮箱地址"),
       validationTrigger: "onChange",
     },
-    // 4. Content 插槽演示
+    // 4. Content 插槽演示 — #phoneContent（橙色）
     {
       name: "phone",
       label: "手机号",
@@ -237,7 +258,7 @@
         .min(11, "手机号至少11位")
         .regex(/^1[3-9]\d{9}$/, "请输入正确的手机号"),
     },
-    // 5. kebab-case 插槽演示
+    // 5. kebab-case 插槽演示 — #user-levelLabel（紫色）
     {
       name: "user-level",
       label: "用户等级",
@@ -247,7 +268,7 @@
         max: 10,
       },
     },
-    // 6. 子渲染器插槽演示
+    // 6. 子渲染器插槽演示 — #remark:extra（粉色）
     {
       name: "remark",
       label: "备注",
@@ -258,6 +279,13 @@
     },
   ]
 
+  /**
+   * 表单提交回调
+   *
+   * 校验通过后触发，输出表单数据到控制台。
+   *
+   * @param values - 校验通过的表单数据
+   */
   const handleSubmit = (values: Record<string, any>) => {
     console.log("提交数据:", values)
     alert("提交成功！数据已打印到控制台")
