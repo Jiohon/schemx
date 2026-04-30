@@ -8,6 +8,7 @@
  */
 
 import { defineComponent, PropType } from "vue"
+import type { DefineComponent } from "vue"
 
 import { isBaseSchema } from "@schemx/core"
 
@@ -15,14 +16,15 @@ import { useDependency } from "@/hooks/useDependency"
 
 import FormItem from "../FormItem"
 
-import type { SchemxDependencyField } from "@schemx/core"
+import type { SchemxDependencyField, Values } from "@schemx/core"
 
 /**
- * FormDependency Props 接口
+ * FormDependency Props
+ *
+ * @typeParam T - 表单值类型
  */
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface FormDependencyProps extends Omit<
-  SchemxDependencyField,
+export interface FormDependencyProps<T extends Values = Values> extends Omit<
+  SchemxDependencyField<T>,
   "componentType"
 > {}
 
@@ -73,4 +75,4 @@ const FormDependency = defineComponent({
   },
 })
 
-export default FormDependency
+export default FormDependency as DefineComponent<FormDependencyProps>

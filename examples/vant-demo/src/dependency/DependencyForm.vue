@@ -34,6 +34,7 @@
   import Schemx from "@schemx/vant"
   import { z } from "zod"
 
+  import type { DependencyFormValues } from "../types"
   import type { SchemxField, SchemxInstance } from "@schemx/vant"
 
   /** 表单实例引用，提供 submit、reset 等方法 */
@@ -108,7 +109,7 @@
    * - 第二个 dependency：根据 additionalServices（checkbox）动态生成字段
    *   - 选中"需要发票"时：upload（发票附件上传）+ number（金额输入）
    */
-  const schemas: SchemxField[] = [
+  const schemas: SchemxField<DependencyFormValues>[] = [
     /** 控制字段：订单类型（selector 选择 standard / express / custom 切换分支） */
     {
       name: "orderType",
@@ -129,7 +130,7 @@
     {
       componentType: "dependency",
       to: ["orderType"],
-      renderer: (values: Record<string, any>): SchemxField[] => {
+      renderer: (values): SchemxField[] => {
         const orderType = values.orderType
 
         /** 标准订单分支：stepper（数量）+ date（预计日期） */
@@ -221,7 +222,7 @@
     {
       componentType: "dependency",
       to: ["additionalServices"],
-      renderer: (values: Record<string, any>): SchemxField[] => {
+      renderer: (values): SchemxField[] => {
         const services: string[] = values.additionalServices || []
 
         if (services.includes("invoice")) {
@@ -276,7 +277,7 @@
    *
    * @param values - 校验通过的表单数据
    */
-  const handleSubmit = (values: Record<string, any>) => {
+  const handleSubmit = (values: DependencyFormValues) => {
     console.log("提交数据:", values)
     alert("提交成功！数据已打印到控制台")
   }

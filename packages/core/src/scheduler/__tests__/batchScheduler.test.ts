@@ -9,7 +9,7 @@
  */
 import { describe, expect, it, vi } from "vitest"
 
-import { createBatchScheduler } from ".."
+import { createBatchScheduler } from "../batchScheduler"
 
 describe("createBatchScheduler", () => {
   it("多次 batch 在 microtask 中合并为一次 flush", async () => {

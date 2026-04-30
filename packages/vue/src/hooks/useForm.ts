@@ -18,17 +18,29 @@
  * })
  *
  * // 或直接创建实例（非组件场景）
- * const instance = createFormInstance({ initialValues: { name: '' } })
+ * const instance = createForm({ initialValues: { name: '' } })
  * ```
  */
 import { computed, inject, onUnmounted, provide } from "vue"
 
-import { createFormInstance } from "@schemx/core"
+import { createForm } from "@schemx/core"
 
-import type { CreateFormInstanceOptions, FormValues, SchemxInstance } from "@schemx/core"
+import { rendererRegistry as globalRendererRegistry } from "@/utils/rendererProvider"
+import { rulesRegistry as globalRulesRegistry } from "@/utils/rulesProvider"
+
+import type { CreateFormOptions, SchemxInstance, Values } from "@schemx/core"
 
 /** SchemxInstance 在 Vue provide/inject 中的注入 key */
-export const FORM_INSTANCE_KEY = Symbol("SchemxInstance")
+export const SCHEMX_INSTANCE_KEY = Symbol("SCHEMX_INSTANCE")
+
+/**
+ * useForm 配置选项
+ *
+ * 扩展 core 层的 CreateFormOptions，增加 Vue 层特有的 request 配置。
+ *
+ * @typeParam T - 表单值类型
+ */
+export interface UseFormOptions<T extends Values> extends CreateFormOptions<T> {}
 
 /**
  * 表单组合式函数
@@ -54,12 +66,18 @@ export const FORM_INSTANCE_KEY = Symbol("SchemxInstance")
  * form.setFieldValue('name', 'John')
  * ```
  */
-export function useForm<T extends FormValues>(
-  options: CreateFormInstanceOptions<T> = {}
-): SchemxInstance<T> {
-  const instance = computed(() => createFormInstance<T>(options))
+export function useForm<T extends Values>(options: UseFormOptions<T>): SchemxInstance<T> {
+  const { ...formOptions } = options
 
-  provide<SchemxInstance<T>>(FORM_INSTANCE_KEY, instance.value)
+  const mergedOptions: CreateFormOptions<T> = {
+    ...formOptions,
+    rendererRegistry: formOptions.rendererRegistry ?? globalRendererRegistry,
+    rulesRegistry: formOptions.rulesRegistry ?? globalRulesRegistry,
+  }
+
+  const instance = computed(() => createForm<T>(mergedOptions))
+
+  provide<SchemxInstance<T>>(SCHEMX_INSTANCE_KEY, instance.value)
 
   onUnmounted(() => {
     instance.value.destroy()
@@ -85,8 +103,8 @@ export function useForm<T extends FormValues>(
  * form.setFieldValue('name', 'hello')
  * ```
  */
-export function useFormInstance<T extends FormValues = FormValues>(): SchemxInstance<T> {
-  const instance = inject<SchemxInstance<T>>(FORM_INSTANCE_KEY)
+export function useFormInstance<T extends Values = Values>(): SchemxInstance<T> {
+  const instance = inject<SchemxInstance<T>>(SCHEMX_INSTANCE_KEY)
 
   if (!instance) {
     throw new Error("useFormInstance must be used within a Form")
@@ -94,5 +112,3 @@ export function useFormInstance<T extends FormValues = FormValues>(): SchemxInst
 
   return instance
 }
-
-export default useForm

@@ -37,6 +37,7 @@
   import Schemx from "@schemx/vant"
   import { z } from "zod"
 
+  import type { ValidationFormValues } from "../types"
   import type { SchemxField, SchemxInstance } from "@schemx/vant"
 
   /** 表单实例引用，提供 submit、validate、validateField、setFieldError 等方法 */
@@ -52,7 +53,7 @@
    * validationTrigger onChange 触发、z.number() 类型校验、z.string().regex() 正则校验、
    * z.string().email() 邮箱格式校验。
    */
-  const schemas: SchemxField[] = [
+  const schemas: SchemxField<ValidationFormValues>[] = [
     // Zod string min/max/regex 校验 + validationTrigger: "onChange"
     {
       name: "username",
@@ -186,7 +187,7 @@
    *
    * @param values - 校验通过的表单数据
    */
-  const handleSubmit = (values: Record<string, any>) => {
+  const handleSubmit = (values: ValidationFormValues) => {
     if (values.password !== values.confirmPassword) {
       formRef.value?.setFieldError("confirmPassword", ["两次输入的密码不一致"])
 

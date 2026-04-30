@@ -12,7 +12,7 @@ import { defineComponent } from "vue"
 
 import { describe, expect, it } from "vitest"
 
-import { createLocalRendererRegistry, RendererRegistry } from "../rendererRegistry"
+import { createRendererRegistry, RendererRegistry } from "../rendererRegistry"
 
 const Comp1 = defineComponent({ render: () => null })
 const Comp2 = defineComponent({ render: () => null })
@@ -42,7 +42,7 @@ describe("Registry", () => {
     })
 
     it("未找到时回退到默认类型", () => {
-      const reg = new RendererRegistry()
+      const reg = new RendererRegistry("text")
       reg.register("text", Comp1)
       expect(reg.getRenderer("unknown")).toBe(Comp1)
     })
@@ -88,11 +88,11 @@ describe("Registry", () => {
       expect(reg.getDefault()).toBe("number")
     })
 
-    it("移除最后一个渲染器时默认类型设为空字符串", () => {
-      const reg = new RendererRegistry()
+    it("移除最后一个渲染器时默认类型保持不变", () => {
+      const reg = new RendererRegistry("text")
       reg.register("text", Comp1)
       reg.unregister("text")
-      expect(reg.getDefault()).toBe("")
+      expect(reg.getDefault()).toBe("text")
     })
   })
 
@@ -106,15 +106,15 @@ describe("Registry", () => {
     })
 
     it("设置未注册的类型无效", () => {
-      const reg = new RendererRegistry()
+      const reg = new RendererRegistry("text")
       reg.register("text", Comp1)
       reg.setDefault("nonexistent")
       expect(reg.getDefault()).toBe("text")
     })
 
-    it("构造时默认类型为 text", () => {
+    it("构造时默认类型为 undefined", () => {
       const reg = new RendererRegistry()
-      expect(reg.getDefault()).toBe("text")
+      expect(reg.getDefault()).toBeUndefined()
     })
 
     it("构造时可指定默认类型", () => {
@@ -137,19 +137,18 @@ describe("Registry", () => {
       expect(reg.size()).toBe(1)
     })
 
-    it("clear 清空所有渲染器并重置默认类型", () => {
+    it("clear 清空所有渲染器", () => {
       const reg = new RendererRegistry()
       reg.registerAll({ text: Comp1, number: Comp2 })
       reg.setDefault("number")
       reg.clear()
       expect(reg.size()).toBe(0)
-      expect(reg.getDefault()).toBe("text")
     })
   })
 
-  describe("createLocalRendererRegistry 工厂函数", () => {
+  describe("createRendererRegistry 工厂函数", () => {
     it("创建独立的 Registry 实例", () => {
-      const reg = createLocalRendererRegistry("number")
+      const reg = createRendererRegistry("number")
       expect(reg).toBeInstanceOf(RendererRegistry)
       expect(reg.getDefault()).toBe("number")
     })

@@ -12,10 +12,10 @@ import { computed, type ComputedRef, watch } from "vue"
 
 import { useContext } from "@/hooks/useContext"
 import { useField } from "@/hooks/useField"
-import type { ResolvedProps } from "@/hooks/useResolvedProps"
 import { shouldValidateOn } from "@/utils"
 import { mergeTrigger } from "@/utils/validation"
 
+import type { SchemxDependenciesStaticProps } from "@schemx/core"
 import type { SchemxBase, ValidationTrigger } from "@schemx/core"
 
 /** mergeTrigger 返回的触发时机类型 */
@@ -60,7 +60,7 @@ export interface UseFieldHandlerReturn {
  */
 export function useFieldHandler(
   baseSchema: SchemxBase,
-  resolvedProps: ResolvedProps
+  resolvedProps: SchemxDependenciesStaticProps
 ): UseFieldHandlerReturn {
   const formContext = useContext()
   const field = useField(baseSchema.name)

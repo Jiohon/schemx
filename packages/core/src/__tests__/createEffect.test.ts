@@ -7,8 +7,8 @@
  *
  * @module core/__tests__/createEffect
  */
-import fc from "fast-check"
 import { batch, signal } from "@preact/signals-core"
+import fc from "fast-check"
 import { describe, expect, it, vi } from "vitest"
 
 import { createEffect } from "../createEffect"
@@ -102,6 +102,7 @@ describe("createEffect 属性测试", () => {
 
         const dispose = createEffect(() => {
           void s.value
+
           return cleanupFn
         })
 
@@ -132,6 +133,7 @@ describe("createEffect 属性测试", () => {
           const dispose = createEffect(() => {
             void s.value
             order.push("effect")
+
             return () => {
               order.push("cleanup")
             }
@@ -159,6 +161,7 @@ describe("createEffect 属性测试", () => {
 
         const dispose = createEffect(() => {
           void s.value
+
           return cleanupFn
         })
 
@@ -268,6 +271,7 @@ describe("createEffect 单元测试", () => {
     const dispose = createEffect(() => {
       void a.value
       callCount++
+
       return () => {
         cleanupCalls.push(callCount)
       }

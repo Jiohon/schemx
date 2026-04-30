@@ -91,8 +91,8 @@ const RadioRendererComponent = defineComponent({
     const valueName = computed(() => props.fieldNames?.value || "value")
     const disabledName = computed(() => props.fieldNames?.disabled || "disabled")
 
-    // const disabled = computed(() => props.disabled || props.formItemProps?.disabled)
-    // const readonly = computed(() => props.readonly || props.formItemProps?.readonly)
+    const disabled = computed(() => props.disabled || props.formItemProps?.disabled)
+    const readonly = computed(() => props.readonly || props.formItemProps?.readonly)
 
     const fieldValue = computed(() => {
       return getOption(props.value, labelName.value)
@@ -121,8 +121,8 @@ const RadioRendererComponent = defineComponent({
       return (
         <div
           class={classNames("schemx-renderer", "schemx-radio-renderer", props.className, {
-            "schemx-renderer-readonly": props.readonly,
-            "schemx-renderer-disabled": props.disabled,
+            "schemx-renderer-readonly": readonly.value,
+            "schemx-renderer-disabled": disabled.value,
           })}
         >
           <RadioGroup
@@ -145,7 +145,7 @@ const RadioRendererComponent = defineComponent({
               <Radio
                 key={option[valueName.value]}
                 name={option[valueName.value]}
-                disabled={props.disabled || option[disabledName.value]}
+                disabled={disabled.value || option[disabledName.value]}
                 {...option}
               >
                 {option[labelName.value]}

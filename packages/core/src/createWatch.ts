@@ -4,6 +4,12 @@
  * 提供不依赖任何 UI 框架的字段监听能力，基于 form.effect() 自动依赖追踪。
  * 适用于非组件场景（如工具函数、外部逻辑）。
  *
+ * 提供四种使用方式：
+ * - {@link createWatch} — 统一入口，根据参数类型自动分发
+ * - {@link createWatchField} — 监听单个字段
+ * - {@link createWatchFields} — 监听多个字段
+ * - {@link createWatchAll} — 监听所有字段
+ *
  * 所有回调采用 payload 模式：`(payload, latestSnapshot)`，
  * payload 包含变更的详细信息，latestSnapshot 为变更后的表单完整快照。
  *
@@ -11,11 +17,16 @@
  *
  * @example
  * ```ts
- * import { createWatchField, createWatchFields, createWatchAll } from '@schemx/core'
+ * import { createWatch, createWatchField, createWatchFields, createWatchAll } from '@schemx/core'
+ *
+ * // 统一入口 — 根据参数类型自动分发
+ * createWatch(form, 'username', (payload, snapshot) => { ... })
+ * createWatch(form, ['firstName', 'lastName'], (payload, snapshot) => { ... })
+ * createWatch(form, (payload, snapshot) => { ... })
  *
  * // 监听单个字段
  * const dispose = createWatchField(form, 'username', (payload, snapshot) => {
- *   console.log(`${payload.path}: ${payload.prevValue} -> ${payload.value}`)
+ *   console.log(`${payload.prevValue} -> ${payload.value}`)
  * }, { immediate: true })
  *
  * // 监听多个字段
@@ -35,10 +46,9 @@
 
 import { isEqual } from "es-toolkit/compat"
 
-import { diff } from "./utils/diff"
-import { collectObjectPathsByLeaf } from "./utils/path"
+import { collectObjectPathsByLeaf, diff } from "./utils"
 
-import type { FormValues, NamePath, SchemxInstance, Value } from "./types"
+import type { NamePath, SchemxInstance, Value, Values } from "./types"
 
 /** 单字段订阅回调的载荷 */
 type FieldPayload = {
@@ -133,7 +143,7 @@ export type CreateWatchReturn = () => void
  * dispose()
  * ```
  */
-export const createWatchField = <T extends FormValues>(
+export const createWatchField = <T extends Values>(
   form: SchemxInstance<T>,
   name: NamePath<T>,
   callback: WatchFieldCallback<T>,
@@ -188,7 +198,7 @@ export const createWatchField = <T extends FormValues>(
  * dispose()
  * ```
  */
-export const createWatchFields = <T extends FormValues>(
+export const createWatchFields = <T extends Values>(
   form: SchemxInstance<T>,
   names: NamePath<T>[],
   callback: WatchFieldsCallback<T>,
@@ -249,7 +259,7 @@ export const createWatchFields = <T extends FormValues>(
  * dispose()
  * ```
  */
-export const createWatchAll = <T extends FormValues>(
+export const createWatchAll = <T extends Values>(
   form: SchemxInstance<T>,
   callback: WatchAllCallback<T>,
   options: CreateWatchOptions
@@ -289,4 +299,86 @@ export const createWatchAll = <T extends FormValues>(
   })
 
   return dispose
+}
+
+/**
+ * 统一的字段监听函数（基于 Signal effect）
+ *
+ * 根据参数类型自动分发到 createWatchField / createWatchFields / createWatchAll。
+ * 框架适配层可直接调用此函数，无需自行判断参数类型。
+ *
+ * @param form - 表单实例
+ * @param callback - 全局变化回调
+ * @param options - 监听选项
+ * @returns 取消监听函数
+ */
+export function createWatch<T extends Values>(
+  form: SchemxInstance<T>,
+  callback: WatchAllCallback<T>,
+  options?: CreateWatchOptions
+): CreateWatchReturn
+/**
+ * @param form - 表单实例
+ * @param name - 字段路径
+ * @param callback - 单字段变化回调
+ * @param options - 监听选项
+ * @returns 取消监听函数
+ */
+export function createWatch<T extends Values>(
+  form: SchemxInstance<T>,
+  name: NamePath<T>,
+  callback: WatchFieldCallback<T>,
+  options?: CreateWatchOptions
+): CreateWatchReturn
+/**
+ * @param form - 表单实例
+ * @param names - 字段路径数组
+ * @param callback - 多字段变化回调
+ * @param options - 监听选项
+ * @returns 取消监听函数
+ */
+export function createWatch<T extends Values>(
+  form: SchemxInstance<T>,
+  names: NamePath<T>[],
+  callback: WatchFieldsCallback<T>,
+  options?: CreateWatchOptions
+): CreateWatchReturn
+/**
+ * createWatch 实现 — 根据第二个参数类型分发到对应的底层函数
+ */
+export function createWatch<T extends Values>(
+  form: SchemxInstance<T>,
+  nameOrNamesOrCallback: NamePath<T> | NamePath<T>[] | WatchAllCallback<T>,
+  callbackOrOptions?: WatchFieldCallback<T> | WatchFieldsCallback<T> | CreateWatchOptions,
+  maybeOptions?: CreateWatchOptions
+): CreateWatchReturn {
+  // 全局监听：createWatch(form, callback, options?)
+  if (typeof nameOrNamesOrCallback === "function") {
+    return createWatchAll<T>(
+      form,
+      nameOrNamesOrCallback,
+      (callbackOrOptions as CreateWatchOptions) || {}
+    )
+  }
+
+  // 单字段监听：createWatch(form, name, callback, options?)
+  if (
+    typeof nameOrNamesOrCallback === "string" ||
+    typeof nameOrNamesOrCallback === "number"
+  ) {
+    return createWatchField<T>(
+      form,
+      nameOrNamesOrCallback as NamePath<T>,
+      callbackOrOptions as WatchFieldCallback<T>,
+      maybeOptions || {}
+    )
+  }
+
+  // 多字段监听：createWatch(form, names, callback, options?)
+  return createWatchFields<T>(
+    form,
+    nameOrNamesOrCallback,
+    callbackOrOptions as WatchFieldsCallback<T>,
+    maybeOptions || {}
+  )
 }

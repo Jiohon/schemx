@@ -6,22 +6,21 @@
  * @module types/form
  */
 
-import * as CSS from "csstype"
+import { FormStorePendingField } from "@/store"
 
 import { DeepNamePath } from "./namePathType"
+import { SchemxRendererKey } from "./renderer"
 import { SchemxRules } from "./rule"
 
-import type { DeepReadonly } from "./readonly"
 import type { SchemxField } from "./schema"
-import type { RendererRegistry } from "../registry/rendererRegistry"
-import type { ValidateResult } from "../validator"
-import type { ValidateError } from "../validator"
+import type { RendererRegistry, RuleEntry, RulesRegistry } from "../registry"
+import type { ValidateError, ValidateResult } from "../validator"
 
 /** 字段值类型 */
 export type Value = any
 
 /** 表单值类型，键值对结构 */
-export type FormValues = Record<string, Value>
+export type Values = Record<string, Value>
 
 /**
  * 字段路径类型
@@ -30,7 +29,7 @@ export type FormValues = Record<string, Value>
  *
  * @typeParam T - 表单值类型，用于路径类型推断
  */
-export type NamePath<T = FormValues> = DeepNamePath<T>
+export type NamePath<T = Values> = DeepNamePath<T>
 
 /**
  * 验证规则触发时机
@@ -50,17 +49,23 @@ export type ValidationTrigger =
  *
  * @typeParam T - 表单值类型
  */
-export interface SchemxProps<T extends FormValues = FormValues> {
+export interface SchemxProps<T extends Values = Values> {
   /** 表单数据（v-model） */
   modelValue?: T
   /** 初始值 */
   initialValues?: T
   /** 表单字段配置 */
-  schemas: SchemxField[]
+  schemas: SchemxField<T>[]
   /** 表单实例 */
-  form?: SchemxInstance
+  form?: SchemxInstance<T>
+
   /** 渲染器注册实例 */
   rendererRegistry?: RendererRegistry
+  /** 默认渲染器类型，当字段未指定 renderer 时使用 */
+  defaultRendererType?: SchemxRendererKey<T>
+  /** 规则注册实例 */
+  rulesRegistry?: RulesRegistry
+
   /** 验证触发时机 */
   validationTrigger?: ValidationTrigger | ValidationTrigger[]
   /** 标签图标 */
@@ -79,18 +84,15 @@ export interface SchemxProps<T extends FormValues = FormValues> {
   readonly?: boolean
   /** 是否禁用 */
   disabled?: boolean
-  /** 自定义类名 */
-  className?: string
-  /** 自定义样式 */
-  style?: CSS.Properties
+
   /** 表单提交校验通过后的回调 */
-  onFinish?: (values: DeepReadonly<T>) => void | Promise<void>
+  onFinish?: (values: Readonly<T>) => void | Promise<void>
   /** 表单提交校验失败后的回调 */
   onFinishFailed?: (error: ValidateError<T>) => void
   /** 字段值更新时触发的回调 */
   onValuesChange?: (
-    changedValues: DeepReadonly<Partial<T>>,
-    latestSnapshot: DeepReadonly<T> | T
+    changedValues: Readonly<Partial<T>>,
+    latestSnapshot: Readonly<T> | T
   ) => void
   /** 字段更新时触发的回调 */
   onFieldsChange?: (changedFields: NamePath<T>[], allFields: NamePath<T>[]) => void
@@ -102,9 +104,20 @@ export interface SchemxProps<T extends FormValues = FormValues> {
  * 定义表单的所有操作方法，是 useForm 返回值的基础接口。
  * SchemxInstance 类实现此接口，提供完整的表单操作能力。
  *
- * @typeParam T - 表单值类型，默认为 FormValues
+ * @typeParam T - 表单值类型，默认为 Values
  */
-export interface SchemxInstance<T extends FormValues = FormValues> {
+export interface SchemxInstance<T extends Values = Values> {
+  /**
+   * 获取过滤后的 schemas 列表
+   *
+   * @returns schemas
+   *
+   * @example
+   * ```typescript
+   * form.getSchemas()
+   * ```
+   */
+  getSchemas: () => SchemxField<T>[]
   /**
    * 设置单个字段值并通知订阅者
    *
@@ -446,6 +459,55 @@ export interface SchemxInstance<T extends FormValues = FormValues> {
   batch: (fn: () => void) => void
 
   /**
+   * 设置字段的操作中状态
+   *
+   * 用于标记字段正在进行异步操作（如文件上传），
+   * 校验和提交时会检查是否有字段处于操作中状态。
+   *
+   * @param name - 字段路径
+   * @param pending - 是否处于操作中
+   * @param message - 操作描述信息（如 "上传中..."）
+   *
+   * @example
+   * ```typescript
+   * form.setFieldPending('avatar', true, '上传中...')   // 上传开始
+   * form.setFieldPending('avatar', false, '')           // 上传结束
+   * ```
+   */
+  setFieldPending: (name: NamePath<T>, pending: boolean, message?: string) => void
+
+  /**
+   * 检查单个字段是否处于操作中
+   *
+   * 返回响应式值，在 effect 中使用时自动追踪变化。
+   *
+   * @param name - 字段路径
+   * @returns 是否处于操作中
+   *
+   * @example
+   * ```typescript
+   * form.isFieldPending('avatar') // => true
+   * ```
+   */
+  isFieldPending: (name: NamePath<T>) => boolean
+
+  /**
+   * 获取所有处于操作中的字段信息
+   *
+   * 返回当前所有 pending 状态为 true 的字段路径及其描述信息，
+   * 无操作中字段时返回空数组。
+   *
+   * @returns 操作中的字段信息数组，每项包含 field（路径）和 message（描述）
+   *
+   * @example
+   * ```typescript
+   * form.getPendingFields()
+   * // => [{ field: 'avatar', message: '上传中...' }, { field: 'attachment', message: '上传中...' }]
+   * ```
+   */
+  getPendingFields: () => FormStorePendingField[]
+
+  /**
    * 销毁表单实例
    *
    * 清除所有订阅回调，释放资源。通常在组件卸载时调用。
@@ -456,6 +518,123 @@ export interface SchemxInstance<T extends FormValues = FormValues> {
    * ```
    */
   destroy: () => void
+
+  /**
+   * 获取内部钩子
+   *
+   * 返回包含渲染器注册和校验规则注册等内部操作的钩子对象。
+   * 仅供框架内部使用（如 FormItem），不建议业务代码直接调用。
+   *
+   * @returns 内部钩子对象
+   */
+  getInternalHooks: () => SchemxInternalHooks<T>
+}
+
+/**
+ * 表单内部钩子接口
+ *
+ * 封装渲染器注册和校验规则注册等内部操作，
+ * 与 {@link SchemxInstance} 的公开 API 分离，避免暴露给业务代码。
+ *
+ * @typeParam T - 表单值类型
+ */
+export interface SchemxInternalHooks<T extends Values = Values> {
+  /**
+   * 获取指定类型的渲染器组件
+   *
+   * 根据类型标识从内部的 RendererRegistry 中查找对应的渲染器组件。
+   * 未找到时回退到默认类型，均不存在则返回 undefined。
+   *
+   * @param type - 渲染器类型标识
+   * @returns 对应的渲染器组件，未找到时返回 undefined
+   *
+   * @example
+   * ```typescript
+   * const renderer = form.getRenderer('input')
+   * if (renderer) {
+   *   // 使用渲染器组件
+   * }
+   * ```
+   */
+  getRenderer: (type: SchemxRendererKey<T>) => unknown | undefined
+
+  /**
+   * 注册渲染器组件
+   *
+   * 将渲染器组件注册到内部的 RendererRegistry，
+   * 后续可通过 getRenderer 获取。
+   *
+   * @param type - 渲染器类型标识
+   * @param renderer - 渲染器组件
+   *
+   * @example
+   * ```typescript
+   * form.registerRenderer('input', InputComponent)
+   * ```
+   */
+  registerRenderer: (type: SchemxRendererKey<T>, renderer: unknown) => void
+
+  /**
+   * 检查指定类型的渲染器是否已注册
+   *
+   * @param type - 渲染器类型标识
+   * @returns 是否已注册
+   *
+   * @example
+   * ```typescript
+   * if (form.hasRenderer('input')) {
+   *   // 渲染器已注册
+   * }
+   * ```
+   */
+  hasRenderer: (type: SchemxRendererKey<T>) => boolean
+
+  /**
+   * 获取指定名称的校验规则条目
+   *
+   * 从内部 RulesRegistry 查找，支持父级链式查找。
+   * 返回原始注册条目（StandardSchemaV1 实例或工厂函数），不做解析。
+   *
+   * @param name - 规则名称
+   * @returns 对应的 RuleEntry，未找到时返回 undefined
+   *
+   * @example
+   * ```typescript
+   * const entry = form.getRule('phone')
+   * ```
+   */
+  getRule: (name: string) => RuleEntry<T> | undefined
+
+  /**
+   * 注册校验规则
+   *
+   * 将校验规则注册到内部的 RulesRegistry，
+   * 后续可通过 getRule / hasRule 查询。
+   *
+   * @param name - 规则名称
+   * @param rule - StandardSchemaV1 实例或工厂函数
+   *
+   * @example
+   * ```typescript
+   * form.registerRule('phone', phoneRule)
+   * ```
+   */
+  registerRule: (name: string, rule: RuleEntry<T>) => void
+
+  /**
+   * 检查指定名称的校验规则是否已注册
+   *
+   * 支持父级链式查找。
+   *
+   * @param name - 规则名称
+   * @returns 是否已注册
+   *
+   * @example
+   * ```typescript
+   * form.hasRule('phone') // => true
+   * ```
+   */
+  hasRule: (name: string) => boolean
 }
 
 /**
@@ -464,7 +643,7 @@ export interface SchemxInstance<T extends FormValues = FormValues> {
  * 从 SchemxProps 中提取的全局只读/禁用/触发时机配置。
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface GlobalContext extends Pick<
+export interface SchemxGlobalContext extends Pick<
   SchemxProps,
   "readonly" | "disabled" | "validationTrigger"
 > {}

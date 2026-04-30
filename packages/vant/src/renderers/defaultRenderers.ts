@@ -1,4 +1,13 @@
-import { defineRenderers } from "@schemx/core"
+/**
+ * Vant 默认渲染器注册
+ *
+ * 导入 @schemx/vue 的全局 rendererRegistry 实例，
+ * 将所有 Vant 渲染器注册进去。
+ *
+ * @module renderers/defaultRenderers
+ */
+
+import { rendererRegistry } from "@schemx/vue"
 
 import {
   CalendarRenderer,
@@ -19,10 +28,7 @@ import {
   UploadRenderer,
 } from "../renderers"
 
-/**
- * 注册子渲染器
- */
-defineRenderers({
+rendererRegistry.registerAll({
   input: InputRenderer,
   text: TextRenderer,
   textarea: TextAreaRenderer,

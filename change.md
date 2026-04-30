@@ -40,7 +40,7 @@ Searched workspace
 
 新的 FormStore 内部结构：
 
-class FormStore<T extends FormValues> {
+class FormStore<T extends Values> {
 // signal 存储：每个字段路径一个 signal
 private signals: Map<string, Signal<any>>
 

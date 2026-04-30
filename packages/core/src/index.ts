@@ -12,6 +12,7 @@ export {
   createFormStore,
   type FormStoreState,
   type FormStoreOptions,
+  type FormStorePendingField,
 } from "./store"
 
 // SignalMap - 响应式键值存储
@@ -28,17 +29,17 @@ export {
 
 // RendererRegistry - 渲染器注册
 export {
-  rendererRegistry,
-  createLocalRendererRegistry,
-  defineRenderer,
-  defineRenderers,
+  createRendererRegistry,
   type RendererRegistry,
   type RegistryOptions,
   type RendererMap,
-} from "./registry/rendererRegistry"
+} from "./registry"
 
-// createFormInstance - 表单实例工厂
-export { createFormInstance, type CreateFormInstanceOptions } from "./createForm"
+// createForm - 表单实例工厂
+export { createForm, type CreateFormOptions } from "./createForm"
+
+// createField - 单字段控制器
+export { createField, type FieldInstance } from "./createField"
 
 // createEffect - 底层通用 Signal effect
 export {
@@ -50,6 +51,7 @@ export {
 
 // createWatch - 纯函数版本的字段监听
 export {
+  createWatch,
   createWatchField,
   createWatchFields,
   createWatchAll,
@@ -62,16 +64,16 @@ export {
 
 // RulesRegistry - 校验规则注册
 export {
-  rulesRegistry,
-  createLocalRuleRegistry,
-  defineRule,
-  defineRules,
+  createRulesRegistry,
   type RulesRegistry,
   type RuleRegistryOptions,
   type RuleFactory,
   type RuleEntry,
   type RuleEntryMap,
-} from "./registry/rulesRegistry"
+} from "./registry"
+
+// Schemas - Schema 处理工具
+export { filterSchemas } from "./schemas"
 
 // Utils - 工具函数
 export {
@@ -80,9 +82,7 @@ export {
   isDependencySchema,
   getByPath,
   setByPath,
-  collectObjectPaths,
   collectObjectPathsByLeaf,
-  pickByPaths,
 } from "./utils"
 
 // BatchScheduler - 批量调度器
@@ -95,27 +95,35 @@ export {
 // Types - 类型定义
 export type {
   Value,
-  FormValues,
+  Values,
+  Dynamic,
   NamePath,
+  DeepReadonly,
+  CSSProperties,
   ValidationTrigger,
   SchemxInstance,
   SchemxProps,
-  GlobalContext,
-  CustomRulesKey,
-  BuiltinRules,
+  SchemxGlobalContext,
+  SchemxRuleDefinition,
+  SchemxRuleDefinitionKey,
+  SchemxBuiltinRules,
   SchemxRules,
-  RendererType,
-  RendererDefinition,
-  FieldDefinition,
-  BaseComponentProps,
-  ComponentProps,
+  SchemxRendererKey,
+  SchemxRendererDefinition,
+  SchemxFieldDefinition,
+  SchemxGroupFieldDefinition,
+  SchemxBaseComponentProps,
+  SchemxComponentProps,
   SchemxBase,
   SchemxGroupField,
   SchemxDependencyField,
   SchemxBaseField,
   SchemxField,
-  FormItemProps,
-  DeepNamePath,
-  DeepReadonly,
-  CSSProperties,
+  SchemxFormItemProps,
+  SchemxDependencies,
+  SchemxConditionFn,
+  SchemxDependenciesStaticProps,
+  SchemxInternalHooks,
+  SchemxDictionary,
+  SchemxWithDictionary,
 } from "./types"

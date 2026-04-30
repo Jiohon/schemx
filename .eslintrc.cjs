@@ -134,7 +134,7 @@ module.exports = {
     "@typescript-eslint/no-namespace": "off",
 
     // 通用规则
-    "no-console": ["error", { allow: ["warn", "error"] }],
+    "no-console": ["error", { allow: ["warn", "error", "log", "count"] }],
     "no-debugger": "warn",
 
     // 函数/模块之间空行

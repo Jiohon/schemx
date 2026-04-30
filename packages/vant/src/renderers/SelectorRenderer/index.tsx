@@ -1,6 +1,6 @@
 import { computed, defineComponent, PropType, SetupContext } from "vue"
 
-import { useDictionary, WithRemoteOptions } from "@schemx/vue"
+import { WithRemoteOptions } from "@schemx/vue"
 import classNames from "classnames"
 
 import { getFieldProps } from "@/utils"
@@ -86,35 +86,18 @@ const SelectorRendererComponent = defineComponent({
     },
   },
   setup(props, { attrs }: SetupContext) {
-    const { list } = useDictionary(attrs as Record<string, any>)
-
     const labelName = computed(() => props.fieldNames?.label || "label")
     const valueName = computed(() => props.fieldNames?.value || "value")
 
     const disabled = computed(() => props.disabled || props.formItemProps?.disabled)
     const readonly = computed(() => props.readonly || props.formItemProps?.readonly)
 
-    /**
-     * 数据源
-     */
-    const schemas = computed(() => {
-      if (Array.isArray(list.value) && list.value?.length > 0) {
-        return list.value
-      }
-
-      if (Array.isArray(props.options) && props.options?.length > 0) {
-        return props.options
-      }
-
-      return (attrs as Record<string, any>)?.schemas || []
-    })
-
     const fieldValue = computed(() => {
       return getOption(props.value, labelName.value)
     })
 
     const getOption = (v: any, key: string): any => {
-      const option = schemas.value.find(
+      const option = props.options.find(
         (option: SelectorOption) => option[valueName.value] === v
       )
 
@@ -149,7 +132,7 @@ const SelectorRendererComponent = defineComponent({
         >
           <Selector
             {...attrs}
-            options={schemas.value}
+            options={props.options}
             fieldNames={props.fieldNames}
             disabled={disabled.value}
             style={{

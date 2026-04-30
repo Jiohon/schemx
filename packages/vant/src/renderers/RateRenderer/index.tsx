@@ -1,6 +1,6 @@
 import { computed, defineComponent, PropType, SetupContext } from "vue"
 
-import { Icon } from "vant"
+import { Rate } from "vant"
 
 import classNames from "classnames"
 
@@ -22,8 +22,8 @@ export interface RateRendererProps {
 
 /**
  * 评分渲染器组件
- * 使用 Vant Icon 实现评分功能
  *
+ * 基于 Vant Rate 组件实现评分功能。
  */
 const RateRendererComponent = defineComponent({
   name: "RateRendererComponent",
@@ -73,51 +73,9 @@ const RateRendererComponent = defineComponent({
       default: undefined,
     },
   },
-  setup(props, { attrs: _ }: SetupContext) {
-    const fieldProps = computed(() => ({
-      readonly: props.readonly || props.formItemProps?.readonly,
-      disabled: props.disabled || props.formItemProps?.disabled,
-    }))
-
-    // 计算最终的只读和禁用状态
-    const finalReadonly = computed(() => fieldProps.value.readonly)
-    const finalDisabled = computed(() => fieldProps.value.disabled)
-
-    // 处理点击事件
-    const handleStarClick = (index: number): void => {
-      if (finalDisabled.value || finalReadonly.value) return
-
-      const newValue = index + 1
-      props.onChange?.(newValue)
-    }
-
-    // 渲染只读状态
-    const renderReadonly = () => {
-      if (!props.value) {
-        return (
-          <span class="schemx-rate-renderer__readonly-placeholder">
-            {props.readonlyPlaceholder}
-          </span>
-        )
-      }
-
-      return (
-        <div class="schemx-rate-renderer__readonly">
-          {Array.from({ length: props.count }, (_, index) => (
-            <Icon
-              key={index}
-              name={index < props.value ? "star" : "star-o"}
-              class={classNames(
-                "schemx-rate-renderer__star",
-                "schemx-rate-renderer__star--readonly",
-                index < props.value && "schemx-rate-renderer__star--active"
-              )}
-            />
-          ))}
-          <span class="schemx-rate-renderer__readonly-text">({props.value})</span>
-        </div>
-      )
-    }
+  setup(props, { attrs }: SetupContext) {
+    const finalReadonly = computed(() => props.readonly || props.formItemProps?.readonly)
+    const finalDisabled = computed(() => props.disabled || props.formItemProps?.disabled)
 
     return () => {
       if (finalReadonly.value) {
@@ -129,7 +87,18 @@ const RateRendererComponent = defineComponent({
               props.className
             )}
           >
-            {renderReadonly()}
+            {props.value ? (
+              <Rate
+                modelValue={props.value}
+                count={props.count}
+                allowHalf={props.allowHalf}
+                readonly
+              />
+            ) : (
+              <span class="schemx-rate-renderer__readonly-placeholder">
+                {props.readonlyPlaceholder}
+              </span>
+            )}
           </div>
         )
       }
@@ -140,20 +109,14 @@ const RateRendererComponent = defineComponent({
             "schemx-rate-renderer--disabled": finalDisabled.value,
           })}
         >
-          <div class="schemx-rate-renderer__stars">
-            {Array.from({ length: props.count }, (_, index) => (
-              <Icon
-                key={index}
-                name={index < props.value ? "star" : "star-o"}
-                class={classNames(
-                  "schemx-rate-renderer__star",
-                  index < props.value && "schemx-rate-renderer__star--active",
-                  finalDisabled.value && "schemx-rate-renderer__star--disabled"
-                )}
-                onClick={() => handleStarClick(index)}
-              />
-            ))}
-          </div>
+          <Rate
+            {...attrs}
+            modelValue={props.value}
+            count={props.count}
+            allowHalf={props.allowHalf}
+            disabled={finalDisabled.value}
+            onUpdate:modelValue={props.onChange}
+          />
         </div>
       )
     }

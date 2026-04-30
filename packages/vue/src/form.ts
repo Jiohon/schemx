@@ -9,10 +9,24 @@
 
 import type { App } from "vue"
 
-import { requestProvider } from "@/utils/requestProvider"
-
 import FormItem from "./components/FormItem"
 import SchemxForm from "./form.vue"
+
+/**
+ * SchemxForm 插件安装选项
+ *
+ * 在 `app.use(SchemxForm, options)` 时传入，用于配置全局默认行为。
+ *
+ * @example
+ * ```ts
+ * import SchemxForm from '@schemx/vue'
+ *
+ * app.use(SchemxForm, {
+ *   request: (url) => fetch(url).then(r => r.json()),
+ * })
+ * ```
+ */
+export interface SchemxInstallOptions {}
 
 /**
  * 为组件挂载静态属性并保留原始类型
@@ -29,15 +43,11 @@ export function withInstall<T extends object, E extends Record<string, unknown>>
 
 const SchemxFormExport = withInstall(SchemxForm, {
   /** Vue 插件安装方法 */
-  install(app: App) {
+  install(app: App, options?: SchemxInstallOptions) {
     app.component("SchemxForm", SchemxForm)
   },
   /** FormItem 子组件引用 */
   FormItem,
-  /** 注册全局请求器 */
-  registerRequest: requestProvider.register,
-  /** 清除全局请求器 */
-  clearRequest: requestProvider.clear,
 })
 
 export default SchemxFormExport

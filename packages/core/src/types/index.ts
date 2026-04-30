@@ -7,33 +7,40 @@
 /** 基础类型 */
 export type {
   Value,
-  FormValues,
+  Values,
   NamePath,
   ValidationTrigger,
   SchemxInstance,
+  SchemxInternalHooks,
 } from "./form"
 
 /** 规则类型 */
-export type { CustomRulesKey, BuiltinRules, SchemxRules } from "./rule"
+export type {
+  SchemxRuleDefinition,
+  SchemxRuleDefinitionKey,
+  SchemxBuiltinRules,
+  SchemxRules,
+} from "./rule"
 
 /** 渲染器类型 */
-export type { RendererType, RendererDefinition } from "./renderer"
+export type { SchemxRendererKey, SchemxRendererDefinition } from "./renderer"
 
 /** Schema 列配置类型 */
 export type {
-  BaseComponentProps,
-  ComponentProps,
-  FieldDefinition,
+  SchemxBaseComponentProps,
+  SchemxComponentProps,
+  SchemxFieldDefinition,
+  SchemxGroupFieldDefinition,
   SchemxBase,
   SchemxGroupField,
   SchemxDependencyField,
   SchemxBaseField,
   SchemxField,
-  FormItemProps,
+  SchemxFormItemProps,
 } from "./schema"
 
 /** 表单组件 Props 类型 */
-export type { SchemxProps, GlobalContext } from "./form"
+export type { SchemxProps, SchemxGlobalContext } from "./form"
 
 /** 深层路径类型工具 */
 export type { DeepNamePath } from "./namePathType"
@@ -43,3 +50,20 @@ export type { DeepReadonly, CSSProperties } from "./readonly"
 
 /** TypeScript 工具类型 */
 export type { Exact } from "./utils"
+
+/** 动态属性解析类型 */
+export { type Dynamic } from "./dynamic"
+
+/** 依赖对象类型 */
+export type {
+  SchemxConditionFn,
+  SchemxDependencies,
+  SchemxDependenciesConditionKey,
+  SchemxDependenciesStaticProps,
+} from "./dependencies"
+
+/** 字典对象类型 */
+export type { SchemxDictionary, SchemxWithDictionary } from "./dictionary"
+
+/** Standard Schema 类型 */
+export type { StandardSchemaV1 } from "./standardSchema"

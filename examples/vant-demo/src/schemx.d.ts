@@ -24,7 +24,7 @@ import type {
 } from "@schemx/vant"
 
 declare module "@schemx/core" {
-  interface RendererDefinition {
+  interface SchemxRendererDefinition {
     input: InputRendererProps
     text: TextRendererProps
     textarea: TextAreaRendererProps

@@ -6,7 +6,7 @@
  * @module core/registry/rendererRegistry
  */
 
-import { createStrictSingleton } from "../utils/single"
+import { SchemxRendererKey } from "@/types"
 
 /** 渲染器注册选项 */
 export interface RegistryOptions {
@@ -19,7 +19,7 @@ export interface RegistryOptions {
  *
  * key 为渲染器类型字符串，value 为对应的框架组件。
  */
-export type RendererMap<R = unknown> = Record<string, R>
+export type RendererMap<T extends SchemxRendererKey, R = unknown> = Record<T, R>
 
 /**
  * 渲染器注册中心。
@@ -40,19 +40,22 @@ export type RendererMap<R = unknown> = Record<string, R>
  * @remarks
  * 当 getRenderer 找不到指定类型时，会自动回退到默认渲染器类型（默认为 'text'）。
  */
-export class RendererRegistry<R = unknown> {
+export class RendererRegistry<
+  T extends SchemxRendererKey = SchemxRendererKey,
+  R = unknown,
+> {
   /** 渲染器存储 */
-  private renderers: Map<string, R>
+  private renderers: Map<T, R>
 
   /** 默认渲染器类型 */
-  private defaultType: string
+  private defaultType?: T
 
   /**
    * 创建 Registry 实例。
    *
    * @param defaultType - 默认渲染器类型，未找到指定类型时回退使用
    */
-  constructor(defaultType: string = "text") {
+  constructor(defaultType?: T) {
     this.renderers = new Map()
     this.defaultType = defaultType
   }
@@ -72,7 +75,7 @@ export class RendererRegistry<R = unknown> {
    * registry.register('text', NewTextRenderer, { override: true })
    * ```
    */
-  register(type: string, renderer: R, options?: RegistryOptions): void {
+  register(type: T, renderer: R, options?: RegistryOptions): void {
     if (this.renderers.has(type) && options?.override === false) {
       console.warn(
         `[RendererRegistry] Renderer "${type}" already exists, skipping registration`
@@ -100,9 +103,9 @@ export class RendererRegistry<R = unknown> {
    * })
    * ```
    */
-  registerAll(renderers: RendererMap<R>): void {
+  registerAll(renderers: RendererMap<T, R>): void {
     Object.entries(renderers).forEach(([type, renderer]) => {
-      this.renderers.set(type, renderer)
+      this.renderers.set(type as T, renderer as R)
     })
   }
 
@@ -120,14 +123,15 @@ export class RendererRegistry<R = unknown> {
    * const fallback = registry.getRenderer('unknown') // => 默认渲染器
    * ```
    */
-  getRenderer(type: string): R | undefined {
+  getRenderer(type: T): R | undefined {
     let renderer = this.renderers.get(type)
 
     if (!renderer) {
       console.warn(
         `[RendererRegistry] Renderer "${type}" not found, falling back to default "${this.defaultType}"`
       )
-      renderer = this.renderers.get(this.defaultType)
+
+      if (this.defaultType) renderer = this.renderers.get(this.defaultType)
     }
 
     return renderer
@@ -145,7 +149,7 @@ export class RendererRegistry<R = unknown> {
    * registry.hasRenderer('custom') // => false
    * ```
    */
-  hasRenderer(type: string): boolean {
+  hasRenderer(type: T): boolean {
     return this.renderers.has(type)
   }
 
@@ -164,13 +168,20 @@ export class RendererRegistry<R = unknown> {
    * registry.unregister('nonexistent') // => false
    * ```
    */
-  unregister(type: string): boolean {
+  unregister(type: T): boolean {
     const isDefault = type === this.defaultType
     const deleted = this.renderers.delete(type)
 
     if (isDefault && deleted) {
       const firstKey = this.renderers.keys().next().value
-      this.defaultType = firstKey ?? ""
+
+      if (firstKey) {
+        console.warn(
+          `[RendererRegistry] Default renderer was removed, Please reset the default renderer.`
+        )
+
+        this.defaultType = firstKey
+      }
     }
 
     return deleted
@@ -186,7 +197,7 @@ export class RendererRegistry<R = unknown> {
    * registry.getTypes() // => ['text', 'number', 'date']
    * ```
    */
-  getTypes(): string[] {
+  getTypes(): T[] {
     return Array.from(this.renderers.keys())
   }
 
@@ -204,7 +215,7 @@ export class RendererRegistry<R = unknown> {
    * registry.getDefault() // => 'number'
    * ```
    */
-  setDefault(type: string): void {
+  setDefault(type: T): void {
     if (!this.renderers.has(type)) {
       console.warn(
         `[RendererRegistry] Cannot set default to "${type}": renderer not registered`
@@ -226,7 +237,7 @@ export class RendererRegistry<R = unknown> {
    * registry.getDefault() // => 'text'
    * ```
    */
-  getDefault(): string {
+  getDefault(): T | undefined {
     return this.defaultType
   }
 
@@ -241,7 +252,6 @@ export class RendererRegistry<R = unknown> {
    */
   clear(): void {
     this.renderers.clear()
-    this.defaultType = "text"
   }
 
   /**
@@ -269,84 +279,10 @@ export class RendererRegistry<R = unknown> {
  * 用于组件内部创建独立的注册中心实例，
  * 不建议外部直接使用，除非有特殊需求。
  */
-export function createLocalRendererRegistry(
-  defaultType: string = "text"
-): RendererRegistry {
-  return new RendererRegistry(defaultType)
-}
-
-/**
- * 全局渲染器注册中心的严格单例实例。
- *
- * @example
- * ```typescript
- * import { rendererRegistry } from '@schemx/core'
- *
- * // 注册全局渲染器
- * rendererRegistry.register('custom', RendererDefinition)
- *
- * // 在其他地方获取
- * const renderer = rendererRegistry.getRenderer('custom')
- * ```
- */
-export const rendererRegistry = createStrictSingleton(
-  (defaultType: string = "text") => new RendererRegistry(defaultType)
-).getInstance()
-
-/**
- * 定义并注册单个渲染器。
- *
- * 将渲染器注册到全局 {@link rendererRegistry} 并返回该组件实例，
- * 方便在注册的同时保留引用以供直接使用。
- *
- * @param type - 渲染器类型标识
- * @param renderer - 组件
- *
- * @returns 传入的组件
- *
- * @example
- * ```typescript
- * import { defineRenderer } from '@schemx/core'
- *
- * const InputRenderer = defineRenderer('input', InputComponent)
- *
- * // 在 schemas 中通过名称引用
- * const schemas = [
- *   { name: 'username', componentType: 'input', label: '用户名' },
- * ]
- * ```
- */
-export function defineRenderer<R = unknown>(type: string, renderer: R): R {
-  rendererRegistry.register(type, renderer)
-
-  return renderer
-}
-
-/**
- * 批量定义并注册渲染器。
- *
- * 将映射对象中的所有渲染器注册到全局 {@link rendererRegistry} 并返回原映射，
- * 适合在项目入口集中声明所有渲染器。
- *
- * @param renderers - 类型到组件的映射对象
- *
- * @returns 传入的映射对象
- *
- * @example
- * ```typescript
- * import { defineRenderers } from '@schemx/core'
- *
- * const renderers = defineRenderers({
- *   input: InputComponent,
- *   select: SelectComponent,
- *   date: DateComponent,
- * })
- * ```
- */
-export function defineRenderers<R extends RendererMap>(renderers: R): R {
-  rendererRegistry.registerAll(renderers)
-
-  return renderers
+export function createRendererRegistry<T extends SchemxRendererKey, R = unknown>(
+  defaultType?: T
+): RendererRegistry<T, R> {
+  return new RendererRegistry<T, R>(defaultType)
 }
 
 export default RendererRegistry

@@ -1,21 +1,21 @@
 /**
  * @schemx/vant 入口
  *
- * Vant 渲染器适配包，基于 @schemx/core 的 Registry 机制
- * 提供 Vant 组件库的渲染器实现。
- *
- * 导入此包时，RendererDefinition 声明合并自动生效，
- * SchemxField 的 componentType 会包含所有 Vant 渲染器类型。
+ * Vant 渲染器适配包，导入时自动将 Vant 渲染器注册到
+ * @schemx/vue 的全局 rendererRegistry 实例中。
  *
  * @module @schemx/vant
  */
 
-/** 声明合并 side-effect：注册 Vant 渲染器类型到 RendererDefinition */
+/** 声明合并 side-effect：注册 Vant 渲染器类型到 SchemxRendererDefinition */
 import "./types/schemx.d"
 
-/** 重新导出 @schemx/vue 的组件和 hooks */
+/** side-effect：将 Vant 渲染器注册到全局 rendererRegistry */
+import "./renderers/defaultRenderers"
+
+/** 重新导出 @schemx/vue（含 SchemxForm 默认导出） */
 export { default } from "@schemx/vue"
-export { default as SchemaForm } from "@schemx/vue"
+export { default as SchemxForm } from "@schemx/vue"
 export {
   useForm,
   useField,
@@ -23,6 +23,8 @@ export {
   useEffect,
   useDependency,
   WithRemoteOptions,
+  rendererRegistry,
+  rulesRegistry,
 } from "@schemx/vue"
 
 /** 重新导出 @schemx/core 的类型 */
@@ -34,6 +36,3 @@ export * from "./renderers"
 /** 工具函数 */
 export { getFieldProps, findTreeItem, getFileName } from "./utils"
 export type { FindTreeItemResult } from "./utils"
-
-/** 渲染器注册 */
-import "./renderers/defaultRenderers"

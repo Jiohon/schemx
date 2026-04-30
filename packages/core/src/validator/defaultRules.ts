@@ -7,8 +7,7 @@
  * @module core/validator/defaultRules
  */
 
-import type { SchemxBaseField } from "../types/schema"
-import type { StandardSchemaV1 } from "../types/standardSchema"
+import type { SchemxBaseField, StandardSchemaV1 } from "../types"
 
 /**
  * 创建内置必填校验 schema。

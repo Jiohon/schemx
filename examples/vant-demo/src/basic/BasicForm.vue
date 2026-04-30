@@ -39,6 +39,7 @@
 
   import Schemx from "@schemx/vant"
 
+  import type { BasicFormValues } from "../types"
   import type { SchemxField, SchemxInstance } from "@schemx/vant"
 
   /** 表单实例引用，提供 submit、validate、reset 等方法 */
@@ -65,47 +66,54 @@
    * text、input、textarea、number、switch、radio、checkbox、
    * date、calendar、picker、selector、rate、slider、stepper、upload、cascader
    */
-  const schemas: SchemxField[] = [
+  const schemas: SchemxField<BasicFormValues>[] = [
     {
-      name: "username",
-      label: "用户名",
-      componentType: "text",
-      required: true,
-      componentProps: {
-        placeholder: "请输入用户名",
-        clearable: true,
-      },
+      label: "基本信息",
+      componentType: "group",
+      children: [
+        {
+          name: "username",
+          label: "用户名",
+          componentType: "text",
+          required: true,
+          componentProps: {
+            placeholder: "请输入用户名",
+            clearable: true,
+          },
+        },
+        {
+          name: "website",
+          label: "个人网站",
+          componentType: "input",
+          componentProps: {
+            placeholder: "请输入个人网站地址",
+            clearable: true,
+            maxlength: 100,
+            showWordLimit: true,
+          },
+        },
+        {
+          name: "bio",
+          label: "个人简介",
+          componentType: "textarea",
+          labelPosition: "top",
+          componentProps: {
+            maxlength: 200,
+            showWordLimit: true,
+          },
+        },
+        {
+          name: "age",
+          label: "年龄",
+          componentType: "number",
+          componentProps: {
+            min: 0,
+            max: 150,
+          },
+        },
+      ],
     },
-    {
-      name: "website",
-      label: "个人网站",
-      componentType: "input",
-      componentProps: {
-        placeholder: "请输入个人网站地址",
-        clearable: true,
-        maxlength: 100,
-        showWordLimit: true,
-      },
-    },
-    {
-      name: "bio",
-      label: "个人简介",
-      componentType: "textarea",
-      labelPosition: "top",
-      componentProps: {
-        maxlength: 200,
-        showWordLimit: true,
-      },
-    },
-    {
-      name: "age",
-      label: "年龄",
-      componentType: "number",
-      componentProps: {
-        min: 0,
-        max: 150,
-      },
-    },
+
     {
       name: "notification",
       label: "通知开关",
@@ -273,7 +281,7 @@
    *
    * @param values - 校验通过的表单数据
    */
-  const handleSubmit = (values: Record<string, any>) => {
+  const handleSubmit = (values: BasicFormValues) => {
     console.log("表单提交:", values)
     alert("提交成功！数据已打印到控制台")
   }

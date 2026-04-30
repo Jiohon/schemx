@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from "vitest"
 
-import { diff } from "../diff"
+import { diff } from "../../../../vue/src/utils/diff"
 
 describe("diff", () => {
   it("属性值不同时返回变化的属性新值", () => {

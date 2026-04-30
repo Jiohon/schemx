@@ -24,10 +24,9 @@
  * ```
  */
 
-import { FormValues, SchemxBaseField } from "../types"
-import { createStrictSingleton } from "../utils/single"
+import { SchemxBaseField, Values } from "../types"
 
-import type { StandardSchemaV1 } from "../types/standardSchema"
+import type { StandardSchemaV1 } from "../types"
 
 /**
  * Rule 工厂函数类型。
@@ -35,7 +34,7 @@ import type { StandardSchemaV1 } from "../types/standardSchema"
  * 接收 label 参数，返回 StandardSchemaV1 实例。
  * 用于内置规则等需要运行时上下文才能生成 rule 的场景。
  */
-export type RuleFactory<T extends FormValues = FormValues> = (
+export type RuleFactory<T extends Values = Values> = (
   rule?: SchemxBaseField<T>
 ) => StandardSchemaV1
 
@@ -44,9 +43,7 @@ export type RuleFactory<T extends FormValues = FormValues> = (
  *
  * 支持直接的 StandardSchemaV1 实例或工厂函数。
  */
-export type RuleEntry<T extends FormValues = FormValues> =
-  | StandardSchemaV1
-  | RuleFactory<T>
+export type RuleEntry<T extends Values = Values> = StandardSchemaV1 | RuleFactory<T>
 
 /** Rule 注册选项 */
 export interface RuleRegistryOptions {
@@ -55,7 +52,7 @@ export interface RuleRegistryOptions {
 }
 
 /** Rule 映射类型（实例或工厂） */
-export type RuleEntryMap<T extends FormValues = FormValues> = Record<string, RuleEntry<T>>
+export type RuleEntryMap<T extends Values = Values> = Record<string, RuleEntry<T>>
 
 /**
  * Rule 校验注册中心。
@@ -78,12 +75,9 @@ export type RuleEntryMap<T extends FormValues = FormValues> = Record<string, Rul
  * const rule = rulesRegistry.resolve('required', '用户名')
  * ```
  */
-export class RulesRegistry<T extends FormValues = FormValues> {
+export class RulesRegistry<T extends Values = Values> {
   /** Rule 存储 */
   private rules: Map<string, RuleEntry<T>>
-
-  /** 父级注册中心，用于链式查找 */
-  private parent: RulesRegistry | null
 
   /**
    * 创建 RulesRegistry 实例。
@@ -93,9 +87,8 @@ export class RulesRegistry<T extends FormValues = FormValues> {
    *
    * @param parent - 父级注册中心，未找到本地 rule 时委托查找
    */
-  constructor(parent?: RulesRegistry) {
+  constructor() {
     this.rules = new Map()
-    this.parent = parent ?? null
   }
 
   /**
@@ -163,9 +156,7 @@ export class RulesRegistry<T extends FormValues = FormValues> {
    * ```
    */
   getRule(name: string): RuleEntry<T> | undefined {
-    return (
-      this.rules.get(name) ?? (this.parent?.getRule(name) as RuleEntry<T> | undefined)
-    )
+    return this.rules.get(name)
   }
 
   /**
@@ -194,7 +185,7 @@ export class RulesRegistry<T extends FormValues = FormValues> {
       return typeof entry === "function" ? entry(rule) : entry
     }
 
-    return this.parent?.resolve(name, rule as SchemxBaseField)
+    return undefined
   }
 
   /**
@@ -210,7 +201,7 @@ export class RulesRegistry<T extends FormValues = FormValues> {
    * ```
    */
   hasRule(name: string): boolean {
-    return this.rules.has(name) || (this.parent?.hasRule(name) ?? false)
+    return this.rules.has(name)
   }
 
   /**
@@ -273,7 +264,7 @@ export class RulesRegistry<T extends FormValues = FormValues> {
 /**
  * 创建局部 rule 注册中心实例。
  *
- * 默认以全局 {@link rulesRegistry} 作为父级，
+ * 默认以全局 {@link globalRulesRegistry} 作为父级，
  * 查找时先查局部注册的规则，未命中则委托全局实例。
  *
  * @param parent - 父级注册中心，默认为全局单例
@@ -284,81 +275,8 @@ export class RulesRegistry<T extends FormValues = FormValues> {
  * 用于 useForm 内部创建表单级别的注册中心实例，
  * 既能继承全局自定义规则，又能支持表单级别的规则覆盖。
  */
-export function createLocalRuleRegistry<T extends FormValues = FormValues>(
-  parent?: RulesRegistry
-): RulesRegistry<T> {
-  return new RulesRegistry<T>(parent)
-}
-
-/**
- * 全局 rule 注册中心的严格单例实例。
- *
- * @example
- * ```typescript
- * import { rulesRegistry } from '@schemx/core'
- *
- * rulesRegistry.register('phone', phoneRule)
- * const rule = rulesRegistry.getRule('phone')
- * ```
- */
-export const rulesRegistry = createStrictSingleton(
-  () => new RulesRegistry()
-).getInstance()
-
-/**
- * 定义并注册单个校验规则。
- *
- * 将 rule 或工厂函数注册到全局 {@link rulesRegistry} 并返回原值，
- * 方便在注册的同时保留引用以供直接使用。
- *
- * @param name - rule 名称
- * @param rule - StandardSchemaV1 实例或工厂函数
- *
- * @returns 传入的 rule 或工厂函数
- *
- * @example
- * ```typescript
- * import { defineRule } from '@schemx/core'
- * import { z } from 'zod'
- *
- * // 注册固定 rule
- * const phoneRule = defineRule('phone', z.string().regex(/^1\d{10}$/))
- *
- * // 注册工厂函数
- * const requiredFactory = defineRule('required', (label) => createRequiredRule(label))
- * ```
- */
-export function defineRule<T extends RuleEntry>(name: string, rule: T): T {
-  rulesRegistry.register(name, rule)
-
-  return rule
-}
-
-/**
- * 批量定义并注册校验规则。
- *
- * 将映射对象中的所有 rule/工厂注册到全局 {@link rulesRegistry} 并返回原映射，
- * 适合在项目入口集中声明所有自定义校验规则。
- *
- * @param rules - 名称到 rule/工厂的映射对象
- *
- * @returns 传入的映射对象
- *
- * @example
- * ```typescript
- * import { defineRules } from '@schemx/core'
- * import { z } from 'zod'
- *
- * const rules = defineRules({
- *   phone: z.string().regex(/^1\d{10}$/),
- *   required: (label) => createRequiredRule(label),
- * })
- * ```
- */
-export function defineRules<T extends RuleEntryMap>(rules: T): T {
-  rulesRegistry.registerAll(rules)
-
-  return rules
+export function createRulesRegistry<T extends Values = Values>(): RulesRegistry<T> {
+  return new RulesRegistry<T>()
 }
 
 export default RulesRegistry

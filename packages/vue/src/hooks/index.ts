@@ -19,28 +19,22 @@ export { useEffect } from "./useEffect"
 /** useDependency - 依赖字段动态渲染 */
 export { useDependency, type UseDependencyReturn } from "./useDependency"
 
-/** useDictionary - 远程字典选项加载 */
+/** useDictionary - 字典选项加载 */
 export {
   useDictionary,
-  type UseDictionaryOptions,
+  type SchemxDictionary,
+  type SchemxWithDictionary,
   type UseDictOptionsReturn,
 } from "./useDictionary"
 
 /** useContext - 表单上下文注入与消费 */
 export { type FormContextProps, useContext } from "./useContext"
 
-/** useRenderer - 渲染器注册中心 */
-export { createRenderer, useRendererContext } from "./useRenderer"
-
 /** useStableRef - 引用稳定化的 shallowRef */
 export { useStableRef } from "./useStableRef"
 
-/** useResolvedProps - 动态属性解析 */
-export {
-  useResolvedProps,
-  type ResolvedProps,
-  type ResolvedPropEntries,
-} from "./useResolvedProps"
+/** useDependencies - 依赖属性解析 */
+export { useDependencies } from "./useDependencies"
 
 /** useFieldHandler - 字段处理 */
 export { useFieldHandler, type UseFieldHandlerReturn } from "./useFieldHandler"

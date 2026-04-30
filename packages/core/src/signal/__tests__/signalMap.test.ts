@@ -10,7 +10,7 @@
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import { SignalMap } from ".."
+import { SignalMap } from "../signalMap"
 
 describe("SignalMap 属性测试", () => {
   // Feature: pure-signal-core-refactor, Property 1: SignalMap get/set 往返一致性

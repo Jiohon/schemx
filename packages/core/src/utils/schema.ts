@@ -7,11 +7,11 @@
  */
 
 import type {
-  FormValues,
   SchemxBaseField,
   SchemxDependencyField,
   SchemxField,
   SchemxGroupField,
+  Values,
 } from "../types"
 
 /**
@@ -22,7 +22,7 @@ import type {
  * @param schema - 列配置
  * @returns 是否为基础字段
  */
-export function isBaseSchema<T extends FormValues = FormValues>(
+export function isBaseSchema<T extends Values = Values>(
   schema: SchemxField<T>
 ): schema is SchemxBaseField<T> {
   return !isGroupSchema(schema) && !isDependencySchema(schema)
@@ -34,7 +34,7 @@ export function isBaseSchema<T extends FormValues = FormValues>(
  * @param schema - 列配置
  * @returns 是否为 `componentType === "group"` 的分组列
  */
-export function isGroupSchema<T extends FormValues = FormValues>(
+export function isGroupSchema<T extends Values = Values>(
   schema: SchemxField<T>
 ): schema is SchemxGroupField<T> {
   return schema.componentType === "group"
@@ -46,7 +46,7 @@ export function isGroupSchema<T extends FormValues = FormValues>(
  * @param schema - 列配置
  * @returns 是否为 `componentType === "dependency"` 的依赖列
  */
-export function isDependencySchema<T extends FormValues = FormValues>(
+export function isDependencySchema<T extends Values = Values>(
   schema: SchemxField<T>
 ): schema is SchemxDependencyField<T> {
   return schema.componentType === "dependency"
@@ -65,7 +65,7 @@ export function isDependencySchema<T extends FormValues = FormValues>(
  * @example
  * const schema = findSchema(schemas, 'email')
  */
-export function findSchema<T extends FormValues = FormValues>(
+export function findSchema<T extends Values = Values>(
   schemas: SchemxField<T>[],
   name: string
 ): SchemxBaseField<T> | undefined {

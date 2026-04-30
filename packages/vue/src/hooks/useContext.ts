@@ -10,7 +10,9 @@
 
 import { inject, provide } from "vue"
 
-import type { SchemxFormProps } from "@/types/form"
+import type { SchemxFormProps } from "@/types"
+
+import type { Values } from "@schemx/core"
 
 /** FormContext 注入 key */
 export const FORM_CONTEXT_KEY = Symbol("FormContext")
@@ -19,12 +21,16 @@ export const FORM_CONTEXT_KEY = Symbol("FormContext")
  * 表单上下文属性
  *
  * 由 schemx 组件注入，包含表单级别的全局配置。
+ *
+ * @typeParam T - 表单值类型
  */
-export interface FormContextProps extends Omit<
-  SchemxFormProps,
-  | "modelValue"
+export interface FormContextProps<T extends Values = Values> extends Omit<
+  SchemxFormProps<T>,
   | "form"
+  | "modelValue"
   | "rendererRegistry"
+  | "defaultRendererType"
+  | "rulesRegistery"
   | "onFinish"
   | "onFinishFailed"
   | "onValuesChange"
@@ -36,10 +42,11 @@ export interface FormContextProps extends Omit<
  *
  * 在 schemx 的 setup 中调用，将表单级别配置注入到子组件树中。
  *
+ * @typeParam T - 表单值类型
  * @param props - 表单上下文属性
  */
-export const createContext = (props: FormContextProps) => {
-  provide<FormContextProps>(FORM_CONTEXT_KEY, props)
+export const createContext = <T extends Values = Values>(props: FormContextProps<T>) => {
+  provide<FormContextProps<T>>(FORM_CONTEXT_KEY, props)
 }
 
 /**

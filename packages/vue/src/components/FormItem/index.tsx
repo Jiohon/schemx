@@ -2,30 +2,45 @@
  * FormItem
  *
  * schemx、FormGroup、FormDependency 实际渲染的组件。
- * 负责: isDependencySchema 守卫、useField()、useRendererContext()、useFormContext()、
+ * 负责: isDependencySchema 守卫、useField()、useFormInstance()、useFormContext()、
  * resolveDynamicProp()、slot 系统 (#nameItem, #name)、renderer h() 调用。
  * 处理列配置后将解析的数据传递给 FormItem 进行渲染。
  *
  * @module components/FormItem
  */
 
-import { computed, defineComponent, h, onMounted, PropType } from "vue"
+import { computed, DefineComponent, defineComponent, h, onMounted, PropType } from "vue"
 
 import { isDependencySchema, isGroupSchema } from "@schemx/core"
 import classnames from "classnames"
 import { omit } from "es-toolkit"
 
 import { useContext } from "@/hooks/useContext"
+import { useDependencies } from "@/hooks/useDependencies"
 import { useFieldHandler } from "@/hooks/useFieldHandler"
-import { useRendererContext } from "@/hooks/useRenderer"
-import { useResolvedProps } from "@/hooks/useResolvedProps"
+import { useFormInstance } from "@/hooks/useForm"
 import { useStableRef } from "@/hooks/useStableRef"
 import { extractChildSlots, resolveSlot } from "@/utils"
 
 import FormDependency from "../FormDependency"
 import FormGroup from "../FormGroup"
 
-import type { ComponentProps, FormItemProps, NamePath, SchemxField } from "@schemx/core"
+import type {
+  SchemxComponentProps,
+  SchemxField,
+  SchemxFormItemProps,
+  SchemxGroupField,
+  Values,
+} from "@schemx/core"
+
+/**
+ * FormItem Props
+ *
+ * @typeParam T - 表单值类型
+ */
+export interface SchemxItemProps<T extends Values = Values> {
+  schema: SchemxField<T>
+}
 
 const FormItem = defineComponent({
   name: "SchemxItem",
@@ -47,55 +62,26 @@ const FormItem = defineComponent({
     }
 
     if (isGroupSchema(props.schema)) {
-      const groupColumn = props.schema
+      const groupColumn = props.schema as SchemxGroupField
 
-      return () => (
-        <FormGroup
-          children={groupColumn.children}
-          collapsible={groupColumn.collapsible}
-          defaultCollapsed={groupColumn.defaultCollapsed}
-          v-slots={slots}
-        />
-      )
+      return () => <FormGroup schema={groupColumn} v-slots={slots} />
     }
 
     const baseSchema = props.schema
 
-    const rendererRegistry = useRendererContext()
+    const form = useFormInstance()
     const formContext = useContext()
 
-    const dependencies: NamePath[] =
-      baseSchema.dependencies != null
-        ? Array.isArray(baseSchema.dependencies)
-          ? baseSchema.dependencies
-          : [baseSchema.dependencies]
-        : []
+    const { getRenderer } = form.getInternalHooks()
 
-    const resolvedProps = useResolvedProps(dependencies, {
-      placeholder: {
-        value: baseSchema.placeholder,
-        defaultValue: `${baseSchema.label}为必填项`,
-      },
-      componentProps: {
-        value: baseSchema.componentProps,
-        defaultValue: {} as ComponentProps,
-      },
-      readonly: {
-        value: baseSchema.readonly,
-        defaultValue: formContext.readonly ?? false,
-      },
-      disabled: {
-        value: baseSchema.disabled,
-        defaultValue: formContext.disabled ?? false,
-      },
-      visible: {
-        value: baseSchema.visible,
-        defaultValue: true,
-      },
-      required: {
-        value: baseSchema.required,
-        defaultValue: !!baseSchema.rules,
-      },
+    const resolvedProps = useDependencies(form, baseSchema.dependencies, {
+      visible: baseSchema.visible ?? true,
+      readonly: baseSchema.readonly ?? formContext.readonly ?? false,
+      disabled: baseSchema.disabled ?? formContext.disabled ?? false,
+      required: baseSchema.required ?? !!baseSchema.rules,
+      placeholder: baseSchema.placeholder ?? `${baseSchema.label}为必填项`,
+      componentProps: baseSchema.componentProps ?? ({} as SchemxComponentProps),
+      rules: baseSchema.rules,
     })
 
     const { field, trigger, handleChange, handleBlur } = useFieldHandler(
@@ -106,12 +92,12 @@ const FormItem = defineComponent({
     /**
      * schemas 每一项的 props
      */
-    const formItemProps = computed<FormItemProps>((): FormItemProps => {
+    const formItemProps = computed<SchemxFormItemProps>((): SchemxFormItemProps => {
       return {
-        ...(omit(baseSchema, ["componentProps"]) satisfies FormItemProps),
+        ...(omit(baseSchema, ["componentProps"]) satisfies SchemxFormItemProps),
         name: baseSchema.name,
         componentType: baseSchema.componentType,
-        className: classnames("schemx-item", baseSchema.className),
+        class: classnames("schemx-item", baseSchema.class),
         required: resolvedProps.required,
         readonly: resolvedProps.readonly,
         disabled: resolvedProps.disabled,
@@ -122,18 +108,20 @@ const FormItem = defineComponent({
     })
 
     // 使用 useStableRef 避免每次生成新对象引用
-    const componentProps = useStableRef<ComponentProps>(() => ({
-      ...resolvedProps.componentProps,
-      visible: resolvedProps.visible,
-      required: resolvedProps.required,
-      readonly: resolvedProps.readonly,
-      disabled: resolvedProps.disabled,
-      placeholder: resolvedProps.placeholder,
-      value: field.getValue(),
-      onChange: handleChange,
-      onBlur: handleBlur,
-      formItemProps: formItemProps.value,
-    }))
+    const componentProps = useStableRef<SchemxComponentProps>(
+      (): SchemxComponentProps => ({
+        ...resolvedProps.componentProps,
+        visible: resolvedProps.visible,
+        required: resolvedProps.required,
+        readonly: resolvedProps.readonly,
+        disabled: resolvedProps.disabled,
+        placeholder: resolvedProps.placeholder,
+        value: field.getValue(),
+        onChange: handleChange,
+        onBlur: handleBlur,
+        formItemProps: formItemProps.value,
+      })
+    )
 
     onMounted(() => {
       const value = Object.hasOwn(baseSchema, "initialValue")
@@ -201,7 +189,7 @@ const FormItem = defineComponent({
      * @returns content VNode
      */
     const renderContent = () => {
-      const component = rendererRegistry.getRenderer(baseSchema.componentType)
+      const component = getRenderer(baseSchema.componentType)
 
       if (!component) {
         throw new Error(
@@ -278,8 +266,9 @@ const FormItem = defineComponent({
             class={classnames(
               "schemx-item",
               `schemx-item--label-${labelPosition}`,
-              baseSchema.className
+              baseSchema.class
             )}
+            style={{ ...(baseSchema.style ?? {}) }}
           >
             {renderLabel()}
 
@@ -294,4 +283,4 @@ const FormItem = defineComponent({
   },
 })
 
-export default FormItem
+export default FormItem as DefineComponent<SchemxItemProps>

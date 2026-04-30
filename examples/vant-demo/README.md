@@ -42,7 +42,7 @@ npx vite examples
     { name: "email", label: "邮箱", componentType: "text" },
   ]
 
-  const handleSubmit = (values: Record<string, any>, done: () => void) => {
+  const handleSubmit = (values, done: () => void) => {
     console.log("提交数据:", values)
     done()
   }

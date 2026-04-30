@@ -2,10 +2,12 @@
  * 渲染器类型体系。
  *
  * 定义渲染器的类型注册、Props 映射和上下文接口。
- * 用户可通过声明合并扩展 {@link RendererDefinition} 来注册自定义渲染器类型。
+ * 用户可通过声明合并扩展 {@link SchemxRendererDefinition} 来注册自定义渲染器类型。
  *
  * @module types/renderer
  */
+
+import { Values } from "./form"
 
 /**
  * 渲染器 Props 映射扩展接口。
@@ -20,7 +22,7 @@
  * ```ts
  * // 在项目中创建 schemx.d.ts
  * declare module '@schemx/core' {
- *   interface RendererDefinition {
+ *   interface SchemxRendererDefinition {
  *     'my-input': MyInputProps
  *     'rich-editor': RichEditorProps
  *   }
@@ -28,22 +30,27 @@
  * ```
  *
  * @remarks
- * 扩展后，`RendererType` 会自动推导出所有已注册的渲染器类型字符串，
+ * 扩展后，`SchemxRendererKey` 会自动推导出所有已注册的渲染器类型字符串，
  * `SchemaBaseColumn` 的 `componentProps` 也会根据 `componentType` 自动关联对应的 Props 类型。
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface RendererDefinition {}
+export interface SchemxRendererDefinition<T extends Values> {}
 
 /**
- * 渲染器类型。
+ * 渲染器注册 key 类型
  *
- * 由 {@link RendererDefinition} 的键自动推导，
- * 用户通过声明合并扩展 `RendererDefinition` 后，此类型会自动包含所有已注册的渲染器类型字符串。
+ * 由 {@link SchemxRendererDefinition} 的键自动推导，
+ * 用户通过声明合并扩展 `SchemxRendererDefinition` 后，此类型会自动包含所有已注册的渲染器类型字符串。
+ * 当 SchemxRendererDefinition 为空时，退化为 `string`。
  *
  * @example
  * ```ts
- * // 扩展 RendererDefinition 后自动可用
- * const type: RendererType = 'my-input'
+ * // 扩展 SchemxRendererDefinition 后自动可用
+ * const type: SchemxRendererKey = 'my-input'
  * ```
  */
-export type RendererType = keyof RendererDefinition
+export type SchemxRendererKey<T extends Values = Values> = [
+  keyof SchemxRendererDefinition<T>,
+] extends [never]
+  ? string
+  : keyof SchemxRendererDefinition<T>

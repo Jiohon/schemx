@@ -8,57 +8,61 @@
  */
 
 import { defineComponent, PropType, ref } from "vue"
+import type { DefineComponent } from "vue"
 
 import { isBaseSchema } from "@schemx/core"
 import classnames from "classnames"
 
 import FormItem from "../FormItem"
 
-import type { SchemxGroupField } from "@schemx/core"
+import type { SchemxGroupField, Values } from "@schemx/core"
+
+/**
+ * FormGroup Props
+ *
+ * @typeParam T - 表单值类型
+ */
+export interface SchemxGroupProps<T extends Values = Values> {
+  schema: SchemxGroupField<T>
+}
 
 const FormGroup = defineComponent({
   name: "SchemxGroup",
 
   props: {
-    label: {
-      type: String,
-      default: undefined,
-    },
-    children: {
-      type: Array as PropType<SchemxGroupField["children"]>,
+    schema: {
+      type: Object as PropType<SchemxGroupField>,
       required: true,
-    },
-    collapsible: {
-      type: Boolean,
-      default: false,
-    },
-    defaultCollapsed: {
-      type: Boolean,
-      default: false,
     },
   },
 
   setup(props, { slots }) {
-    const collapsed = ref(props.defaultCollapsed)
+    const groupColumn = props.schema
+
+    const collapsed = ref(groupColumn.defaultCollapsed)
 
     const toggle = () => {
-      if (props.collapsible) {
+      if (groupColumn.collapsible) {
         collapsed.value = !collapsed.value
       }
     }
 
     return () => (
       <div
-        class={classnames("schemx-group", {
-          "schemx-group--collapsed": collapsed.value,
-        })}
+        class={classnames(
+          "schemx-group",
+          {
+            "schemx-group--collapsed": collapsed.value,
+          },
+          groupColumn.class
+        )}
       >
-        {props.label && (
+        {groupColumn.label && (
           <div
-            role={props.collapsible ? "button" : undefined}
-            tabindex={props.collapsible ? 0 : undefined}
+            role={groupColumn.collapsible ? "button" : undefined}
+            tabindex={groupColumn.collapsible ? 0 : undefined}
             class={classnames("schemx-group__header", {
-              "schemx-group__header--clickable": props.collapsible,
+              "schemx-group__header--clickable": groupColumn.collapsible,
             })}
             onClick={toggle}
             onKeydown={(e: KeyboardEvent) => {
@@ -68,8 +72,8 @@ const FormGroup = defineComponent({
               }
             }}
           >
-            <span class="schemx-group__title">{props.label}</span>
-            {props.collapsible && (
+            <span class="schemx-group__title">{groupColumn.label}</span>
+            {groupColumn.collapsible && (
               <span
                 class={classnames("schemx-group__arrow", {
                   "schemx-group__arrow--down": !collapsed.value,
@@ -80,7 +84,7 @@ const FormGroup = defineComponent({
         )}
         {!collapsed.value && (
           <div class="schemx-group__body">
-            {props.children.map((schema, index) => {
+            {groupColumn.children.map((schema, index) => {
               const key = isBaseSchema(schema)
                 ? `${schema.name}-${index}`
                 : `group-${index}`
@@ -94,4 +98,4 @@ const FormGroup = defineComponent({
   },
 })
 
-export default FormGroup
+export default FormGroup as DefineComponent<SchemxGroupProps>

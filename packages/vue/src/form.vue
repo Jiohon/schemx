@@ -6,29 +6,27 @@
   @module schemx
 -->
 
-<script lang="ts" setup>
-  import { computed, type CSSProperties, onMounted, useAttrs } from "vue"
+<script lang="ts" setup generic="T extends Values = Values">
+  import { computed, type CSSProperties, useAttrs } from "vue"
 
-  import { rendererRegistry as defaultRendererRegistry, isBaseSchema } from "@schemx/core"
+  import { isBaseSchema } from "@schemx/core"
   import { omit } from "es-toolkit"
+
+  import type { SchemxFormProps } from "@/types"
 
   import FormItem from "./components/FormItem"
   import { createContext } from "./hooks/useContext"
   import { useForm } from "./hooks/useForm"
-  import { createRenderer } from "./hooks/useRenderer"
-  import { collectObjectPathsByLeaf } from "./utils/path"
-  import { requestProvider } from "./utils/requestProvider"
 
-  import type { SchemxFormProps } from "./types/form"
-  import type { SchemxField } from "@schemx/core"
+  import type { SchemxField, Values } from "@schemx/core"
 
   import "./styles/index.css"
 
   defineOptions({ name: "SchemxForm" })
 
-  const props = withDefaults(defineProps<SchemxFormProps>(), {
-    modelValue: () => ({}),
-    initialValues: () => ({}),
+  const props = withDefaults(defineProps<SchemxFormProps<T>>(), {
+    modelValue: () => ({}) as T,
+    initialValues: () => ({}) as T,
     validationTrigger: "onBlur",
     form: undefined,
     schemas: () => [],
@@ -38,18 +36,18 @@
     labelAlign: "right",
     labelPosition: "left",
     colon: true,
-    className: "",
+    class: "",
     style: () => ({}),
     onFinish: undefined,
     onFinishFailed: undefined,
     onValuesChange: undefined,
     onFieldsChange: undefined,
     rendererRegistry: undefined,
-    request: undefined,
+    rulesRegistry: undefined,
   })
 
   const emit = defineEmits<{
-    "update:modelValue": [value: Record<string, any>]
+    "update:modelValue": [value: T]
   }>()
 
   const attrs = useAttrs()
@@ -64,6 +62,8 @@
       "form",
       "modelValue",
       "rendererRegistry",
+      "defaultRendererType",
+      "rulesRegistry",
       "onFinish",
       "onFinishFailed",
       "onValuesChange",
@@ -79,61 +79,32 @@
    */
   const form = props.form
     ? props.form
-    : useForm({
+    : useForm<T>({
         schemas: props.schemas,
         initialValues: props.initialValues,
+        rendererRegistry: props.rendererRegistry,
+        defaultRendererType: props.defaultRendererType,
+        rulesRegistry: props.rulesRegistry,
 
         onFinish: async (values) => {
-          props.onFinish?.(values)
+          props.onFinish?.(values as any)
         },
         onFinishFailed: async (errors) => {
           props.onFinishFailed?.(errors)
         },
         onValuesChange: (changedValues, latestSnapshot) => {
-          emit("update:modelValue", latestSnapshot)
+          emit("update:modelValue", latestSnapshot as T)
           props.onValuesChange?.(changedValues, latestSnapshot)
-          props.onFieldsChange?.(
-            collectObjectPathsByLeaf(changedValues),
-            collectObjectPathsByLeaf(latestSnapshot)
-          )
         },
         onFieldsChange: (changedPaths, allPaths) => {
           props.onFieldsChange?.(changedPaths, allPaths)
         },
       })
 
-  if (!props.rendererRegistry) {
-    createRenderer(defaultRendererRegistry)
-  }
-
-  onMounted(() => {
-    if (props.request && typeof props.request === "function") {
-      requestProvider.register(props.request)
-    }
-  })
-
-  defineExpose({
-    ...form,
-  })
-
   /**
-   * 生成 schema 的唯一 key
-   *
-   * @param schema - 字段配置
-   * @param index - 数组索引（作为 fallback）
+   * 过后的 schemas
    */
-  const getSchemaKey = (schema: SchemxField, index: number): string => {
-    return `${schema.componentType}-${isBaseSchema(schema) ? String(schema.name) : index}`
-  }
-
-  /**
-   * 合并 schema 与 attrs
-   *
-   * @param schema - 字段配置
-   */
-  const mergeSchemaAttrs = (schema: SchemxField): SchemxField => {
-    return { ...schema, ...attrs } as SchemxField
-  }
+  const filteredSchema = computed(() => form.getSchemas())
 
   /**
    * 表单容器样式
@@ -141,14 +112,25 @@
   const formStyle = computed<CSSProperties>(() => ({
     "--schemx-input-align": (attrs.align as string) ?? "right",
   }))
+
+  /**
+   * 生成 schema 的唯一 key
+   */
+  const getSchemaKey = (schema: SchemxField<T>, index: number): string => {
+    return `${schema.componentType}-${isBaseSchema(schema) ? String(schema.name) : index}`
+  }
+
+  defineExpose({
+    ...form,
+  })
 </script>
 
 <template>
-  <div :class="['schemx', className]" :style="formStyle">
+  <div :class="['schemx', props.class]" :style="formStyle">
     <FormItem
-      v-for="(schema, index) in schemas"
+      v-for="(schema, index) in filteredSchema"
       :key="getSchemaKey(schema, index)"
-      :schema="mergeSchemaAttrs(schema)"
+      :schema="schema as SchemxField"
     >
       <template v-for="(_, slotName) in $slots" #[slotName]="slotProps">
         <slot :name="slotName" v-bind="slotProps ?? {}" />

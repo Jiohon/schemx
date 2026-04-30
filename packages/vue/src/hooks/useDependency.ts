@@ -13,7 +13,7 @@ import type { Ref } from "vue"
 import { useFormInstance } from "./useForm"
 import { useWatchFields } from "./useWatch"
 
-import type { FormValues, SchemxDependencyField, SchemxField } from "@schemx/core"
+import type { SchemxDependencyField, SchemxField, Values } from "@schemx/core"
 import type { SchemxInstance } from "@schemx/core"
 
 /**
@@ -25,7 +25,7 @@ export interface UseDependencyReturn {
   /** 表单实例 */
   form: SchemxInstance
   /** 当前表单值（响应式） */
-  values: Ref<FormValues>
+  values: Ref<Values>
 }
 
 /**
@@ -58,7 +58,7 @@ export function useDependency(
   const form = useFormInstance()
 
   const schemas = ref<SchemxField[]>([])
-  const values = ref<FormValues>({})
+  const values = ref<Values>({})
 
   // 订阅依赖字段变化，触发响应式更新
   useWatchFields(

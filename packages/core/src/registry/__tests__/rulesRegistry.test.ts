@@ -2,20 +2,13 @@
  * RulesRegistry 校验规则注册中心单元测试
  *
  * 覆盖 register、registerAll、getRule、resolve、hasRule、unregister、
- * getNames、clear、size，以及父子链式查找、override 选项、
- * createLocalRuleRegistry、defineRule、defineRules。
+ * getNames、clear、size，以及 override 选项和 createRulesRegistry。
  *
  * @module registry/__tests__/rulesRegistry
  */
 import { describe, expect, it } from "vitest"
 
-import {
-  createLocalRuleRegistry,
-  defineRule,
-  defineRules,
-  RulesRegistry,
-  rulesRegistry,
-} from "../rulesRegistry"
+import { createRulesRegistry, RulesRegistry } from "../rulesRegistry"
 
 import type { StandardSchemaV1 } from "../../types/standardSchema"
 
@@ -90,6 +83,11 @@ describe("RulesRegistry", () => {
       reg.register("required", factory)
       expect(reg.resolve("required")).toBe(mockResult)
     })
+
+    it("未注册的规则返回 undefined", () => {
+      const reg = new RulesRegistry()
+      expect(reg.resolve("nonexistent")).toBeUndefined()
+    })
   })
 
   describe("hasRule / unregister / getNames / clear / size", () => {
@@ -122,71 +120,12 @@ describe("RulesRegistry", () => {
       expect(reg.size()).toBe(0)
     })
   })
-
-  describe("父子链式查找", () => {
-    it("getRule 委托父级查找", () => {
-      const parent = new RulesRegistry()
-      const schema = createMockSchema("parent-rule")
-      parent.register("phone", schema)
-
-      const child = new RulesRegistry(parent)
-      expect(child.getRule("phone")).toBe(schema)
-    })
-
-    it("resolve 委托父级解析", () => {
-      const parent = new RulesRegistry()
-      const schema = createMockSchema("parent-rule")
-      parent.register("phone", schema)
-
-      const child = new RulesRegistry(parent)
-      expect(child.resolve("phone")).toBe(schema)
-    })
-
-    it("hasRule 检查父级", () => {
-      const parent = new RulesRegistry()
-      parent.register("phone", createMockSchema("phone"))
-
-      const child = new RulesRegistry(parent)
-      expect(child.hasRule("phone")).toBe(true)
-    })
-  })
 })
 
-describe("createLocalRuleRegistry", () => {
-  it("返回带父级链的 RulesRegistry 实例", () => {
-    const parent = new RulesRegistry()
-    parent.register("phone", createMockSchema("phone"))
-
-    const local = createLocalRuleRegistry(parent)
-    expect(local).toBeInstanceOf(RulesRegistry)
-    expect(local.hasRule("phone")).toBe(true)
-  })
-})
-
-describe("defineRule", () => {
-  it("注册到全局并返回原值", () => {
-    const schema = createMockSchema("test-define")
-    const result = defineRule("test-define-rule", schema)
-    expect(result).toBe(schema)
-    expect(rulesRegistry.getRule("test-define-rule")).toBe(schema)
-
-    // 清理
-    rulesRegistry.unregister("test-define-rule")
-  })
-})
-
-describe("defineRules", () => {
-  it("批量注册到全局并返回原映射", () => {
-    const s1 = createMockSchema("a")
-    const s2 = createMockSchema("b")
-    const map = { "test-bulk-a": s1, "test-bulk-b": s2 }
-    const result = defineRules(map)
-    expect(result).toBe(map)
-    expect(rulesRegistry.getRule("test-bulk-a")).toBe(s1)
-    expect(rulesRegistry.getRule("test-bulk-b")).toBe(s2)
-
-    // 清理
-    rulesRegistry.unregister("test-bulk-a")
-    rulesRegistry.unregister("test-bulk-b")
+describe("createRulesRegistry", () => {
+  it("返回 RulesRegistry 实例", () => {
+    const reg = createRulesRegistry()
+    expect(reg).toBeInstanceOf(RulesRegistry)
+    expect(reg.size()).toBe(0)
   })
 })

@@ -13,27 +13,8 @@
 
 import { debounce } from "es-toolkit"
 
-import type { FormValues } from "@schemx/core"
-
-/**
- * 动态属性类型
- *
- * 支持静态值或函数形式，函数接收当前表单值并返回属性值（支持异步）。
- *
- * @typeParam T - 属性值类型
- *
- * @example
- * ```ts
- * // 静态值
- * const prop: DynamicProp<boolean> = true
- *
- * // 动态函数
- * const prop: DynamicProp<boolean> = (values) => values.age > 18
- * ```
- */
-export type DynamicProp<T, V extends FormValues = FormValues> =
-  | ((values: V) => T | Promise<T>)
-  | T
+import type { Dynamic } from "@schemx/core"
+import type { Values } from "@schemx/core"
 
 /**
  * 批量解析的单个属性条目
@@ -42,7 +23,7 @@ export type DynamicProp<T, V extends FormValues = FormValues> =
  */
 export interface DynamicPropEntry<T> {
   /** 动态属性值（函数、静态值、null 或 undefined） */
-  value: DynamicProp<T> | undefined | null
+  value: Dynamic<T> | undefined | null
   /** 默认值，当 value 为空或函数返回 nullish 时使用 */
   defaultValue: T
 }
@@ -61,7 +42,7 @@ type DynamicPropEntries<M extends Record<string, unknown>> = {
 /**
  * 解析泛型动态属性
  *
- * 将 `DynamicProp<T>`（函数或静态值）统一解析为 `T`。
+ * 将 `Dynamic<T>`（函数或静态值）统一解析为 `T`。
  * 当 value 为函数时调用并传入表单值，捕获错误返回默认值；
  * 当 value 为 null/undefined 时返回默认值。
  *
@@ -89,8 +70,8 @@ type DynamicPropEntries<M extends Record<string, unknown>> = {
  * ```
  */
 export async function resolveDynamicProp<T>(
-  value: DynamicProp<T> | undefined | null,
-  formValues: FormValues,
+  value: Dynamic<T> | undefined | null,
+  formValues: Values,
   defaultValue: T
 ): Promise<T> {
   if (value == null) {
@@ -99,7 +80,7 @@ export async function resolveDynamicProp<T>(
 
   if (typeof value === "function") {
     try {
-      const result = await (value as (values: FormValues) => T | Promise<T>)(formValues)
+      const result = await (value as (values: Values) => T | Promise<T>)(formValues)
 
       return result ?? defaultValue
     } catch (error) {
@@ -158,12 +139,12 @@ export function batchResolveDynamicProp<M extends Record<string, unknown>>(
   wait = 16
 ): (
   entries: DynamicPropEntries<M>,
-  formValues: FormValues,
+  formValues: Values,
   callback: (results: M) => void
 ) => void {
   let pending: {
     entries: DynamicPropEntries<M>
-    formValues: FormValues
+    formValues: Values
     callback: (results: M) => void
   } | null = null
 

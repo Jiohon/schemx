@@ -32,6 +32,7 @@
 
   import Schemx from "@schemx/vant"
 
+  import type { DynamicFormValues } from "../types"
   import type { SchemxField, SchemxInstance } from "@schemx/vant"
 
   /** 表单实例引用，提供 submit、reset 等方法 */
@@ -45,12 +46,13 @@
    *
    * 通过 dependencies 声明字段依赖关系，展示五种动态属性联动：
    * - visible 函数：快递配送时显示省市选择（picker）
+   * - dict + dependsOn：省份变化时自动请求城市列表（picker）
    * - disabled 函数：自提时禁用配送距离（slider）
    * - readonly 函数：自提时购买数量只读（stepper）
    * - required 函数：选择其他时备注必填（textarea）
    * - componentProps 函数：服务评分 count 随配送方式动态变化（rate）
    */
-  const schemas: SchemxField[] = [
+  const schemas: SchemxField<DynamicFormValues>[] = [
     {
       name: "deliveryMethod",
       label: "配送方式",
@@ -70,8 +72,6 @@
       name: "province",
       label: "省市选择",
       componentType: "picker",
-      dependencies: ["deliveryMethod"],
-      visible: (values: Record<string, any>) => values.deliveryMethod === "express",
       componentProps: {
         options: [
           { text: "广东省", value: "guangdong" },
@@ -81,6 +81,55 @@
           { text: "江苏省", value: "jiangsu" },
         ],
       },
+      dependencies: {
+        triggerFields: ["deliveryMethod"],
+        visible: (values) => {
+          return values.deliveryMethod === "express"
+        },
+      },
+    },
+
+    // dict + dependsOn 联动：省份变化时自动请求城市列表
+    {
+      name: "city",
+      label: "城市选择",
+      componentType: "picker",
+      componentProps: {
+        dict: {
+          api: (values) => {
+            console.log(values)
+            const cityMap: Record<string, { text: string; value: string }[]> = {
+              guangdong: [
+                { text: "广州", value: "guangzhou" },
+                { text: "深圳", value: "shenzhen" },
+                { text: "东莞", value: "dongguan" },
+              ],
+              zhejiang: [
+                { text: "杭州", value: "hangzhou" },
+                { text: "宁波", value: "ningbo" },
+                { text: "温州", value: "wenzhou" },
+              ],
+              beijing: [{ text: "北京市", value: "beijing" }],
+              shanghai: [{ text: "上海市", value: "shanghai" }],
+              jiangsu: [
+                { text: "南京", value: "nanjing" },
+                { text: "苏州", value: "suzhou" },
+                { text: "无锡", value: "wuxi" },
+              ],
+            }
+
+            return cityMap[values.province as string] ?? []
+          },
+          dependsOn: ["province"],
+          shouldFetch: (values) => !!values.province,
+          resetOnDepsChange: true,
+          immediate: false,
+        },
+      },
+      dependencies: {
+        triggerFields: ["deliveryMethod"],
+        visible: (values) => values.deliveryMethod === "express",
+      },
     },
 
     // disabled 联动：自提时禁用配送距离
@@ -88,12 +137,14 @@
       name: "distance",
       label: "配送距离",
       componentType: "slider",
-      dependencies: ["deliveryMethod"],
-      disabled: (values: Record<string, any>) => values.deliveryMethod === "selfPickup",
       componentProps: {
         min: 0,
         max: 50,
         step: 1,
+      },
+      dependencies: {
+        triggerFields: ["deliveryMethod"],
+        disabled: (values) => values.deliveryMethod === "selfPickup",
       },
     },
 
@@ -102,13 +153,15 @@
       name: "quantity",
       label: "购买数量",
       componentType: "stepper",
-      dependencies: ["deliveryMethod"],
-      readonly: (values: Record<string, any>) => values.deliveryMethod === "selfPickup",
       initialValue: 1,
       componentProps: {
         min: 1,
         max: 99,
         integer: true,
+      },
+      dependencies: {
+        triggerFields: ["deliveryMethod"],
+        disabled: (values) => values.deliveryMethod === "selfPickup",
       },
     },
 
@@ -117,12 +170,14 @@
       name: "remark",
       label: "备注",
       componentType: "textarea",
-      dependencies: ["deliveryMethod"],
-      required: (values: Record<string, any>) => values.deliveryMethod === "other",
       componentProps: {
         maxlength: 200,
         showWordLimit: true,
         placeholder: "请输入备注信息",
+      },
+      dependencies: {
+        triggerFields: ["deliveryMethod"],
+        disabled: (values) => values.deliveryMethod === "other",
       },
     },
 
@@ -131,17 +186,19 @@
       name: "serviceRating",
       label: "服务评分",
       componentType: "rate",
-      dependencies: ["deliveryMethod"],
-      componentProps: (values: Record<string, any>) => {
-        const countMap: Record<string, number> = {
-          express: 5,
-          selfPickup: 3,
-          other: 10,
-        }
+      dependencies: {
+        triggerFields: ["deliveryMethod"],
+        componentProps: (values) => {
+          const countMap: Record<string, number> = {
+            express: 5,
+            selfPickup: 3,
+            other: 7,
+          }
 
-        return {
-          count: countMap[values.deliveryMethod] ?? 5,
-        }
+          return {
+            count: countMap[values.deliveryMethod as string] ?? 5,
+          }
+        },
       },
     },
   ]
@@ -168,7 +225,7 @@
    *
    * @param values - 校验通过的表单数据
    */
-  const handleSubmit = (values: Record<string, any>) => {
+  const handleSubmit = (values: DynamicFormValues) => {
     console.log("提交数据:", values)
     alert("提交成功！数据已打印到控制台")
   }

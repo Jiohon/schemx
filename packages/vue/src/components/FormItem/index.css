@@ -35,6 +35,7 @@
   align-items: flex-start;
   padding: var(--schemx-padding-sm) var(--schemx-padding-sm);
   line-height: var(--schemx-item-line-height);
+  gap: var(--schemx-item-gap);
 }
 
 /**

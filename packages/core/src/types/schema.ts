@@ -7,26 +7,20 @@
  * @module types/schema
  */
 
-import * as CSS from "csstype"
-
-import type { FormValues, NamePath, ValidationTrigger, Value } from "./form"
-import type { SchemxInstance } from "./form"
-import type { RendererDefinition } from "./renderer"
+import type { SchemxDependencies } from "./dependencies"
+import type { Dynamic } from "./dynamic"
+import type { NamePath, SchemxInstance, ValidationTrigger, Value, Values } from "./form"
+import type { SchemxRendererDefinition } from "./renderer"
 import type { SchemxRules } from "./rule"
-import type { Dynamic } from "../utils/dynamic"
 
 /**
  * 渲染器组件通用扩展属性
  *
  * 所有渲染器组件都会自动注入的公共 props，
- * 与 {@link RendererDefinition} 中各组件的专属 Props 交叉后，
+ * 与 {@link SchemxRendererDefinition} 中各组件的专属 Props 交叉后，
  * 作为 `componentProps` 的最终类型。
  */
-export interface BaseComponentProps<T extends FormValues = FormValues> {
-  /** 自定义类名 */
-  className?: string
-  /** 自定义样式 */
-  style?: CSS.Properties
+export interface SchemxBaseComponentProps<T extends Values = Values> {
   /** 是否必填 */
   required?: Dynamic<boolean>
   /** 是否只读 */
@@ -38,7 +32,7 @@ export interface BaseComponentProps<T extends FormValues = FormValues> {
   /** 占位符 */
   placeholder?: string
   /** FormItem 组件 Props */
-  formItemProps?: FormItemProps
+  formItemProps?: SchemxFormItemProps
   /** 字段值 */
   value?: Value
   /** 值变化处理 */
@@ -50,17 +44,17 @@ export interface BaseComponentProps<T extends FormValues = FormValues> {
 /**
  * 渲染器组件完整 Props 类型
  *
- * 将 {@link RendererDefinition} 中对应组件的专属 Props 与 {@link BaseComponentProps} 交叉，
+ * 将 {@link SchemxRendererDefinition} 中对应组件的专属 Props 与 {@link SchemxBaseComponentProps} 交叉，
  * 得到传递给渲染组件的完整属性类型。
  *
  * @typeParam K - 组件类型键
  */
-export type ComponentProps<
-  T extends FormValues = FormValues,
-  K extends keyof RendererDefinition = keyof RendererDefinition,
-> = [keyof RendererDefinition] extends [never]
-  ? BaseComponentProps<T>
-  : RendererDefinition[K] & BaseComponentProps<T>
+export type SchemxComponentProps<
+  T extends Values = Values,
+  K extends keyof SchemxRendererDefinition<T> = keyof SchemxRendererDefinition<T>,
+> = [keyof SchemxRendererDefinition<T>] extends [never]
+  ? SchemxBaseComponentProps<T>
+  : SchemxRendererDefinition<T>[K] & SchemxBaseComponentProps<T>
 
 /**
  * 自定义 Schema 基础字段扩展接口
@@ -71,7 +65,7 @@ export type ComponentProps<
  * @example
  * ```ts
  * declare module '@schemx/core' {
- *   interface FieldDefinition {
+ *   interface SchemxFieldDefinition {
  *     tooltip?: string
  *     span?: number
  *   }
@@ -79,7 +73,7 @@ export type ComponentProps<
  * ```
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface FieldDefinition {}
+export interface SchemxFieldDefinition {}
 
 /**
  * 基础字段配置
@@ -90,9 +84,9 @@ export interface FieldDefinition {}
  * @typeParam K - 组件类型键，用于收窄 componentProps 类型
  */
 export interface SchemxBase<
-  T extends FormValues = FormValues,
-  K extends keyof RendererDefinition = keyof RendererDefinition,
-> extends FieldDefinition {
+  T extends Values = Values,
+  K extends keyof SchemxRendererDefinition<T> = keyof SchemxRendererDefinition<T>,
+> extends SchemxFieldDefinition {
   /**
    * 字段名称
    *
@@ -111,91 +105,59 @@ export interface SchemxBase<
   /**
    * 渲染组件类型
    *
-   * 对应 RendererDefinition 中注册的组件键名，
+   * 对应 SchemxRendererDefinition 中注册的组件键名，
    * 用于从 rendererRegistry 中查找并渲染对应的表单控件。
    */
   componentType: K
 
   /**
-   * 依赖的字段路径
+   * 结构化依赖配置对象
    *
-   * 所依赖的 values 变化后，触发 `componentProps`、`placeholder`、`required`、`readonly`、`disabled`、`visible` 重新执行
+   * 声明 {@link SchemxDependencies.triggerFields | triggerFields} 和各属性的条件函数，
+   * 当任一触发字段变化时执行已配置的条件函数，覆盖对应的静态默认值。
    */
-  dependencies?: NamePath<T>[]
+  dependencies?: SchemxDependencies<T>
 
   /**
-   * 传递给渲染组件的属性
+   * 传递给渲染组件的属性（静态默认值）
    *
    * 类型根据 `componentType` 自动收窄为对应组件的 Props 类型。
-   * 支持函数形式 `(values) => props`，在依赖字段变化时动态计算。
-   *
-   * @remarks
-   * 当使用函数形式时，需要配置  {@link dependencies}  指定依赖的字段，
-   * 否则不会响应值变化。
    */
-  componentProps?: Dynamic<ComponentProps<T, K>>
+  componentProps?: SchemxComponentProps<T, K>
 
   /**
-   * 占位提示文本
-   *
-   * 支持函数形式 `(values) => string`，在依赖字段变化时动态计算。
-   *
-   * @remarks
-   * 当使用函数形式时，需要配置  {@link dependencies}  指定依赖的字段，
-   * 否则不会响应值变化。
+   * 占位提示文本（静态默认值）
    */
-  placeholder?: Dynamic<string>
+  placeholder?: string
 
   /**
-   * 是否必填
+   * 是否必填（静态默认值）
    *
    * 控制必填标记（红色星号）的显示。
    * 若未设置，会根据 `rules` 中的校验规则自动推断。
-   * 支持函数形式 `(values) => boolean`，在依赖字段变化时动态计算。
-   *
-   * @remarks
-   * 当使用函数形式时，需要配置  {@link dependencies}  指定依赖的字段，
-   * 否则不会响应值变化。
    */
-  required?: Dynamic<boolean>
+  required?: boolean
 
   /**
-   * 是否只读
+   * 是否只读（静态默认值）
    *
-   * 只读状态下字段可见但不可编辑。
    * 未设置时继承 FormContext 的全局 `readonly` 配置。
-   * 支持函数形式 `(values) => boolean`，在依赖字段变化时动态计算。
-   *
-   * @remarks
-   * 当使用函数形式时，需要配置  {@link dependencies}  指定依赖的字段，
-   * 否则不会响应值变化。
    */
-  readonly?: Dynamic<boolean>
+  readonly?: boolean
 
   /**
-   * 是否禁用
+   * 是否禁用（静态默认值）
    *
-   * 禁用状态下字段不可交互。
    * 未设置时继承 FormContext 的全局 `disabled` 配置。
-   * 支持函数形式 `(values) => boolean`，在依赖字段变化时动态计算。
-   *
-   * @remarks
-   * 当使用函数形式时，需要配置  {@link dependencies}  指定依赖的字段，
-   * 否则不会响应值变化。
    */
-  disabled?: Dynamic<boolean>
+  disabled?: boolean
 
   /**
-   * 是否隐藏
+   * 是否可见（静态默认值）
    *
-   * 隐藏时字段不渲染，同时会清除校验规则和错误信息。
-   * 支持函数形式 `(values) => boolean`，在依赖字段变化时动态计算。
-   *
-   * @remarks
-   * 当使用函数形式时，需要配置  {@link dependencies}  指定依赖的字段，
-   * 否则不会响应值变化。
+   * 不可见时字段不渲染，同时会清除校验规则和错误信息。
    */
-  visible?: Dynamic<boolean>
+  visible?: boolean
 
   /**
    * 字段初始值
@@ -212,20 +174,6 @@ export interface SchemxBase<
    * 校验在 `submit` 或触发时机（`validationTrigger`）到达时执行。
    */
   rules?: SchemxRules | SchemxRules[]
-
-  /**
-   * 自定义 CSS 类名
-   *
-   * 追加到表单项容器元素上，与内置类名合并。
-   */
-  className?: string
-
-  /**
-   * 自定义内联样式
-   *
-   * 应用到表单项容器元素上。
-   */
-  style?: CSS.Properties
 
   /**
    * 标签图标
@@ -279,7 +227,7 @@ export interface SchemxBase<
 /**
  * FormItem 组件 Props
  */
-export type FormItemProps = Omit<SchemxBase, "componentProps">
+export type SchemxFormItemProps = Omit<SchemxBase, "componentProps">
 
 /**
  * 基础字段配置的分布式联合类型
@@ -287,16 +235,37 @@ export type FormItemProps = Omit<SchemxBase, "componentProps">
  * 将每个 componentType 展开为独立的 SchemxBaseField 变体，
  * 使 schemas 数组中每个元素根据 componentType 获得精确的 componentProps 类型推断。
  *
- * 当 RendererDefinition 未注册任何渲染器时，回退为宽松的 SchemxBase 类型，
+ * 当 SchemxRendererDefinition 未注册任何渲染器时，回退为宽松的 SchemxBase 类型，
  * 避免因 keyof 为 never 导致整个类型坍塌。
  *
  * @typeParam T - 表单值类型
  */
-export type SchemxBaseField<T extends FormValues = FormValues> = [
-  keyof RendererDefinition,
+export type SchemxBaseField<T extends Values = Values> = [
+  keyof SchemxRendererDefinition<T>,
 ] extends [never]
   ? SchemxBase<T>
-  : { [K in keyof RendererDefinition]: SchemxBase<T, K> }[keyof RendererDefinition]
+  : {
+      [K in keyof SchemxRendererDefinition<T>]: SchemxBase<T, K>
+    }[keyof SchemxRendererDefinition<T>]
+
+/**
+ * 自定义 Group Schema 基础字段扩展接口
+ *
+ * 空接口占位，供业务方通过 TypeScript 声明合并（declaration merging）
+ * 向 {@link SchemxBase} 注入额外的自定义字段。
+ *
+ * @example
+ * ```ts
+ * declare module '@schemx/core' {
+ *   interface SchemxGroupFieldDefinition {
+ *     tooltip?: string
+ *     span?: number
+ *   }
+ * }
+ * ```
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface SchemxGroupFieldDefinition {}
 
 /**
  * 分组字段配置
@@ -305,16 +274,28 @@ export type SchemxBaseField<T extends FormValues = FormValues> = [
  *
  * @typeParam T - 表单值类型
  */
-export interface SchemxGroupField<T extends FormValues = FormValues> {
-  /** 分组标签 */
+export interface SchemxGroupField<
+  T extends Values = Values,
+> extends SchemxGroupFieldDefinition {
+  /**
+   * 分组标签
+   */
   label: string
-  /** 组件类型（固定为 group） */
+  /**
+   * 组件类型（固定为 group）
+   */
   componentType: "group"
-  /** 分组内的列配置 */
+  /**
+   * 分组内的列配置
+   */
   children: SchemxField<T>[]
-  /** 是否可折叠 */
+  /**
+   * 是否可折叠
+   */
   collapsible?: boolean
-  /** 默认是否折叠 */
+  /**
+   * 默认是否折叠
+   */
   defaultCollapsed?: boolean
 }
 
@@ -325,12 +306,18 @@ export interface SchemxGroupField<T extends FormValues = FormValues> {
  *
  * @typeParam T - 表单值类型
  */
-export interface SchemxDependencyField<T extends FormValues = FormValues> {
-  /** 组件类型（固定为 dependency） */
+export interface SchemxDependencyField<T extends Values = Values> {
+  /**
+   * 组件类型（固定为 dependency）
+   */
   componentType: "dependency"
-  /** 依赖的字段路径 */
+  /**
+   * 依赖的字段路径
+   */
   to: NamePath<T>[]
-  /** 动态列配置生成函数 */
+  /**
+   * 动态列配置生成函数
+   */
   renderer: (
     values: T,
     form: SchemxInstance<T>
@@ -344,7 +331,7 @@ export interface SchemxDependencyField<T extends FormValues = FormValues> {
  *
  * @typeParam T - 表单值类型
  */
-export type SchemxField<T extends FormValues = FormValues> =
+export type SchemxField<T extends Values = Values> =
   | SchemxBaseField<T>
   | SchemxGroupField<T>
   | SchemxDependencyField<T>

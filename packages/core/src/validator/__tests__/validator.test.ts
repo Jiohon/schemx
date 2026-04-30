@@ -11,7 +11,7 @@
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import { createValidator, Validator } from ".."
+import { createValidator, Validator } from "../validator"
 import { createRequiredRule } from "../defaultRules"
 
 import type { StandardSchemaV1 } from "../../types/standardSchema"

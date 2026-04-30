@@ -16,6 +16,11 @@
     "declarationDir": "./dist",
     "outDir": "./dist"
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/**/*.vue",
+    "../core/src/types/dynamic.ts"
+  ],
   "exclude": ["node_modules", "dist"]
 }

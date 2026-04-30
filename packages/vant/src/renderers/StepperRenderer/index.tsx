@@ -32,21 +32,62 @@ export interface StepperRendererProps {
 const StepperRendererComponent = defineComponent({
   name: "StepperRendererComponent",
   props: {
-    value: { type: Number, default: 0 },
-    min: { type: Number, default: undefined },
-    max: { type: Number, default: undefined },
-    step: { type: Number, default: 1 },
-    integer: { type: Boolean, default: false },
-    decimalLength: { type: Number, default: undefined },
-    className: { type: String, default: "" },
-    formItemProps: { type: Object as PropType<Record<string, any>>, default: () => ({}) },
-    formInstance: { type: Object as PropType<Record<string, any> | null>, default: null },
-    onChange: { type: Function as PropType<(value: number) => void>, default: () => {} },
-    readonly: { type: Boolean, default: false },
-    readonlyPlaceholder: { type: String, default: "-" },
-    disabled: { type: Boolean, default: false },
-    allowEmpty: { type: Boolean, default: false },
-    error: { type: Array as PropType<string[]>, default: undefined },
+    value: {
+      type: Number,
+      default: 0,
+    },
+    min: {
+      type: Number,
+      default: undefined,
+    },
+    max: {
+      type: Number,
+      default: undefined,
+    },
+    step: {
+      type: Number,
+      default: 1,
+    },
+    integer: {
+      type: Boolean,
+      default: false,
+    },
+    decimalLength: {
+      type: Number,
+      default: undefined,
+    },
+    className: {
+      type: String,
+      default: "",
+    },
+    formItemProps: {
+      type: Object as PropType<Record<string, any>>,
+      default: () => ({}),
+    },
+    formInstance: {
+      type: Object as PropType<Record<string, any> | null>,
+      default: null,
+    },
+    onChange: {
+      type: Function as PropType<(value: number) => void>,
+      default: () => {},
+    },
+    readonly: {
+      type: Boolean,
+      default: false,
+    },
+    readonlyPlaceholder: {
+      type: String,
+      default: "-",
+    },
+    disabled: {
+      type: Boolean,
+      default: false,
+    },
+    allowEmpty: {
+      type: Boolean,
+      default: false,
+    },
   },
   setup(props, { attrs }: SetupContext) {
     const fieldProps = computed(() => ({
