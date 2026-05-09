@@ -29,6 +29,7 @@ export {
   useDictionary,
   useContext,
   useEffect,
+  useFieldContext,
   type UseDependencyReturn,
   type UseDictOptionsReturn,
   type FormContextProps,

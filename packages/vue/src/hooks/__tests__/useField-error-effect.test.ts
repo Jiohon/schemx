@@ -10,12 +10,12 @@
  */
 import { defineComponent, h, nextTick } from "vue"
 
-import { createFormInstance } from "@schemx/core"
+import { createForm } from "@schemx/core"
 import { mount } from "@vue/test-utils"
 import { describe, expect, it } from "vitest"
 
 import { useField } from "../useField"
-import { FORM_INSTANCE_KEY } from "../useForm"
+import { SCHEMX_INSTANCE_KEY } from "../useForm"
 
 import type { SchemxInstance } from "@schemx/core"
 
@@ -62,7 +62,7 @@ function mountWithForm(
   return mount(component, {
     global: {
       provide: {
-        [FORM_INSTANCE_KEY]: form,
+        [SCHEMX_INSTANCE_KEY]: form,
       },
     },
   })
@@ -70,7 +70,7 @@ function mountWithForm(
 
 describe("useField error effect 集成测试", () => {
   it("setFieldError 后 fieldError ref 自动更新", async () => {
-    const form = createFormInstance<TestForm>({
+    const form = createForm<TestForm>({
       initialValues: { name: "", email: "" },
     })
 
@@ -94,7 +94,7 @@ describe("useField error effect 集成测试", () => {
   })
 
   it("setFieldError 设置空数组后清除错误", async () => {
-    const form = createFormInstance<TestForm>({
+    const form = createForm<TestForm>({
       initialValues: { name: "", email: "" },
     })
 
@@ -119,7 +119,7 @@ describe("useField error effect 集成测试", () => {
   })
 
   it("useField.setError / clearError 正确同步", async () => {
-    const form = createFormInstance<TestForm>({
+    const form = createForm<TestForm>({
       initialValues: { name: "", email: "" },
     })
 
@@ -144,7 +144,7 @@ describe("useField error effect 集成测试", () => {
   })
 
   it("不同字段的错误互不影响", async () => {
-    const form = createFormInstance<TestForm>({
+    const form = createForm<TestForm>({
       initialValues: { name: "", email: "" },
     })
 
@@ -182,7 +182,7 @@ describe("useField error effect 集成测试", () => {
   })
 
   it("组件卸载后 error effect 被 dispose，不再同步", async () => {
-    const form = createFormInstance<TestForm>({
+    const form = createForm<TestForm>({
       initialValues: { name: "", email: "" },
     })
 
@@ -215,7 +215,7 @@ describe("useField error effect 集成测试", () => {
   })
 
   it("字段值通过 signalEffect 自动同步到 getValue", async () => {
-    const form = createFormInstance<TestForm>({
+    const form = createForm<TestForm>({
       initialValues: { name: "初始值", email: "" },
     })
 

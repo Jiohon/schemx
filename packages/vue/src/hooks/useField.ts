@@ -20,9 +20,84 @@ import { computed, onUnmounted, shallowRef } from "vue"
 
 import { createField } from "@schemx/core"
 
+import { FieldInstance } from "@/types/field"
+
 import { useFormInstance } from "./useForm"
 
-import type { NamePath, Value, Values } from "@schemx/core"
+import type { NamePath, SchemxInstance, Value, Values } from "@schemx/core"
+
+/**
+ * useField 针对 (form, name) 的缓存条目
+ *
+ * 通过引用计数确保同一 (form, name) 的多次 useField 调用
+ * 共享同一份 shallowRef 和 effect 桥接，避免重复订阅。
+ *
+ * @typeParam T - 表单值类型
+ */
+interface FieldHookCacheEntry<T extends Values = Values> {
+  /** 当前活跃的引用计数，归零时释放 dispose 并从缓存中移除 */
+  refCount: number
+  /** 共享的字段控制器实例（含 Vue Ref 包装） */
+  result: FieldInstance<T>
+  /** 取消 Signal effect 订阅并清理资源 */
+  dispose: () => void
+}
+
+/** 模块级缓存：form 实例 → 字段名 → 缓存条目 */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const fieldHookCache = new WeakMap<any, Map<string, FieldHookCacheEntry>>()
+
+/**
+ * 序列化字段名为缓存 key
+ */
+function serializeName(name: NamePath): string {
+  return Array.isArray(name) ? name.join(".") : String(name)
+}
+
+/**
+ * 创建字段 hook 的响应式状态
+ *
+ * 从 createField 生成 FieldInstance，创建 shallowRef 容器
+ * 并通过 field.effect 将 Signal 变化桥接到 Vue 响应式系统。
+ */
+function createFieldHook<T extends Values = Values>(
+  form: SchemxInstance<T>,
+  name: NamePath<T>
+) {
+  const field = createField(form, name)
+
+  const fieldValue = shallowRef<Value>(field.getValue())
+  const fieldError = shallowRef<string[] | undefined>(field.getError())
+  const fieldPending = shallowRef<boolean>(field.isPending())
+
+  const dispose = field.effect(() => {
+    fieldValue.value = field.getValue()
+    fieldError.value = field.getError()
+
+    fieldPending.value = field.isPending()
+  })
+
+  const error = computed(() => fieldError.value)
+
+  const dirty = computed(() => {
+    void fieldValue.value
+
+    return field.isTouched()
+  })
+
+  const pending = computed(() => fieldPending.value)
+
+  const result = {
+    value: fieldValue,
+    error,
+    dirty,
+    pending,
+    ...field,
+    getValue: () => fieldValue.value,
+  }
+
+  return { result, dispose }
+}
 
 /**
  * 获取单个字段的控制能力
@@ -58,96 +133,40 @@ import type { NamePath, Value, Values } from "@schemx/core"
  */
 export const useField = <T extends Values = Values>(name: NamePath<T>) => {
   const form = useFormInstance<T>()
-  const field = createField(form, name)
 
-  /** 字段当前值（响应式容器） */
-  const fieldValue = shallowRef<Value>(field.getValue())
+  const key = serializeName(name)
 
-  /** 字段错误信息（响应式容器） */
-  const fieldError = shallowRef<string[] | undefined>(field.getError())
+  let formCache = fieldHookCache.get(form)
 
-  /** 字段操作中状态（响应式容器） */
-  const fieldPending = shallowRef<boolean>(field.isPending())
+  if (!formCache) {
+    formCache = new Map()
+    fieldHookCache.set(form, formCache)
+  }
 
-  /**
-   * 通过 field.effect 分别桥接 value / error / pending 的 Signal 变化到 Vue shallowRef，
-   * 每个 effect 只追踪自己关心的 Signal，保持精确依赖追踪。
-   */
-  const disposeValueEffect = field.effect(() => {
-    fieldValue.value = field.getValue()
-  })
+  let entry = formCache.get(key)
 
-  const disposeErrorEffect = field.effect(() => {
-    fieldError.value = field.getError()
-  })
+  if (entry) {
+    entry.refCount++
+  } else {
+    const { result, dispose } = createFieldHook<T>(form, name)
 
-  const disposePendingEffect = field.effect(() => {
-    fieldPending.value = field.isPending()
-  })
+    entry = {
+      refCount: 1,
+      result,
+      dispose,
+    }
+
+    formCache.set(key, entry)
+  }
 
   onUnmounted(() => {
-    disposeValueEffect()
-    disposeErrorEffect()
-    disposePendingEffect()
+    if (--entry.refCount <= 0) {
+      entry.dispose()
+      formCache.delete(key)
+    }
   })
 
-  /**
-   * 字段错误信息（响应式，只读）
-   *
-   * @example
-   * ```typescript
-   * field.error.value // => ['用户名不能为空'] 或 undefined
-   * ```
-   */
-  const error = computed(() => fieldError.value)
-
-  /**
-   * 值是否与初始值不同（响应式）
-   *
-   * @example
-   * ```typescript
-   * field.dirty.value // => true（值已修改）
-   * ```
-   */
-  const dirty = computed(() => {
-    // 触发对 fieldValue 的依赖追踪
-    void fieldValue.value
-
-    return field.isTouched()
-  })
-
-  /**
-   * 值未被修改（dirty 的反义，响应式）
-   *
-   * @example
-   * ```typescript
-   * field.pristine.value // => true（值未修改）
-   * ```
-   */
-  const pristine = computed(() => !dirty.value)
-
-  /**
-   * 字段是否处于操作中（响应式）
-   *
-   * @example
-   * ```typescript
-   * field.pending.value // => true（上传中）
-   * ```
-   */
-  const pending = computed(() => fieldPending.value)
-
-  return {
-    // 响应式状态
-    error,
-    dirty,
-    pristine,
-    pending,
-    form,
-    // core 层方法透传
-    ...field,
-    // getValue 覆盖为读 shallowRef（保持 Vue 响应式追踪）
-    getValue: () => fieldValue.value,
-  }
+  return entry.result
 }
 
 export default useField

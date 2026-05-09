@@ -15,8 +15,10 @@ import { useField } from "@/hooks/useField"
 import { shouldValidateOn } from "@/utils"
 import { mergeTrigger } from "@/utils/validation"
 
-import type { SchemxDependenciesStaticProps } from "@schemx/core"
-import type { SchemxBase, ValidationTrigger } from "@schemx/core"
+import { provideFieldContext } from "./useFieldContext"
+
+import type { SchemxDependenciesStaticProps, Values } from "@schemx/core"
+import type { SchemxBaseField, ValidationTrigger } from "@schemx/core"
 
 /** mergeTrigger 返回的触发时机类型 */
 type TriggerConfig = ValidationTrigger | ValidationTrigger[]
@@ -58,12 +60,14 @@ export interface UseFieldHandlerReturn {
  * )
  * ```
  */
-export function useFieldHandler(
-  baseSchema: SchemxBase,
-  resolvedProps: SchemxDependenciesStaticProps
+export function useFieldHandler<T extends Values>(
+  baseSchema: SchemxBaseField<T>,
+  resolvedProps: SchemxDependenciesStaticProps<T>
 ): UseFieldHandlerReturn {
   const formContext = useContext()
   const field = useField(baseSchema.name)
+
+  provideFieldContext(field)
 
   const trigger = mergeTrigger(
     baseSchema.validationTrigger,

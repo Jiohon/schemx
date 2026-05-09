@@ -11,7 +11,7 @@ export { isBaseSchema, isGroupSchema, isDependencySchema, findSchema } from "./s
 export { getByPath, setByPath, collectObjectPathsByLeaf } from "./path"
 
 /** 异步工具 */
-export { withLock } from "./async"
+export { withLock, waitAll } from "./async"
 
 /** 对象 diff 工具 */
 export { diff } from "./diff"

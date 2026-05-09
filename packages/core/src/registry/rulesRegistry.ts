@@ -35,7 +35,7 @@ import type { StandardSchemaV1 } from "../types"
  * 用于内置规则等需要运行时上下文才能生成 rule 的场景。
  */
 export type RuleFactory<T extends Values = Values> = (
-  rule?: SchemxBaseField<T>
+  schema?: SchemxBaseField<T>
 ) => StandardSchemaV1
 
 /**
@@ -172,20 +172,47 @@ export class RulesRegistry<T extends Values = Values> {
    * @example
    * ```typescript
    * // 固定 rule 直接返回
-   * rulesRegistry.resolve('phone', '手机号') // => phoneRule
+   * rulesRegistry.resolve('phone', { label :'手机号', ComponentType: 'input', ... }) // => phoneRule
    *
    * // 工厂函数会被调用
-   * rulesRegistry.resolve('required', '用户名') // => createRequiredRule('用户名')
+   * rulesRegistry.resolve('required', {  label :'用户名', ComponentType: 'input', ... }) // => createRequiredRule('用户名')
    * ```
    */
-  resolve(name: string, rule?: SchemxBaseField<T>): StandardSchemaV1 | undefined {
-    const entry = this.rules.get(name)
+  resolve(name: string): StandardSchemaV1 | undefined
+  resolve(name: string, schema: SchemxBaseField<T>): StandardSchemaV1[]
+  resolve(
+    name: string,
+    schema?: SchemxBaseField<T>
+  ): RuleEntry<T> | StandardSchemaV1[] | undefined {
+    if (!schema) {
+      const entry = this.getRule(name)
 
-    if (entry) {
-      return typeof entry === "function" ? entry(rule) : entry
+      return typeof entry === "function" ? entry() : entry
     }
 
-    return undefined
+    const { rules } = schema
+
+    const ruleList = Array.isArray(rules) ? rules : [rules]
+
+    const resolved: StandardSchemaV1[] = []
+
+    for (const rule of ruleList) {
+      if (typeof rule === "string") {
+        if (this.rules.has(rule)) {
+          const entry = this.rules.get(rule)
+
+          if (entry) {
+            resolved.push(typeof entry === "function" ? entry(schema) : entry)
+          }
+        } else {
+          console.warn(`[schemx] 未找到名为 "${rule}" 的校验规则`)
+        }
+      } else {
+        if (rule) resolved.push(rule)
+      }
+    }
+
+    return resolved
   }
 
   /**

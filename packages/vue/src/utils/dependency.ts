@@ -37,9 +37,28 @@ export async function resolvePropertyCondition<T extends Values, R>(
   condition: SchemxConditionFn<T, R>,
   formValues: T,
   defaultValue: R
+): Promise<R>
+export async function resolvePropertyCondition<T extends Values, R>(
+  condition: SchemxConditionFn<T, R>,
+  formValues: T,
+  defaultValue: R
+): Promise<R>
+export async function resolvePropertyCondition<T extends Values, R>(
+  formOrCondition: SchemxInstance<T> | SchemxConditionFn<T, R>,
+  conditionOrValues: SchemxConditionFn<T, R> | T,
+  valuesOrDefault: T | R,
+  maybeDefault?: R
 ): Promise<R> {
+  const hasForm = typeof formOrCondition !== "function"
+  const form = hasForm ? formOrCondition : undefined
+  const condition = hasForm
+    ? (conditionOrValues as SchemxConditionFn<T, R>)
+    : (formOrCondition as SchemxConditionFn<T, R>)
+  const formValues = hasForm ? (valuesOrDefault as T) : (conditionOrValues as T)
+  const defaultValue = hasForm ? (maybeDefault as R) : (valuesOrDefault as R)
+
   try {
-    const result = await condition(formValues, form)
+    const result = await condition(formValues, form as SchemxInstance<T>)
 
     if (result == null) {
       return defaultValue

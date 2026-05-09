@@ -68,7 +68,10 @@ coverage
 dist/
 build/
 out/
-docs/
+docs/*
+!docs/
+!docs/runtime-refactor-execution-plan.md
+!docs/runtime-refactor-migration-guide.md
 unpackage/
 
 # Compiled binary addons
@@ -140,6 +143,17 @@ Desktop.ini
 *~
 
 # ===================================
+# AI
+# ===================================
+.claude
+/specs
+.specify
+
+.kiro
+.tasks
+./*.md
+
+# ===================================
 # 其他
 # ===================================
 
@@ -154,7 +168,3 @@ bower_components
 
 # Typescript v1 declaration files
 # typings/
-
-.tasks
-./*.md
-.kiro

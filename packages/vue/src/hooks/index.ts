@@ -36,5 +36,11 @@ export { useStableRef } from "./useStableRef"
 /** useDependencies - 依赖属性解析 */
 export { useDependencies } from "./useDependencies"
 
+/** useResolvedSchemas - resolved schema projection Vue 桥接 */
+export { useResolvedSchemas } from "./useResolvedSchemas"
+
 /** useFieldHandler - 字段处理 */
 export { useFieldHandler, type UseFieldHandlerReturn } from "./useFieldHandler"
+
+/** useFieldContext - 字段上下文注入与消费 */
+export { useFieldContext } from "./useFieldContext"

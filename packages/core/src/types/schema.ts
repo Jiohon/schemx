@@ -32,7 +32,7 @@ export interface SchemxBaseComponentProps<T extends Values = Values> {
   /** 占位符 */
   placeholder?: string
   /** FormItem 组件 Props */
-  formItemProps?: SchemxFormItemProps
+  formItemProps?: SchemxFormItemProps<T>
   /** 字段值 */
   value?: Value
   /** 值变化处理 */
@@ -227,7 +227,10 @@ export interface SchemxBase<
 /**
  * FormItem 组件 Props
  */
-export type SchemxFormItemProps = Omit<SchemxBase, "componentProps">
+export type SchemxFormItemProps<T extends Values = Values> = Omit<
+  SchemxBase<T>,
+  "componentProps"
+>
 
 /**
  * 基础字段配置的分布式联合类型
@@ -335,3 +338,43 @@ export type SchemxField<T extends Values = Values> =
   | SchemxBaseField<T>
   | SchemxGroupField<T>
   | SchemxDependencyField<T>
+
+/**
+ * Runtime 解析后的字段公共扩展。
+ *
+ * Runtime 会为可渲染 schema 投影补充稳定 `key`，供框架层作为 vnode key
+ * 使用。Raw Schema 不包含该字段，也不会被 runtime 原地修改。
+ */
+type ExpandedSchemxField<F> = F & { key: string }
+
+/**
+ * Runtime 解析后的基础字段类型。
+ *
+ * Dependency 已在 runtime tree 中展开，组件内部只消费可直接渲染的
+ * base/group schema projection。
+ */
+export type SchemxResolvedBaseField<T extends Values = Values> =
+  ExpandedSchemxField<SchemxBaseField<T>>
+
+/**
+ * Runtime 解析后的分组字段类型。
+ *
+ * 与 raw {@link SchemxGroupField} 不同，resolved group 的 children 也已经
+ * 递归展开为 {@link SchemxResolvedField}，不会再包含 dependency schema。
+ */
+export type SchemxResolvedGroupField<T extends Values = Values> = Omit<
+  ExpandedSchemxField<SchemxGroupField<T>>,
+  "children"
+> & {
+  children: SchemxResolvedField<T>[]
+}
+
+/**
+ * Runtime 解析后的可渲染 schema 类型。
+ *
+ * renderer 返回的 SchemxField[] 中可能包含 dependency，但经过 runtime
+ * 递归展开后，组件层最终只会收到 base 或 group 类型。
+ */
+export type SchemxResolvedField<T extends Values = Values> =
+  | SchemxResolvedBaseField<T>
+  | SchemxResolvedGroupField<T>

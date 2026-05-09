@@ -53,7 +53,7 @@ export interface FieldSubscribeCallbacks {
  *
  * @typeParam T - 表单值类型
  */
-export interface FieldInstance<T extends Values = Values> {
+export interface SchemxFieldInstance<T extends Values = Values> {
   /** 获取当前字段值（读取 Signal，在 effect 中自动追踪） */
   getValue: () => Value
   /** 设置字段值 */
@@ -134,7 +134,7 @@ export interface FieldInstance<T extends Values = Values> {
 export function createField<T extends Values = Values>(
   form: SchemxInstance<T>,
   name: NamePath<T>
-): FieldInstance<T> {
+): SchemxFieldInstance<T> {
   const getValue = (): Value => form.getFieldValue(name)
 
   const setValue = (value: Value): void => {

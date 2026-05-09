@@ -37,9 +37,10 @@ export {
 
 // createForm - 表单实例工厂
 export { createForm, type CreateFormOptions } from "./createForm"
+export { createForm as createFormInstance } from "./createForm"
 
 // createField - 单字段控制器
-export { createField, type FieldInstance } from "./createField"
+export { createField, type SchemxFieldInstance } from "./createField"
 
 // createEffect - 底层通用 Signal effect
 export {
@@ -75,6 +76,23 @@ export {
 // Schemas - Schema 处理工具
 export { filterSchemas } from "./schemas"
 
+// Runtime - 增量 schema runtime
+export {
+  RuntimeEngine,
+  RuntimeScheduler,
+  RuntimeCompiler,
+  createRuntimeEngine,
+} from "./runtime"
+export type {
+  DependencyRuntimeNode,
+  FieldRuntime,
+  FieldRuntimeNode,
+  GroupRuntimeNode,
+  RuntimeNode,
+  RuntimeNodeBase,
+  RuntimeSchema,
+} from "./runtime"
+
 // Utils - 工具函数
 export {
   isBaseSchema,
@@ -84,13 +102,6 @@ export {
   setByPath,
   collectObjectPathsByLeaf,
 } from "./utils"
-
-// BatchScheduler - 批量调度器
-export {
-  createBatchScheduler,
-  type BatchScheduler,
-  type BatchSchedulerOptions,
-} from "./scheduler"
 
 // Types - 类型定义
 export type {
@@ -116,6 +127,9 @@ export type {
   SchemxComponentProps,
   SchemxBase,
   SchemxGroupField,
+  SchemxResolvedBaseField,
+  SchemxResolvedField,
+  SchemxResolvedGroupField,
   SchemxDependencyField,
   SchemxBaseField,
   SchemxField,

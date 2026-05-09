@@ -34,6 +34,7 @@ export function createRequiredRule(
       version: 1,
       vendor: "schemx",
       validate(value: unknown): StandardSchemaV1.Result<unknown> {
+        console.log("createRequiredRule", value)
         if (value === undefined || value === null || value === "") {
           const label = schema?.label ?? ""
 

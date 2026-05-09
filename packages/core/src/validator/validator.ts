@@ -352,6 +352,7 @@ export class Validator<T extends Values = Values> {
       allMessages.push(entry.defaultMessage)
     }
 
+    // 解析快捷规则（如 createRequiredRule）
     for (const schema of entry.schemas) {
       try {
         const result = await schema["~standard"].validate(value)

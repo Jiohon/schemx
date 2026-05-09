@@ -10,8 +10,6 @@
 import { defineComponent, PropType } from "vue"
 import type { DefineComponent } from "vue"
 
-import { isBaseSchema } from "@schemx/core"
-
 import { useDependency } from "@/hooks/useDependency"
 
 import FormItem from "../FormItem"
@@ -64,11 +62,7 @@ const FormDependency = defineComponent({
     return () => (
       <>
         {schemas.value.map((schema, index) => (
-          <FormItem
-            key={`${isBaseSchema(schema) ? schema.name : "dep"}-${index}`}
-            schema={schema}
-            v-slots={slots}
-          />
+          <FormItem key={`dependency-${index}`} schema={schema as any} v-slots={slots} />
         ))}
       </>
     )

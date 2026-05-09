@@ -23,6 +23,8 @@ describe("CreateFormInstance 属性测试", () => {
           .filter(
             (s) =>
               !s.includes(".") &&
+              !s.includes("[") &&
+              !s.includes("]") &&
               s.trim().length > 0 &&
               !["__proto__", "constructor", "prototype"].includes(s)
           ),

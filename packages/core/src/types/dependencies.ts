@@ -62,7 +62,7 @@ export interface SchemxDependencies<T extends Values = Values> {
    * 根据 `componentType` 自动收窄为对应组件的 Props 类型。
    * 未配置时使用 {@link SchemxBase.componentProps} 的静态默认值。
    */
-  componentProps?: SchemxConditionFn<T, NonNullable<SchemxBase["componentProps"]>>
+  componentProps?: SchemxConditionFn<T, NonNullable<SchemxBase<T>["componentProps"]>>
 
   /**
    * 占位提示文本
@@ -70,7 +70,7 @@ export interface SchemxDependencies<T extends Values = Values> {
    * 条件函数返回 `string` 类型，用于动态计算输入框的占位文本。
    * 未配置时使用 {@link SchemxBase.placeholder} 的静态默认值。
    */
-  placeholder?: SchemxConditionFn<T, NonNullable<SchemxBase["placeholder"]>>
+  placeholder?: SchemxConditionFn<T, NonNullable<SchemxBase<T>["placeholder"]>>
 
   /**
    * 是否必填
@@ -86,7 +86,7 @@ export interface SchemxDependencies<T extends Values = Values> {
    * 条件函数返回 `boolean` 类型，只读状态下字段可见但不可编辑。
    * 未配置时使用 {@link SchemxBase.readonly} 的静态默认值。
    */
-  readonly?: SchemxConditionFn<T, NonNullable<SchemxBase["readonly"]>>
+  readonly?: SchemxConditionFn<T, NonNullable<SchemxBase<T>["readonly"]>>
 
   /**
    * 是否禁用
@@ -94,7 +94,7 @@ export interface SchemxDependencies<T extends Values = Values> {
    * 条件函数返回 `boolean` 类型，禁用状态下字段不可交互。
    * 未配置时使用 {@link SchemxBase.disabled} 的静态默认值。
    */
-  disabled?: SchemxConditionFn<T, NonNullable<SchemxBase["disabled"]>>
+  disabled?: SchemxConditionFn<T, NonNullable<SchemxBase<T>["disabled"]>>
 
   /**
    * 是否可见
@@ -103,7 +103,7 @@ export interface SchemxDependencies<T extends Values = Values> {
    * 同时会清除校验规则和错误信息。
    * 未配置时使用 {@link SchemxBase.visible} 的静态默认值。
    */
-  visible?: SchemxConditionFn<T, NonNullable<SchemxBase["visible"]>>
+  visible?: SchemxConditionFn<T, NonNullable<SchemxBase<T>["visible"]>>
 
   /**
    * 校验规则
@@ -111,7 +111,7 @@ export interface SchemxDependencies<T extends Values = Values> {
    * 条件函数返回 `SchemxRules | SchemxRules[]` 类型，用于动态计算字段的校验规则。
    * 未配置时使用 {@link SchemxBase.rules} 的静态默认值。
    */
-  rules?: SchemxConditionFn<T, SchemxBase["rules"]>
+  rules?: SchemxConditionFn<T, SchemxBase<T>["rules"]>
 
   /**
    * 副作用触发器

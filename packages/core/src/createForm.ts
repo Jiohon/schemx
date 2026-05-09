@@ -22,16 +22,20 @@
 import { batch as signalBatch, effect as signalEffect } from "@preact/signals-core"
 
 import {
+  createFieldInitScheduler,
+  type FieldInitScheduler,
+} from "./form/fieldInitScheduler"
+import {
   createRendererRegistry,
   createRulesRegistry,
   RendererRegistry,
   type RuleEntry,
   type RulesRegistry,
 } from "./registry"
-import { type BatchScheduler, createBatchScheduler } from "./scheduler"
+import { createRuntimeEngine, type RuntimeEngine } from "./runtime"
 import { filterSchemas } from "./schemas"
 import { createFormStore, FormStore, FormStorePendingField } from "./store"
-import { collectObjectPathsByLeaf, diff, findSchema, getByPath, withLock } from "./utils"
+import { collectObjectPathsByLeaf, diff, getByPath, withLock } from "./utils"
 import {
   createRequiredRule,
   createSelectRequiredRule,
@@ -49,6 +53,7 @@ import type {
   SchemxInstance,
   SchemxInternalHooks,
   SchemxRendererKey,
+  SchemxResolvedField,
   SchemxRules,
   StandardSchemaV1,
   Value,
@@ -126,8 +131,8 @@ export interface CreateFormOptions<T extends Values> {
  * 提交操作通过 withLock 防止重复提交。
  */
 class CreateForm<T extends Values = Values> {
-  /** 表单列配置，用于提取初始值和校验规则 */
-  private schemas: SchemxField<T>[]
+  /** Runtime tree 引擎，负责 schema 编译、dependency subtree 与调度 */
+  private runtime: RuntimeEngine<T>
 
   /** 表单状态存储，管理字段值、初始值和订阅 */
   private store: FormStore<T>
@@ -147,8 +152,8 @@ class CreateForm<T extends Values = Values> {
   /** 所有 effect 的 dispose 函数，destroy 时统一清理 */
   private disposers = new Set<() => void>()
 
-  /** 字段初始化批量调度器，将多个 FormItem 的 onMounted 初始化合并为一次 signalBatch */
-  private scheduler: BatchScheduler<{ name: NamePath<T>; value: Value }>
+  /** 字段初始化调度器，将多个 FormItem 的 onMounted 初始化合并为一次 signalBatch */
+  private scheduler: FieldInitScheduler<{ name: NamePath<T>; value: Value }>
 
   /**
    * 创建表单实例
@@ -165,8 +170,6 @@ class CreateForm<T extends Values = Values> {
       defaultRendererType,
       rulesRegistry,
     } = options || {}
-
-    this.schemas = filterSchemas(schemas)
 
     this.rendererRegistry =
       rendererRegistry ?? createRendererRegistry(defaultRendererType)
@@ -193,8 +196,8 @@ class CreateForm<T extends Values = Values> {
     // Validator: 初始化校验器
     this.validator = createValidator<T>()
 
-    // 初始化批量调度器：收集多个 FormItem 的 onMounted 初始化，microtask 时统一 batch flush
-    this.scheduler = createBatchScheduler<{
+    // 字段初始化调度器：收集多个 FormItem 的 onMounted 初始化，microtask 时统一 batch flush
+    this.scheduler = createFieldInitScheduler<{
       name: SchemxBaseField["name"]
       value: Value
     }>({
@@ -207,6 +210,14 @@ class CreateForm<T extends Values = Values> {
         })
       },
       dedupKey: (t) => t.name,
+    })
+
+    // Runtime: 过滤后的 raw schemas 编译为运行时树。
+    const filteredSchemas = filterSchemas(schemas)
+
+    this.runtime = createRuntimeEngine<T>(filteredSchemas, this.getForm(), {
+      onFieldMount: this.mountRuntimeField.bind(this),
+      onFieldUnmount: this.unmountRuntimeField.bind(this),
     })
 
     // 注册值变化回调（通过 store.effect 自动追踪依赖）
@@ -243,7 +254,6 @@ class CreateForm<T extends Values = Values> {
    * @returns SchemxInstance 对象
    */
   public getForm = (): SchemxInstance<T> => ({
-    getSchemas: this.getSchemas.bind(this),
     // Store - 值操作
     setFieldValue: this.setFieldValue.bind(this),
     setFieldsValue: this.setFieldsValue.bind(this),
@@ -265,6 +275,7 @@ class CreateForm<T extends Values = Values> {
     getPendingFields: this.getPendingFields.bind(this),
 
     // Validator - 校验
+    registerSchemaRules: this.registerSchemaRules.bind(this),
     registerRules: this.registerRules.bind(this),
     unregisterRules: this.unregisterRules.bind(this),
     validateField: this.validateField.bind(this),
@@ -276,6 +287,19 @@ class CreateForm<T extends Values = Values> {
     resetFields: this.resetFields.bind(this),
     reset: this.reset.bind(this),
     submit: this.submit.bind(this),
+    getResolvedSchemas: this.getResolvedSchemas.bind(this),
+    getSchemas: this.getSchemas.bind(this),
+    waitForDependencies: this.waitForDependencies.bind(this),
+
+    // RendererRegistry - 渲染器
+    getRenderer: this.getRenderer.bind(this),
+    registerRenderer: this.registerRenderer.bind(this),
+    hasRenderer: this.hasRenderer.bind(this),
+
+    // RulesRegistry - 规则注册中心
+    getRule: this.getRule.bind(this),
+    registerRule: this.registerRule.bind(this),
+    hasRule: this.hasRule.bind(this),
 
     // Signal - effect / batch
     effect: this.effect.bind(this),
@@ -294,6 +318,11 @@ class CreateForm<T extends Values = Values> {
    * 返回渲染器注册和校验规则注册等内部操作的钩子对象。
    */
   private getInternalHooks = (): SchemxInternalHooks<T> => ({
+    // Runtime - runtime tree 适配层入口
+    getRuntimeRoot: this.getRuntimeRoot.bind(this),
+    getResolvedSchemas: this.getResolvedSchemas.bind(this),
+    waitForDependencies: this.waitForDependencies.bind(this),
+
     // RendererRegistry - 渲染器
     getRenderer: this.getRenderer.bind(this),
     registerRenderer: this.registerRenderer.bind(this),
@@ -306,12 +335,55 @@ class CreateForm<T extends Values = Values> {
   })
 
   /**
-   * 获取过滤后的 schemas 列表
+   * 获取 runtime root 节点。
    *
-   * @returns schemas
+   * Vue 等框架适配层使用该入口直接渲染 runtime tree；对外读取
+   * schema projection 时请使用 getResolvedSchemas()。
+   *
+   * @returns runtime root 节点数组
    */
-  private getSchemas(): SchemxField<T>[] {
-    return this.schemas
+  private getRuntimeRoot() {
+    return this.runtime.getRoot()
+  }
+
+  /**
+   * 等待所有异步依赖解析完成
+   *
+   * @param timeout - 最大等待时间（毫秒），默认 10000
+   * @returns true 表示全部完成
+   */
+  private waitForDependencies(timeout: number = 10000): Promise<boolean> {
+    return this.runtime.waitForIdle(timeout).then((ready) => {
+      if (!ready) {
+        console.warn(`[schemx] Dependency resolution timed out after ${timeout}ms`)
+      }
+
+      return ready
+    })
+  }
+
+  /**
+   * 获取已解析 schema projection。
+   *
+   * Raw Schema 保持 immutable；runtime tree 持有 dependency 的动态
+   * subtree。本方法只把 runtime tree 投影为 schema list，便于旧 UI
+   * 或外部调试读取。
+   *
+   * @returns dependency 已展开后的 schema 列表
+   */
+  private getResolvedSchemas(): SchemxResolvedField<T>[] {
+    return this.runtime.getResolvedSchemas()
+  }
+
+  /**
+   * 获取当前 schema list 兼容视图。
+   *
+   * @deprecated 请使用 getResolvedSchemas() 表达真实语义。
+   *
+   * @returns dependency 已展开后的 schema 列表
+   */
+  private getSchemas(): SchemxResolvedField<T>[] {
+    return this.getResolvedSchemas()
   }
 
   /**
@@ -434,37 +506,20 @@ class CreateForm<T extends Values = Values> {
   }
 
   /**
+   * 注册 schema 字段校验规则
    * 将 SchemxRules | SchemxRules[] 解析为 StandardSchemaV1 数组
    *
-   * 字符串规则通过 rulesRegistry 查找，StandardSchemaV1 实例直接保留。
-   *
-   * @param rules - 原始规则（单个或数组）
-   * @param schema - 字段列配置，传递给工厂函数
-   *
-   * @returns 解析后的 StandardSchemaV1 数组
    */
-  private resolveRules(
-    rules: SchemxRules | SchemxRules[],
-    schema?: SchemxBaseField<T>
-  ): StandardSchemaV1[] {
-    const list = Array.isArray(rules) ? rules : [rules]
-    const resolved: StandardSchemaV1[] = []
+  private registerSchemaRules(schema: SchemxBaseField<T>): void {
+    const { name, placeholder } = schema
 
-    for (const rule of list) {
-      if (typeof rule === "string") {
-        if (this.rulesRegistry.hasRule(rule)) {
-          const schemaRule = this.rulesRegistry.resolve(rule, schema)
+    this.validator.unregisterRules(name)
 
-          if (schemaRule) resolved.push(schemaRule)
-        } else {
-          console.warn(`[schemx] 未找到名为 "${rule}" 的校验规则`)
-        }
-      } else {
-        resolved.push(rule)
-      }
+    const schemaRules = this.rulesRegistry.resolve(name, schema)
+
+    if (schemaRules.length > 0) {
+      this.validator.registerRules(name, schemaRules, placeholder)
     }
-
-    return resolved
   }
 
   /**
@@ -475,13 +530,46 @@ class CreateForm<T extends Values = Values> {
     rules: SchemxRules | SchemxRules[],
     defaultMessage?: string
   ): void {
-    const schema = findSchema(this.schemas, path)
+    const ruleList = Array.isArray(rules) ? rules : [rules]
+    const resolvedRules: StandardSchemaV1[] = []
 
-    const resolved = this.resolveRules(rules, schema)
+    this.validator.unregisterRules(path)
 
-    if (resolved.length > 0) {
-      this.validator.registerRules(path, resolved, defaultMessage)
+    for (const rule of ruleList) {
+      if (typeof rule === "string") {
+        const resolved = this.rulesRegistry.resolve(rule)
+
+        if (resolved) resolvedRules.push(resolved)
+      } else {
+        resolvedRules.push(rule)
+      }
     }
+
+    if (resolvedRules.length > 0) {
+      this.validator.registerRules(path, resolvedRules, defaultMessage)
+    }
+  }
+
+  /**
+   * Runtime field mount 生命周期。
+   *
+   * Stage B 先把字段校验规则挂到 runtime node 生命周期上；
+   * Vue 层仍可在 visible/disabled/readonly 动态变化时覆盖注册结果。
+   */
+  private mountRuntimeField(schema: SchemxBaseField<T>): void {
+    if (schema.visible === false || schema.readonly || schema.disabled) return
+
+    this.registerSchemaRules(schema)
+  }
+
+  /**
+   * Runtime field unmount 生命周期。
+   *
+   * 字段从 dependency subtree 中移除时，清理 rules 和 errors，
+   * 防止 submit 校验已卸载字段或展示过期错误。
+   */
+  private unmountRuntimeField(schema: SchemxBaseField<T>): void {
+    this.unregisterRules(schema.name)
   }
 
   /**
@@ -494,11 +582,10 @@ class CreateForm<T extends Values = Values> {
   /**
    * 校验指定字段
    */
-  private async validateField(name: string | string[]): Promise<ValidateResult<T>> {
-    const result = await this.validator.validateField(
-      name as NamePath<T> | NamePath<T>[],
-      this.store.getFieldsValue()
-    )
+  private async validateField(
+    name: NamePath<T> | NamePath<T>[]
+  ): Promise<ValidateResult<T>> {
+    const result = await this.validator.validateField(name, this.store.getFieldsValue())
 
     return result
   }
@@ -614,6 +701,13 @@ class CreateForm<T extends Values = Values> {
    * 提交表单
    */
   private submit = withLock(async (): Promise<void> => {
+    // 等待依赖解析完成
+    const depsReady = await this.waitForDependencies()
+    if (!depsReady) {
+      // 超时则拒绝提交
+      return
+    }
+
     const result = await this.validate()
     if (result.ok) {
       await this.callbacks.onFinish?.(result.values)
@@ -660,6 +754,9 @@ class CreateForm<T extends Values = Values> {
     }
 
     this.disposers.clear()
+
+    this.runtime.destroy()
+
     this.store.destroy()
   }
 }

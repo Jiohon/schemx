@@ -8,7 +8,7 @@
  */
 
 /** 声明合并 side-effect：注册 Vant 渲染器类型到 SchemxRendererDefinition */
-import "./types/schemx.d"
+import "./types/schemx"
 
 /** side-effect：将 Vant 渲染器注册到全局 rendererRegistry */
 import "./renderers/defaultRenderers"
@@ -22,6 +22,7 @@ export {
   useWatch,
   useEffect,
   useDependency,
+  useFieldContext,
   WithRemoteOptions,
   rendererRegistry,
   rulesRegistry,

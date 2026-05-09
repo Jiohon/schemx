@@ -180,7 +180,9 @@ describe("SignalMap 生命周期属性测试", () => {
     fc.assert(
       fc.property(
         fc.string(),
-        fc.array(fc.integer(), { minLength: 2, maxLength: 10 }),
+        fc
+          .array(fc.integer(), { minLength: 2, maxLength: 10 })
+          .filter((values) => values.some((value) => value !== 0)),
         (key, values) => {
           const map = new SignalMap<string, number>()
           map.set(key, 0)

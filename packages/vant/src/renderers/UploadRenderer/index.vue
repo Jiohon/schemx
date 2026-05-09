@@ -30,7 +30,7 @@
 
   import { Uploader } from "vant"
 
-  import { SchemxFormItemProps, useField } from "@schemx/vue"
+  import { SchemxFormItemProps, useFieldContext } from "@schemx/vue"
   import classNames from "classnames"
 
   import { getFileName } from "@/utils"
@@ -67,7 +67,7 @@
 
   const attrs = useAttrs()
 
-  const field = useField(props.formItemProps.name)
+  const field = useFieldContext()
 
   const uploadRef = ref<InstanceType<typeof Uploader> | null>(null)
 

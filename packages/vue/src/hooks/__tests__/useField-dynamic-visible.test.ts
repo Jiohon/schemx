@@ -14,13 +14,13 @@
  */
 import { computed, defineComponent, h, nextTick, ref, watch } from "vue"
 
-import { createFormInstance } from "@schemx/core"
+import { createForm } from "@schemx/core"
 import { mount } from "@vue/test-utils"
 import { describe, expect, it } from "vitest"
 import { z } from "zod"
 
 import { useField } from "../useField"
-import { FORM_INSTANCE_KEY } from "../useForm"
+import { SCHEMX_INSTANCE_KEY } from "../useForm"
 
 import type { SchemxInstance } from "@schemx/core"
 
@@ -84,7 +84,7 @@ function createDynamicFieldComponent(
 
 describe("useField 动态 visible 字段 error effect", () => {
   it("同步 visible 切换 + validate 后 error 应正确同步", async () => {
-    const form = createFormInstance<DynamicForm>({
+    const form = createForm<DynamicForm>({
       initialValues: { userType: "personal", companyName: "" },
     })
 
@@ -126,7 +126,7 @@ describe("useField 动态 visible 字段 error effect", () => {
 
     const wrapper = mount(Comp, {
       global: {
-        provide: { [FORM_INSTANCE_KEY]: form },
+        provide: { [SCHEMX_INSTANCE_KEY]: form },
       },
     })
 
@@ -163,7 +163,7 @@ describe("useField 动态 visible 字段 error effect", () => {
   })
 
   it("异步 visible 切换（模拟 debounce）+ validate 后 error 应正确同步", async () => {
-    const form = createFormInstance<DynamicForm>({
+    const form = createForm<DynamicForm>({
       initialValues: { userType: "personal", companyName: "" },
     })
 
@@ -200,7 +200,7 @@ describe("useField 动态 visible 字段 error effect", () => {
 
     const wrapper = mount(Comp, {
       global: {
-        provide: { [FORM_INSTANCE_KEY]: form },
+        provide: { [SCHEMX_INSTANCE_KEY]: form },
       },
     })
 
@@ -236,7 +236,7 @@ describe("useField 动态 visible 字段 error effect", () => {
   })
 
   it("多次 visible 切换后 validate 仍应正确同步 error", async () => {
-    const form = createFormInstance<DynamicForm>({
+    const form = createForm<DynamicForm>({
       initialValues: { userType: "personal", companyName: "" },
     })
 
@@ -273,7 +273,7 @@ describe("useField 动态 visible 字段 error effect", () => {
 
     const wrapper = mount(Comp, {
       global: {
-        provide: { [FORM_INSTANCE_KEY]: form },
+        provide: { [SCHEMX_INSTANCE_KEY]: form },
       },
     })
 

@@ -1,0 +1,29 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["packages/vue/src/*", "packages/vant/src/*"],
+      "@schemx/core": ["packages/core/src/index.ts"],
+      "@schemx/core/*": ["packages/core/src/*"],
+      "@schemx/vue": ["packages/vue/src/index.ts"],
+      "@schemx/vue/*": ["packages/vue/src/*"],
+      "@schemx/vant": ["packages/vant/src/index.ts"],
+      "@schemx/vant/*": ["packages/vant/src/*"]
+    },
+    "noEmit": true
+  },
+  "files": [
+    "packages/vue/src/components/FormGroup/index.tsx",
+    "packages/vue/src/components/FormItem/index.tsx"
+  ],
+  "include": [
+    "packages/*/src/**/*.ts",
+    "packages/*/src/**/*.tsx",
+    "packages/*/src/**/*.vue",
+    "examples/*/src/**/*.ts",
+    "examples/*/src/**/*.tsx",
+    "examples/*/src/**/*.vue"
+  ],
+  "exclude": ["node_modules", "dist", "build", "**/*.d.ts"]
+}

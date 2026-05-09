@@ -48,13 +48,34 @@ export interface DependencyFormValues {
   orderType?: "standard" | "express" | "custom"
   quantity?: number
   expectedDate?: string
+  deliveryMode?: "courier" | "pickup"
+  pickupStore?: string
+  pickupCode?: string
+  receiverPhone?: string
+  shippingAddress?: string
+  bulkReason?: string
+  expressLevel?: "priority" | "same_day" | "concierge"
   expressFee?: number
   serviceRating?: number
+  sameDayTime?: string
+  sameDayContact?: string
+  conciergeBudget?: number
+  conciergeBrief?: string
+  customCategory?: "gift" | "event" | "enterprise"
   address?: string
-  dateRange?: string
+  giftMessage?: string
+  eventDateRange?: string
+  attendeeCount?: number
+  companyName?: string
+  approvalLevel?: "normal" | "legal"
+  contractAttachment?: any
   additionalServices?: string[]
   invoiceAttachment?: any
   invoiceAmount?: number
+  giftWrapStyle?: "business" | "festival" | "kids"
+  festivalTheme?: string
+  warrantyYears?: number
+  warrantyContact?: string
 }
 
 /**

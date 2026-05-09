@@ -9,9 +9,10 @@
  * @module components/FormItem
  */
 
-import { computed, DefineComponent, defineComponent, h, onMounted, PropType } from "vue"
+import { computed, defineComponent, h, onMounted, PropType, toRef } from "vue"
+import type { SetupContext, VNodeChild } from "vue"
 
-import { isDependencySchema, isGroupSchema } from "@schemx/core"
+import { isGroupSchema } from "@schemx/core"
 import classnames from "classnames"
 import { omit } from "es-toolkit"
 
@@ -22,14 +23,14 @@ import { useFormInstance } from "@/hooks/useForm"
 import { useStableRef } from "@/hooks/useStableRef"
 import { extractChildSlots, resolveSlot } from "@/utils"
 
-import FormDependency from "../FormDependency"
 import FormGroup from "../FormGroup"
 
 import type {
+  SchemxBaseField,
   SchemxComponentProps,
-  SchemxField,
   SchemxFormItemProps,
-  SchemxGroupField,
+  SchemxResolvedGroupField,
+  SchemxResolvedField,
   Values,
 } from "@schemx/core"
 
@@ -39,65 +40,58 @@ import type {
  * @typeParam T - 表单值类型
  */
 export interface SchemxItemProps<T extends Values = Values> {
-  schema: SchemxField<T>
+  schema: SchemxResolvedField<T>
 }
 
-const FormItem = defineComponent({
-  name: "SchemxItem",
+const FormItem = defineComponent(
+  <T extends Values = Values>(props: SchemxItemProps<T>, { slots }: SetupContext) => {
+    const schemaRef = toRef(props, "schema")
 
-  props: {
-    schema: {
-      type: Object as PropType<SchemxField>,
-      required: true,
-    },
-  },
+    if (isGroupSchema(schemaRef.value)) {
+      return () => {
+        const schema = schemaRef.value
 
-  setup(props, { slots }) {
-    if (isDependencySchema(props.schema)) {
-      const depColumn = props.schema
+        if (!isGroupSchema(schema)) {
+          return null
+        }
 
-      return () => (
-        <FormDependency to={depColumn.to} renderer={depColumn.renderer} v-slots={slots} />
-      )
+        return <FormGroup schema={schema as SchemxResolvedGroupField} v-slots={slots} />
+      }
     }
 
-    if (isGroupSchema(props.schema)) {
-      const groupColumn = props.schema as SchemxGroupField
-
-      return () => <FormGroup schema={groupColumn} v-slots={slots} />
-    }
-
-    const baseSchema = props.schema
-
-    const form = useFormInstance()
+    const getSchema = (): SchemxBaseField<T> => schemaRef.value as SchemxBaseField<T>
+    const schema = getSchema()
+    const form = useFormInstance<T>()
     const formContext = useContext()
 
     const { getRenderer } = form.getInternalHooks()
 
-    const resolvedProps = useDependencies(form, baseSchema.dependencies, {
-      visible: baseSchema.visible ?? true,
-      readonly: baseSchema.readonly ?? formContext.readonly ?? false,
-      disabled: baseSchema.disabled ?? formContext.disabled ?? false,
-      required: baseSchema.required ?? !!baseSchema.rules,
-      placeholder: baseSchema.placeholder ?? `${baseSchema.label}为必填项`,
-      componentProps: baseSchema.componentProps ?? ({} as SchemxComponentProps),
-      rules: baseSchema.rules,
+    const resolvedProps = useDependencies<T>(form, schema.dependencies, {
+      visible: schema.visible ?? true,
+      readonly: schema.readonly ?? formContext.readonly ?? false,
+      disabled: schema.disabled ?? formContext.disabled ?? false,
+      required: schema.required ?? !!schema.rules,
+      placeholder: schema.placeholder ?? `${schema.label}为必填项`,
+      componentProps: (schema.componentProps ?? {}) as SchemxComponentProps<T>,
+      rules: schema.rules,
     })
 
-    const { field, trigger, handleChange, handleBlur } = useFieldHandler(
-      baseSchema,
+    const { field, trigger, handleChange, handleBlur } = useFieldHandler<T>(
+      schema,
       resolvedProps
     )
 
     /**
      * schemas 每一项的 props
      */
-    const formItemProps = computed<SchemxFormItemProps>((): SchemxFormItemProps => {
+    const formItemProps = computed<SchemxFormItemProps<T>>((): SchemxFormItemProps<T> => {
+      const schema = getSchema()
+
       return {
-        ...(omit(baseSchema, ["componentProps"]) satisfies SchemxFormItemProps),
-        name: baseSchema.name,
-        componentType: baseSchema.componentType,
-        class: classnames("schemx-item", baseSchema.class),
+        ...(omit(schema, ["componentProps"]) satisfies SchemxFormItemProps<T>),
+        name: schema.name,
+        componentType: schema.componentType,
+        class: classnames("schemx-item", schema.class),
         required: resolvedProps.required,
         readonly: resolvedProps.readonly,
         disabled: resolvedProps.disabled,
@@ -108,8 +102,8 @@ const FormItem = defineComponent({
     })
 
     // 使用 useStableRef 避免每次生成新对象引用
-    const componentProps = useStableRef<SchemxComponentProps>(
-      (): SchemxComponentProps => ({
+    const componentProps = useStableRef<SchemxComponentProps<T>>(
+      (): SchemxComponentProps<T> => ({
         ...resolvedProps.componentProps,
         visible: resolvedProps.visible,
         required: resolvedProps.required,
@@ -124,8 +118,9 @@ const FormItem = defineComponent({
     )
 
     onMounted(() => {
-      const value = Object.hasOwn(baseSchema, "initialValue")
-        ? baseSchema.initialValue
+      const schema = getSchema()
+      const value = Object.hasOwn(schema, "initialValue")
+        ? schema.initialValue
         : undefined
 
       field.setInitialValue(value)
@@ -138,9 +133,9 @@ const FormItem = defineComponent({
      *
      * @returns 星号 VNode 或空片段
      */
-    const renderRequired = () => {
+    const renderRequired = (): VNodeChild => {
       if (!resolvedProps.required || resolvedProps.disabled || resolvedProps.readonly) {
-        return <></>
+        return null
       }
 
       return <span class="schemx-item__required">*</span>
@@ -154,16 +149,17 @@ const FormItem = defineComponent({
      *
      * @returns label VNode
      */
-    const renderLabel = () => {
-      const labelSlot = resolveSlot(slots, `${baseSchema.name}Label`)
+    const renderLabel = (): VNodeChild => {
+      const schema = getSchema()
+      const labelSlot = resolveSlot(slots, `${schema.name}Label`)
 
       if (labelSlot) {
         return labelSlot(formItemProps.value)
       }
 
-      const labelAlign = baseSchema.labelAlign || formContext.labelAlign
-      const labelWidth = baseSchema.labelWidth || formContext.labelWidth
-      const colon = baseSchema.colon ?? formContext.colon
+      const labelAlign = schema.labelAlign || formContext.labelAlign
+      const labelWidth = schema.labelWidth || formContext.labelWidth
+      const colon = schema.colon ?? formContext.colon
 
       return (
         <label
@@ -172,7 +168,7 @@ const FormItem = defineComponent({
         >
           {renderRequired()}
           <span class="schemx-item__label-text">
-            {baseSchema.label}
+            {schema.label}
             {colon ? ":" : ""}
           </span>
         </label>
@@ -188,20 +184,21 @@ const FormItem = defineComponent({
      *
      * @returns content VNode
      */
-    const renderContent = () => {
-      const component = getRenderer(baseSchema.componentType)
+    const renderContent = (): VNodeChild => {
+      const schema = getSchema()
+      const component = getRenderer(schema.componentType)
 
       if (!component) {
         throw new Error(
-          `[schemx] Can not find component renderer of "${baseSchema.componentType}".`
+          `[schemx] Can not find component renderer of "${schema.componentType}".`
         )
       }
 
       // 提取子渲染器插槽（fieldName:slotName 格式）
-      const childSlots = extractChildSlots(baseSchema.name, slots)
+      const childSlots = extractChildSlots(schema.name, slots)
       const columnElement = h(component, componentProps.value, childSlots)
 
-      const contentSlot = resolveSlot(slots, `${baseSchema.name}Content`)
+      const contentSlot = resolveSlot(slots, `${schema.name}Content`)
 
       if (contentSlot) {
         return contentSlot({
@@ -209,8 +206,6 @@ const FormItem = defineComponent({
           columnElement,
         })
       }
-
-      if (!columnElement) return null
 
       return <div class="schemx-item__control">{columnElement}</div>
     }
@@ -224,8 +219,9 @@ const FormItem = defineComponent({
      *
      * @returns error VNode 或 null
      */
-    const renderError = () => {
-      const errorSlot = resolveSlot(slots, `${baseSchema.name}Error`)
+    const renderError = (): VNodeChild => {
+      const schema = getSchema()
+      const errorSlot = resolveSlot(slots, `${schema.name}Error`)
 
       if (errorSlot) {
         return errorSlot({
@@ -241,19 +237,21 @@ const FormItem = defineComponent({
       return <div class="schemx-item__error">{field.error.value[0]}</div>
     }
 
-    return () => {
+    return (): VNodeChild => {
+      const schema = getSchema()
+
       if (!resolvedProps.visible) {
         return null
       }
 
       // 整体插槽：完全接管渲染，不包裹任何默认结构
-      const itemSlot = resolveSlot(slots, baseSchema.name)
+      const itemSlot = resolveSlot(slots, schema.name)
 
       if (itemSlot) {
         return itemSlot(formItemProps.value)
       }
 
-      const labelPosition = baseSchema.labelPosition || formContext.labelPosition
+      const labelPosition = schema.labelPosition || formContext.labelPosition
 
       return (
         <div
@@ -266,9 +264,9 @@ const FormItem = defineComponent({
             class={classnames(
               "schemx-item",
               `schemx-item--label-${labelPosition}`,
-              baseSchema.class
+              schema.class
             )}
-            style={{ ...(baseSchema.style ?? {}) }}
+            style={{ ...(schema.style ?? {}) }}
           >
             {renderLabel()}
 
@@ -281,6 +279,16 @@ const FormItem = defineComponent({
       )
     }
   },
-})
+  {
+    name: "SchemxItem",
 
-export default FormItem as DefineComponent<SchemxItemProps>
+    props: {
+      schema: {
+        type: Object as PropType<SchemxResolvedField>,
+        required: true,
+      },
+    },
+  }
+)
+
+export default FormItem

@@ -89,19 +89,19 @@ const RESOLVABLE_KEYS = DEPENDENCY_CONDITION_KEYS.filter(
  * )
  * ```
  */
-export function useDependencies(
-  form: SchemxInstance,
-  dependencies: SchemxDependencies | undefined,
-  defaults: SchemxDependenciesStaticProps
-): SchemxDependenciesStaticProps {
-  const state = reactive<SchemxDependenciesStaticProps>({ ...defaults })
+export function useDependencies<T extends Values = Values>(
+  form: SchemxInstance<T>,
+  dependencies: SchemxDependencies<T> | undefined,
+  defaults: SchemxDependenciesStaticProps<T>
+): SchemxDependenciesStaticProps<T> {
+  const state = reactive<SchemxDependenciesStaticProps<T>>({ ...defaults })
 
   if (
     dependencies == null ||
     dependencies == undefined ||
     dependencies.triggerFields.length === 0
   ) {
-    return state
+    return state as SchemxDependenciesStaticProps<T>
   }
 
   const { triggerFields, trigger, ...configured } = dependencies
@@ -113,10 +113,10 @@ export function useDependencies(
 
   // 无任何条件函数且无 trigger 时，直接返回
   if (configuredProps.length === 0 && trigger == null) {
-    return state
+    return state as SchemxDependenciesStaticProps<T>
   }
 
-  const debouncedResolve = debounce(async (formValues: Values) => {
+  const debouncedResolve = debounce(async (formValues: T) => {
     // trigger 与属性解析并行执行，trigger 异常独立捕获不影响属性解析
     let triggerTask = undefined
 
@@ -155,7 +155,7 @@ export function useDependencies(
     { immediate: true }
   )
 
-  return state
+  return state as SchemxDependenciesStaticProps<T>
 }
 
 export default useDependencies

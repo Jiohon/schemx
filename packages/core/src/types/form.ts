@@ -12,8 +12,9 @@ import { DeepNamePath } from "./namePathType"
 import { SchemxRendererKey } from "./renderer"
 import { SchemxRules } from "./rule"
 
-import type { SchemxField } from "./schema"
+import type { SchemxBaseField, SchemxField, SchemxResolvedField } from "./schema"
 import type { RendererRegistry, RuleEntry, RulesRegistry } from "../registry"
+import type { RuntimeNode } from "../runtime/types"
 import type { ValidateError, ValidateResult } from "../validator"
 
 /** 字段值类型 */
@@ -107,17 +108,6 @@ export interface SchemxProps<T extends Values = Values> {
  * @typeParam T - 表单值类型，默认为 Values
  */
 export interface SchemxInstance<T extends Values = Values> {
-  /**
-   * 获取过滤后的 schemas 列表
-   *
-   * @returns schemas
-   *
-   * @example
-   * ```typescript
-   * form.getSchemas()
-   * ```
-   */
-  getSchemas: () => SchemxField<T>[]
   /**
    * 设置单个字段值并通知订阅者
    *
@@ -262,6 +252,22 @@ export interface SchemxInstance<T extends Values = Values> {
    * form.registerRules('name', nameSchema, '请输入姓名')
    * ```
    */
+  registerSchemaRules: (schema: SchemxBaseField<T>) => void
+
+  /**
+   * 注册字段校验规则
+   *
+   * @param name - 字段路径
+   * @param rules - SchemxRules 校验规则
+   * @param defaultMessage - 可选，空值时的默认错误提示
+   *
+   * @example
+   * ```typescript
+   * import { z } from 'zod'
+   * form.registerRules('email', z.string().email('邮箱格式错误'))
+   * form.registerRules('name', nameSchema, '请输入姓名')
+   * ```
+   */
   registerRules: (
     name: NamePath<T>,
     rules: SchemxRules | SchemxRules[],
@@ -297,7 +303,7 @@ export interface SchemxInstance<T extends Values = Values> {
    * }
    * ```
    */
-  validateField: (names: NamePath | NamePath<T>[]) => Promise<ValidateResult<T>>
+  validateField: (names: NamePath<T> | NamePath<T>[]) => Promise<ValidateResult<T>>
 
   /**
    * 校验所有已注册字段
@@ -353,6 +359,63 @@ export interface SchemxInstance<T extends Values = Values> {
    * ```
    */
   submit: () => Promise<void>
+
+  /**
+   * 获取 runtime 已解析后的 schema projection。
+   *
+   * 该列表由 raw schemas 经过 runtime 展开 dependency 后生成，只包含
+   * 可渲染的 base/group schema，并带有稳定 key。
+   *
+   * @returns dependency 已展开后的 schema 列表
+   */
+  getResolvedSchemas: () => SchemxResolvedField<T>[]
+
+  /**
+   * 获取当前 schema list 兼容视图。
+   *
+   * @deprecated 请使用 getResolvedSchemas() 表达真实语义。
+   *
+   * @returns dependency 已展开后的 schema 列表
+   */
+  getSchemas: () => SchemxResolvedField<T>[]
+
+  /**
+   * 等待 runtime dependency 全部解析完成。
+   *
+   * @param timeout - 最大等待时间（毫秒），默认 10000
+   * @returns true 表示全部完成，false 表示超时
+   */
+  waitForDependencies: (timeout?: number) => Promise<boolean>
+
+  /**
+   * 获取指定类型的渲染器组件。
+   */
+  getRenderer: (type: SchemxRendererKey<T>) => unknown | undefined
+
+  /**
+   * 注册渲染器组件。
+   */
+  registerRenderer: (type: SchemxRendererKey<T>, renderer: unknown) => void
+
+  /**
+   * 判断指定类型的渲染器是否已注册。
+   */
+  hasRenderer: (type: SchemxRendererKey<T>) => boolean
+
+  /**
+   * 获取指定名称的规则注册项。
+   */
+  getRule: (name: string) => RuleEntry<T> | undefined
+
+  /**
+   * 注册规则。
+   */
+  registerRule: (name: string, rule: RuleEntry<T>) => void
+
+  /**
+   * 判断指定规则是否已注册。
+   */
+  hasRule: (name: string) => boolean
 
   /**
    * 重置整个表单到初始值
@@ -520,12 +583,12 @@ export interface SchemxInstance<T extends Values = Values> {
   destroy: () => void
 
   /**
-   * 获取内部钩子
+   * 表单内部钩子接口
    *
-   * 返回包含渲染器注册和校验规则注册等内部操作的钩子对象。
-   * 仅供框架内部使用（如 FormItem），不建议业务代码直接调用。
+   * 封装渲染器注册和校验规则注册等内部操作，
+   * 与 {@link SchemxInstance} 的公开 API 分离，避免暴露给业务代码。
    *
-   * @returns 内部钩子对象
+   * @typeParam T - 表单值类型
    */
   getInternalHooks: () => SchemxInternalHooks<T>
 }
@@ -539,6 +602,43 @@ export interface SchemxInstance<T extends Values = Values> {
  * @typeParam T - 表单值类型
  */
 export interface SchemxInternalHooks<T extends Values = Values> {
+  /**
+   * 获取当前 runtime root。
+   *
+   * 仅供框架适配层渲染 runtime tree 使用。它保留 dependency/group
+   * runtime container、稳定 key、children 与生命周期状态。业务侧若只需要
+   * schema list，请使用 getResolvedSchemas()。
+   *
+   * @returns runtime root 节点数组
+   */
+  getRuntimeRoot: () => RuntimeNode<T>[]
+
+  /**
+   * 获取已解析 schema projection。
+   *
+   * 与 getResolvedSchemas() 返回相同内容，但命名更明确。Raw Schema 保持
+   * immutable；该方法只是从 runtime tree 派生 schema list。
+   *
+   * @returns dependency 已展开后的 schema 列表
+   */
+  getResolvedSchemas: () => SchemxResolvedField<T>[]
+
+  /**
+   * 获取内部钩子
+   *
+   * 返回包含渲染器注册和校验规则注册等内部操作的钩子对象。
+   * 仅供框架内部使用（如 FormItem），不建议业务代码直接调用。
+   *
+   * @returns 内部钩子对象
+   */
+  /**
+   * 等待所有异步依赖解析完成
+   *
+   * @param timeout - 最大等待时间（毫秒），默认 10000
+   * @returns true 表示全部完成，false 表示超时
+   */
+  waitForDependencies: (timeout?: number) => Promise<boolean>
+
   /**
    * 获取指定类型的渲染器组件
    *

@@ -17,8 +17,9 @@
   import FormItem from "./components/FormItem"
   import { createContext } from "./hooks/useContext"
   import { useForm } from "./hooks/useForm"
+  import { useResolvedSchemas } from "./hooks/useResolvedSchemas"
 
-  import type { SchemxField, Values } from "@schemx/core"
+  import type { SchemxResolvedField, Values } from "@schemx/core"
 
   import "./styles/index.css"
 
@@ -87,7 +88,7 @@
         rulesRegistry: props.rulesRegistry,
 
         onFinish: async (values) => {
-          props.onFinish?.(values as any)
+          props.onFinish?.(values)
         },
         onFinishFailed: async (errors) => {
           props.onFinishFailed?.(errors)
@@ -101,10 +102,7 @@
         },
       })
 
-  /**
-   * 过后的 schemas
-   */
-  const filteredSchema = computed(() => form.getSchemas())
+  const resolvedSchemas = useResolvedSchemas(form)
 
   /**
    * 表单容器样式
@@ -114,10 +112,21 @@
   }))
 
   /**
-   * 生成 schema 的唯一 key
+   * 生成 schema projection 的渲染 key。
+   *
+   * resolved schemas 中 dependency 已被 renderer 结果替换，因此这里以
+   * schema.key/name 为主，index 仅作为非字段节点的 fallback。
    */
-  const getSchemaKey = (schema: SchemxField<T>, index: number): string => {
-    return `${schema.componentType}-${isBaseSchema(schema) ? String(schema.name) : index}`
+  const getSchemaKey = (schema: SchemxResolvedField<T>, index: number): string => {
+    const schemaKey = schema.key
+
+    if (schemaKey) return schemaKey
+
+    if (isBaseSchema(schema)) {
+      return `${schema.componentType}:${String(schema.name)}`
+    }
+
+    return `${schema.componentType}:${index}`
   }
 
   defineExpose({
@@ -128,9 +137,9 @@
 <template>
   <div :class="['schemx', props.class]" :style="formStyle">
     <FormItem
-      v-for="(schema, index) in filteredSchema"
+      v-for="(schema, index) in resolvedSchemas"
       :key="getSchemaKey(schema, index)"
-      :schema="schema as SchemxField"
+      :schema="schema as SchemxResolvedField"
     >
       <template v-for="(_, slotName) in $slots" #[slotName]="slotProps">
         <slot :name="slotName" v-bind="slotProps ?? {}" />

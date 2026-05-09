@@ -9,13 +9,13 @@
 
 import { defineComponent, h, nextTick } from "vue"
 
-import { createFormInstance } from "@schemx/core"
+import { createForm } from "@schemx/core"
 import { mount } from "@vue/test-utils"
 import * as fc from "fast-check"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { useDependencies } from "../useDependencies"
-import { FORM_INSTANCE_KEY } from "../useForm"
+import { SCHEMX_INSTANCE_KEY } from "../useForm"
 
 import type { SchemxDependenciesStaticProps } from "@schemx/core"
 
@@ -40,13 +40,13 @@ describe("useDependencies", () => {
   it("Property 2: 当 dependencies 为 undefined 时，返回的状态与静态默认值完全一致", () => {
     fc.assert(
       fc.property(defaultsArb, (defaults) => {
-        const form = createFormInstance({ initialValues: {} })
+        const form = createForm({ initialValues: {} })
 
         let resolved: SchemxDependenciesStaticProps | null = null
 
         const Comp = defineComponent({
           setup() {
-            resolved = useDependencies(undefined, defaults)
+            resolved = useDependencies(form, undefined, defaults)
 
             return () => h("div")
           },
@@ -54,7 +54,7 @@ describe("useDependencies", () => {
 
         const wrapper = mount(Comp, {
           global: {
-            provide: { [FORM_INSTANCE_KEY]: form },
+            provide: { [SCHEMX_INSTANCE_KEY]: form },
           },
         })
 
@@ -91,13 +91,13 @@ describe("useDependencies", () => {
         (values: Record<string, unknown>) => values.country === "overseas"
       )
 
-      const form = createFormInstance({
+      const form = createForm({
         initialValues: { province: "guangdong", country: "china" },
       })
 
       const Comp = defineComponent({
         setup() {
-          useDependencies(
+          useDependencies(form, 
             {
               triggerFields: ["province", "country"],
               visible: visibleCondition,
@@ -119,7 +119,7 @@ describe("useDependencies", () => {
 
       const wrapper = mount(Comp, {
         global: {
-          provide: { [FORM_INSTANCE_KEY]: form },
+          provide: { [SCHEMX_INSTANCE_KEY]: form },
         },
       })
 
@@ -167,13 +167,13 @@ describe("useDependencies", () => {
         return true
       })
 
-      const form = createFormInstance({
+      const form = createForm({
         initialValues: { province: "guangdong" },
       })
 
       const Comp = defineComponent({
         setup() {
-          useDependencies(
+          useDependencies(form, 
             {
               triggerFields: ["province"],
               trigger: triggerCondition,
@@ -195,7 +195,7 @@ describe("useDependencies", () => {
 
       const wrapper = mount(Comp, {
         global: {
-          provide: { [FORM_INSTANCE_KEY]: form },
+          provide: { [SCHEMX_INSTANCE_KEY]: form },
         },
       })
 
@@ -233,13 +233,13 @@ describe("useDependencies", () => {
     it("debounce 合并行为：短时间内多次变更仅触发一次条件函数执行", async () => {
       const visibleCondition = vi.fn(() => true)
 
-      const form = createFormInstance({
+      const form = createForm({
         initialValues: { count: 0 },
       })
 
       const Comp = defineComponent({
         setup() {
-          useDependencies(
+          useDependencies(form, 
             {
               triggerFields: ["count"],
               visible: visibleCondition,
@@ -260,7 +260,7 @@ describe("useDependencies", () => {
 
       const wrapper = mount(Comp, {
         global: {
-          provide: { [FORM_INSTANCE_KEY]: form },
+          provide: { [SCHEMX_INSTANCE_KEY]: form },
         },
       })
 
@@ -292,13 +292,13 @@ describe("useDependencies", () => {
         componentProps: { size: "large" },
       }
 
-      const form = createFormInstance({ initialValues: {} })
+      const form = createForm({ initialValues: {} })
 
       let resolved: SchemxDependenciesStaticProps | null = null
 
       const Comp = defineComponent({
         setup() {
-          resolved = useDependencies(undefined, defaults)
+          resolved = useDependencies(form, undefined, defaults)
 
           return () => h("div")
         },
@@ -306,7 +306,7 @@ describe("useDependencies", () => {
 
       const wrapper = mount(Comp, {
         global: {
-          provide: { [FORM_INSTANCE_KEY]: form },
+          provide: { [SCHEMX_INSTANCE_KEY]: form },
         },
       })
 
@@ -325,13 +325,13 @@ describe("useDependencies", () => {
     it("trigger 接收正确的 Values 参数", async () => {
       const triggerCondition = vi.fn()
 
-      const form = createFormInstance({
+      const form = createForm({
         initialValues: { province: "guangdong" },
       })
 
       const Comp = defineComponent({
         setup() {
-          useDependencies(
+          useDependencies(form, 
             {
               triggerFields: ["province"],
               trigger: triggerCondition,
@@ -353,7 +353,7 @@ describe("useDependencies", () => {
 
       const wrapper = mount(Comp, {
         global: {
-          provide: { [FORM_INSTANCE_KEY]: form },
+          provide: { [SCHEMX_INSTANCE_KEY]: form },
         },
       })
 
