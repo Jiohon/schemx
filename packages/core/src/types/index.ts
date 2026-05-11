@@ -60,6 +60,7 @@ export { type Dynamic } from "./dynamic"
 /** 依赖对象类型 */
 export type {
   SchemxConditionFn,
+  SchemxDependencyRendererContext,
   SchemxDependencies,
   SchemxDependenciesConditionKey,
   SchemxDependenciesStaticProps,

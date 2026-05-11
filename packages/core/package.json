@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@schemx/core",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "框架无关的表单引擎核心（Framework-agnostic form engine core）",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -30,7 +30,7 @@
     "build": "vite build",
     "test": "vitest run",
     "lint": "eslint \"src/**/*.{ts,tsx,vue,js,jsx}\" --ignore-pattern \"**/__tests__/**\" --ignore-pattern \"**/*.test.*\" --ignore-pattern \"**/*.spec.*\"",
-    "type-check": "tsc -p tsconfig.check.json",
+    "type-check": "tsc -p tsconfig.json --noEmit",
     "prepublishOnly": "pnpm run build"
   },
   "license": "MIT",

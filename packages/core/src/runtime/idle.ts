@@ -7,14 +7,17 @@
  * @module core/runtime/idle
  */
 
-import type { DependencyScheduler } from "../scheduler/dependencyScheduler"
+import type { DependencyScheduler, RuntimeScheduler } from "../scheduler"
 import type { Values } from "../types"
 
 export class RuntimeIdleTracker<T extends Values = Values> {
   /** 当前仍在执行或已入队但未完成的异步 runtime 工作数量 */
   private pendingCount = 0
 
-  constructor(private readonly scheduler: DependencyScheduler<T>) {}
+  constructor(
+    private readonly scheduler: DependencyScheduler<T>,
+    private readonly runtimeScheduler: RuntimeScheduler
+  ) {}
 
   /**
    * 追踪 dependency renderer 与字段属性 resolver 的 pending 数变化。
@@ -27,7 +30,11 @@ export class RuntimeIdleTracker<T extends Values = Values> {
    * 判断 runtime 是否没有待完成的异步任务和 dependency 脏队列任务。
    */
   isIdle(): boolean {
-    return this.pendingCount === 0 && this.scheduler.isIdle()
+    return (
+      this.pendingCount === 0 &&
+      this.scheduler.isIdle() &&
+      this.runtimeScheduler.isIdle()
+    )
   }
 
   /**

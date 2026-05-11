@@ -9,6 +9,195 @@
  */
 
 /**
+ * 公共调度任务。
+ *
+ * @typeParam P - phase 类型
+ */
+export interface CommonSchedulerTask<P extends string = string> {
+  /** 执行阶段；未提供时使用 options.defaultPhase。 */
+  phase?: P
+  /** 去重 key；同 phase 内相同 key 只保留最后一次任务。 */
+  dedupeKey?: string
+  /** 实际任务逻辑。 */
+  run: () => void | Promise<void>
+  /** 调度层兜底错误处理；未提供时错误会向 flush 调用方抛出。 */
+  onError?: (error: unknown) => void
+}
+
+/**
+ * 公共调度器配置。
+ *
+ * @typeParam P - phase 类型
+ */
+export interface CommonSchedulerOptions<P extends string = string> {
+  /** phase 刷新顺序。 */
+  phases?: readonly P[]
+  /** 未指定 phase 时使用的默认阶段。 */
+  defaultPhase?: P
+}
+
+/**
+ * 公共调度器实例。
+ */
+export interface CommonScheduler<P extends string = string> {
+  enqueue: (task: CommonSchedulerTask<P>) => void
+  flush: () => Promise<void>
+  clear: () => void
+  size: () => number
+  isIdle: () => boolean
+  dispose: () => void
+}
+
+/**
+ * 创建公共微任务调度器。
+ *
+ * 支持 phase ordering、dedupe key、batch boundary、异步任务 idle tracking。
+ * 领域侧应通过 `createRuntimeScheduler`、`createFieldInitScheduler` 等薄封装使用。
+ */
+export function createCommonScheduler<P extends string = "main">(
+  options: CommonSchedulerOptions<P> = {}
+): CommonScheduler<P> {
+  const phases = [...(options.phases ?? (["main"] as P[]))]
+  const defaultPhase = options.defaultPhase ?? phases[0]
+  let queue = createQueue(phases)
+  let scheduled = false
+  let flushing = false
+  let runningCount = 0
+  let disposed = false
+
+  const scheduleFlush = (): void => {
+    if (scheduled || flushing || disposed) return
+
+    scheduled = true
+    Promise.resolve().then(() => {
+      void flush()
+    })
+  }
+
+  const enqueue = (task: CommonSchedulerTask<P>): void => {
+    if (disposed) return
+
+    const phase = task.phase ?? defaultPhase
+    const phaseQueue = queue.get(phase) ?? ensurePhaseQueue(queue, phase)
+
+    if (task.dedupeKey != null) {
+      phaseQueue.deduped.set(task.dedupeKey, task)
+    } else {
+      phaseQueue.tasks.push(task)
+    }
+
+    scheduleFlush()
+  }
+
+  const flush = async (): Promise<void> => {
+    if (disposed || flushing) return
+
+    scheduled = false
+
+    const batch = takeCurrentBatch()
+    if (batch.length === 0) return
+
+    flushing = true
+
+    try {
+      for (const task of batch) {
+        if (disposed) return
+
+        runningCount += 1
+        try {
+          const result = task.run()
+
+          if (isPromiseLike(result)) {
+            await result
+          }
+        } catch (error) {
+          if (task.onError) {
+            task.onError(error)
+          } else {
+            throw error
+          }
+        } finally {
+          runningCount -= 1
+        }
+      }
+    } finally {
+      flushing = false
+
+      if (!disposed && size() > 0) {
+        scheduleFlush()
+      }
+    }
+  }
+
+  const clear = (): void => {
+    queue = createQueue(phases)
+    scheduled = false
+  }
+
+  const size = (): number => {
+    let count = 0
+
+    for (const phaseQueue of queue.values()) {
+      count += phaseQueue.tasks.length + phaseQueue.deduped.size
+    }
+
+    return count
+  }
+
+  const isIdle = (): boolean => {
+    return !scheduled && !flushing && runningCount === 0 && size() === 0
+  }
+
+  const dispose = (): void => {
+    clear()
+    disposed = true
+  }
+
+  return { enqueue, flush, clear, size, isIdle, dispose }
+
+  function takeCurrentBatch(): CommonSchedulerTask<P>[] {
+    const current = queue
+    queue = createQueue(phases)
+
+    return phases.flatMap((phase) => {
+      const phaseQueue = current.get(phase)
+
+      if (!phaseQueue) return []
+
+      return [...phaseQueue.tasks, ...phaseQueue.deduped.values()]
+    })
+  }
+}
+
+interface CommonSchedulerQueue<P extends string> {
+  tasks: CommonSchedulerTask<P>[]
+  deduped: Map<string, CommonSchedulerTask<P>>
+}
+
+function createQueue<P extends string>(
+  phases: readonly P[]
+): Map<P, CommonSchedulerQueue<P>> {
+  return new Map(phases.map((phase) => [phase, createPhaseQueue<P>()]))
+}
+
+function ensurePhaseQueue<P extends string>(
+  queue: Map<P, CommonSchedulerQueue<P>>,
+  phase: P
+): CommonSchedulerQueue<P> {
+  const phaseQueue = createPhaseQueue<P>()
+  queue.set(phase, phaseQueue)
+
+  return phaseQueue
+}
+
+function createPhaseQueue<P extends string>(): CommonSchedulerQueue<P> {
+  return {
+    tasks: [],
+    deduped: new Map(),
+  }
+}
+
+/**
  * 微任务调度器配置。
  *
  * @typeParam T - 任务类型
@@ -62,17 +251,12 @@ export function createMicrotaskScheduler<T>(
   options: MicrotaskSchedulerOptions<T>
 ): MicrotaskScheduler<T> {
   const { flush: flushFn, dedupKey } = options
-
+  const scheduler = createCommonScheduler()
   let queue: T[] = []
   let dedupMap: Map<string, T> | undefined = dedupKey ? new Map() : undefined
-  let scheduled = false
   let disposed = false
 
-  const doFlush = (): void => {
-    scheduled = false
-
-    if (disposed) return
-
+  const runFlush = (): void => {
     const tasks = dedupMap ? [...dedupMap.values()] : queue
 
     if (tasks.length === 0) return
@@ -92,22 +276,20 @@ export function createMicrotaskScheduler<T>(
       queue.push(task)
     }
 
-    if (!scheduled) {
-      scheduled = true
-      Promise.resolve().then(doFlush)
-    }
+    scheduler.enqueue({
+      dedupeKey: "microtask-flush",
+      run: runFlush,
+    })
   }
 
   const flush = (): void => {
-    if (scheduled) {
-      doFlush()
-    }
+    void scheduler.flush()
   }
 
   const clear = (): void => {
     queue = []
     if (dedupMap) dedupMap = new Map()
-    scheduled = false
+    scheduler.clear()
   }
 
   const size = (): number => {
@@ -115,13 +297,22 @@ export function createMicrotaskScheduler<T>(
   }
 
   const isIdle = (): boolean => {
-    return !scheduled && size() === 0
+    return scheduler.isIdle()
   }
 
   const dispose = (): void => {
-    clear()
+    queue = []
+    if (dedupMap) dedupMap = new Map()
     disposed = true
+    scheduler.dispose()
   }
 
   return { batch, flush, clear, size, isIdle, dispose }
+}
+
+function isPromiseLike(value: void | Promise<void>): value is Promise<void> {
+  return (
+    value != null &&
+    typeof (value as { then?: unknown }).then === "function"
+  )
 }

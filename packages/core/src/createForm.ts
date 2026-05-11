@@ -19,6 +19,7 @@
  * await form.submit()
  * ```
  */
+import { createValidationEngine, type ValidationEngine } from "./engine"
 import { batchUpdates, createReactiveEffect } from "./reactivity"
 import {
   createRendererRegistry,
@@ -29,18 +30,16 @@ import {
 } from "./registry"
 import {
   createRuntimeEngine,
-  type FieldRuntimeNode,
   type RuntimeEngine,
   type RuntimeFieldDefaults,
 } from "./runtime"
-import { readFieldRuntimeProps } from "./runtime/fieldRuntime"
 import {
   createFieldInitScheduler,
   type FieldInitScheduler,
 } from "./scheduler/fieldInitScheduler"
 import { filterSchemas } from "./schemas"
 import { createFormStore, FormStore, FormStorePendingField } from "./store"
-import { collectObjectPathsByLeaf, diff, getByPath, setByPath, withLock } from "./utils"
+import { collectObjectPathsByLeaf, diff, getByPath, withLock } from "./utils"
 import {
   createRequiredRule,
   createSelectRequiredRule,
@@ -58,7 +57,6 @@ import type {
   SchemxInstance,
   SchemxInternalHooks,
   SchemxRendererKey,
-  SchemxResolvedBaseField,
   SchemxResolvedField,
   SchemxRules,
   StandardSchemaV1,
@@ -148,6 +146,9 @@ class CreateForm<T extends Values = Values> {
   /** 表单校验器，管理校验规则和错误信息 */
   private validator: Validator<T>
 
+  /** Runtime field lifecycle 到 validator lifecycle 的桥接 */
+  private validationEngine: ValidationEngine<T>
+
   /** 校验规则注册中心，管理校验规则和错误信息 */
   private rulesRegistry: RulesRegistry<T>
 
@@ -205,6 +206,15 @@ class CreateForm<T extends Values = Values> {
     // Validator: 初始化校验器
     this.validator = createValidator<T>()
 
+    this.validationEngine = createValidationEngine<T>({
+      validator: this.validator,
+      rulesRegistry: this.rulesRegistry,
+      getFieldSnapshot: (name) => this.store.getFieldSnapshot(name),
+      setInitialValues: (values) => this.store.setInitialValues(values),
+      setFieldValue: (name, value) =>
+        this.store.setFieldValue(name as NamePath<T>, value as Value),
+    })
+
     // 字段初始化调度器：收集多个 FormItem 的 onMounted 初始化，microtask 时统一 batch flush
     this.scheduler = createFieldInitScheduler<{
       name: SchemxBaseField["name"]
@@ -226,9 +236,9 @@ class CreateForm<T extends Values = Values> {
 
     this.runtime = createRuntimeEngine<T>(filteredSchemas, this.getForm(), {
       fieldDefaults: runtimeFieldDefaults,
-      onFieldMount: this.mountRuntimeField.bind(this),
-      onFieldUpdate: this.updateRuntimeField.bind(this),
-      onFieldUnmount: this.unmountRuntimeField.bind(this),
+      onFieldMount: this.validationEngine.mountField,
+      onFieldUpdate: this.validationEngine.updateField,
+      onFieldUnmount: this.validationEngine.unmountField,
     })
 
     // 注册值变化回调（通过 store.effect 自动追踪依赖）
@@ -297,16 +307,12 @@ class CreateForm<T extends Values = Values> {
     resetFields: this.resetFields.bind(this),
     reset: this.reset.bind(this),
     submit: this.submit.bind(this),
-    getResolvedSchemas: this.getResolvedSchemas.bind(this),
-    getSchemas: this.getSchemas.bind(this),
     waitForDependencies: this.waitForDependencies.bind(this),
-
-    // RendererRegistry - 渲染器
+    getResolvedSchemas: this.getResolvedSchemas.bind(this),
+    getSchemas: this.getResolvedSchemas.bind(this),
     getRenderer: this.getRenderer.bind(this),
     registerRenderer: this.registerRenderer.bind(this),
     hasRenderer: this.hasRenderer.bind(this),
-
-    // RulesRegistry - 规则注册中心
     getRule: this.getRule.bind(this),
     registerRule: this.registerRule.bind(this),
     hasRule: this.hasRule.bind(this),
@@ -385,17 +391,6 @@ class CreateForm<T extends Values = Values> {
    */
   private getResolvedSchemas(): SchemxResolvedField<T>[] {
     return this.runtime.getResolvedSchemas()
-  }
-
-  /**
-   * 获取当前 schema list 兼容视图。
-   *
-   * @deprecated 请使用 getResolvedSchemas() 表达真实语义。
-   *
-   * @returns dependency 已展开后的 schema 列表
-   */
-  private getSchemas(): SchemxResolvedField<T>[] {
-    return this.getResolvedSchemas()
   }
 
   /**
@@ -518,27 +513,6 @@ class CreateForm<T extends Values = Values> {
   }
 
   /**
-   * 注册 schema 字段校验规则。
-   *
-   * Runtime field mount 阶段使用当前 node schema 直接注册，避免依赖尚未
-   * 刷新的 runtime field index。
-   */
-  private registerSchemaRules(
-    schema: SchemxBaseField<T> | SchemxResolvedBaseField<T>,
-    defaultMessage?: string
-  ): void {
-    const { name } = schema
-
-    this.validator.unregisterRules(name)
-
-    const schemaRules = this.rulesRegistry.resolve(name, schema)
-
-    if (schemaRules.length > 0) {
-      this.validator.registerRules(name, schemaRules, defaultMessage)
-    }
-  }
-
-  /**
    * 注册字段校验规则
    */
   private registerRules(
@@ -569,105 +543,6 @@ class CreateForm<T extends Values = Values> {
 
     if (resolvedRules.length > 0) {
       this.validator.registerRules(path, resolvedRules, defaultMessage)
-    }
-  }
-
-  /**
-   * Runtime field mount 生命周期。
-   *
-   * 字段第一次进入 runtime tree 时：
-   * 1. 按 schema.initialValue 初始化 store（但不覆盖已有值）；
-   * 2. 按 resolved props 同步 validator rules。
-   */
-  private mountRuntimeField(node: FieldRuntimeNode<T>): void {
-    this.initializeRuntimeFieldValue(node.schema)
-    this.syncRuntimeFieldValidation(node)
-  }
-
-  /**
-   * Runtime field update 生命周期。
-   *
-   * dynamic props 变化后会触发这里，核心目标是让 visible/readonly/disabled/rules
-   * 的变化立刻反映到 validator，避免 UI 状态与 submit 校验状态不一致。
-   */
-  private updateRuntimeField(node: FieldRuntimeNode<T>): void {
-    this.syncRuntimeFieldValidation(node)
-  }
-
-  /**
-   * Runtime field mount 初始值生命周期。
-   *
-   * 字段可能在 dependency subtree 渲染前已通过 setFieldValue 写入值；
-   * 因此只有 schema 显式声明 initialValue 且当前 store 中没有值时才初始化。
-   */
-  private initializeRuntimeFieldValue(schema: SchemxBaseField<T>): void {
-    if (!Object.hasOwn(schema, "initialValue")) return
-    if (this.store.getFieldSnapshot(schema.name) !== undefined) return
-
-    const values = {} as Partial<T>
-    setByPath(values, schema.name, schema.initialValue)
-
-    this.store.setInitialValues(values)
-    this.store.setFieldValue(schema.name, schema.initialValue)
-  }
-
-  /**
-   * Runtime field unmount 生命周期。
-   *
-   * 字段从 dependency subtree 中移除时，清理 rules 和 errors，
-   * 防止 submit 校验已卸载字段或展示过期错误。
-   */
-  private unmountRuntimeField(node: FieldRuntimeNode<T>): void {
-    const { schema } = node
-
-    this.unregisterRules(schema.name)
-    this.setFieldError(schema.name, [])
-  }
-
-  /**
-   * 根据 runtime resolved field props 同步 validator 生命周期。
-   *
-   * 字段不可见、只读、禁用或没有有效 rules 时，validator 不应继续持有规则和错误。
-   * 字段恢复可校验状态时，则用当前 resolved schema 重新注册规则。
-   */
-  private syncRuntimeFieldValidation(node: FieldRuntimeNode<T>): void {
-    const schema = this.getRuntimeFieldSchema(node)
-    const hasRules = Array.isArray(schema.rules)
-      ? schema.rules.length > 0
-      : !!schema.rules
-
-    if (
-      schema.visible === false ||
-      schema.readonly ||
-      schema.disabled ||
-      !hasRules
-    ) {
-      this.unregisterRules(schema.name)
-      this.setFieldError(schema.name, [])
-
-      return
-    }
-
-    const defaultMessage =
-      schema.componentProps?.placeholder ||
-      // 自动生成的 fallback placeholder 不作为默认错误文案，避免 required 规则重复报错。
-      (Object.hasOwn(node.schema, "placeholder") || node.schema.dependencies?.placeholder
-        ? schema.placeholder
-        : undefined)
-
-    this.registerSchemaRules(schema, defaultMessage)
-  }
-
-  /**
-   * 将 runtime field signals 投影为 validator 可消费的 resolved schema。
-   */
-  private getRuntimeFieldSchema(
-    node: FieldRuntimeNode<T>
-  ): SchemxResolvedBaseField<T> {
-    return {
-      ...node.schema,
-      ...readFieldRuntimeProps(node.field),
-      key: node.key,
     }
   }
 

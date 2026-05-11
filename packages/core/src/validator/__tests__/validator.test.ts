@@ -97,6 +97,15 @@ describe("Validator", () => {
       expect(v.getFieldError("name")).toBeUndefined()
     })
 
+    it("注销字段时也会清除手动设置的残留错误", () => {
+      const v = new Validator<TestForm>()
+      v.setFieldError("name", ["旧错误"])
+
+      v.unregisterRules("name")
+
+      expect(v.getFieldError("name")).toBeUndefined()
+    })
+
     it("registerRules 带 defaultMessage 空值拦截", async () => {
       const v = new Validator<TestForm>()
       v.registerRules("name", createMinLengthSchema(2, "至少2个字符"), "姓名不能为空")

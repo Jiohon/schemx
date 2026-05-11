@@ -80,8 +80,7 @@ const FormItem = defineComponent(
 
     const baseSchemaRef = computed(() => getSchema())
     // useFieldHandler 只处理交互触发校验，规则注册/清理由 core runtime 生命周期负责。
-    const { field, trigger, handleChange, handleBlur } =
-      useFieldHandler<T>(baseSchemaRef)
+    const { field, trigger, handleChange, handleBlur } = useFieldHandler<T>(baseSchemaRef)
 
     /**
      * schemas 每一项的 props

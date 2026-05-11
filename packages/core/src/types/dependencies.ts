@@ -24,6 +24,16 @@ export type SchemxConditionFn<T extends Values = Values, R = unknown> = (
 ) => R | Promise<R>
 
 /**
+ * dependency renderer 执行上下文。
+ *
+ * signal 会在同一 dependency 节点的新一轮 renderer 开始或节点销毁时 abort，
+ * 便于调用方取消远程请求等异步工作。
+ */
+export interface SchemxDependencyRendererContext {
+  signal: AbortSignal
+}
+
+/**
  * 结构化依赖配置对象
  *
  * 所有条件函数共享同一个 `triggerFields`，当任一触发字段变化时，

@@ -1,21 +1,24 @@
 /**
  * Runtime 引擎
  *
- * RuntimeEngine 是 core 对外使用的运行时入口，负责装配 compiler、
- * scheduler 和 runtime node factory，并向适配层暴露 runtime tree 与
- * 已解析 schema 投影。
+ * RuntimeEngine 是 core 对外使用的运行时装配入口，负责装配 compiler、
+ * scheduler、runtime node factory，以及后续迁移进入 `engine/` 的各类
+ * 具体执行器，并向适配层暴露 runtime tree 与已解析 schema 投影。
+ *
+ * 注意：`runtime/engine.ts` 不承载 field/dynamic prop/dependency/validation
+ * 的具体业务执行逻辑；这些逻辑会逐步收敛到 `packages/core/src/engine/`。
  *
  * @module core/runtime/engine
  */
 
 import { RuntimeTreeCompiler } from "../compiler/runtimeTreeCompiler"
 import { createFormRuntimeContext } from "../core"
-import { createSignal } from "../reactivity"
-import { DependencyScheduler } from "../scheduler/dependencyScheduler"
+import { createRuntimeScheduler, DependencyScheduler } from "../scheduler"
 
 import { buildRuntimeFieldIndex, normalizeNamePath } from "./fieldIndex"
+import { createRuntimeGraph } from "./graph"
 import { RuntimeIdleTracker } from "./idle"
-import { RuntimeNodeFactory } from "./nodes"
+import { RuntimeNodeFactory } from "./nodeFactory"
 import { projectRuntimeNodes } from "./projection"
 
 import type {
@@ -53,17 +56,17 @@ export class RuntimeEngine<T extends Values = Values> {
   /** dependency 脏队列调度器 */
   private readonly scheduler: DependencyScheduler<T>
 
+  /** runtime 通用调度器，承载 dynamic prop 等 engine 任务 */
+  private readonly runtimeScheduler = createRuntimeScheduler()
+
   /** schema 到 runtime tree 的编译器 */
   private readonly compiler: RuntimeTreeCompiler<T>
 
   /** runtime 异步任务 pending + scheduler 空闲状态追踪器 */
   private readonly idleTracker: RuntimeIdleTracker<T>
 
-  /** runtime tree 结构版本，用于让 getResolvedSchemas/getRoot 建立响应式依赖 */
-  private readonly revisionSignal = createSignal(0)
-
-  /** runtime root 节点列表 */
-  private root: RuntimeNode<T>[] = []
+  /** runtime tree ownership 与结构版本 */
+  private readonly graph = createRuntimeGraph<T>()
 
   /** 字段 schema 查询缓存对应的 runtime 版本 */
   private fieldSchemaMapRevision = -1
@@ -82,8 +85,8 @@ export class RuntimeEngine<T extends Values = Values> {
     form: SchemxInstance<T>,
     options: RuntimeEngineOptions<T> = {}
   ) {
-    this.scheduler = new DependencyScheduler<T>()
-    this.idleTracker = new RuntimeIdleTracker<T>(this.scheduler)
+    this.scheduler = new DependencyScheduler<T>(this.runtimeScheduler)
+    this.idleTracker = new RuntimeIdleTracker<T>(this.scheduler, this.runtimeScheduler)
 
     // FormRuntimeContext 是 runtime 与 createForm 的边界，避免 engine 直接感知 store/validator。
     const context = createFormRuntimeContext(form, options)
@@ -91,8 +94,12 @@ export class RuntimeEngine<T extends Values = Values> {
     const nodeFactory = new RuntimeNodeFactory<T>({
       context,
       scheduler: this.scheduler,
+      runtimeScheduler: this.runtimeScheduler,
       // 编译器与节点工厂互相协作：工厂负责创建节点，递归编译仍回到编译器。
       compileChildren: (...args) => this.compiler.compileChildren(...args),
+      commitDependencySubtree: (node, nextChildren) => {
+        this.graph.replaceSubtree(node, nextChildren)
+      },
       onPendingChange: this.idleTracker.handlePendingChange,
       onTreeChange: this.bumpRevision,
     })
@@ -103,7 +110,7 @@ export class RuntimeEngine<T extends Values = Values> {
 
     this.compiler = compiler
 
-    this.root = this.compiler.compileRoot(schemas)
+    this.graph.setRoot(this.compiler.compileRoot(schemas))
   }
 
   /**
@@ -112,7 +119,7 @@ export class RuntimeEngine<T extends Values = Values> {
    * @returns 每次 dependency subtree 变化后递增的版本号
    */
   get revision(): number {
-    return this.revisionSignal.value
+    return this.graph.revision
   }
 
   /**
@@ -123,9 +130,7 @@ export class RuntimeEngine<T extends Values = Values> {
    * @returns runtime root 节点数组
    */
   getRoot(): RuntimeNode<T>[] {
-    void this.revisionSignal.value
-
-    return this.root
+    return this.graph.getRoot()
   }
 
   /**
@@ -141,9 +146,7 @@ export class RuntimeEngine<T extends Values = Values> {
    * @returns dependency 已展开后的标准 schema 列表
    */
   getResolvedSchemas(): SchemxResolvedField<T>[] {
-    void this.revisionSignal.value
-
-    return projectRuntimeNodes(this.root)
+    return projectRuntimeNodes(this.graph.getRoot())
   }
 
   /**
@@ -156,10 +159,10 @@ export class RuntimeEngine<T extends Values = Values> {
    * @returns 匹配的基础字段 schema，未找到时返回 undefined
    */
   getFieldSchema(name: NamePath<T>): SchemxResolvedBaseField<T> | undefined {
-    const revision = this.revisionSignal.value
+    const revision = this.graph.revision
 
     if (this.fieldSchemaMapRevision !== revision) {
-      this.fieldSchemaMap = buildRuntimeFieldIndex(this.root)
+      this.fieldSchemaMap = buildRuntimeFieldIndex(this.graph.getRoot())
       this.fieldSchemaMapRevision = revision
     }
 
@@ -191,18 +194,17 @@ export class RuntimeEngine<T extends Values = Values> {
    * 会递归释放所有 runtime 节点持有的 effect 和 subtree。
    */
   destroy(): void {
-    this.root.forEach((node) => node.dispose())
-    this.root = []
+    this.graph.dispose()
     this.idleTracker.reset()
     this.scheduler.dispose()
-    this.bumpRevision()
+    this.runtimeScheduler.dispose()
   }
 
   /**
    * 通知 runtime tree 结构发生变化。
    */
   private readonly bumpRevision = (): void => {
-    this.revisionSignal.value += 1
+    this.graph.setRoot(this.graph.getRoot())
   }
 }
 

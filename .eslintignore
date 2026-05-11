@@ -4,6 +4,10 @@ node_modules/*
 # 忽略打包输出目录
 dist/*
 build/*
+coverage/*
+
+# 忽略压缩产物
+*.min.js
 
 # 忽略特定的测试文件
 **/__tests__/**

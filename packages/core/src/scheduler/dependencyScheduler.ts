@@ -7,7 +7,7 @@
  * @module core/scheduler/dependencyScheduler
  */
 
-import { createMicrotaskScheduler } from "./microtaskScheduler"
+import { createRuntimeScheduler, type RuntimeScheduler } from "./runtimeScheduler"
 
 import type { DependencyRuntimeNode } from "../runtime/types"
 import type { Values } from "../types"
@@ -18,28 +18,31 @@ import type { Values } from "../types"
  * @typeParam T - 表单值类型
  */
 export class DependencyScheduler<T extends Values = Values> {
-  private readonly scheduler = createMicrotaskScheduler<DependencyRuntimeNode<T>>({
-    dedupKey: (node) => node.key,
-    flush: (nodes) => {
-      for (const node of nodes) {
-        node.dirty = false
-        node.run().catch((error) => {
-          // run 内部会处理正常错误路径；这里兜住调度层未预期异常，避免队列静默失败。
-          node.error.value = error
-          node.loading.value = false
-        })
-      }
-    },
-  })
+  constructor(
+    private readonly scheduler: RuntimeScheduler = createRuntimeScheduler()
+  ) {}
 
   /**
    * 标记 dependency 节点为 dirty，并调度刷新。
    */
   enqueueDependency(node: DependencyRuntimeNode<T>): void {
-    if (node.disposed) return
+    if (node.disposed.value) return
 
     node.dirty = true
-    this.scheduler.batch(node)
+    this.scheduler.enqueue({
+      type: "dependency",
+      phase: "main",
+      dedupeKey: node.key,
+      run: () => {
+        node.dirty = false
+        node.dependencyRuntime.run().catch((error: unknown) => {
+          // run 内部会处理正常错误路径；这里兜住调度层未预期异常，避免队列静默失败。
+          node.dependencyRuntime.error.value =
+            error instanceof Error ? error : new Error(String(error))
+          node.dependencyRuntime.loading.value = false
+        })
+      },
+    })
   }
 
   /**

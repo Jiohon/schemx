@@ -343,6 +343,148 @@ describe("RuntimeEngine", () => {
     form.destroy()
   })
 
+  it("projects runtime field defaults while preserving explicit schema overrides", async () => {
+    const form = createForm({
+      runtimeFieldDefaults: {
+        readonly: true,
+        disabled: true,
+        componentProps: {
+          clearable: true,
+          size: "large",
+        },
+      },
+      schemas: [
+        {
+          componentType: "input",
+          name: "name",
+          label: "Name",
+          disabled: false,
+          componentProps: {
+            size: "small",
+          },
+        } as any,
+      ],
+    })
+
+    const name = form
+      .getResolvedSchemas()
+      .find((schema) => "name" in schema && schema.name === "name") as any
+
+    expect(name.readonly).toBe(true)
+    expect(name.disabled).toBe(false)
+    expect(name.componentProps).toEqual({
+      clearable: true,
+      size: "small",
+    })
+
+    form.destroy()
+  })
+
+  it("updates disabled readonly and rules through dynamic field props", async () => {
+    const form = createForm({
+      initialValues: { locked: false },
+      schemas: [
+        {
+          componentType: "switch",
+          name: "locked",
+          label: "Locked",
+        } as any,
+        {
+          componentType: "input",
+          name: "comment",
+          label: "Comment",
+          dependencies: {
+            triggerFields: ["locked"],
+            disabled: (values) => values.locked === true,
+            readonly: (values) => values.locked === true,
+            rules: (values) => (values.locked ? undefined : "required"),
+          },
+        } as any,
+      ],
+    })
+
+    await expect(form.waitForDependencies()).resolves.toBe(true)
+
+    let comment = form
+      .getResolvedSchemas()
+      .find((schema) => "name" in schema && schema.name === "comment") as any
+
+    expect(comment.disabled).toBe(false)
+    expect(comment.readonly).toBe(false)
+    expect(comment.rules).toBe("required")
+
+    form.setFieldValue("locked", true)
+    await expect(form.waitForDependencies()).resolves.toBe(true)
+
+    comment = form
+      .getResolvedSchemas()
+      .find((schema) => "name" in schema && schema.name === "comment") as any
+
+    expect(comment.disabled).toBe(true)
+    expect(comment.readonly).toBe(true)
+    expect(comment.rules).toBeUndefined()
+
+    form.destroy()
+  })
+
+  it("replaces dependency subtree projection without mutating raw schemas", async () => {
+    const schemas: SchemxField[] = [
+      {
+        componentType: "select",
+        name: "type",
+        label: "Type",
+      } as any,
+      {
+        componentType: "dependency",
+        to: ["type"],
+        renderer(values) {
+          if (values.type === "a") {
+            return [
+              {
+                componentType: "input",
+                name: "fieldA",
+                label: "Field A",
+              } as any,
+            ]
+          }
+
+          if (values.type === "b") {
+            return [
+              {
+                componentType: "input",
+                name: "fieldB",
+                label: "Field B",
+              } as any,
+            ]
+          }
+
+          return []
+        },
+      },
+    ]
+    const form = createForm({ schemas })
+
+    form.setFieldValue("type", "a")
+    await expect(form.waitForDependencies()).resolves.toBe(true)
+
+    expect(form.getResolvedSchemas().map((schema) => "name" in schema && schema.name)).toEqual([
+      "type",
+      "fieldA",
+    ])
+    expect(schemas).toHaveLength(2)
+
+    form.setFieldValue("type", "b")
+    await expect(form.waitForDependencies()).resolves.toBe(true)
+
+    expect(form.getResolvedSchemas().map((schema) => "name" in schema && schema.name)).toEqual([
+      "type",
+      "fieldB",
+    ])
+    expect(schemas).toHaveLength(2)
+
+    form.destroy()
+  })
+
   it("syncs dynamic field rules and clears errors when props disable validation", async () => {
     const form = createForm({
       initialValues: { mode: "off" },
@@ -380,6 +522,45 @@ describe("RuntimeEngine", () => {
 
     await expect(form.validate()).resolves.toMatchObject({ ok: true })
     expect(form.getFieldError("note")).toBeUndefined()
+
+    form.destroy()
+  })
+
+  it("syncs dynamic rules after dependency props update multiple times", async () => {
+    const form = createForm({
+      initialValues: { mode: "required" },
+      schemas: [
+        {
+          componentType: "select",
+          name: "mode",
+          label: "Mode",
+        } as any,
+        {
+          componentType: "input",
+          name: "content",
+          label: "Content",
+          dependencies: {
+            triggerFields: ["mode"],
+            rules: (values) => (values.mode === "required" ? "required" : undefined),
+          },
+        } as any,
+      ],
+    })
+
+    await expect(form.waitForDependencies()).resolves.toBe(true)
+
+    await expect(form.validate()).resolves.toMatchObject({ ok: false })
+    expect(form.getFieldError("content")).toBeDefined()
+
+    form.setFieldValue("mode", "optional")
+    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.validate()).resolves.toMatchObject({ ok: true })
+    expect(form.getFieldError("content")).toBeUndefined()
+
+    form.setFieldValue("mode", "required")
+    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.validate()).resolves.toMatchObject({ ok: false })
+    expect(form.getFieldError("content")).toBeDefined()
 
     form.destroy()
   })
@@ -544,6 +725,71 @@ describe("RuntimeEngine", () => {
 
     expect(onFinishFailed).toHaveBeenCalledTimes(1)
     expect(form.getFieldError("asyncRequired")).toBeDefined()
+
+    form.destroy()
+  })
+
+  it("runs nested dependency initial renderer after parent subtree is committed", async () => {
+    const observedParentCommitted: boolean[] = []
+    const form = createForm({
+      initialValues: { type: "on" },
+      schemas: [
+        {
+          componentType: "select",
+          name: "type",
+          label: "Type",
+        } as any,
+        {
+          componentType: "dependency",
+          to: ["type"],
+          renderer() {
+            return [
+              {
+                componentType: "input",
+                name: "childTrigger",
+                label: "Child Trigger",
+              } as any,
+              {
+                componentType: "dependency",
+                to: ["childTrigger"],
+                renderer(_values, runtimeForm) {
+                  const root = (runtimeForm as any).getInternalHooks().getRuntimeRoot()
+                  const parentDependency = root.find(
+                    (node: any) => node.type === "dependency"
+                  )
+                  const nestedDependency = parentDependency?.children.find(
+                    (node: any) => node.type === "dependency"
+                  )
+
+                  observedParentCommitted.push(
+                    nestedDependency != null &&
+                      nestedDependency.parent === parentDependency &&
+                      parentDependency.children.includes(nestedDependency)
+                  )
+
+                  return [
+                    {
+                      componentType: "input",
+                      name: "nestedChild",
+                      label: "Nested Child",
+                    } as any,
+                  ]
+                },
+              } as any,
+            ]
+          },
+        },
+      ],
+    })
+
+    await expect(form.waitForDependencies()).resolves.toBe(true)
+
+    expect(observedParentCommitted).toContain(true)
+    expect(form.getResolvedSchemas().map((schema) => "name" in schema && schema.name)).toEqual([
+      "type",
+      "childTrigger",
+      "nestedChild",
+    ])
 
     form.destroy()
   })

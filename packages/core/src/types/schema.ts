@@ -7,7 +7,10 @@
  * @module types/schema
  */
 
-import type { SchemxDependencies } from "./dependencies"
+import type {
+  SchemxDependencies,
+  SchemxDependencyRendererContext,
+} from "./dependencies"
 import type { Dynamic } from "./dynamic"
 import type { NamePath, SchemxInstance, ValidationTrigger, Value, Values } from "./form"
 import type { SchemxRendererDefinition } from "./renderer"
@@ -323,7 +326,8 @@ export interface SchemxDependencyField<T extends Values = Values> {
    */
   renderer: (
     values: T,
-    form: SchemxInstance<T>
+    form: SchemxInstance<T>,
+    context: SchemxDependencyRendererContext
   ) => SchemxField<T>[] | Promise<SchemxField<T>[]>
 }
 

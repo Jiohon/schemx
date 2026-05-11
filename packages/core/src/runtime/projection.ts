@@ -7,9 +7,9 @@
  * @module core/runtime/projection
  */
 
-import type { SchemxResolvedField, Values } from "../types"
-import { readFieldRuntimeProps } from "./fieldRuntime"
+import { readFieldRuntimeProps } from "../field"
 
+import type { SchemxResolvedField, Values } from "../types"
 import type { SchemxResolvedBaseField } from "../types"
 import type { FieldRuntimeNode, RuntimeNode } from "./types"
 
@@ -19,7 +19,7 @@ export function projectFieldNode<T extends Values>(
   return {
     // 原始 schema 保持不可变，已解析属性只覆盖到投影视图里。
     ...node.schema,
-    ...readFieldRuntimeProps(node.field),
+    ...readFieldRuntimeProps(node.fieldRuntime),
     key: node.key,
   }
 }

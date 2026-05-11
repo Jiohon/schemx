@@ -345,63 +345,6 @@ export interface SchemxInstance<T extends Values = Values> {
   submit: () => Promise<void>
 
   /**
-   * 获取 runtime 已解析后的 schema projection。
-   *
-   * 该列表由 raw schemas 经过 runtime 展开 dependency 后生成，只包含
-   * 可渲染的 base/group schema，并带有稳定 key。
-   *
-   * @returns dependency 已展开后的 schema 列表
-   */
-  getResolvedSchemas: () => SchemxResolvedField<T>[]
-
-  /**
-   * 获取当前 schema list 兼容视图。
-   *
-   * @deprecated 请使用 getResolvedSchemas() 表达真实语义。
-   *
-   * @returns dependency 已展开后的 schema 列表
-   */
-  getSchemas: () => SchemxResolvedField<T>[]
-
-  /**
-   * 等待 runtime dependency 全部解析完成。
-   *
-   * @param timeout - 最大等待时间（毫秒），默认 10000
-   * @returns true 表示全部完成，false 表示超时
-   */
-  waitForDependencies: (timeout?: number) => Promise<boolean>
-
-  /**
-   * 获取指定类型的渲染器组件。
-   */
-  getRenderer: (type: SchemxRendererKey<T>) => unknown | undefined
-
-  /**
-   * 注册渲染器组件。
-   */
-  registerRenderer: (type: SchemxRendererKey<T>, renderer: unknown) => void
-
-  /**
-   * 判断指定类型的渲染器是否已注册。
-   */
-  hasRenderer: (type: SchemxRendererKey<T>) => boolean
-
-  /**
-   * 获取指定名称的规则注册项。
-   */
-  getRule: (name: string) => RuleEntry<T> | undefined
-
-  /**
-   * 注册规则。
-   */
-  registerRule: (name: string, rule: RuleEntry<T>) => void
-
-  /**
-   * 判断指定规则是否已注册。
-   */
-  hasRule: (name: string) => boolean
-
-  /**
    * 重置整个表单到初始值
    *
    * 恢复所有字段到构造时的初始值，并通知订阅者。
@@ -553,6 +496,54 @@ export interface SchemxInstance<T extends Values = Values> {
    * ```
    */
   getPendingFields: () => FormStorePendingField[]
+
+  /**
+   * 等待 runtime dependency renderer 和 dynamic props 解析完成。
+   *
+   * @param timeout - 最大等待时间（毫秒），默认 10000
+   * @returns true 表示全部完成，false 表示超时
+   */
+  waitForDependencies: (timeout?: number) => Promise<boolean>
+
+  /**
+   * 获取 runtime tree 投影出的已解析 schema 列表。
+   */
+  getResolvedSchemas: () => SchemxResolvedField<T>[]
+
+  /**
+   * getResolvedSchemas 的兼容别名。
+   */
+  getSchemas: () => SchemxResolvedField<T>[]
+
+  /**
+   * 获取指定类型的渲染器组件。
+   */
+  getRenderer: (type: SchemxRendererKey<T>) => unknown | undefined
+
+  /**
+   * 注册渲染器组件。
+   */
+  registerRenderer: (type: SchemxRendererKey<T>, renderer: unknown) => void
+
+  /**
+   * 检查指定类型的渲染器是否已注册。
+   */
+  hasRenderer: (type: SchemxRendererKey<T>) => boolean
+
+  /**
+   * 获取指定名称的校验规则条目。
+   */
+  getRule: (name: string) => RuleEntry<T> | undefined
+
+  /**
+   * 注册校验规则。
+   */
+  registerRule: (name: string, rule: RuleEntry<T>) => void
+
+  /**
+   * 检查指定名称的校验规则是否已注册。
+   */
+  hasRule: (name: string) => boolean
 
   /**
    * 销毁表单实例
