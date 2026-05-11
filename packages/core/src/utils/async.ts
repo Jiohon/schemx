@@ -54,6 +54,7 @@ export async function waitAll<T>(
         } catch {
           // 不在这里处理错误，让调用方自行处理
         }
+
         completed++
       })
     ),

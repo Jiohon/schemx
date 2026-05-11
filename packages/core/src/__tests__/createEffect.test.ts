@@ -243,7 +243,7 @@ describe("createEffect 单元测试", () => {
   })
 
   it("与 form.getFieldValue 等方法配合使用", () => {
-    // 模拟 form 内部的 SignalMap 行为
+    // 模拟 form 内部的 ReactiveMap 行为
     const nameSignal = signal("Alice")
     let captured: string | undefined
 

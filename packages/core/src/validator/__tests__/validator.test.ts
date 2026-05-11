@@ -280,7 +280,7 @@ describe("Validator 错误 signal 属性测试", () => {
 })
 
 // Feature: pure-signal-core-refactor, Property 9: Validator 错误往返一致性与 effect 追踪
-// 注意：Validator 已重构为使用 SignalMap 管理错误。
+// 注意：Validator 已重构为使用 ReactiveMap 管理错误。
 // 本属性测试聚焦于 setFieldError/getFieldError 往返一致性、reset 清空。
 // **Validates: Requirements 6.2, 6.3, 6.4**
 describe("Validator 错误往返一致性（P9）", () => {

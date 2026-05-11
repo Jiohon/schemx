@@ -634,6 +634,7 @@
     formRef.value?.setFieldValue("deliveryMode", "pickup")
     formRef.value?.setFieldValue("pickupStore", "hubin")
     formRef.value?.setFieldValue("additionalServices", ["invoice"])
+    console.log(formRef.value?.getFieldsSnapshot())
     await sleep(0)
     await formRef.value?.submit()
     formRef.value?.setFieldValue("additionalServices", [])

@@ -15,9 +15,6 @@ export {
   type FormStorePendingField,
 } from "./store"
 
-// SignalMap - 响应式键值存储
-export { SignalMap } from "./signal"
-
 // Validator - 校验
 export {
   Validator,
@@ -42,7 +39,7 @@ export { createForm as createFormInstance } from "./createForm"
 // createField - 单字段控制器
 export { createField, type SchemxFieldInstance } from "./createField"
 
-// createEffect - 底层通用 Signal effect
+// createEffect - 底层通用 reactive effect
 export {
   createEffect,
   type CleanupFn,
@@ -77,20 +74,18 @@ export {
 export { filterSchemas } from "./schemas"
 
 // Runtime - 增量 schema runtime
-export {
-  RuntimeEngine,
-  RuntimeScheduler,
-  RuntimeCompiler,
-  createRuntimeEngine,
-} from "./runtime"
+export { RuntimeEngine, createRuntimeEngine } from "./runtime"
+export type { RuntimeEngineOptions } from "./runtime"
 export type {
   DependencyRuntimeNode,
   FieldRuntime,
   FieldRuntimeNode,
   GroupRuntimeNode,
+  RuntimeFieldDefaultProps,
+  RuntimeFieldDefaults,
+  RuntimeFieldResolvedProps,
   RuntimeNode,
   RuntimeNodeBase,
-  RuntimeSchema,
 } from "./runtime"
 
 // Utils - 工具函数

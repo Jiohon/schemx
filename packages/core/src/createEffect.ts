@@ -1,9 +1,9 @@
 /**
- * createEffect - 底层通用 Signal effect 工具
+ * createEffect - 底层通用 reactive effect 工具
  *
- * 直接封装 `@preact/signals-core` 的 `effect`，不依赖 form 实例，
- * 提供最底层的响应式 effect 能力。在 effect 回调中访问任何 Signal 值时
- * 自动追踪依赖，依赖变化时自动重新执行回调。
+ * 通过 core reactivity 层创建 effect，不依赖 form 实例。它提供最底层的
+ * 响应式 effect 能力：在 effect 回调中访问 reactive value 时自动追踪
+ * 依赖，依赖变化时自动重新执行回调。
  *
  * 相比 `createWatch` 系列函数（需要传入 form 实例，提供结构化的 payload 和 diff 计算），
  * `createEffect` 更底层、更灵活，不做任何值比较或 payload 封装。
@@ -16,23 +16,17 @@
  * @example
  * ```ts
  * import { createEffect } from '@schemx/core'
- * import { signal } from '@preact/signals-core'
- *
- * const count = signal(0)
- *
  * const dispose = createEffect(() => {
- *   console.log('count:', count.value)
+ *   console.log('reactive dependencies read here will be tracked')
  *   return () => {
  *     console.log('cleanup')
  *   }
  * })
- *
- * count.value = 1  // 先输出 "cleanup"，再输出 "count: 1"
- * dispose()        // 输出 "cleanup"，取消 effect
+ * dispose()
  * ```
  */
 
-import { effect as signalEffect } from "@preact/signals-core"
+import { createReactiveEffect } from "./reactivity"
 
 /** effect 回调的清理函数类型 */
 export type CleanupFn = () => void
@@ -44,9 +38,9 @@ export type EffectCallback = () => CleanupFn | void
 export type CreateEffectReturn = () => void
 
 /**
- * 创建通用 Signal effect，直接封装 @preact/signals-core 的 effect。
+ * 创建通用 reactive effect。
  *
- * 在 effect 回调中访问任何 Signal 值时自动追踪依赖，
+ * 在 effect 回调中访问任何 reactive value 时自动追踪依赖，
  * 依赖变化时自动重新执行回调。
  * 回调可返回一个清理函数，在 effect 重新执行前或被 dispose 时调用。
  *
@@ -57,15 +51,11 @@ export type CreateEffectReturn = () => void
  * @example
  * ```ts
  * import { createEffect } from '@schemx/core'
- * import { signal } from '@preact/signals-core'
- *
- * const count = signal(0)
  * const dispose = createEffect(() => {
- *   console.log('count:', count.value)
+ *   console.log('reactive dependencies read here will be tracked')
  *   return () => console.log('cleanup')
  * })
  *
- * count.value = 1  // effect 自动重新执行
  * dispose()        // 取消 effect，调用最后一次 cleanup
  * ```
  */
@@ -73,7 +63,7 @@ export function createEffect(callback: EffectCallback): CreateEffectReturn {
   let cleanup: CleanupFn | undefined
   let disposed = false
 
-  const dispose = signalEffect(() => {
+  const dispose = createReactiveEffect(() => {
     cleanup?.()
     cleanup = undefined
 

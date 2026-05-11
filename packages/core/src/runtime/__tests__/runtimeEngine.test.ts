@@ -220,6 +220,212 @@ describe("RuntimeEngine", () => {
     form.destroy()
   })
 
+  it("initializes dependency field initialValue during runtime mount", async () => {
+    const form = createForm({
+      schemas: [
+        {
+          componentType: "select",
+          name: "deliveryMode",
+          label: "Delivery Mode",
+        } as any,
+        {
+          componentType: "dependency",
+          to: ["deliveryMode"],
+          renderer(values) {
+            if (values.deliveryMode !== "pickup") return []
+
+            return [
+              {
+                componentType: "select",
+                name: "pickupStore",
+                label: "Pickup Store",
+                initialValue: "mixc",
+              } as any,
+            ]
+          },
+        },
+      ],
+    })
+
+    form.setFieldValue("deliveryMode", "pickup")
+    await expect(form.waitForDependencies()).resolves.toBe(true)
+
+    expect(form.getFieldValue("pickupStore")).toBe("mixc")
+
+    form.destroy()
+  })
+
+  it("does not overwrite an existing value when dependency field mounts", async () => {
+    const form = createForm({
+      schemas: [
+        {
+          componentType: "select",
+          name: "deliveryMode",
+          label: "Delivery Mode",
+        } as any,
+        {
+          componentType: "dependency",
+          to: ["deliveryMode"],
+          renderer(values) {
+            if (values.deliveryMode !== "pickup") return []
+
+            return [
+              {
+                componentType: "select",
+                name: "pickupStore",
+                label: "Pickup Store",
+                initialValue: "mixc",
+              } as any,
+            ]
+          },
+        },
+      ],
+    })
+
+    form.setFieldValue("pickupStore", "hubin")
+    form.setFieldValue("deliveryMode", "pickup")
+    await expect(form.waitForDependencies()).resolves.toBe(true)
+
+    expect(form.getFieldValue("pickupStore")).toBe("hubin")
+
+    form.destroy()
+  })
+
+  it("resolves field dependency props through runtime projection", async () => {
+    const form = createForm({
+      initialValues: { province: "" },
+      schemas: [
+        {
+          componentType: "select",
+          name: "province",
+          label: "Province",
+        } as any,
+        {
+          componentType: "input",
+          name: "city",
+          label: "City",
+          dependencies: {
+            triggerFields: ["province"],
+            visible: (values) => !!values.province,
+            required: (values) => values.province === "guangdong",
+            placeholder: (values) => `City in ${values.province || "unknown"}`,
+            componentProps: (values) => ({
+              clearable: values.province === "guangdong",
+            }),
+          },
+        } as any,
+      ],
+    })
+
+    await expect(form.waitForDependencies()).resolves.toBe(true)
+
+    let city = form
+      .getResolvedSchemas()
+      .find((schema) => "name" in schema && schema.name === "city") as any
+
+    expect(city.visible).toBe(false)
+    expect(city.required).toBe(false)
+    expect(city.placeholder).toBe("City in unknown")
+    expect(city.componentProps).toEqual({ clearable: false })
+
+    form.setFieldValue("province", "guangdong")
+    await expect(form.waitForDependencies()).resolves.toBe(true)
+
+    city = form
+      .getResolvedSchemas()
+      .find((schema) => "name" in schema && schema.name === "city") as any
+
+    expect(city.visible).toBe(true)
+    expect(city.required).toBe(true)
+    expect(city.placeholder).toBe("City in guangdong")
+    expect(city.componentProps).toEqual({ clearable: true })
+
+    form.destroy()
+  })
+
+  it("syncs dynamic field rules and clears errors when props disable validation", async () => {
+    const form = createForm({
+      initialValues: { mode: "off" },
+      schemas: [
+        {
+          componentType: "select",
+          name: "mode",
+          label: "Mode",
+        } as any,
+        {
+          componentType: "input",
+          name: "note",
+          label: "Note",
+          dependencies: {
+            triggerFields: ["mode"],
+            visible: (values) => values.mode === "on",
+            rules: (values) => (values.mode === "on" ? "required" : undefined),
+          },
+        } as any,
+      ],
+    })
+
+    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.validate()).resolves.toMatchObject({ ok: true })
+
+    form.setFieldValue("mode", "on")
+    await expect(form.waitForDependencies()).resolves.toBe(true)
+
+    const invalidResult = await form.validate()
+    expect(invalidResult.ok).toBe(false)
+    expect(form.getFieldError("note")).toBeDefined()
+
+    form.setFieldValue("mode", "off")
+    await expect(form.waitForDependencies()).resolves.toBe(true)
+
+    await expect(form.validate()).resolves.toMatchObject({ ok: true })
+    expect(form.getFieldError("note")).toBeUndefined()
+
+    form.destroy()
+  })
+
+  it("keeps the latest async field dependency props when older resolves finish later", async () => {
+    const form = createForm({
+      initialValues: { mode: "" },
+      schemas: [
+        {
+          componentType: "select",
+          name: "mode",
+          label: "Mode",
+        } as any,
+        {
+          componentType: "input",
+          name: "target",
+          label: "Target",
+          dependencies: {
+            triggerFields: ["mode"],
+            async placeholder(values) {
+              if (values.mode === "slow") {
+                await sleep(30)
+              }
+
+              return `mode:${values.mode}`
+            },
+          },
+        } as any,
+      ],
+    })
+
+    form.setFieldValue("mode", "slow")
+    await Promise.resolve()
+    form.setFieldValue("mode", "fast")
+
+    await expect(form.waitForDependencies()).resolves.toBe(true)
+
+    const target = form
+      .getResolvedSchemas()
+      .find((schema) => "name" in schema && schema.name === "target") as any
+
+    expect(target.placeholder).toBe("mode:fast")
+
+    form.destroy()
+  })
+
   it("reuses stable field nodes without duplicating schema rules", async () => {
     const form = createForm({
       schemas: [

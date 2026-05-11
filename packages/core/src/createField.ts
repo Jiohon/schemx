@@ -34,7 +34,7 @@ import type { ValidateResult } from "./validator"
 /**
  * subscribe 回调集合
  *
- * 框架适配层通过这些回调将 Signal 变化同步到各自的响应式容器中。
+ * 框架适配层通过这些回调将 core reactive value 变化同步到各自的响应式容器中。
  */
 export interface FieldSubscribeCallbacks {
   /** 字段值变化回调 */
@@ -49,12 +49,12 @@ export interface FieldSubscribeCallbacks {
  * 单字段控制器接口
  *
  * 封装 SchemxInstance 中与单个字段相关的所有操作，
- * 以及基于 Signal effect 的状态订阅能力。
+ * 以及基于 reactive effect 的状态订阅能力。
  *
  * @typeParam T - 表单值类型
  */
 export interface SchemxFieldInstance<T extends Values = Values> {
-  /** 获取当前字段值（读取 Signal，在 effect 中自动追踪） */
+  /** 获取当前字段值（读取 reactive value，在 effect 中自动追踪） */
   getValue: () => Value
   /** 设置字段值 */
   setValue: (value: Value) => void
@@ -88,10 +88,10 @@ export interface SchemxFieldInstance<T extends Values = Values> {
   isPending: () => boolean
 
   /**
-   * 创建 Signal effect
+   * 创建 reactive effect
    *
    * 直接透传 form.effect，在回调中访问 getValue / getError / isPending 时
-   * 自动追踪对应 Signal 依赖，依赖变化时 effect 自动重新执行。
+   * 自动追踪对应 reactive 依赖，依赖变化时 effect 自动重新执行。
    *
    * @param fn - effect 回调函数
    * @returns dispose 函数，取消 effect

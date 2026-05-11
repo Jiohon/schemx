@@ -3,7 +3,7 @@
  *
  * 将同一个同步执行栈内的多个任务收集到 microtask 阶段统一 flush。
  * 这是内部通用基础设施；业务侧应优先使用领域封装，例如
- * createFieldInitScheduler 或 RuntimeScheduler。
+ * createFieldInitScheduler 或 DependencyScheduler。
  *
  * @module core/scheduler/microtaskScheduler
  */

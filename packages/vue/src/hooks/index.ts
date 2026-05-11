@@ -16,9 +16,6 @@ export { useWatch, useWatchField, useWatchFields, useWatchAll } from "./useWatch
 /** useEffect - 通用 Signal effect */
 export { useEffect } from "./useEffect"
 
-/** useDependency - 依赖字段动态渲染 */
-export { useDependency, type UseDependencyReturn } from "./useDependency"
-
 /** useDictionary - 字典选项加载 */
 export {
   useDictionary,

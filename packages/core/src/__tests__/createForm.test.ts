@@ -241,6 +241,47 @@ describe("渲染器注册中心下沉 单元测试", () => {
   })
 })
 
+describe("字段规则注册上下文 单元测试", () => {
+  it("registerRules 使用 runtime resolved schema 为字符串工厂规则补充字段上下文", async () => {
+    const form = createForm({
+      initialValues: { user: { name: "Alice" } },
+      schemas: [
+        {
+          componentType: "group",
+          label: "User Group",
+          children: [
+            {
+              componentType: "input",
+              name: ["user", "name"],
+              label: "User Name",
+            },
+          ],
+        },
+      ] as any,
+    })
+
+    form.getInternalHooks().registerRule("contextual", (schema) => ({
+      "~standard": {
+        version: 1,
+        vendor: "test",
+        validate: () => ({
+          issues: [{ message: schema?.label ?? "missing schema" }],
+        }),
+      },
+    }))
+
+    form.unregisterRules("user.name" as any)
+    form.registerRules("user.name" as any, "contextual")
+
+    const result = await form.validateField("user.name" as any)
+
+    expect(result.ok).toBe(false)
+    expect(form.getFieldError("user.name" as any)).toEqual(["User Name"])
+
+    form.destroy()
+  })
+})
+
 /**
  * RulesRegistry 快捷方法 属性测试（Property-Based Testing）
  *

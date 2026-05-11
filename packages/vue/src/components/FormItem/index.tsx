@@ -1,15 +1,14 @@
 /**
  * FormItem
  *
- * schemx、FormGroup、FormDependency 实际渲染的组件。
- * 负责: isDependencySchema 守卫、useField()、useFormInstance()、useFormContext()、
- * resolveDynamicProp()、slot 系统 (#nameItem, #name)、renderer h() 调用。
- * 处理列配置后将解析的数据传递给 FormItem 进行渲染。
+ * schemx 和 FormGroup 实际渲染字段的组件。
+ * 动态属性已由 core runtime 解析到 schema 投影中；这里只负责消费
+ * 已解析 schema、创建字段实例、组装渲染器属性与插槽。
  *
  * @module components/FormItem
  */
 
-import { computed, defineComponent, h, onMounted, PropType, toRef } from "vue"
+import { computed, defineComponent, h, PropType, toRef } from "vue"
 import type { SetupContext, VNodeChild } from "vue"
 
 import { isGroupSchema } from "@schemx/core"
@@ -17,7 +16,6 @@ import classnames from "classnames"
 import { omit } from "es-toolkit"
 
 import { useContext } from "@/hooks/useContext"
-import { useDependencies } from "@/hooks/useDependencies"
 import { useFieldHandler } from "@/hooks/useFieldHandler"
 import { useFormInstance } from "@/hooks/useForm"
 import { useStableRef } from "@/hooks/useStableRef"
@@ -29,13 +27,13 @@ import type {
   SchemxBaseField,
   SchemxComponentProps,
   SchemxFormItemProps,
-  SchemxResolvedGroupField,
   SchemxResolvedField,
+  SchemxResolvedGroupField,
   Values,
 } from "@schemx/core"
 
 /**
- * FormItem Props
+ * FormItem 属性。
  *
  * @typeParam T - 表单值类型
  */
@@ -60,26 +58,30 @@ const FormItem = defineComponent(
     }
 
     const getSchema = (): SchemxBaseField<T> => schemaRef.value as SchemxBaseField<T>
-    const schema = getSchema()
     const form = useFormInstance<T>()
     const formContext = useContext()
 
     const { getRenderer } = form.getInternalHooks()
 
-    const resolvedProps = useDependencies<T>(form, schema.dependencies, {
-      visible: schema.visible ?? true,
-      readonly: schema.readonly ?? formContext.readonly ?? false,
-      disabled: schema.disabled ?? formContext.disabled ?? false,
-      required: schema.required ?? !!schema.rules,
-      placeholder: schema.placeholder ?? `${schema.label}为必填项`,
-      componentProps: (schema.componentProps ?? {}) as SchemxComponentProps<T>,
-      rules: schema.rules,
+    // Vue 层只补齐表单上下文默认值；字段依赖属性的解析已经在 core runtime 完成。
+    const resolvedProps = computed(() => {
+      const schema = getSchema()
+
+      return {
+        visible: schema.visible ?? true,
+        readonly: schema.readonly ?? formContext.readonly ?? false,
+        disabled: schema.disabled ?? formContext.disabled ?? false,
+        required: schema.required ?? !!schema.rules,
+        placeholder: schema.placeholder ?? `${schema.label}为必填项`,
+        componentProps: (schema.componentProps ?? {}) as SchemxComponentProps<T>,
+        rules: schema.rules,
+      }
     })
 
-    const { field, trigger, handleChange, handleBlur } = useFieldHandler<T>(
-      schema,
-      resolvedProps
-    )
+    const baseSchemaRef = computed(() => getSchema())
+    // useFieldHandler 只处理交互触发校验，规则注册/清理由 core runtime 生命周期负责。
+    const { field, trigger, handleChange, handleBlur } =
+      useFieldHandler<T>(baseSchemaRef)
 
     /**
      * schemas 每一项的 props
@@ -92,39 +94,30 @@ const FormItem = defineComponent(
         name: schema.name,
         componentType: schema.componentType,
         class: classnames("schemx-item", schema.class),
-        required: resolvedProps.required,
-        readonly: resolvedProps.readonly,
-        disabled: resolvedProps.disabled,
-        visible: resolvedProps.visible,
-        placeholder: resolvedProps.placeholder,
-        validationTrigger: trigger,
+        required: resolvedProps.value.required,
+        readonly: resolvedProps.value.readonly,
+        disabled: resolvedProps.value.disabled,
+        visible: resolvedProps.value.visible,
+        placeholder: resolvedProps.value.placeholder,
+        validationTrigger: trigger.value,
       }
     })
 
     // 使用 useStableRef 避免每次生成新对象引用
     const componentProps = useStableRef<SchemxComponentProps<T>>(
       (): SchemxComponentProps<T> => ({
-        ...resolvedProps.componentProps,
-        visible: resolvedProps.visible,
-        required: resolvedProps.required,
-        readonly: resolvedProps.readonly,
-        disabled: resolvedProps.disabled,
-        placeholder: resolvedProps.placeholder,
+        ...resolvedProps.value.componentProps,
+        visible: resolvedProps.value.visible,
+        required: resolvedProps.value.required,
+        readonly: resolvedProps.value.readonly,
+        disabled: resolvedProps.value.disabled,
+        placeholder: resolvedProps.value.placeholder,
         value: field.getValue(),
         onChange: handleChange,
         onBlur: handleBlur,
         formItemProps: formItemProps.value,
       })
     )
-
-    onMounted(() => {
-      const schema = getSchema()
-      const value = Object.hasOwn(schema, "initialValue")
-        ? schema.initialValue
-        : undefined
-
-      field.setInitialValue(value)
-    })
 
     /**
      * 渲染 required 星号。
@@ -134,7 +127,11 @@ const FormItem = defineComponent(
      * @returns 星号 VNode 或空片段
      */
     const renderRequired = (): VNodeChild => {
-      if (!resolvedProps.required || resolvedProps.disabled || resolvedProps.readonly) {
+      if (
+        !resolvedProps.value.required ||
+        resolvedProps.value.disabled ||
+        resolvedProps.value.readonly
+      ) {
         return null
       }
 
@@ -240,7 +237,7 @@ const FormItem = defineComponent(
     return (): VNodeChild => {
       const schema = getSchema()
 
-      if (!resolvedProps.visible) {
+      if (!resolvedProps.value.visible) {
         return null
       }
 
@@ -256,8 +253,8 @@ const FormItem = defineComponent(
       return (
         <div
           class={classnames("schemx-item-wrapper", {
-            "is-readonly": resolvedProps.readonly,
-            "is-disabled": resolvedProps.disabled,
+            "is-readonly": resolvedProps.value.readonly,
+            "is-disabled": resolvedProps.value.disabled,
           })}
         >
           <div

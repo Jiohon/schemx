@@ -2,7 +2,7 @@
  * 表单校验器。
  *
  * 管理校验规则（rules）和校验错误（errors），基于 Standard Schema 接口进行字段校验。
- * 使用 SignalMap 管理错误状态，支持 effect 自动追踪依赖。
+ * 使用 ReactiveMap 管理错误状态，支持 effect 自动追踪依赖。
  * 支持所有实现了 StandardSchemaV1 接口的验证库（Zod v4、Valibot、ArkType 等）。
  *
  * @module core/validator
@@ -24,7 +24,7 @@
  * ```
  */
 
-import { SignalMap } from "../signal"
+import { ReactiveMap } from "../reactivity"
 import { getByPath } from "../utils"
 
 import type { NamePath, StandardSchemaV1, Value, Values } from "../types"
@@ -86,7 +86,7 @@ export interface RuleEntry {
  * ```
  *
  * @remarks
- * 校验规则通过纯 Map 管理，错误状态通过 SignalMap 管理，
+ * 校验规则通过纯 Map 管理，错误状态通过 ReactiveMap 管理，
  * 在 effect 内调用 getFieldError 时自动追踪依赖。
  */
 export class Validator<T extends Values = Values> {
@@ -94,7 +94,7 @@ export class Validator<T extends Values = Values> {
   private rules = new Map<NamePath<T>, RuleEntry>()
 
   /** 校验错误映射表：字段路径 → 错误信息数组（响应式） */
-  private errors = new SignalMap<NamePath<T>, string[]>()
+  private errors = new ReactiveMap<NamePath<T>, string[]>()
 
   /**
    * 注册单个字段的校验规则。
@@ -256,8 +256,8 @@ export class Validator<T extends Values = Values> {
       return
     }
 
-    // 无参数时：为所有已注册 rules 的字段初始化 error Signal（设为 []），
-    // 确保 effect 能追踪到具体字段的 Signal 而非仅依赖 version。
+    // 无参数时：为所有已注册 rules 的字段初始化 error reactive value（设为 []），
+    // 确保 effect 能追踪到具体字段的 reactive value 而非仅依赖 version。
     // 同时清除不在 rules 中但已有 error 的字段（如手动 setFieldError 的残留）。
     this.errors.batch(() => {
       for (const key of this.rules.keys()) {

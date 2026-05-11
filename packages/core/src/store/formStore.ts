@@ -1,9 +1,8 @@
 /**
- * FormStore - 基于 SignalMap 的纯 Signal 表单数据存储中心
+ * FormStore - 基于 ReactiveMap 的表单数据存储中心
  *
- * 使用 SignalMap 封装 @preact/signals-core 的响应式状态管理，
- * 每个字段路径对应一个独立的 Signal，支持自动依赖追踪和精确更新。
- * 所有状态变更通过 Signal effect 自动感知，无需手动订阅。
+ * 使用 ReactiveMap 封装 keyed reactivity，每个字段路径对应一个独立的
+ * reactive value，支持自动依赖追踪和精确更新。
  *
  * @module core/store
  *
@@ -22,7 +21,7 @@
 
 import { cloneDeep, isEqual } from "es-toolkit"
 
-import { SignalMap } from "../signal"
+import { ReactiveMap } from "../reactivity"
 import { collectObjectPathsByLeaf, getByPath, setByPath } from "../utils"
 
 import type { NamePath, Value, Values } from "../types"
@@ -60,10 +59,10 @@ export interface FormStorePendingField {
 }
 
 /**
- * 基于 SignalMap 的纯 Signal 表单数据存储中心。
+ * 基于 ReactiveMap 的表单数据存储中心。
  *
- * 每个字段路径对应一个独立的 Signal，通过 SignalMap 封装 @preact/signals-core 实现
- * 自动依赖追踪。所有状态变更通过 Signal effect 自动感知，无需手动订阅。
+ * 每个字段路径对应一个独立的 reactive value，通过 ReactiveMap 实现自动
+ * 依赖追踪。所有状态变更通过 reactive effect 自动感知，无需手动订阅。
  *
  * @typeParam T - 表单值类型，默认为 Values
  *
@@ -74,11 +73,11 @@ export interface FormStorePendingField {
  * ```
  */
 export class FormStore<T extends Values> {
-  /** SignalMap 存储：每个字段路径对应一个 Signal，由 SignalMap 统一管理 */
-  private signalMap = new SignalMap<NamePath<T>, any>()
+  /** ReactiveMap 存储：每个字段路径对应一个 reactive value */
+  private signalMap = new ReactiveMap<NamePath<T>, any>()
 
   /** 字段操作中状态映射：字段路径 -> 操作描述信息 */
-  private pendingMap = new SignalMap<NamePath<T>, string | undefined>()
+  private pendingMap = new ReactiveMap<NamePath<T>, string | undefined>()
 
   /** 初始值 */
   private initialValues: T
@@ -87,7 +86,7 @@ export class FormStore<T extends Values> {
    * 创建 FormStore 实例。
    *
    * 对 initialValues 进行深拷贝，确保内部状态与外部引用隔离。
-   * 为每个初始字段路径创建对应的 Signal。
+   * 为每个初始字段路径创建对应的 reactive value。
    *
    * @param options - 配置选项
    */
@@ -95,7 +94,7 @@ export class FormStore<T extends Values> {
     const initialValues = (options.initialValues ?? {}) as T
     this.initialValues = cloneDeep(initialValues)
 
-    // 为初始值的每个叶子路径创建 Signal
+    // 为初始值的每个叶子路径创建 reactive value
     const paths = collectObjectPathsByLeaf(initialValues)
     for (const path of paths) {
       const value = getByPath(initialValues, path)
@@ -106,7 +105,7 @@ export class FormStore<T extends Values> {
   /**
    * 获取指定路径的字段值。
    *
-   * 读取对应 Signal 的值，在 signal effect 中使用时自动收集依赖。
+   * 读取对应 reactive value，在 effect 中使用时自动收集依赖。
    *
    * @param path - 字段路径，支持嵌套路径如 'user.name'
    * @returns 字段当前值
@@ -124,7 +123,7 @@ export class FormStore<T extends Values> {
   /**
    * 设置指定路径的字段值。
    *
-   * 直接写入对应 Signal，自动触发依赖该 Signal 的 effect。
+   * 直接写入对应 reactive value，自动触发依赖它的 effect。
    *
    * @param path - 字段路径
    * @param value - 要设置的值
@@ -143,7 +142,7 @@ export class FormStore<T extends Values> {
    * 获取多个字段的值。
    *
    * 不传参返回全量值，传入路径数组返回指定字段的值。
-   * 读取 Signal 值时会收集依赖。
+   * 读取 reactive value 时会收集依赖。
    *
    * @param paths - 可选，要获取的字段路径数组
    * @returns 全量值或指定字段的值
@@ -177,7 +176,7 @@ export class FormStore<T extends Values> {
   /**
    * 批量设置多个字段的值。
    *
-   * 使用 SignalMap.batch 包裹，确保多次 Signal 写入只触发一次 effect 执行。
+   * 使用 ReactiveMap.batch 包裹，确保多次 reactive 写入只触发一次 effect 执行。
    *
    * @param values - 要设置的字段值对象
    *
@@ -198,7 +197,7 @@ export class FormStore<T extends Values> {
   /**
    * 获取单个字段值的快照。
    *
-   * 使用 SignalMap.peek() 避免收集依赖，返回深拷贝的值。
+   * 使用 ReactiveMap.peek() 避免收集依赖，返回深拷贝的值。
    *
    * @param path - 字段路径
    *
@@ -216,7 +215,7 @@ export class FormStore<T extends Values> {
   /**
    * 获取当前表单值的快照。
    *
-   * 使用 SignalMap.peek() 避免收集依赖，返回深拷贝的普通对象。
+   * 使用 ReactiveMap.peek() 避免收集依赖，返回深拷贝的普通对象。
    * 传入 paths 时只返回指定字段的快照。
    *
    * @param paths - 可选的字段路径数组，不传则返回全部字段
@@ -366,7 +365,7 @@ export class FormStore<T extends Values> {
   /**
    * 获取所有被修改的字段路径。
    *
-   * 遍历所有 Signal，与初始值比较，收集不同的路径。
+   * 遍历所有 reactive values，与初始值比较，收集不同的路径。
    *
    * @returns 被修改的字段路径数组
    *
@@ -405,8 +404,8 @@ export class FormStore<T extends Values> {
    * 重置表单到初始状态（diff 式更新）。
    *
    * 不传参时恢复到构造时的初始值，传入 values 时同时更新初始值。
-   * 使用 SignalMap.batch 包裹，在 batch 内对比新旧路径集合：
-   * 复用已有 key（set 更新 Signal.value）、删除多余 key、创建新 key。
+   * 使用 ReactiveMap.batch 包裹，在 batch 内对比新旧路径集合：
+   * 复用已有 key、删除多余 key、创建新 key。
    * 不调用 signalMap.clear()，确保 effect 依赖追踪不断裂。
    *
    * @param values - 可选，新的初始值
@@ -465,7 +464,7 @@ export class FormStore<T extends Values> {
   /**
    * 检查单个字段是否处于操作中。
    *
-   * 读取对应 Signal 的值，在 effect 中使用时自动收集依赖。
+   * 读取对应 reactive value，在 effect 中使用时自动收集依赖。
    *
    * @param path - 字段路径
    * @returns 是否处于操作中
@@ -505,7 +504,7 @@ export class FormStore<T extends Values> {
   /**
    * 销毁 Store 实例。
    *
-   * 通过 SignalMap.destroy() 清理所有内部 effect 和 signal，释放资源。
+   * 通过 ReactiveMap.destroy() 清理所有内部 effect 和 reactive value，释放资源。
    *
    * @example
    * ```typescript

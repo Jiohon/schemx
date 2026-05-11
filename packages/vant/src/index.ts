@@ -21,7 +21,6 @@ export {
   useField,
   useWatch,
   useEffect,
-  useDependency,
   useFieldContext,
   WithRemoteOptions,
   rendererRegistry,

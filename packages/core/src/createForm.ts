@@ -2,7 +2,7 @@
  * 表单实例工厂 - 框架无关的核心实现
  *
  * 组合 Store、Validator，提供统一的表单操作接口。
- * 订阅能力由 Store 内部的 Signal 机制提供。
+ * 订阅能力由 Store 内部的 reactivity 机制提供。
  *
  * @module core/createForm
  *
@@ -19,12 +19,7 @@
  * await form.submit()
  * ```
  */
-import { batch as signalBatch, effect as signalEffect } from "@preact/signals-core"
-
-import {
-  createFieldInitScheduler,
-  type FieldInitScheduler,
-} from "./form/fieldInitScheduler"
+import { batchUpdates, createReactiveEffect } from "./reactivity"
 import {
   createRendererRegistry,
   createRulesRegistry,
@@ -32,10 +27,20 @@ import {
   type RuleEntry,
   type RulesRegistry,
 } from "./registry"
-import { createRuntimeEngine, type RuntimeEngine } from "./runtime"
+import {
+  createRuntimeEngine,
+  type FieldRuntimeNode,
+  type RuntimeEngine,
+  type RuntimeFieldDefaults,
+} from "./runtime"
+import { readFieldRuntimeProps } from "./runtime/fieldRuntime"
+import {
+  createFieldInitScheduler,
+  type FieldInitScheduler,
+} from "./scheduler/fieldInitScheduler"
 import { filterSchemas } from "./schemas"
 import { createFormStore, FormStore, FormStorePendingField } from "./store"
-import { collectObjectPathsByLeaf, diff, getByPath, withLock } from "./utils"
+import { collectObjectPathsByLeaf, diff, getByPath, setByPath, withLock } from "./utils"
 import {
   createRequiredRule,
   createSelectRequiredRule,
@@ -53,6 +58,7 @@ import type {
   SchemxInstance,
   SchemxInternalHooks,
   SchemxRendererKey,
+  SchemxResolvedBaseField,
   SchemxResolvedField,
   SchemxRules,
   StandardSchemaV1,
@@ -92,6 +98,8 @@ export interface CreateFormOptions<T extends Values> {
   defaultRendererType?: SchemxRendererKey<T>
   /** 规则注册实例 */
   rulesRegistry?: RulesRegistry
+  /** Runtime 字段解析属性的全局默认值 */
+  runtimeFieldDefaults?: RuntimeFieldDefaults<T>
 
   /** 表单提交校验通过后的回调 */
   onFinish?: (values: Readonly<T>) => void | Promise<void>
@@ -127,7 +135,7 @@ export interface CreateFormOptions<T extends Values> {
  * ```
  *
  * @remarks
- * 内部通过 Store 的 Signal 机制实现发布-订阅，所有值变更自动通知相关订阅者。
+ * 内部通过 Store 的 reactivity 机制实现发布-订阅，所有值变更自动通知相关订阅者。
  * 提交操作通过 withLock 防止重复提交。
  */
 class CreateForm<T extends Values = Values> {
@@ -152,7 +160,7 @@ class CreateForm<T extends Values = Values> {
   /** 所有 effect 的 dispose 函数，destroy 时统一清理 */
   private disposers = new Set<() => void>()
 
-  /** 字段初始化调度器，将多个 FormItem 的 onMounted 初始化合并为一次 signalBatch */
+  /** 字段初始化调度器，将多个 FormItem 的 onMounted 初始化合并为一次 batch */
   private scheduler: FieldInitScheduler<{ name: NamePath<T>; value: Value }>
 
   /**
@@ -169,6 +177,7 @@ class CreateForm<T extends Values = Values> {
       rendererRegistry,
       defaultRendererType,
       rulesRegistry,
+      runtimeFieldDefaults,
     } = options || {}
 
     this.rendererRegistry =
@@ -202,7 +211,7 @@ class CreateForm<T extends Values = Values> {
       value: Value
     }>({
       flush: (tasks) => {
-        signalBatch(() => {
+        batchUpdates(() => {
           for (const t of tasks) {
             this.store.setInitialValues({ [t.name]: t.value } as Partial<T>)
             this.store.setFieldValue(t.name as NamePath<T>, t.value)
@@ -216,7 +225,9 @@ class CreateForm<T extends Values = Values> {
     const filteredSchemas = filterSchemas(schemas)
 
     this.runtime = createRuntimeEngine<T>(filteredSchemas, this.getForm(), {
+      fieldDefaults: runtimeFieldDefaults,
       onFieldMount: this.mountRuntimeField.bind(this),
+      onFieldUpdate: this.updateRuntimeField.bind(this),
       onFieldUnmount: this.unmountRuntimeField.bind(this),
     })
 
@@ -224,7 +235,7 @@ class CreateForm<T extends Values = Values> {
     if (this.callbacks?.onValuesChange || this.callbacks?.onFieldsChange) {
       let prevSnapshot = this.store.getFieldsSnapshot()
 
-      signalEffect(() => {
+      createReactiveEffect(() => {
         const latestValues = this.store.getFieldsValue()
         const latestSnapshot = this.store.getFieldsSnapshot()
 
@@ -275,7 +286,6 @@ class CreateForm<T extends Values = Values> {
     getPendingFields: this.getPendingFields.bind(this),
 
     // Validator - 校验
-    registerSchemaRules: this.registerSchemaRules.bind(this),
     registerRules: this.registerRules.bind(this),
     unregisterRules: this.unregisterRules.bind(this),
     validateField: this.validateField.bind(this),
@@ -301,7 +311,7 @@ class CreateForm<T extends Values = Values> {
     registerRule: this.registerRule.bind(this),
     hasRule: this.hasRule.bind(this),
 
-    // Signal - effect / batch
+    // Reactivity - effect / batch
     effect: this.effect.bind(this),
     batch: this.batch.bind(this),
 
@@ -347,7 +357,9 @@ class CreateForm<T extends Values = Values> {
   }
 
   /**
-   * 等待所有异步依赖解析完成
+   * 等待所有 runtime 异步依赖解析完成。
+   *
+   * 包括 dependency subtree renderer 和字段 dynamic props resolver。
    *
    * @param timeout - 最大等待时间（毫秒），默认 10000
    * @returns true 表示全部完成
@@ -506,19 +518,23 @@ class CreateForm<T extends Values = Values> {
   }
 
   /**
-   * 注册 schema 字段校验规则
-   * 将 SchemxRules | SchemxRules[] 解析为 StandardSchemaV1 数组
+   * 注册 schema 字段校验规则。
    *
+   * Runtime field mount 阶段使用当前 node schema 直接注册，避免依赖尚未
+   * 刷新的 runtime field index。
    */
-  private registerSchemaRules(schema: SchemxBaseField<T>): void {
-    const { name, placeholder } = schema
+  private registerSchemaRules(
+    schema: SchemxBaseField<T> | SchemxResolvedBaseField<T>,
+    defaultMessage?: string
+  ): void {
+    const { name } = schema
 
     this.validator.unregisterRules(name)
 
     const schemaRules = this.rulesRegistry.resolve(name, schema)
 
     if (schemaRules.length > 0) {
-      this.validator.registerRules(name, schemaRules, placeholder)
+      this.validator.registerRules(name, schemaRules, defaultMessage)
     }
   }
 
@@ -530,18 +546,24 @@ class CreateForm<T extends Values = Values> {
     rules: SchemxRules | SchemxRules[],
     defaultMessage?: string
   ): void {
-    const ruleList = Array.isArray(rules) ? rules : [rules]
     const resolvedRules: StandardSchemaV1[] = []
+    const schema = this.runtime?.getFieldSchema(path)
 
     this.validator.unregisterRules(path)
 
-    for (const rule of ruleList) {
-      if (typeof rule === "string") {
-        const resolved = this.rulesRegistry.resolve(rule)
+    if (schema) {
+      resolvedRules.push(...this.rulesRegistry.resolve(path, { ...schema, rules }))
+    } else {
+      const ruleList = Array.isArray(rules) ? rules : [rules]
 
-        if (resolved) resolvedRules.push(resolved)
-      } else {
-        resolvedRules.push(rule)
+      for (const rule of ruleList) {
+        if (typeof rule === "string") {
+          const resolved = this.rulesRegistry.resolve(rule)
+
+          if (resolved) resolvedRules.push(resolved)
+        } else if (rule) {
+          resolvedRules.push(rule)
+        }
       }
     }
 
@@ -553,13 +575,40 @@ class CreateForm<T extends Values = Values> {
   /**
    * Runtime field mount 生命周期。
    *
-   * Stage B 先把字段校验规则挂到 runtime node 生命周期上；
-   * Vue 层仍可在 visible/disabled/readonly 动态变化时覆盖注册结果。
+   * 字段第一次进入 runtime tree 时：
+   * 1. 按 schema.initialValue 初始化 store（但不覆盖已有值）；
+   * 2. 按 resolved props 同步 validator rules。
    */
-  private mountRuntimeField(schema: SchemxBaseField<T>): void {
-    if (schema.visible === false || schema.readonly || schema.disabled) return
+  private mountRuntimeField(node: FieldRuntimeNode<T>): void {
+    this.initializeRuntimeFieldValue(node.schema)
+    this.syncRuntimeFieldValidation(node)
+  }
 
-    this.registerSchemaRules(schema)
+  /**
+   * Runtime field update 生命周期。
+   *
+   * dynamic props 变化后会触发这里，核心目标是让 visible/readonly/disabled/rules
+   * 的变化立刻反映到 validator，避免 UI 状态与 submit 校验状态不一致。
+   */
+  private updateRuntimeField(node: FieldRuntimeNode<T>): void {
+    this.syncRuntimeFieldValidation(node)
+  }
+
+  /**
+   * Runtime field mount 初始值生命周期。
+   *
+   * 字段可能在 dependency subtree 渲染前已通过 setFieldValue 写入值；
+   * 因此只有 schema 显式声明 initialValue 且当前 store 中没有值时才初始化。
+   */
+  private initializeRuntimeFieldValue(schema: SchemxBaseField<T>): void {
+    if (!Object.hasOwn(schema, "initialValue")) return
+    if (this.store.getFieldSnapshot(schema.name) !== undefined) return
+
+    const values = {} as Partial<T>
+    setByPath(values, schema.name, schema.initialValue)
+
+    this.store.setInitialValues(values)
+    this.store.setFieldValue(schema.name, schema.initialValue)
   }
 
   /**
@@ -568,8 +617,58 @@ class CreateForm<T extends Values = Values> {
    * 字段从 dependency subtree 中移除时，清理 rules 和 errors，
    * 防止 submit 校验已卸载字段或展示过期错误。
    */
-  private unmountRuntimeField(schema: SchemxBaseField<T>): void {
+  private unmountRuntimeField(node: FieldRuntimeNode<T>): void {
+    const { schema } = node
+
     this.unregisterRules(schema.name)
+    this.setFieldError(schema.name, [])
+  }
+
+  /**
+   * 根据 runtime resolved field props 同步 validator 生命周期。
+   *
+   * 字段不可见、只读、禁用或没有有效 rules 时，validator 不应继续持有规则和错误。
+   * 字段恢复可校验状态时，则用当前 resolved schema 重新注册规则。
+   */
+  private syncRuntimeFieldValidation(node: FieldRuntimeNode<T>): void {
+    const schema = this.getRuntimeFieldSchema(node)
+    const hasRules = Array.isArray(schema.rules)
+      ? schema.rules.length > 0
+      : !!schema.rules
+
+    if (
+      schema.visible === false ||
+      schema.readonly ||
+      schema.disabled ||
+      !hasRules
+    ) {
+      this.unregisterRules(schema.name)
+      this.setFieldError(schema.name, [])
+
+      return
+    }
+
+    const defaultMessage =
+      schema.componentProps?.placeholder ||
+      // 自动生成的 fallback placeholder 不作为默认错误文案，避免 required 规则重复报错。
+      (Object.hasOwn(node.schema, "placeholder") || node.schema.dependencies?.placeholder
+        ? schema.placeholder
+        : undefined)
+
+    this.registerSchemaRules(schema, defaultMessage)
+  }
+
+  /**
+   * 将 runtime field signals 投影为 validator 可消费的 resolved schema。
+   */
+  private getRuntimeFieldSchema(
+    node: FieldRuntimeNode<T>
+  ): SchemxResolvedBaseField<T> {
+    return {
+      ...node.schema,
+      ...readFieldRuntimeProps(node.field),
+      key: node.key,
+    }
   }
 
   /**
@@ -717,14 +816,14 @@ class CreateForm<T extends Values = Values> {
   })
 
   /**
-   * 创建 Signal effect，直接使用 @preact/signals-core 的 effect。
+   * 创建 reactive effect。
    *
    * 回调内调用 getFieldValue / getFieldError 时自动追踪依赖，
-   * 跨越 store 和 validator 两个 SignalMap。
+   * 跨越 store 和 validator 的 reactive maps。
    * dispose 函数由 createForm 层面统一管理，destroy 时清理。
    */
   private effect(fn: () => void): () => void {
-    const dispose = signalEffect(fn)
+    const dispose = createReactiveEffect(fn)
     this.disposers.add(dispose)
 
     return () => {
@@ -734,13 +833,13 @@ class CreateForm<T extends Values = Values> {
   }
 
   /**
-   * 批量更新，直接使用 @preact/signals-core 的 batch。
+   * 批量更新，合并多次 reactive 写入。
    *
-   * 将多次 signal 写入合并为一次 effect 触发，
-   * 跨越 store 和 validator 两个 SignalMap。
+   * 将多次 reactive 写入合并为一次 effect 触发，
+   * 跨越 store 和 validator 的 reactive maps。
    */
   private batch(fn: () => void): void {
-    signalBatch(fn)
+    batchUpdates(fn)
   }
 
   /**

@@ -86,6 +86,10 @@
         rendererRegistry: props.rendererRegistry,
         defaultRendererType: props.defaultRendererType,
         rulesRegistry: props.rulesRegistry,
+        runtimeFieldDefaults: {
+          readonly: props.readonly,
+          disabled: props.disabled,
+        },
 
         onFinish: async (values) => {
           props.onFinish?.(values)
@@ -102,6 +106,7 @@
         },
       })
 
+  // 获取解析后的 schemas
   const resolvedSchemas = useResolvedSchemas(form)
 
   /**

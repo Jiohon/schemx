@@ -1,5 +1,5 @@
 /**
- * createWatch - 基于 Signal effect 的字段监听工具
+ * createWatch - 基于 reactive effect 的字段监听工具
  *
  * 提供不依赖任何 UI 框架的字段监听能力，基于 form.effect() 自动依赖追踪。
  * 适用于非组件场景（如工具函数、外部逻辑）。
@@ -124,7 +124,7 @@ export interface CreateWatchOptions {
 export type CreateWatchReturn = () => void
 
 /**
- * 监听单个字段变化（基于 Signal effect）
+ * 监听单个字段变化（基于 reactive effect）
  *
  * 在 effect 内调用 form.getFieldValue(name) 建立依赖追踪，
  * 当字段值变化时 effect 自动重新执行并触发回调。
@@ -178,7 +178,7 @@ export const createWatchField = <T extends Values>(
 }
 
 /**
- * 监听多个字段变化（基于 Signal effect）
+ * 监听多个字段变化（基于 reactive effect）
  *
  * 在 effect 内调用多个 form.getFieldValue 建立依赖追踪，
  * 当任一被监听字段变化时 effect 自动重新执行并触发回调。
@@ -240,7 +240,7 @@ export const createWatchFields = <T extends Values>(
 }
 
 /**
- * 监听所有字段变化（基于 Signal effect）
+ * 监听所有字段变化（基于 reactive effect）
  *
  * 在 effect 内调用 form.getFieldsValue() 建立依赖追踪，
  * 当任何字段变化时 effect 自动重新执行并触发回调。
@@ -302,7 +302,7 @@ export const createWatchAll = <T extends Values>(
 }
 
 /**
- * 统一的字段监听函数（基于 Signal effect）
+ * 统一的字段监听函数（基于 reactive effect）
  *
  * 根据参数类型自动分发到 createWatchField / createWatchFields / createWatchAll。
  * 框架适配层可直接调用此函数，无需自行判断参数类型。

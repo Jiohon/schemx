@@ -12,7 +12,7 @@ import { DeepNamePath } from "./namePathType"
 import { SchemxRendererKey } from "./renderer"
 import { SchemxRules } from "./rule"
 
-import type { SchemxBaseField, SchemxField, SchemxResolvedField } from "./schema"
+import type { SchemxField, SchemxResolvedField } from "./schema"
 import type { RendererRegistry, RuleEntry, RulesRegistry } from "../registry"
 import type { RuntimeNode } from "../runtime/types"
 import type { ValidateError, ValidateResult } from "../validator"
@@ -252,22 +252,6 @@ export interface SchemxInstance<T extends Values = Values> {
    * form.registerRules('name', nameSchema, '请输入姓名')
    * ```
    */
-  registerSchemaRules: (schema: SchemxBaseField<T>) => void
-
-  /**
-   * 注册字段校验规则
-   *
-   * @param name - 字段路径
-   * @param rules - SchemxRules 校验规则
-   * @param defaultMessage - 可选，空值时的默认错误提示
-   *
-   * @example
-   * ```typescript
-   * import { z } from 'zod'
-   * form.registerRules('email', z.string().email('邮箱格式错误'))
-   * form.registerRules('name', nameSchema, '请输入姓名')
-   * ```
-   */
   registerRules: (
     name: NamePath<T>,
     rules: SchemxRules | SchemxRules[],
@@ -486,10 +470,10 @@ export interface SchemxInstance<T extends Values = Values> {
   getTouchedFields: () => string[]
 
   /**
-   * 创建 Signal effect 监听字段或错误变化。
+   * 创建 reactive effect 监听字段或错误变化。
    *
    * 回调内调用 getFieldValue/getFieldError 时自动追踪依赖，
-   * 当依赖的 Signal 变化时 effect 自动重新执行。
+   * 当依赖的 reactive value 变化时 effect 自动重新执行。
    *
    * @param fn - effect 回调函数
    * @returns 取消 effect 的函数

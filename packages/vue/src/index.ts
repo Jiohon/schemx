@@ -25,12 +25,10 @@ export {
   useWatchField,
   useWatchFields,
   useWatchAll,
-  useDependency,
   useDictionary,
   useContext,
   useEffect,
   useFieldContext,
-  type UseDependencyReturn,
   type UseDictOptionsReturn,
   type FormContextProps,
 } from "./hooks"
@@ -40,7 +38,6 @@ export { WithRemoteOptions } from "./hocs"
 
 /** 组件 */
 export { default as FormItem } from "./components/FormItem"
-export { default as FormDependency } from "./components/FormDependency"
 export { default as FormGroup } from "./components/FormGroup"
 
 /** schemx/core 导出 */

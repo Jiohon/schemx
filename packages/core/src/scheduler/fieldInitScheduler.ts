@@ -28,7 +28,7 @@ import {
   createMicrotaskScheduler,
   type MicrotaskScheduler,
   type MicrotaskSchedulerOptions,
-} from "../scheduler/microtaskScheduler"
+} from "./microtaskScheduler"
 
 /**
  * 批量调度器配置选项

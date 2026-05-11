@@ -8,14 +8,15 @@
  * @module core/runtime/types
  */
 
+import type { ReactiveSignal } from "../reactivity"
 import type {
+  SchemxComponentProps,
   SchemxBaseField,
   SchemxDependencyField,
   SchemxField,
   SchemxGroupField,
   Values,
 } from "../types"
-import type { Signal } from "@preact/signals-core"
 
 /**
  * Runtime 节点公共字段。
@@ -40,15 +41,50 @@ export interface RuntimeNodeBase<T extends Values = Values> {
 }
 
 /**
+ * 字段运行时解析属性。
+ */
+export interface RuntimeFieldResolvedProps<T extends Values = Values> {
+  visible: boolean
+  readonly: boolean
+  disabled: boolean
+  required: boolean
+  placeholder: string
+  componentProps: SchemxComponentProps<T>
+  rules: SchemxBaseField<T>["rules"] | undefined
+}
+
+/**
+ * 字段运行时默认属性。
+ */
+export type RuntimeFieldDefaultProps<T extends Values = Values> = Partial<
+  RuntimeFieldResolvedProps<T>
+>
+
+/**
+ * 字段运行时默认属性来源。
+ */
+export type RuntimeFieldDefaults<T extends Values = Values> =
+  | RuntimeFieldDefaultProps<T>
+  | ((schema: SchemxBaseField<T>) => RuntimeFieldDefaultProps<T>)
+
+/**
  * 字段运行时状态。
- *
- * Stage A 先保存 schema 引用；后续 Stage B 会把 validator、errors、
- * visible/disabled 等生命周期状态迁入这里。
  */
 export interface FieldRuntime<T extends Values = Values> {
   schema: SchemxBaseField<T>
   /** 当前字段是否已执行 runtime mount 生命周期 */
   mounted: boolean
+  /** 当前字段属性解析版本，用于丢弃过期异步结果 */
+  version: number
+  visible: ReactiveSignal<boolean>
+  readonly: ReactiveSignal<boolean>
+  disabled: ReactiveSignal<boolean>
+  required: ReactiveSignal<boolean>
+  placeholder: ReactiveSignal<string>
+  componentProps: ReactiveSignal<SchemxComponentProps<T>>
+  rules: ReactiveSignal<SchemxBaseField<T>["rules"] | undefined>
+  /** 释放字段动态属性依赖监听 */
+  dispose: () => void
 }
 
 /**
@@ -87,11 +123,11 @@ export interface DependencyRuntimeNode<
   /** 当前已编译出的 dependency 子树 */
   children: RuntimeNode<T>[]
   /** 响应式子树信号，供 engine 和框架适配层追踪变化 */
-  subtree: Signal<RuntimeNode<T>[]>
+  subtree: ReactiveSignal<RuntimeNode<T>[]>
   /** renderer 执行中状态 */
-  loading: Signal<boolean>
+  loading: ReactiveSignal<boolean>
   /** renderer 抛出的最近一次错误 */
-  error: Signal<unknown | null>
+  error: ReactiveSignal<unknown | null>
   /** async renderer 版本号，用于丢弃过期结果 */
   version: number
   /** 执行 dependency renderer 并增量编译返回的 subtree */
