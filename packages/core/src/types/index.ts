@@ -59,7 +59,6 @@ export type {
   FieldRuntimeNode,
   RuntimeFieldDefaultProps,
   RuntimeFieldDefaults,
-  RuntimeFieldResolvedProps,
 } from "./field"
 export { isFieldRuntimeNode } from "./field"
 

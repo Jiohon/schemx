@@ -1,7 +1,7 @@
 /**
  * Field lifecycle event bus。
  *
- * 该模块只提供字段生命周期事件的基础设施，不执行 validation、dynamic prop
+ * 该模块只提供字段生命周期事件的基础设施，不执行 validation、dependencies
  * 或 dependency 逻辑。
  *
  * @module core/runtime/fieldLifecycle
@@ -9,7 +9,7 @@
 
 import { readFieldProps } from "./fieldProps"
 
-import type { FieldRuntimeNode, RuntimeFieldResolvedProps, Values } from "../types"
+import type { FieldRuntimeNode, SchemxDependenciesStaticProps, Values } from "../types"
 
 /**
  * 字段生命周期事件类型。
@@ -45,7 +45,7 @@ export interface FieldLifecycleEvent<T extends Values = Values> {
   /**
    * 触发时刻字段已解析属性快照。
    */
-  props: RuntimeFieldResolvedProps<T>
+  props: SchemxDependenciesStaticProps<T>
 }
 
 /**

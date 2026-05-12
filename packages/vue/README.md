@@ -4,7 +4,7 @@
 
 ## Adapter 边界
 
-Vue 适配层只负责把 core 暴露的 form instance、resolved schemas projection 和 runtime root 投影成 Vue 组件树。runtime 编译、dependency execution、dynamic prop 解析、validation bridge、scheduler 和 graph ownership 都由 `@schemx/core` 内部负责。
+Vue 适配层只负责把 core 暴露的 form instance、resolved schemas projection 和 runtime root 投影成 Vue 组件树。runtime 编译、dependency execution、dependencies 解析、validation bridge、scheduler 和 graph ownership 都由 `@schemx/core` 内部负责。
 
 适配层不应直接 import `packages/core/src/engine` 或 `packages/core/src/runtime/graph`。
 

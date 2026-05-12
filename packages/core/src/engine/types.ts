@@ -67,7 +67,7 @@ export interface DependenciesEngineOptions<T extends Values = Values> {
   form: SchemxInstance<T>
   /** 解析字段级默认值，通常来自框架层全局 readonly/disabled 等配置。 */
   resolveDefaults: (schema: SchemxBaseField<T>) => RuntimeFieldDefaultProps<T>
-  /** 统一运行时调度器，用于 dynamic prop 等 engine 任务去重排队。 */
+  /** 统一运行时调度器，用于 dependencies 等 engine 任务去重排队。 */
   scheduler: RuntimeScheduler
   /** 字段已解析属性变化后同步 createForm 生命周期。 */
   onFieldUpdate: (node: FieldRuntimeNode<T>) => void

@@ -5,7 +5,7 @@
  * scheduler、runtime node factory，以及后续迁移进入 `engine/` 的各类
  * 具体执行器，并向适配层暴露 runtime tree 与已解析 schema 列表。
  *
- * 注意：`runtime/createRuntime.ts` 不承载 dynamic prop/dependency/validation
+ * 注意：`runtime/createRuntime.ts` 不承载 dependencies/dependency/validation
  * 的具体业务执行逻辑；这些逻辑会逐步收敛到 `packages/core/src/engine/`。
  *
  * @module core/runtime/createRuntime
@@ -89,7 +89,7 @@ export interface RuntimeOptions<T extends Values = Values> {
  * runtime node factory，以及后续迁移进入 engine 的各类具体执行器，
  * 并向适配层暴露 runtime tree 与已解析 schema 列表。
  *
- * Runtime 不承载 dynamic prop/dependency/validation 的具体业务执行逻辑；
+ * Runtime 不承载 dependencies/dependency/validation 的具体业务执行逻辑；
  * 这些逻辑收敛在 engine 目录下的各引擎模块中。
  *
  * @typeParam T - 表单值类型

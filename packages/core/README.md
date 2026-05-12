@@ -6,7 +6,7 @@
 
 - `compiler/`：负责 schema normalize、静态校验与 runtime node 编译决策。
 - `runtime/`：负责 `Runtime` 装配、`RuntimeGraph` 结构 ownership、resolved schema、idle tracking、node factory，以及字段 runtime state / field lifecycle 基础设施。
-- `engine/`：负责具体执行器，包括 field lifecycle 编排、dynamic prop 解析、dependency subtree 执行和 validation bridge。
+- `engine/`：负责具体执行器，包括 field lifecycle 编排、dependencies 解析、dependency subtree 执行和 validation bridge。
 - `scheduler/`：负责 runtime job 的 phase、dedupe、batch boundary 与 flush ownership。
 - `validator/`：只负责 rules、errors 与 validate API，不直接依赖 runtime node。
 

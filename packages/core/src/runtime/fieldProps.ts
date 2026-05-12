@@ -16,8 +16,8 @@ import type {
   ReactiveComputation,
   RuntimeFieldDefaultProps,
   RuntimeFieldDefaults,
-  RuntimeFieldResolvedProps,
   SchemxBaseField,
+  SchemxDependenciesStaticProps,
   Values,
 } from "../types"
 
@@ -83,22 +83,20 @@ export function resolveFieldDefaults<T extends Values>(
 export function resolveStaticProps<T extends Values>(
   schema: SchemxBaseField<T>,
   defaults: RuntimeFieldDefaultProps<T> = {}
-): RuntimeFieldResolvedProps<T> {
-  const defaultComponentProps = defaults.componentProps ?? {}
+): SchemxDependenciesStaticProps<T> {
   const schemaComponentProps = schema.componentProps ?? {}
 
   return {
-    visible: schema.visible ?? defaults.visible ?? true,
+    visible: schema.visible ?? true,
     readonly: schema.readonly ?? defaults.readonly ?? false,
     disabled: schema.disabled ?? defaults.disabled ?? false,
-    required: schema.required ?? defaults.required ?? !!schema.rules,
-    placeholder: schema.placeholder ?? defaults.placeholder ?? `${schema.label}为必填项`,
+    required: schema.required ?? !!schema.rules,
+    placeholder: schema.placeholder ?? `${schema.label}为必填项`,
     componentProps: {
       // 全局 componentProps 先铺底，字段自身配置覆盖全局默认值。
-      ...defaultComponentProps,
       ...schemaComponentProps,
     },
-    rules: Object.hasOwn(schema, "rules") ? schema.rules : defaults.rules,
+    rules: Object.hasOwn(schema, "rules") ? schema.rules : [],
   }
 }
 
@@ -177,7 +175,7 @@ function createReactiveComputation<T>(value: T): ReactiveComputation<T> {
  */
 export function readFieldProps<T extends Values>(
   field: FieldRuntime<T>
-): RuntimeFieldResolvedProps<T> {
+): SchemxDependenciesStaticProps<T> {
   return {
     visible: field.visible.value.value,
     readonly: field.readonly.value.value,
@@ -219,7 +217,7 @@ export function readFieldProps<T extends Values>(
  */
 export function applyFieldProps<T extends Values>(
   field: FieldRuntime<T>,
-  props: RuntimeFieldResolvedProps<T>
+  props: SchemxDependenciesStaticProps<T>
 ): boolean {
   let changed = false
 

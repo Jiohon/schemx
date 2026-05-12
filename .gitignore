@@ -80,7 +80,7 @@ build/Release
 # Output of 'npm pack'
 *.tgz
 
-tsbuildinfo
+tsconfig.tsbuildinfo
 
 # ===================================
 # 环境和配置

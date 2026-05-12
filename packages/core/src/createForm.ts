@@ -50,7 +50,6 @@ import {
 
 import type {
   NamePath,
-  RuntimeFieldDefaults,
   SchemxField,
   SchemxInstance,
   SchemxInternalHooks,
@@ -82,31 +81,57 @@ type Callbacks<T extends Values> = Pick<
  * @typeParam T - 表单值类型
  */
 export interface CreateFormOptions<T extends Values> {
-  /** 表单列配置，用于提取初始值和校验规则 */
+  /**
+   * 表单列配置，用于提取初始值和校验规则
+   */
   schemas?: SchemxField<T>[]
-  /** 初始值，与 schemas 中的 initialValue 合并 */
+  /**
+   * 初始值，与 schemas 中的 initialValue 合并
+   */
   initialValues?: T
-  /** 双向绑定的表单值（v-model） */
+  /**
+   * 双向绑定的表单值（v-model）
+   */
   modelValue?: T
-  /** 渲染器注册实例 */
+  /**
+   * 渲染器注册实例
+   */
   rendererRegistry?: RendererRegistry
-  /** 默认渲染器类型，当字段未指定 renderer 时使用 */
+  /**
+   * 默认渲染器类型，当字段未指定 renderer 时使用
+   */
   defaultRendererType?: SchemxRendererKey<T>
-  /** 规则注册实例 */
+  /**
+   * 规则注册实例
+   */
   rulesRegistry?: RulesRegistry
-  /** Runtime 字段解析属性的全局默认值 */
-  runtimeFieldDefaults?: RuntimeFieldDefaults<T>
+  /**
+   * 全局配置 是否只读
+   */
+  readonly?: boolean
+  /**
+   * 全局配置 是否禁用
+   */
+  disabled?: boolean
 
-  /** 表单提交校验通过后的回调 */
+  /**
+   * 表单提交校验通过后的回调
+   */
   onFinish?: (values: Readonly<T>) => void | Promise<void>
-  /** 表单提交校验失败后的回调 */
+  /**
+   * 表单提交校验失败后的回调
+   */
   onFinishFailed?: (error: ValidateError<T>) => void
-  /** 字段值更新时触发的回调 */
+  /**
+   * 字段值更新时触发的回调
+   */
   onValuesChange?: (
     changedValues: Readonly<Partial<T>>,
     latestSnapshot: Readonly<T> | T
   ) => void
-  /** 字段更新时触发的回调 */
+  /**
+   * 字段更新时触发的回调
+   */
   onFieldsChange?: (changedFields: NamePath<T>[], allFields: NamePath<T>[]) => void
 }
 
@@ -171,7 +196,7 @@ class CreateForm<T extends Values = Values> {
   /**
    * 创建表单实例
    *
-   * 初始化 Store 和 Validator 两个核心模块。
+   * 初始化 Runtime、FormStore、Validator 和 ValidationEngine，注册内置校验规则，
    *
    * @param options - 表单配置选项
    */
@@ -182,7 +207,8 @@ class CreateForm<T extends Values = Values> {
       rendererRegistry,
       defaultRendererType,
       rulesRegistry,
-      runtimeFieldDefaults,
+      readonly,
+      disabled,
     } = options || {}
 
     this.rendererRegistry =
@@ -223,7 +249,7 @@ class CreateForm<T extends Values = Values> {
     this.scheduler = createRuntimeScheduler()
 
     this.runtime = createRuntime<T>(schemas, this.getForm(), {
-      fieldDefaults: runtimeFieldDefaults,
+      fieldDefaults: { readonly, disabled },
       onFieldMount: this.validationEngine.mountField,
       onFieldUpdate: this.validationEngine.updateField,
       onFieldUnmount: this.validationEngine.unmountField,

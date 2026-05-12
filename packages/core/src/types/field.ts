@@ -6,6 +6,7 @@
  * @module core/types/field
  */
 
+import type { SchemxDependenciesStaticProps } from "./dependencies"
 import type { ReactiveSignal } from "../reactivity"
 import type { Values } from "./form"
 import type { ReactiveComputation, RuntimeNode, RuntimeNodeBase } from "./runtime"
@@ -16,37 +17,14 @@ import type { SchemxBaseField, SchemxComponentProps } from "./schema"
 // ---------------------------------------------------------------------------
 
 /**
- * 字段运行时解析属性。
- *
- * 这是字段最终参与渲染的动态属性集合。
- *
- * 这些属性可以来自：
- *
- * - schema 静态配置
- * - runtime default props
- * - dynamic prop engine 计算结果
- */
-export interface RuntimeFieldResolvedProps<T extends Values = Values> {
-  visible: boolean
-  readonly: boolean
-  disabled: boolean
-  required: boolean
-  placeholder: string
-  componentProps: SchemxComponentProps<T>
-  rules: SchemxBaseField<T>["rules"] | undefined
-}
-
-/**
  * 字段运行时默认属性。
  *
  * 合并策略：
- * - `visible` / `readonly` / `disabled` / `required` / `placeholder`：
- *   default props 作为初始值，schema 静态配置优先级更高，dynamic prop engine 结果最终覆盖
- * - `componentProps`：shallow merge，schema 配置覆盖 default props 的同名 key
- * - `rules`：数组拼接，default rules 排在 schema rules 之前
+ * - `readonly` / `disabled`
+ *   default props 作为初始值，schema 静态配置优先级更高，dependencies engine 结果最终覆盖
  */
 export type RuntimeFieldDefaultProps<T extends Values = Values> = Partial<
-  RuntimeFieldResolvedProps<T>
+  Pick<SchemxDependenciesStaticProps<T>, "readonly" | "disabled">
 >
 
 /**
@@ -124,7 +102,7 @@ export interface FieldRuntime<T extends Values = Values> {
   /**
    * 组件透传属性。
    *
-   * componentProps 是最常见的 async dynamic prop 来源（如远程加载 options），
+   * componentProps 是最常见的 async dependencies 来源（如远程加载 options），
    * 使用独立 computation 容器防竞态。
    */
   componentProps: ReactiveComputation<SchemxComponentProps<T>>

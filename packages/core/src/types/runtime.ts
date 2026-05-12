@@ -37,7 +37,7 @@ import type { SchemxField, SchemxGroupField } from "./schema"
 //   FieldRuntimeNode,
 //   RuntimeFieldDefaultProps,
 //   RuntimeFieldDefaults,
-//   RuntimeFieldResolvedProps,
+//   SchemxDependenciesStaticProps,
 // } from "./field"
 // export { isFieldRuntimeNode } from "./field"
 

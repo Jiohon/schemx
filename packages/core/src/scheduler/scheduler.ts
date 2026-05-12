@@ -5,7 +5,7 @@
  *
  * 合并：
  * - dependency scheduler
- * - dynamic prop scheduler
+ * - dependencies scheduler
  * - validation scheduler
  * - idle tracker
  *

@@ -2,7 +2,7 @@
  * Runtime engines.
  *
  * 这里集中导出具体 runtime 执行器。`runtime/createRuntime.ts` 仍是 Runtime
- * 装配入口；本目录只放 field、dynamic prop、dependency、validation 等
+ * 装配入口；本目录只放 field、dependencies、dependency、validation 等
  * 具体执行模块。
  *
  * @module core/engine

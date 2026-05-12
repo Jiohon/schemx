@@ -30,9 +30,6 @@ export { type FormContextProps, useContext } from "./useContext"
 /** useStableRef - 引用稳定化的 shallowRef */
 export { useStableRef } from "./useStableRef"
 
-/** useDependencies - 依赖属性解析 */
-export { useDependencies } from "./useDependencies"
-
 /** useResolvedSchemas - resolved schema projection Vue 桥接 */
 export { useResolvedSchemas } from "./useResolvedSchemas"
 
