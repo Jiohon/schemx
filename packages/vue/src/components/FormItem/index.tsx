@@ -15,11 +15,13 @@ import { isGroupSchema } from "@schemx/core"
 import classnames from "classnames"
 import { omit } from "es-toolkit"
 
+import { useField } from "@/hooks"
 import { useContext } from "@/hooks/useContext"
-import { useFieldHandler } from "@/hooks/useFieldHandler"
+import { provideFieldContext } from "@/hooks/useFieldContext"
 import { useFormInstance } from "@/hooks/useForm"
 import { useStableRef } from "@/hooks/useStableRef"
-import { extractChildSlots, resolveSlot } from "@/utils"
+import { extractChildSlots, mergeTrigger, resolveSlot, shouldValidateOn } from "@/utils"
+import type { TriggerConfig } from "@/utils"
 
 import FormGroup from "../FormGroup"
 
@@ -78,9 +80,48 @@ const FormItem = defineComponent(
       }
     })
 
-    const baseSchemaRef = computed(() => getSchema())
-    // useFieldHandler 只处理交互触发校验，规则注册/清理由 core runtime 生命周期负责。
-    const { field, trigger, handleChange, handleBlur } = useFieldHandler<T>(baseSchemaRef)
+    const field = useField(schemaRef.value.name)
+
+    provideFieldContext(field)
+
+    const trigger = computed<TriggerConfig>(() =>
+      mergeTrigger(
+        getSchema().validationTrigger,
+        formContext.validationTrigger,
+        "onChange"
+      )
+    )
+
+    /**
+     * 是否需要进行校验。
+     *
+     * 当字段不可见、只读或禁用时，无需进行校验。
+     */
+    const canVerified = computed(() => {
+      const schema = getSchema()
+      const isOperate = schema.visible !== false && !schema.readonly && !schema.disabled
+      // [] 代表没有有效规则，不能只用 truthy 判断。
+      const hasRules = Array.isArray(schema.rules)
+        ? schema.rules.length > 0
+        : !!schema.rules
+
+      return isOperate && hasRules
+    })
+
+    /** 值变化处理，设置值后根据触发时机决定是否校验 */
+    const handleChange = (v: unknown) => {
+      field.setValue(v)
+      if (canVerified.value && shouldValidateOn("change", trigger.value)) {
+        field.validate()
+      }
+    }
+
+    /** 失焦处理，根据触发时机决定是否校验 */
+    const handleBlur = () => {
+      if (canVerified.value && shouldValidateOn("blur", trigger.value)) {
+        field.validate()
+      }
+    }
 
     /**
      * schemas 每一项的 props

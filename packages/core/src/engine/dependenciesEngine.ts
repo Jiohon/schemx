@@ -5,14 +5,19 @@
  * visible/disabled/readonly/rules/componentProps 等动态属性解析后写回
  * FieldRuntime。它只处理字段属性变化，不创建 RuntimeNode，也不替换 subtree。
  *
- * @module core/engine/dynamicPropEngine
+ * @module core/engine/DependenciesEngine
  */
 
-import { applyFieldRuntimeProps, getStaticFieldResolvedProps } from "../field"
+import { applyFieldProps, resolveStaticProps } from "../runtime"
 
-import type { DynamicPropEngineMountResult, DynamicPropEngineOptions } from "./types"
-import type { FieldRuntimeNode, RuntimeFieldResolvedProps } from "../runtime/types"
-import type { SchemxConditionFn, SchemxInstance, Values } from "../types"
+import type { DependenciesEngineMountResult, DependenciesEngineOptions } from "./types"
+import type {
+  FieldRuntimeNode,
+  RuntimeFieldResolvedProps,
+  SchemxConditionFn,
+  SchemxInstance,
+  Values,
+} from "../types"
 
 export const FIELD_DEPENDENCY_PROP_KEYS = [
   "componentProps",
@@ -29,15 +34,15 @@ type ComputedDependencyPropKey = Exclude<FieldDependencyPropKey, "placeholder">
 type ComputationVersions = Partial<Record<ComputedDependencyPropKey, number>>
 
 /**
- * 创建字段 dynamic props 解析器。
+ * 创建字段 dependencies 解析器。
  *
  * 解析器监听 dependencies.triggerFields，并把所有配置的属性条件函数统一执行；
  * 与 dependency renderer 一样，它也纳入 runtime 空闲追踪器，submit 前可等待完成。
  */
-export function createDynamicPropResolver<T extends Values>(
+export function createDependenciesResolver<T extends Values>(
   node: FieldRuntimeNode<T>,
-  options: DynamicPropEngineOptions<T>
-): DynamicPropEngineMountResult {
+  options: DependenciesEngineOptions<T>
+): DependenciesEngineMountResult {
   const dependencies = node.schema.dependencies
 
   if (
@@ -60,10 +65,9 @@ export function createDynamicPropResolver<T extends Values>(
     // 每次调度都推进版本号，正在路上的异步结果会因版本不匹配而被丢弃。
     const versions = bumpComputationVersions(node, configuredProps)
 
-    options.scheduler.enqueue({
-      type: "dynamic-prop",
-      phase: "main",
-      dedupeKey: node.key,
+    options.scheduler.queue({
+      channel: "dependencies",
+      key: node.key,
       run: () => {
         if (disposed || node.disposed.value) return
 
@@ -96,12 +100,12 @@ export function createDynamicPropResolver<T extends Values>(
 
 async function resolveFieldProps<T extends Values>(
   node: FieldRuntimeNode<T>,
-  options: DynamicPropEngineOptions<T>,
+  options: DependenciesEngineOptions<T>,
   versions: ComputationVersions
 ): Promise<void> {
   const schema = node.schema
   const dependencies = schema.dependencies
-  const defaults = getStaticFieldResolvedProps(schema, options.resolveDefaults(schema))
+  const defaults = resolveStaticProps(schema, options.resolveDefaults(schema))
 
   if (!dependencies) {
     applyResolvedProps(node, options, defaults, versions)
@@ -152,7 +156,7 @@ async function resolveFieldProps<T extends Values>(
 
 function applyResolvedProps<T extends Values>(
   node: FieldRuntimeNode<T>,
-  options: DynamicPropEngineOptions<T>,
+  options: DependenciesEngineOptions<T>,
   props: RuntimeFieldResolvedProps<T>,
   versions: ComputationVersions
 ): void {
@@ -161,7 +165,7 @@ function applyResolvedProps<T extends Values>(
     return
   }
 
-  const changed = applyFieldRuntimeProps(node.fieldRuntime, props)
+  const changed = applyFieldProps(node.fieldRuntime, props)
 
   if (!changed) return
 

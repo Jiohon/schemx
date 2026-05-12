@@ -7,17 +7,12 @@
  * @module core/engine/validationEngine
  */
 
-import { readFieldRuntimeProps } from "../field"
+import { readFieldProps } from "../runtime"
 import { setByPath } from "../utils"
 
 import type { ValidationEngineOptions } from "./types"
-import type {
-  NamePath,
-  SchemxBaseField,
-  SchemxResolvedBaseField,
-  Values,
-} from "../types"
-import type { FieldRuntimeNode } from "../runtime"
+import type { NamePath, SchemxBaseField, SchemxResolvedBaseField, Values } from "../types"
+import type { FieldRuntimeNode } from "../types"
 
 export interface ValidationEngine<T extends Values = Values> {
   mountField: (node: FieldRuntimeNode<T>) => void
@@ -59,7 +54,7 @@ export function createValidationEngine<T extends Values = Values>(
     node: FieldRuntimeNode<T>
   ): SchemxResolvedBaseField<T> => ({
     ...node.schema,
-    ...readFieldRuntimeProps(node.fieldRuntime),
+    ...readFieldProps(node.fieldRuntime),
     key: node.key,
   })
 
@@ -69,12 +64,7 @@ export function createValidationEngine<T extends Values = Values>(
       ? schema.rules.length > 0
       : !!schema.rules
 
-    if (
-      schema.visible === false ||
-      schema.readonly ||
-      schema.disabled ||
-      !hasRules
-    ) {
+    if (schema.visible === false || schema.readonly || schema.disabled || !hasRules) {
       options.validator.unregisterRules(schema.name)
       options.validator.setFieldError(schema.name, [])
 

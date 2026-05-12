@@ -10,7 +10,7 @@ Vue 适配层只负责把 core 暴露的 form instance、resolved schemas projec
 
 ## Runtime Consumption
 
-Vue 渲染层默认消费 `form.getResolvedSchemas()` 或 internal hooks 中的 runtime root。字段组件接收到的 schema 已经包含 core runtime 解析后的 `visible`、`readonly`、`disabled`、`required`、`placeholder`、`componentProps` 和 `rules`，因此 FormItem 不再重新执行 dynamic props 或 dependency renderer。
+Vue 渲染层默认消费 `form.getResolvedSchemas()` 或 internal hooks 中的 runtime root。字段组件接收到的 schema 已经包含 core runtime 解析后的 `visible`、`readonly`、`disabled`、`required`、`placeholder`、`componentProps` 和 `rules`，因此 FormItem 不再重新执行 dependencies 或 dependency renderer。
 
 ```ts
 const form = createForm({

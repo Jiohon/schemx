@@ -9,10 +9,10 @@
 import type { ValidationTrigger } from "@schemx/core"
 
 /** 触发时机类型（支持单个或数组） */
-type TriggerConfig = ValidationTrigger | ValidationTrigger[]
+export type TriggerConfig = ValidationTrigger | ValidationTrigger[]
 
 /** 归一化后的触发类型 */
-type NormalizedTrigger = "blur" | "change" | "submit"
+export type NormalizedTrigger = "blur" | "change" | "submit"
 
 /**
  * 判断触发时机配置是否有效。

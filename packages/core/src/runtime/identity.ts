@@ -4,13 +4,12 @@
  * 稳定 key 是增量复用的基础：字段优先用 name，dependency/group 在缺少业务 key
  * 时使用结构信息 + index 兜底。
  *
- * @module core/compiler/identity
+ * @module core/runtime/identity
  */
 
 import { isDependencySchema, isGroupSchema } from "../utils"
 
-import type { RuntimeSchema } from "../runtime/types"
-import type { SchemxBaseField, Values } from "../types"
+import type { RuntimeSchema, SchemxBaseField, Values } from "../types"
 
 /**
  * 为 owner path 下的 schema 生成稳定 runtime node key。

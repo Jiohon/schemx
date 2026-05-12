@@ -3,7 +3,7 @@
  *
  * 这里只做无副作用的结构检查，不创建 signal、不注册 effect、不执行 renderer。
  *
- * @module core/compiler/staticValidate
+ * @module core/runtime/staticValidate
  */
 
 import { isDependencySchema, isGroupSchema } from "../utils"

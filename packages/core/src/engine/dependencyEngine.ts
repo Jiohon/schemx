@@ -7,15 +7,20 @@
  * @module core/engine/dependencyEngine
  */
 
-import type { DependencyRuntimeNode, RuntimeNode } from "../runtime/types"
-import type { DependencyScheduler } from "../scheduler/dependencyScheduler"
-import type { SchemxField, SchemxInstance, Values } from "../types"
+import type { RuntimeScheduler } from "../scheduler"
+import type {
+  DependencyRuntimeNode,
+  RuntimeNode,
+  SchemxField,
+  SchemxInstance,
+  Values,
+} from "../types"
 
 export interface DependencyEngineOptions<T extends Values> {
   /** 当前表单实例，供 renderer 获取值和执行副作用 */
   form: SchemxInstance<T>
-  /** dependency 脏队列调度器 */
-  scheduler: DependencyScheduler<T>
+  /** 统一运行时调度器 */
+  scheduler: RuntimeScheduler
   /** 编译 renderer 返回的 children schemas */
   compileChildren: (
     previous: RuntimeNode<T>[],
@@ -24,12 +29,7 @@ export interface DependencyEngineOptions<T extends Values> {
     ownerPath: string
   ) => RuntimeNode<T>[]
   /** 提交 dependency subtree 替换结果，由 RuntimeGraph 负责 ownership。 */
-  commitSubtree: (
-    node: DependencyRuntimeNode<T>,
-    nextChildren: RuntimeNode<T>[]
-  ) => void
-  /** 通知 idle tracker 增减 pending 数 */
-  onPendingChange: (delta: number) => void
+  commitSubtree: (node: DependencyRuntimeNode<T>, nextChildren: RuntimeNode<T>[]) => void
 }
 
 export interface DependencyEngineMountResult {
@@ -51,7 +51,20 @@ export function createDependencyEngine<T extends Values>(
         void options.form.getFieldValue(path)
       }
 
-      options.scheduler.enqueueDependency(node)
+      node.dirty = true
+      options.scheduler.queue({
+        channel: "dependency",
+        key: node.key,
+        run: () => {
+          node.dirty = false
+
+          return node.dependencyRuntime.run().catch((error: unknown) => {
+            node.dependencyRuntime.error.value =
+              error instanceof Error ? error : new Error(String(error))
+            node.dependencyRuntime.loading.value = false
+          })
+        },
+      })
     }),
   ]
 
@@ -66,7 +79,6 @@ export function createDependencyEngine<T extends Values>(
     const currentAbortController = new AbortController()
     runtime.abortController = currentAbortController
 
-    options.onPendingChange(1)
     runtime.loading.value = true
     runtime.error.value = null
 
@@ -94,7 +106,7 @@ export function createDependencyEngine<T extends Values>(
       )
       options.commitSubtree(node, nextChildren)
     } catch (runtimeError) {
-      // renderer 异常时清空 subtree，让 projection 与错误状态保持一致。
+      // renderer 异常时清空 subtree，让 resolved schema 与错误状态保持一致。
       if (
         node.disposed.value ||
         currentAbortController.signal.aborted ||
@@ -119,8 +131,6 @@ export function createDependencyEngine<T extends Values>(
       ) {
         runtime.loading.value = false
       }
-
-      options.onPendingChange(-1)
     }
   }
 

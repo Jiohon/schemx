@@ -1,35 +1,53 @@
-export { RuntimeEngine, createRuntimeEngine } from "./engine"
-export type { RuntimeEngineOptions } from "./engine"
+/**
+ * Runtime 模块入口。
+ *
+ * 导出表单运行时引擎的核心组件，包括 Runtime 实例、字段生命周期管理、
+ * 字段属性处理、运行时图结构和树构建器。
+ *
+ * @module core/runtime
+ */
+
+// Runtime 实例
+export { Runtime, createRuntime } from "./createRuntime"
+export type { RuntimeOptions } from "./createRuntime"
+
+// 清理工具
 export { createDisposeBag } from "./disposeBag"
-export type { DisposeBag } from "./disposeBag"
+
+// 字段生命周期事件总线
+export {
+  createFieldLifecycle,
+  type FieldLifecycleBus,
+  type FieldLifecycleEvent,
+  type FieldLifecycleListener,
+} from "./fieldLifecycle"
+
+// 字段属性状态管理
+export {
+  applyFieldProps,
+  createFieldRuntime,
+  readFieldProps,
+  resolveFieldDefaults,
+  resolveStaticProps,
+} from "./fieldProps"
+
+// 运行时图结构
 export { createRuntimeGraph } from "./graph"
 export type { RuntimeGraph } from "./graph"
 
-// Runtime 只导出装配入口、graph/dispose 基础设施和节点类型契约。
-// field/dynamic prop/dependency/validation 的具体执行器统一从 `../engine/*`
-// 维护，framework adapter 和外部调用方应优先通过 projection/public API
-// 消费运行时能力。
-export type {
-  DependencyRuntime,
-  DependencyRuntimeNode,
-  DisposeCallback,
-  DisposeSubscription,
-  FieldRuntime,
-  FieldRuntimeNode,
-  GroupRuntimeNode,
-  ReactiveComputation,
-  RuntimeFieldDefaultProps,
-  RuntimeFieldDefaults,
-  RuntimeFieldResolvedProps,
-  RuntimeNode,
-  RuntimeNodeBase,
-  RuntimeNodeType,
-  RuntimeSchema,
-  SubtreeReplacement,
-} from "./types"
-export {
-  hasChildren,
-  isDependencyRuntimeNode,
-  isFieldRuntimeNode,
-  isGroupRuntimeNode,
-} from "./types"
+// 树构建器（核心：编译 + 节点管理）
+export { createRuntimeTreeBuilder } from "./runtimeTreeBuilder"
+export type { RuntimeTreeBuilder, RuntimeTreeBuilderOptions } from "./runtimeTreeBuilder"
+
+// Schema 规范化
+export { normalizeSchemas } from "./normalize"
+
+// 节点身份策略
+export { getRuntimeNodeKey } from "./identity"
+
+// 增量对账
+export { reconcileChildren } from "./reconcile"
+export type { CompileNodeContext, ReconcileChildrenOptions } from "./reconcile"
+
+// 静态校验
+export { staticValidateSchemas } from "./staticValidate"

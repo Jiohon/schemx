@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { createFieldRuntime } from "../../field"
+import { createFieldRuntime } from "../../runtime"
 import { createSignal } from "../../reactivity"
 import { createDisposeBag } from "../../runtime/disposeBag"
 import { createRuntimeScheduler } from "../../scheduler"
-import { createDynamicPropResolver } from "../dynamicPropEngine"
+import { createDependenciesResolver } from "../DependenciesEngine"
 
 import type { FieldRuntimeNode } from "../../runtime"
 
@@ -17,7 +17,7 @@ function createDeferred<T>() {
   return { promise, resolve }
 }
 
-describe("createDynamicPropResolver", () => {
+describe("createDependenciesResolver", () => {
   it("同一 batch 内按字段 key 去重，只应用最后一次动态属性解析", async () => {
     const scheduler = createRuntimeScheduler()
     const effectRuns: Array<() => void> = []
@@ -50,7 +50,7 @@ describe("createDynamicPropResolver", () => {
     }
     let values = { mode: "initial" }
 
-    const resolver = createDynamicPropResolver(node, {
+    const resolver = createDependenciesResolver(node, {
       form: {
         effect: (fn: () => void) => {
           effectRuns.push(fn)
@@ -62,7 +62,6 @@ describe("createDynamicPropResolver", () => {
         getFieldsSnapshot: () => values,
       } as any,
       resolveDefaults: () => ({}),
-      onPendingChange: vi.fn(),
       scheduler,
       onFieldUpdate,
       onTreeChange,
@@ -119,7 +118,7 @@ describe("createDynamicPropResolver", () => {
     }
     let values = { mode: "initial" }
 
-    const resolver = createDynamicPropResolver(node, {
+    const resolver = createDependenciesResolver(node, {
       form: {
         effect: (fn: () => void) => {
           effectRuns.push(fn)
@@ -131,7 +130,6 @@ describe("createDynamicPropResolver", () => {
         getFieldsSnapshot: () => values,
       } as any,
       resolveDefaults: () => ({}),
-      onPendingChange: vi.fn(),
       scheduler,
       onFieldUpdate: vi.fn(),
       onTreeChange: vi.fn(),
@@ -151,6 +149,7 @@ describe("createDynamicPropResolver", () => {
     slow.resolve({ tag: "slow" })
 
     await slowFlush
+    await scheduler.flush()
 
     await vi.waitFor(() => {
       expect(node.fieldRuntime.componentProps.value.value).toEqual({ tag: "fast" })

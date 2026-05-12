@@ -121,7 +121,7 @@ describe("ReactiveMap", () => {
   })
 })
 
-describe("reactivity facade", () => {
+describe("reactivity runtime", () => {
   it("creates signals and batches updates", () => {
     const count = createSignal(0)
     const seen: number[] = []

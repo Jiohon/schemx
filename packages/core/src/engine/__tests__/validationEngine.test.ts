@@ -6,8 +6,8 @@ import { createDisposeBag } from "../../runtime/disposeBag"
 import { createRuntimeScheduler } from "../../scheduler"
 import { createRequiredRule } from "../../validator/defaultRules"
 import { createValidator } from "../../validator"
-import { createFieldRuntime, applyFieldRuntimeProps } from "../../field"
-import { createDynamicPropResolver } from "../dynamicPropEngine"
+import { createFieldRuntime, applyFieldProps } from "../../runtime"
+import { createDependenciesResolver } from "../DependenciesEngine"
 import { createValidationEngine } from "../validationEngine"
 
 import type { FieldRuntimeNode } from "../../runtime"
@@ -91,7 +91,7 @@ describe("validationEngine", () => {
     await validator.validate({ name: "" })
     expect(validator.getFieldError("name")).toBeDefined()
 
-    applyFieldRuntimeProps(node.fieldRuntime, {
+    applyFieldProps(node.fieldRuntime, {
       visible: true,
       readonly: false,
       disabled: true,
@@ -174,7 +174,7 @@ describe("validationEngine", () => {
 
     engine.mountField(node)
 
-    const resolver = createDynamicPropResolver(node, {
+    const resolver = createDependenciesResolver(node, {
       form: {
         effect: (fn: () => void) => {
           effectRuns.push(fn)
@@ -186,7 +186,6 @@ describe("validationEngine", () => {
         getFieldsSnapshot: () => values,
       } as any,
       resolveDefaults: () => ({}),
-      onPendingChange: vi.fn(),
       scheduler,
       onFieldUpdate: (updatedNode) => engine.updateField(updatedNode),
       onTreeChange: vi.fn(),
@@ -206,6 +205,7 @@ describe("validationEngine", () => {
     slow.resolve("slowRule")
 
     await slowFlush
+    await scheduler.flush()
 
     await vi.waitFor(() => {
       expect(node.fieldRuntime.rules.value.value).toBe("fastRule")

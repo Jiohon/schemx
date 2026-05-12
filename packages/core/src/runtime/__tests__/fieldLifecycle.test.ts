@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { createFieldRuntime } from "../fieldRuntime"
+import { createFieldRuntime } from "../fieldProps"
 import { createFieldLifecycle } from "../fieldLifecycle"
 import { createSignal } from "../../reactivity"
 import { createDisposeBag } from "../../runtime/disposeBag"

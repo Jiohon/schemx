@@ -3,7 +3,7 @@
  *
  * 编译前先复制 schema，保证 runtime 后续不会原地修改用户传入的 raw schema。
  *
- * @module core/compiler/normalize
+ * @module core/runtime/normalize
  */
 
 import { isGroupSchema } from "../utils"

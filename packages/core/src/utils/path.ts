@@ -97,3 +97,22 @@ export function collectObjectPathsByLeaf<T extends NamePath>(
 
   return paths
 }
+
+/**
+ * 规范化字段路径，保证字符串路径和数组路径落到同一个索引键。
+ *
+ * @example
+ * ```typescript
+ * normalizeNamePath(['user', 'name']) // => 'user.name'
+ * normalizeNamePath('user[0].name')   // => 'user.0.name'
+ * ```
+ */
+export function normalizeNamePath<T extends Values>(path: NamePath<T>): string {
+  if (Array.isArray(path)) {
+    return path.map((part) => String(part)).join(".")
+  }
+
+  return String(path)
+    .replace(/\[(.*?)\]/g, ".$1")
+    .replace(/^\./, "")
+}

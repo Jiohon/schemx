@@ -45,6 +45,43 @@ export type {
 /** 表单组件 Props 类型 */
 export type { SchemxProps, SchemxGlobalContext } from "./form"
 
+/** DisposeBag 相关类型 */
+export type {
+  DisposeBag,
+  DisposeCallback,
+  DisposePhase,
+  DisposeSubscription,
+} from "./dispose"
+
+/** runtime field类型 */
+export type {
+  FieldRuntime,
+  FieldRuntimeNode,
+  RuntimeFieldDefaultProps,
+  RuntimeFieldDefaults,
+  RuntimeFieldResolvedProps,
+} from "./field"
+export { isFieldRuntimeNode } from "./field"
+
+/** runtime dependency类型 */
+export type {
+  DependencyRuntime,
+  DependencyRuntimeNode,
+  SubtreeReplacement,
+} from "./dependency"
+export { isDependencyRuntimeNode } from "./dependency"
+
+/** Runtime 类型契约 */
+export type {
+  GroupRuntimeNode,
+  ReactiveComputation,
+  RuntimeNode,
+  RuntimeNodeBase,
+  RuntimeNodeType,
+  RuntimeSchema,
+} from "./runtime"
+export { hasChildren, isGroupRuntimeNode } from "./runtime"
+
 /** 深层路径类型工具 */
 export type { DeepNamePath } from "./namePathType"
 

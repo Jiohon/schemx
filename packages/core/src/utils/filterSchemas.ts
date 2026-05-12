@@ -6,7 +6,7 @@
  * @module schemas/filterSchemas
  */
 
-import { isBaseSchema, isDependencySchema, isGroupSchema } from "../utils/schema"
+import { isBaseSchema, isDependencySchema, isGroupSchema } from "./schema"
 
 import type {
   SchemxBaseField,

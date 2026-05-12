@@ -5,8 +5,8 @@
  * 用于 schemx 列配置中的动态属性（如 disabled、visible、placeholder 等）。
  *
  * 提供两个核心函数：
- * - {@link resolveDynamicProp} — 解析单个动态属性
- * - {@link batchResolveDynamicProp} — 创建 debounced 批量解析器，合并高频调用
+ * - {@link resolveDependencie} — 解析单个动态属性
+ * - {@link batchResolveDependencie} — 创建 debounced 批量解析器，合并高频调用
  *
  * @module utils/dynamic
  */
@@ -21,7 +21,7 @@ import type { Values } from "@schemx/core"
  *
  * @typeParam T - 属性值类型
  */
-export interface DynamicPropEntry<T> {
+export interface DependencieEntry<T> {
   /** 动态属性值（函数、静态值、null 或 undefined） */
   value: Dynamic<T> | undefined | null
   /** 默认值，当 value 为空或函数返回 nullish 时使用 */
@@ -31,12 +31,12 @@ export interface DynamicPropEntry<T> {
 /**
  * 批量解析的属性条目映射表类型
  *
- * 将属性名映射到对应的 {@link DynamicPropEntry}。
+ * 将属性名映射到对应的 {@link DependencieEntry}。
  *
  * @typeParam M - 属性名到值类型的映射
  */
-type DynamicPropEntries<M extends Record<string, unknown>> = {
-  [K in keyof M]: DynamicPropEntry<M[K]>
+type DependencieEntries<M extends Record<string, unknown>> = {
+  [K in keyof M]: DependencieEntry<M[K]>
 }
 
 /**
@@ -57,19 +57,19 @@ type DynamicPropEntries<M extends Record<string, unknown>> = {
  * @example
  * ```typescript
  * // 函数类型
- * await resolveDynamicProp((v) => v.name, { name: 'test' }, '')
+ * await resolveDependencie((v) => v.name, { name: 'test' }, '')
  * // => 'test'
  *
  * // 静态值
- * await resolveDynamicProp('hello', {}, '')
+ * await resolveDependencie('hello', {}, '')
  * // => 'hello'
  *
  * // null/undefined 回退到默认值
- * await resolveDynamicProp(undefined, {}, 'default')
+ * await resolveDependencie(undefined, {}, 'default')
  * // => 'default'
  * ```
  */
-export async function resolveDynamicProp<T>(
+export async function resolveDependencie<T>(
   value: Dynamic<T> | undefined | null,
   formValues: Values,
   defaultValue: T
@@ -108,7 +108,7 @@ export async function resolveDynamicProp<T>(
  *
  * @example
  * ```typescript
- * const resolve = batchResolveDynamicProp<{
+ * const resolve = batchResolveDependencie<{
  *   visible: boolean
  *   disabled: boolean
  *   placeholder: string
@@ -135,15 +135,15 @@ export async function resolveDynamicProp<T>(
  * 适用于 signal effect / watch 回调中批量解析动态属性的场景，
  * 避免多个字段同时变化时重复解析。
  */
-export function batchResolveDynamicProp<M extends Record<string, unknown>>(
+export function batchResolveDependencie<M extends Record<string, unknown>>(
   wait = 16
 ): (
-  entries: DynamicPropEntries<M>,
+  entries: DependencieEntries<M>,
   formValues: Values,
   callback: (results: M) => void
 ) => void {
   let pending: {
-    entries: DynamicPropEntries<M>
+    entries: DependencieEntries<M>
     formValues: Values
     callback: (results: M) => void
   } | null = null
@@ -156,7 +156,7 @@ export function batchResolveDynamicProp<M extends Record<string, unknown>>(
 
     const keys = Object.keys(entries) as (keyof M & string)[]
     const promises = keys.map((key) =>
-      resolveDynamicProp(entries[key].value, formValues, entries[key].defaultValue)
+      resolveDependencie(entries[key].value, formValues, entries[key].defaultValue)
     )
 
     const values = await Promise.all(promises)

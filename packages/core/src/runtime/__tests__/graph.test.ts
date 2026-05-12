@@ -4,7 +4,7 @@ import { createSignal } from "../../reactivity"
 import { createDisposeBag } from "../disposeBag"
 import { createRuntimeGraph } from "../graph"
 
-import type { DependencyRuntimeNode, FieldRuntimeNode, RuntimeNode } from "../types"
+import type { DependencyRuntimeNode, FieldRuntimeNode, RuntimeNode } from "../../types"
 
 function createFieldNode(key: string): FieldRuntimeNode {
   const disposeBag = createDisposeBag()

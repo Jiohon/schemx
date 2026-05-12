@@ -137,6 +137,7 @@
       componentType: "dependency",
       to: ["orderType"],
       renderer: async (values): Promise<SchemxField[]> => {
+        console.log("values.orderType", values.orderType)
         const orderType = values.orderType
 
         /** 标准订单分支：包含二级 deliveryMode dependency 和 quantity dependency */

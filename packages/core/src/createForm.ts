@@ -28,18 +28,16 @@ import {
   type RuleEntry,
   type RulesRegistry,
 } from "./registry"
-import {
-  createRuntimeEngine,
-  type RuntimeEngine,
-  type RuntimeFieldDefaults,
-} from "./runtime"
-import {
-  createFieldInitScheduler,
-  type FieldInitScheduler,
-} from "./scheduler/fieldInitScheduler"
-import { filterSchemas } from "./schemas"
+import { createRuntime, type Runtime } from "./runtime"
+import { createRuntimeScheduler, type RuntimeScheduler } from "./scheduler"
 import { createFormStore, FormStore, FormStorePendingField } from "./store"
-import { collectObjectPathsByLeaf, diff, getByPath, withLock } from "./utils"
+import {
+  collectObjectPathsByLeaf,
+  diff,
+  getByPath,
+  normalizeNamePath,
+  withLock,
+} from "./utils"
 import {
   createRequiredRule,
   createSelectRequiredRule,
@@ -52,7 +50,7 @@ import {
 
 import type {
   NamePath,
-  SchemxBaseField,
+  RuntimeFieldDefaults,
   SchemxField,
   SchemxInstance,
   SchemxInternalHooks,
@@ -138,7 +136,7 @@ export interface CreateFormOptions<T extends Values> {
  */
 class CreateForm<T extends Values = Values> {
   /** Runtime tree 引擎，负责 schema 编译、dependency subtree 与调度 */
-  private runtime: RuntimeEngine<T>
+  private runtime: Runtime<T>
 
   /** 表单状态存储，管理字段值、初始值和订阅 */
   private store: FormStore<T>
@@ -162,7 +160,13 @@ class CreateForm<T extends Values = Values> {
   private disposers = new Set<() => void>()
 
   /** 字段初始化调度器，将多个 FormItem 的 onMounted 初始化合并为一次 batch */
-  private scheduler: FieldInitScheduler<{ name: NamePath<T>; value: Value }>
+  private scheduler: RuntimeScheduler
+
+  /** 等待写入的字段初始化任务，按字段路径去重。 */
+  private pendingFieldInitializers = new Map<
+    string,
+    { name: NamePath<T>; value: Value }
+  >()
 
   /**
    * 创建表单实例
@@ -206,35 +210,19 @@ class CreateForm<T extends Values = Values> {
     // Validator: 初始化校验器
     this.validator = createValidator<T>()
 
+    // 字段校验
     this.validationEngine = createValidationEngine<T>({
       validator: this.validator,
       rulesRegistry: this.rulesRegistry,
       getFieldSnapshot: (name) => this.store.getFieldSnapshot(name),
       setInitialValues: (values) => this.store.setInitialValues(values),
-      setFieldValue: (name, value) =>
-        this.store.setFieldValue(name as NamePath<T>, value as Value),
+      setFieldValue: (name, value) => this.store.setFieldValue(name, value),
     })
 
     // 字段初始化调度器：收集多个 FormItem 的 onMounted 初始化，microtask 时统一 batch flush
-    this.scheduler = createFieldInitScheduler<{
-      name: SchemxBaseField["name"]
-      value: Value
-    }>({
-      flush: (tasks) => {
-        batchUpdates(() => {
-          for (const t of tasks) {
-            this.store.setInitialValues({ [t.name]: t.value } as Partial<T>)
-            this.store.setFieldValue(t.name as NamePath<T>, t.value)
-          }
-        })
-      },
-      dedupKey: (t) => t.name,
-    })
+    this.scheduler = createRuntimeScheduler()
 
-    // Runtime: 过滤后的 raw schemas 编译为运行时树。
-    const filteredSchemas = filterSchemas(schemas)
-
-    this.runtime = createRuntimeEngine<T>(filteredSchemas, this.getForm(), {
+    this.runtime = createRuntime<T>(schemas, this.getForm(), {
       fieldDefaults: runtimeFieldDefaults,
       onFieldMount: this.validationEngine.mountField,
       onFieldUpdate: this.validationEngine.updateField,
@@ -307,15 +295,6 @@ class CreateForm<T extends Values = Values> {
     resetFields: this.resetFields.bind(this),
     reset: this.reset.bind(this),
     submit: this.submit.bind(this),
-    waitForDependencies: this.waitForDependencies.bind(this),
-    getResolvedSchemas: this.getResolvedSchemas.bind(this),
-    getSchemas: this.getResolvedSchemas.bind(this),
-    getRenderer: this.getRenderer.bind(this),
-    registerRenderer: this.registerRenderer.bind(this),
-    hasRenderer: this.hasRenderer.bind(this),
-    getRule: this.getRule.bind(this),
-    registerRule: this.registerRule.bind(this),
-    hasRule: this.hasRule.bind(this),
 
     // Reactivity - effect / batch
     effect: this.effect.bind(this),
@@ -335,6 +314,7 @@ class CreateForm<T extends Values = Values> {
    */
   private getInternalHooks = (): SchemxInternalHooks<T> => ({
     // Runtime - runtime tree 适配层入口
+    getRuntimeRevision: this.getRuntimeRevision.bind(this),
     getRuntimeRoot: this.getRuntimeRoot.bind(this),
     getResolvedSchemas: this.getResolvedSchemas.bind(this),
     waitForDependencies: this.waitForDependencies.bind(this),
@@ -354,7 +334,7 @@ class CreateForm<T extends Values = Values> {
    * 获取 runtime root 节点。
    *
    * Vue 等框架适配层使用该入口直接渲染 runtime tree；对外读取
-   * schema projection 时请使用 getResolvedSchemas()。
+   * resolved schema 列表时请使用 getResolvedSchemas()。
    *
    * @returns runtime root 节点数组
    */
@@ -363,9 +343,17 @@ class CreateForm<T extends Values = Values> {
   }
 
   /**
+   * 获取 runtime revision
+   *
+   */
+  private getRuntimeRevision() {
+    return this.runtime.revision
+  }
+
+  /**
    * 等待所有 runtime 异步依赖解析完成。
    *
-   * 包括 dependency subtree renderer 和字段 dynamic props resolver。
+   * 包括 dependency subtree renderer 和字段 dependencies resolver。
    *
    * @param timeout - 最大等待时间（毫秒），默认 10000
    * @returns true 表示全部完成
@@ -381,7 +369,7 @@ class CreateForm<T extends Values = Values> {
   }
 
   /**
-   * 获取已解析 schema projection。
+   * 获取已解析 schema 列表。
    *
    * Raw Schema 保持 immutable；runtime tree 持有 dependency 的动态
    * subtree。本方法只把 runtime tree 投影为 schema list，便于旧 UI
@@ -466,8 +454,32 @@ class CreateForm<T extends Values = Values> {
     const paths = collectObjectPathsByLeaf<NamePath<T>>(values)
 
     for (const path of paths) {
-      this.scheduler.batch({ name: path, value: getByPath(values, path) })
+      this.pendingFieldInitializers.set(normalizeNamePath(path), {
+        name: path,
+        value: getByPath(values, path),
+      })
     }
+
+    this.scheduler.queue({
+      channel: "fieldInit",
+      key: "initial-values",
+      run: this.flushPendingFieldInitializers,
+    })
+  }
+
+  private readonly flushPendingFieldInitializers = (): void => {
+    const tasks = Array.from(this.pendingFieldInitializers.values())
+
+    if (tasks.length === 0) return
+
+    this.pendingFieldInitializers.clear()
+
+    batchUpdates(() => {
+      for (const task of tasks) {
+        this.store.setInitialValues({ [task.name]: task.value } as Partial<T>)
+        this.store.setFieldValue(task.name, task.value)
+      }
+    })
   }
 
   /**
@@ -730,6 +742,7 @@ class CreateForm<T extends Values = Values> {
     this.disposers.clear()
 
     this.runtime.destroy()
+    this.scheduler.dispose()
 
     this.store.destroy()
   }

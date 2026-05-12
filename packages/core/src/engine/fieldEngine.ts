@@ -7,16 +7,15 @@
  * @module core/engine/fieldEngine
  */
 
-import { createFieldLifecycle, readFieldRuntimeProps } from "../field"
+import { createFieldLifecycle, readFieldProps } from "../runtime"
 
+import type { FormRuntimeContext } from "../runtime/context"
 import type {
   FieldLifecycleBus,
   FieldLifecycleEvent,
   FieldLifecycleListener,
-} from "../field"
-import type { FormRuntimeContext } from "../core"
-import type { FieldRuntimeNode } from "../runtime"
-import type { Values } from "../types"
+} from "../runtime/fieldLifecycle"
+import type { FieldRuntimeNode, Values } from "../types"
 
 export interface FieldEngineOptions<T extends Values = Values> {
   /** runtime 与 createForm 的字段生命周期边界。 */
@@ -58,7 +57,7 @@ export function createFieldEngine<T extends Values = Values>(
     lifecycle.emit({
       type,
       node,
-      props: readFieldRuntimeProps(node.fieldRuntime),
+      props: readFieldProps(node.fieldRuntime),
     })
   }
 

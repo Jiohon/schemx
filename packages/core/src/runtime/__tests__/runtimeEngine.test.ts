@@ -9,7 +9,7 @@ const sleep = (ms: number) =>
     setTimeout(resolve, ms)
   })
 
-describe("RuntimeEngine", () => {
+describe("Runtime", () => {
   it("keeps the latest async dependency result when older renders resolve later", async () => {
     const schemas: SchemxField[] = [
       {
@@ -291,7 +291,7 @@ describe("RuntimeEngine", () => {
     form.destroy()
   })
 
-  it("resolves field dependency props through runtime projection", async () => {
+  it("resolves field dependency props through resolved schemas", async () => {
     const form = createForm({
       initialValues: { province: "" },
       schemas: [
@@ -427,7 +427,7 @@ describe("RuntimeEngine", () => {
     form.destroy()
   })
 
-  it("replaces dependency subtree projection without mutating raw schemas", async () => {
+  it("replaces dependency subtree resolved schemas without mutating raw schemas", async () => {
     const schemas: SchemxField[] = [
       {
         componentType: "select",
@@ -467,19 +467,17 @@ describe("RuntimeEngine", () => {
     form.setFieldValue("type", "a")
     await expect(form.waitForDependencies()).resolves.toBe(true)
 
-    expect(form.getResolvedSchemas().map((schema) => "name" in schema && schema.name)).toEqual([
-      "type",
-      "fieldA",
-    ])
+    expect(
+      form.getResolvedSchemas().map((schema) => "name" in schema && schema.name)
+    ).toEqual(["type", "fieldA"])
     expect(schemas).toHaveLength(2)
 
     form.setFieldValue("type", "b")
     await expect(form.waitForDependencies()).resolves.toBe(true)
 
-    expect(form.getResolvedSchemas().map((schema) => "name" in schema && schema.name)).toEqual([
-      "type",
-      "fieldB",
-    ])
+    expect(
+      form.getResolvedSchemas().map((schema) => "name" in schema && schema.name)
+    ).toEqual(["type", "fieldB"])
     expect(schemas).toHaveLength(2)
 
     form.destroy()
@@ -785,11 +783,9 @@ describe("RuntimeEngine", () => {
     await expect(form.waitForDependencies()).resolves.toBe(true)
 
     expect(observedParentCommitted).toContain(true)
-    expect(form.getResolvedSchemas().map((schema) => "name" in schema && schema.name)).toEqual([
-      "type",
-      "childTrigger",
-      "nestedChild",
-    ])
+    expect(
+      form.getResolvedSchemas().map((schema) => "name" in schema && schema.name)
+    ).toEqual(["type", "childTrigger", "nestedChild"])
 
     form.destroy()
   })
@@ -870,10 +866,9 @@ describe("RuntimeEngine", () => {
     await expect(form.waitForDependencies()).resolves.toBe(true)
 
     expect(form.getResolvedSchemas()).toEqual(form.getSchemas())
-    expect(form.getResolvedSchemas().map((schema) => "name" in schema && schema.name)).toEqual([
-      "type",
-      "resolvedChild",
-    ])
+    expect(
+      form.getResolvedSchemas().map((schema) => "name" in schema && schema.name)
+    ).toEqual(["type", "resolvedChild"])
 
     form.destroy()
   })

@@ -1,17 +1,24 @@
 /**
  * Runtime engine 共享类型。
  *
- * Engine 层承载具体执行逻辑，但不拥有 RuntimeEngine 装配入口。这里的类型
+ * Engine 层承载具体执行逻辑，但不拥有 Runtime 装配入口。这里的类型
  * 只描述 engine 所需的窄能力，避免各 engine 直接依赖过宽的 runtime 实现。
  *
  * @module core/engine/types
  */
 
-import type { FormRuntimeContext } from "../core"
 import type { RulesRegistry } from "../registry"
-import type { FieldRuntimeNode, RuntimeFieldDefaultProps, RuntimeNode } from "../runtime"
-import type { DependencyScheduler, RuntimeScheduler } from "../scheduler"
-import type { SchemxBaseField, SchemxField, SchemxInstance, Values } from "../types"
+import type { FormRuntimeContext } from "../runtime/context"
+import type { RuntimeScheduler } from "../scheduler"
+import type {
+  FieldRuntimeNode,
+  RuntimeFieldDefaultProps,
+  RuntimeNode,
+  SchemxBaseField,
+  SchemxField,
+  SchemxInstance,
+  Values,
+} from "../types"
 import type { Validator } from "../validator"
 
 /** engine 挂载后返回的释放函数。 */
@@ -28,10 +35,7 @@ export interface EngineMountResult {
   dispose: EngineDispose
 }
 
-/** 通知 RuntimeIdleTracker pending 任务数量变化。 */
-export type EnginePendingChangeHandler = (delta: number) => void
-
-/** 通知 RuntimeEngine projection/revision 需要刷新。 */
+/** 通知 Runtime resolved schema/revision 需要刷新。 */
 export type EngineTreeChangeHandler = () => void
 
 /**
@@ -45,8 +49,8 @@ export interface EngineContext<T extends Values = Values> {
   form: SchemxInstance<T>
   /** runtime 与 createForm 的生命周期边界。 */
   formRuntimeContext: FormRuntimeContext<T>
-  /** 当前阶段仍使用 dependency scheduler，后续会由 RuntimeScheduler 替换。 */
-  scheduler: DependencyScheduler<T>
+  /** 统一运行时调度器。 */
+  scheduler: RuntimeScheduler
   /** 编译 dependency renderer 返回的 subtree schemas。 */
   compileChildren: (
     previous: RuntimeNode<T>[],
@@ -54,20 +58,16 @@ export interface EngineContext<T extends Values = Values> {
     parent: RuntimeNode<T> | null,
     ownerPath: string
   ) => RuntimeNode<T>[]
-  /** 通知 runtime idle tracker 有异步工作开始或结束。 */
-  onPendingChange: EnginePendingChangeHandler
-  /** 通知 runtime tree/projection revision 变化。 */
+  /** 通知 runtime tree/resolved schema revision 变化。 */
   onTreeChange: EngineTreeChangeHandler
 }
 
-export interface DynamicPropEngineOptions<T extends Values = Values> {
+export interface DependenciesEngineOptions<T extends Values = Values> {
   /** 当前表单实例，用于读取依赖字段、快照和注册 effect。 */
   form: SchemxInstance<T>
   /** 解析字段级默认值，通常来自框架层全局 readonly/disabled 等配置。 */
   resolveDefaults: (schema: SchemxBaseField<T>) => RuntimeFieldDefaultProps<T>
-  /** 通知 runtime idle tracker 有异步解析开始或结束。 */
-  onPendingChange: EnginePendingChangeHandler
-  /** runtime 统一调度器，用于 dynamic prop 等 engine 任务去重排队。 */
+  /** 统一运行时调度器，用于 dynamic prop 等 engine 任务去重排队。 */
   scheduler: RuntimeScheduler
   /** 字段已解析属性变化后同步 createForm 生命周期。 */
   onFieldUpdate: (node: FieldRuntimeNode<T>) => void
@@ -75,7 +75,7 @@ export interface DynamicPropEngineOptions<T extends Values = Values> {
   onTreeChange: EngineTreeChangeHandler
 }
 
-export interface DynamicPropEngineMountResult extends EngineMountResult {}
+export interface DependenciesEngineMountResult extends EngineMountResult {}
 
 export interface ValidationEngineOptions<T extends Values = Values> {
   /** 表单校验器实例。 */

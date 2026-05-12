@@ -3,13 +3,12 @@
  *
  * 根据稳定 key 比较旧节点和新 schema，决定复用、创建或销毁节点。
  *
- * @module core/compiler/reconcile
+ * @module core/runtime/reconcile
  */
 
 import { getRuntimeNodeKey } from "./identity"
 
-import type { RuntimeNode, RuntimeSchema } from "../runtime/types"
-import type { Values } from "../types"
+import type { RuntimeNode, RuntimeSchema, Values } from "../types"
 
 export interface CompileNodeContext<T extends Values> {
   /** 父级 runtime node；root children 使用 null */

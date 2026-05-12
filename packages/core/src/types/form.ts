@@ -14,7 +14,7 @@ import { SchemxRules } from "./rule"
 
 import type { SchemxField, SchemxResolvedField } from "./schema"
 import type { RendererRegistry, RuleEntry, RulesRegistry } from "../registry"
-import type { RuntimeNode } from "../runtime/types"
+import type { RuntimeNode } from "./runtime"
 import type { ValidateError, ValidateResult } from "../validator"
 
 /** 字段值类型 */
@@ -498,54 +498,6 @@ export interface SchemxInstance<T extends Values = Values> {
   getPendingFields: () => FormStorePendingField[]
 
   /**
-   * 等待 runtime dependency renderer 和 dynamic props 解析完成。
-   *
-   * @param timeout - 最大等待时间（毫秒），默认 10000
-   * @returns true 表示全部完成，false 表示超时
-   */
-  waitForDependencies: (timeout?: number) => Promise<boolean>
-
-  /**
-   * 获取 runtime tree 投影出的已解析 schema 列表。
-   */
-  getResolvedSchemas: () => SchemxResolvedField<T>[]
-
-  /**
-   * getResolvedSchemas 的兼容别名。
-   */
-  getSchemas: () => SchemxResolvedField<T>[]
-
-  /**
-   * 获取指定类型的渲染器组件。
-   */
-  getRenderer: (type: SchemxRendererKey<T>) => unknown | undefined
-
-  /**
-   * 注册渲染器组件。
-   */
-  registerRenderer: (type: SchemxRendererKey<T>, renderer: unknown) => void
-
-  /**
-   * 检查指定类型的渲染器是否已注册。
-   */
-  hasRenderer: (type: SchemxRendererKey<T>) => boolean
-
-  /**
-   * 获取指定名称的校验规则条目。
-   */
-  getRule: (name: string) => RuleEntry<T> | undefined
-
-  /**
-   * 注册校验规则。
-   */
-  registerRule: (name: string, rule: RuleEntry<T>) => void
-
-  /**
-   * 检查指定名称的校验规则是否已注册。
-   */
-  hasRule: (name: string) => boolean
-
-  /**
    * 销毁表单实例
    *
    * 清除所有订阅回调，释放资源。通常在组件卸载时调用。
@@ -578,6 +530,12 @@ export interface SchemxInstance<T extends Values = Values> {
  */
 export interface SchemxInternalHooks<T extends Values = Values> {
   /**
+   * 获取 runtime revision
+   *
+   */
+  getRuntimeRevision: () => void
+
+  /**
    * 获取当前 runtime root。
    *
    * 仅供框架适配层渲染 runtime tree 使用。它保留 dependency/group
@@ -589,7 +547,7 @@ export interface SchemxInternalHooks<T extends Values = Values> {
   getRuntimeRoot: () => RuntimeNode<T>[]
 
   /**
-   * 获取已解析 schema projection。
+   * 获取已解析 schema 列表。
    *
    * 与 getResolvedSchemas() 返回相同内容，但命名更明确。Raw Schema 保持
    * immutable；该方法只是从 runtime tree 派生 schema list。

@@ -355,7 +355,7 @@ type ExpandedSchemxField<F> = F & { key: string }
  * Runtime 解析后的基础字段类型。
  *
  * Dependency 已在 runtime tree 中展开，组件内部只消费可直接渲染的
- * base/group schema projection。
+ * base/group resolved schema。
  */
 export type SchemxResolvedBaseField<T extends Values = Values> =
   ExpandedSchemxField<SchemxBaseField<T>>

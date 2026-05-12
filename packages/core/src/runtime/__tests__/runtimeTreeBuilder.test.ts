@@ -1,42 +1,37 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { DependencyScheduler, createRuntimeScheduler } from "../../scheduler"
-import { RuntimeNodeFactory } from "../nodeFactory"
+import { createRuntimeScheduler } from "../../scheduler"
+import { RuntimeTreeBuilder } from "../runtimeTreeBuilder"
 
-import type { FormRuntimeContext } from "../../core"
-import type { RuntimeNode } from "../types"
-import type { Values } from "../../types"
+import type { FormRuntimeContext } from "../context"
+import type { RuntimeNode, Values } from "../../types"
 
-function createFactory<T extends Values = Values>(
+function createBuilder<T extends Values = Values>(
   lifecycle: Partial<FormRuntimeContext<T>> = {}
-): RuntimeNodeFactory<T> {
-  const runtimeScheduler = createRuntimeScheduler()
-  const scheduler = new DependencyScheduler<T>(runtimeScheduler)
+): RuntimeTreeBuilder<T> {
+  const scheduler = createRuntimeScheduler()
 
-  return new RuntimeNodeFactory<T>({
+  return new RuntimeTreeBuilder<T>({
     context: {
       form: {} as FormRuntimeContext<T>["form"],
       resolveFieldDefaults: () => ({}),
       ...lifecycle,
     },
     scheduler,
-    runtimeScheduler,
-    compileChildren: () => [],
     commitDependencySubtree: () => {},
-    onPendingChange: () => {},
     onTreeChange: () => {},
   })
 }
 
-describe("RuntimeNodeFactory lifecycle", () => {
+describe("RuntimeTreeBuilder lifecycle", () => {
   it("creates field nodes with disposed signal and onDispose callback", () => {
     const onFieldMount = vi.fn()
     const onFieldUnmount = vi.fn()
-    const factory = createFactory({
+    const builder = createBuilder({
       onFieldMount,
       onFieldUnmount,
     })
-    const node = factory.createFieldNode(
+    const node = (builder as any).createFieldNode(
       { componentType: "input", name: "name", label: "Name" } as any,
       "root/field:name",
       null
@@ -60,8 +55,8 @@ describe("RuntimeNodeFactory lifecycle", () => {
   })
 
   it("disposes group children before the group itself", () => {
-    const factory = createFactory()
-    const group = factory.createGroupNode(
+    const builder = createBuilder()
+    const group = (builder as any).createGroupNode(
       { componentType: "group", children: [] } as any,
       "root/group",
       null

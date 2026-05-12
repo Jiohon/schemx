@@ -1,27 +1,22 @@
 import { describe, expect, expectTypeOf, it } from "vitest"
 
 import { createSignal } from "../../reactivity"
-import { createDisposeBag } from "../disposeBag"
 import {
+  DependencyRuntimeNode,
+  FieldRuntimeNode,
   hasChildren,
   isDependencyRuntimeNode,
   isFieldRuntimeNode,
   isGroupRuntimeNode,
-} from "../types"
-
-import type {
-  DependencyRuntimeNode,
-  FieldRuntimeNode,
   ReactiveComputation,
   RuntimeNode,
-} from "../types"
-import type {
   SchemxBaseField,
   SchemxComponentProps,
   SchemxDependencyField,
   SchemxGroupField,
   Values,
 } from "../../types"
+import { createDisposeBag } from "../disposeBag"
 
 function computation<T>(value: T): ReactiveComputation<T> {
   return {

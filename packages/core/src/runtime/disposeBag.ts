@@ -7,122 +7,39 @@
  * @module core/runtime/disposeBag
  */
 
-/**
- * 注册到 DisposeBag 的清理函数类型。
- */
-export type DisposeCallback = () => void
+import type {
+  DisposeBag,
+  DisposeCallback,
+  DisposePhase,
+  DisposeSubscription,
+} from "../types"
 
 /**
- * DisposeBag 中清理任务的执行阶段。
- *
- * 与 Scheduler 的 pre / main / post phase 对齐：
- *
- * - `pre`：优先清理 watcher、dependency 监听等"上游"资源
- *   例：dependency engine 的 effect、dynamic prop 的 computed 订阅
- * - `main`：清理字段状态、validation 等"业务"资源
- *   例：FieldRuntime 内各 ReactiveComputation 的 effect
- * - `post`：最后清理渲染侧、外部回调等"下游"资源
- *   例：Renderer Adapter 注册的 onDispose 回调、scheduler cleanup hook
- *
- * 同一 phase 内按注册逆序执行（LIFO），便于后注册且依赖前置资源的
- * cleanup 先释放。
+ * 释放条目内部结构。
  */
-export type DisposePhase = "pre" | "main" | "post"
-
-/**
- * onDispose 注册返回的订阅句柄。
- *
- * 持有此句柄可在节点 dispose 前提前取消注册。
- */
-export interface DisposeSubscription {
-  /**
-   * 取消此次 onDispose 注册。
-   *
-   * 调用后对应回调不会在 flush 时执行。
-   * 若节点已经 disposed，调用此方法是安全的（no-op）。
-   */
-  unsubscribe: () => void
-}
-
-/**
- * DisposeBag 接口。
- *
- * RuntimeNode 通过此接口注册和释放响应式资源。
- */
-export interface DisposeBag {
-  /**
-   * 当前 bag 是否已 flush。
-   *
-   * flush 后为 true，任何 add/onDispose 调用都会立即 best-effort 执行，
-   * 避免 late cleanup 静默泄漏。
-   */
-  readonly flushed: boolean
-
-  /**
-   * 注册一个清理函数。
-   *
-   * @param callback - 清理函数
-   * @param phase - 执行阶段，默认 `"main"`
-   *
-   * @example
-   * ```ts
-   * // 注册 effect 清理（main phase，默认）
-   * bag.add(effect(() => { ... }))
-   *
-   * // 注册 dependency watcher（pre phase，优先于 field 状态清理）
-   * bag.add(watchDependency(...), "pre")
-   *
-   * // 注册 renderer 清理（post phase，最后执行）
-   * bag.add(unmountComponent, "post")
-   * ```
-   */
-  add: (callback: DisposeCallback, phase?: DisposePhase) => void
-
-  /**
-   * 注册一个在 flush 时执行的外部回调，并返回可取消的订阅句柄。
-   *
-   * 与 `add` 的区别：
-   * - `add` 面向内部资源注册，无需取消能力
-   * - `onDispose` 面向外部消费方（如 Renderer Adapter），需要提前取消注册的能力
-   *
-   * `onDispose` 注册的回调始终在 `post` phase 执行，
-   * 确保在内部资源（effect、watcher）清理完成后再通知外部。
-   *
-   * @example
-   * ```ts
-   * // Renderer Adapter 内
-   * const sub = node.disposeBag.onDispose(() => {
-   *   unmountComponent(node.id)
-   * })
-   *
-   * // 若组件因其他原因提前卸载，取消注册避免重复执行
-   * sub.unsubscribe()
-   * ```
-   */
-  onDispose: (callback: DisposeCallback) => DisposeSubscription
-
-  /**
-   * 执行所有已注册的清理函数并标记 bag 为已 flush。
-   *
-   * 执行顺序：pre → main → post，同 phase 内按注册逆序（LIFO）执行。
-   *
-   * 保证：
-   * - 幂等：重复调用只执行一次
-   * - 异常隔离：单个 callback 抛出异常不影响后续 callback 执行，
-   *   所有异常收集后在 flush 结束时统一抛出（AggregateError）
-   * - flush 后对 bag 的 add / onDispose 调用立即执行对应 cleanup
-   */
-  flush: () => void
-}
-
 interface DisposeEntry {
+  /**
+   * 释放回调函数。
+   */
   callback: DisposeCallback
+  /**
+   * 释放阶段。
+   */
   phase: DisposePhase
+  /**
+   * 条目标识，用于取消订阅。
+   */
   id?: number
 }
 
+/**
+ * 释放阶段执行顺序。
+ */
 const PHASE_ORDER: DisposePhase[] = ["pre", "main", "post"]
 
+/**
+ * 下一个条目标识。
+ */
 let nextId = 0
 
 /**
@@ -152,9 +69,21 @@ let nextId = 0
  * ```
  */
 export function createDisposeBag(): DisposeBag {
+  /**
+   * 释放条目列表。
+   */
   const entries: DisposeEntry[] = []
+  /**
+   * 是否已释放。
+   */
   let flushed = false
 
+  /**
+   * 执行单个释放回调。
+   *
+   * @param callback - 释放回调函数
+   * @param errors - 错误收集数组，用于批量抛出
+   */
   function run(callback: DisposeCallback, errors?: unknown[]): void {
     try {
       callback()
@@ -171,6 +100,14 @@ export function createDisposeBag(): DisposeBag {
     }
   }
 
+  /**
+   * 添加释放回调。
+   *
+   * 如果已释放，则立即执行回调。
+   *
+   * @param callback - 释放回调函数
+   * @param phase - 释放阶段，默认为 main
+   */
   function add(callback: DisposeCallback, phase: DisposePhase = "main"): void {
     if (flushed) {
       run(callback)
@@ -181,6 +118,14 @@ export function createDisposeBag(): DisposeBag {
     entries.push({ callback, phase })
   }
 
+  /**
+   * 注册可取消的释放回调。
+   *
+   * 回调会在 post 阶段执行，可通过返回的订阅对象取消。
+   *
+   * @param callback - 释放回调函数
+   * @returns 可取消的订阅对象
+   */
   function onDispose(callback: DisposeCallback): DisposeSubscription {
     if (flushed) {
       run(callback)
@@ -199,6 +144,12 @@ export function createDisposeBag(): DisposeBag {
     }
   }
 
+  /**
+   * 执行所有释放回调。
+   *
+   * 按 pre -> main -> post 顺序执行，同阶段内使用 LIFO 顺序。
+   * 所有错误会在全部执行完成后统一抛出。
+   */
   function flush(): void {
     if (flushed) return
 
@@ -241,9 +192,27 @@ export function createDisposeBag(): DisposeBag {
  *
  * 所有 bag 都会被尝试 flush；任意一个 bag 抛错不会阻断后续 bag。
  * 错误会在全部 flush 完成后统一抛出。
+ *
+ * @param bags - 要组合的 DisposeBag 列表
+ * @returns 包含 flush 方法的对象
+ *
+ * @example
+ * ```ts
+ * const bag1 = createDisposeBag()
+ * const bag2 = createDisposeBag()
+ * const combined = combineBags(bag1, bag2)
+ *
+ * // 一次性释放所有 bag
+ * combined.flush()
+ * ```
  */
 export function combineBags(...bags: DisposeBag[]): { flush: () => void } {
   return {
+    /**
+     * 释放所有组合的 DisposeBag。
+     *
+     * 按顺序尝试释放每个 bag，收集所有错误后统一抛出。
+     */
     flush(): void {
       const errors: unknown[] = []
 
@@ -275,6 +244,22 @@ export function combineBags(...bags: DisposeBag[]): { flush: () => void } {
  *
  * 该工具用于测试和低层结构释放辅助。完整 RuntimeNode dispose 仍应优先调用
  * node.dispose()，因为节点自身还需要维护 parent/mounted/disposed 等状态。
+ *
+ * @param node - 树形节点，包含 disposeBag 和可选的 children
+ *
+ * @example
+ * ```ts
+ * const tree = {
+ *   disposeBag: createDisposeBag(),
+ *   children: [
+ *     { disposeBag: createDisposeBag() },
+ *     { disposeBag: createDisposeBag() },
+ *   ],
+ * }
+ *
+ * // 递归释放整棵树
+ * disposeSubtree(tree)
+ * ```
  */
 export function disposeSubtree(node: {
   disposeBag: DisposeBag
@@ -289,4 +274,7 @@ export function disposeSubtree(node: {
   node.disposeBag.flush()
 }
 
+/**
+ * 空操作函数。
+ */
 function noop(): void {}

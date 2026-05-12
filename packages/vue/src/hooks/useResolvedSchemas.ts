@@ -10,6 +10,8 @@
 import { onUnmounted, shallowRef } from "vue"
 import type { ShallowRef } from "vue"
 
+import { debounce } from "es-toolkit"
+
 import type { SchemxInstance, SchemxResolvedField, Values } from "@schemx/core"
 
 /**
@@ -26,13 +28,20 @@ import type { SchemxInstance, SchemxResolvedField, Values } from "@schemx/core"
 export function useResolvedSchemas<T extends Values = Values>(
   form: SchemxInstance<T>
 ): ShallowRef<SchemxResolvedField<T>[]> {
-  const { getResolvedSchemas } = form.getInternalHooks()
+  const { getResolvedSchemas, getRuntimeRevision } = form.getInternalHooks()
 
   const resolvedSchemas = shallowRef<SchemxResolvedField<T>[]>([
     ...getResolvedSchemas(),
   ]) as ShallowRef<SchemxResolvedField<T>[]>
 
+  const debounceGet = debounce(() => {
+    console.log("object")
+    resolvedSchemas.value = [...getResolvedSchemas()]
+  }, 16)
+
   const disposeResolvedSchemasEffect = form.effect(() => {
+    // getRuntimeRevision()
+    // debounceGet()
     resolvedSchemas.value = [...getResolvedSchemas()]
   })
 

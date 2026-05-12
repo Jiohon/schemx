@@ -10,7 +10,7 @@
  *
  * @remarks
  * 模拟 FormItem 中 watch([canVerified]) 的注册/注销 rules 生命周期，
- * 以及 resolveDynamicPropBatch 的异步 debounce 行为。
+ * 以及 resolveDependencieBatch 的异步 debounce 行为。
  */
 import { computed, defineComponent, h, nextTick, ref, watch } from "vue"
 
@@ -209,7 +209,7 @@ describe("useField 动态 visible 字段 error effect", () => {
     // 模拟 debounce 延迟后 visible 变为 true
     const resolvedVisible = (fieldRef as any).__resolvedVisible
 
-    // 使用 setTimeout 模拟 resolveDynamicPropBatch 的 16ms debounce
+    // 使用 setTimeout 模拟 resolveDependencieBatch 的 16ms debounce
     await new Promise<void>((resolve) => {
       setTimeout(() => {
         resolvedVisible.value = true
