@@ -7,9 +7,9 @@
  * @module core/runtime/identity
  */
 
-import { isDependencySchema, isGroupSchema } from "../utils"
+import { isDependencySchema, isGroupResolvedSchema } from "../utils"
 
-import type { RuntimeSchema, SchemxBaseField, Values } from "../types"
+import type { SchemxBaseField, SchemxField, Values } from "../types"
 
 /**
  * 为 owner path 下的 schema 生成稳定 runtime node key。
@@ -47,7 +47,7 @@ import type { RuntimeSchema, SchemxBaseField, Values } from "../types"
  * ```
  */
 export function getRuntimeNodeKey<T extends Values>(
-  schema: RuntimeSchema<T>,
+  schema: SchemxField<T>,
   ownerPath: string,
   index: number
 ): string {
@@ -62,7 +62,7 @@ export function getRuntimeNodeKey<T extends Values>(
   }
 
   // group 使用 label 作为身份标识。
-  if (isGroupSchema(schema)) {
+  if (isGroupResolvedSchema(schema)) {
     return `${ownerPath}/group:${schema.label}:${index}`
   }
 

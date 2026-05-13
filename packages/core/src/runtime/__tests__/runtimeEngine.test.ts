@@ -56,9 +56,9 @@ describe("Runtime", () => {
     await Promise.resolve()
     form.setFieldValue("type", "company")
 
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
 
-    expect(form.getSchemas().map((schema) => "name" in schema && schema.name)).toEqual([
+    expect(form.getInternalHooks().getResolvedSchemas().map((schema) => "name" in schema && schema.name)).toEqual([
       "type",
       "companyName",
     ])
@@ -123,15 +123,15 @@ describe("Runtime", () => {
     const form = createForm({ schemas })
 
     form.setFieldValue("level1", "on")
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
 
     form.setFieldValue("level2", "on")
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
 
     form.setFieldValue("level3", "on")
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
 
-    expect(form.getSchemas().map((schema) => "name" in schema && schema.name)).toEqual([
+    expect(form.getInternalHooks().getResolvedSchemas().map((schema) => "name" in schema && schema.name)).toEqual([
       "level1",
       "level2",
       "level3",
@@ -165,7 +165,7 @@ describe("Runtime", () => {
     })
 
     form.setFieldValue("type", "a")
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
 
     const callsBeforeDestroy = renderer.mock.calls.length
 
@@ -204,14 +204,14 @@ describe("Runtime", () => {
     })
 
     form.setFieldValue("type", "on")
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
 
     const invalidResult = await form.validate()
     expect(invalidResult.ok).toBe(false)
     expect(form.getFieldError("dynamicName")).toBeDefined()
 
     form.setFieldValue("type", "off")
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
 
     const validResult = await form.validate()
     expect(validResult.ok).toBe(true)
@@ -248,7 +248,7 @@ describe("Runtime", () => {
     })
 
     form.setFieldValue("deliveryMode", "pickup")
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
 
     expect(form.getFieldValue("pickupStore")).toBe("mixc")
 
@@ -284,7 +284,7 @@ describe("Runtime", () => {
 
     form.setFieldValue("pickupStore", "hubin")
     form.setFieldValue("deliveryMode", "pickup")
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
 
     expect(form.getFieldValue("pickupStore")).toBe("hubin")
 
@@ -317,9 +317,9 @@ describe("Runtime", () => {
       ],
     })
 
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
 
-    let city = form
+    let city = form.getInternalHooks()
       .getResolvedSchemas()
       .find((schema) => "name" in schema && schema.name === "city") as any
 
@@ -329,9 +329,9 @@ describe("Runtime", () => {
     expect(city.componentProps).toEqual({ clearable: false })
 
     form.setFieldValue("province", "guangdong")
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
 
-    city = form
+    city = form.getInternalHooks()
       .getResolvedSchemas()
       .find((schema) => "name" in schema && schema.name === "city") as any
 
@@ -366,7 +366,7 @@ describe("Runtime", () => {
       ],
     })
 
-    const name = form
+    const name = form.getInternalHooks()
       .getResolvedSchemas()
       .find((schema) => "name" in schema && schema.name === "name") as any
 
@@ -403,9 +403,9 @@ describe("Runtime", () => {
       ],
     })
 
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
 
-    let comment = form
+    let comment = form.getInternalHooks()
       .getResolvedSchemas()
       .find((schema) => "name" in schema && schema.name === "comment") as any
 
@@ -414,9 +414,9 @@ describe("Runtime", () => {
     expect(comment.rules).toBe("required")
 
     form.setFieldValue("locked", true)
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
 
-    comment = form
+    comment = form.getInternalHooks()
       .getResolvedSchemas()
       .find((schema) => "name" in schema && schema.name === "comment") as any
 
@@ -465,18 +465,18 @@ describe("Runtime", () => {
     const form = createForm({ schemas })
 
     form.setFieldValue("type", "a")
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
 
     expect(
-      form.getResolvedSchemas().map((schema) => "name" in schema && schema.name)
+      form.getInternalHooks().getResolvedSchemas().map((schema) => "name" in schema && schema.name)
     ).toEqual(["type", "fieldA"])
     expect(schemas).toHaveLength(2)
 
     form.setFieldValue("type", "b")
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
 
     expect(
-      form.getResolvedSchemas().map((schema) => "name" in schema && schema.name)
+      form.getInternalHooks().getResolvedSchemas().map((schema) => "name" in schema && schema.name)
     ).toEqual(["type", "fieldB"])
     expect(schemas).toHaveLength(2)
 
@@ -505,18 +505,18 @@ describe("Runtime", () => {
       ],
     })
 
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
     await expect(form.validate()).resolves.toMatchObject({ ok: true })
 
     form.setFieldValue("mode", "on")
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
 
     const invalidResult = await form.validate()
     expect(invalidResult.ok).toBe(false)
     expect(form.getFieldError("note")).toBeDefined()
 
     form.setFieldValue("mode", "off")
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
 
     await expect(form.validate()).resolves.toMatchObject({ ok: true })
     expect(form.getFieldError("note")).toBeUndefined()
@@ -545,18 +545,18 @@ describe("Runtime", () => {
       ],
     })
 
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
 
     await expect(form.validate()).resolves.toMatchObject({ ok: false })
     expect(form.getFieldError("content")).toBeDefined()
 
     form.setFieldValue("mode", "optional")
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
     await expect(form.validate()).resolves.toMatchObject({ ok: true })
     expect(form.getFieldError("content")).toBeUndefined()
 
     form.setFieldValue("mode", "required")
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
     await expect(form.validate()).resolves.toMatchObject({ ok: false })
     expect(form.getFieldError("content")).toBeDefined()
 
@@ -594,9 +594,9 @@ describe("Runtime", () => {
     await Promise.resolve()
     form.setFieldValue("mode", "fast")
 
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
 
-    const target = form
+    const target = form.getInternalHooks()
       .getResolvedSchemas()
       .find((schema) => "name" in schema && schema.name === "target") as any
 
@@ -631,10 +631,10 @@ describe("Runtime", () => {
     })
 
     form.setFieldValue("type", "a")
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
 
     form.setFieldValue("type", "b")
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
 
     const result = await form.validate()
 
@@ -676,10 +676,10 @@ describe("Runtime", () => {
     form.setFieldValue("type", "b")
     form.setFieldValue("type", "c")
 
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
 
     expect(renderer).toHaveBeenCalledTimes(1)
-    expect(form.getSchemas().map((schema) => "name" in schema && schema.name)).toEqual([
+    expect(form.getInternalHooks().getResolvedSchemas().map((schema) => "name" in schema && schema.name)).toEqual([
       "type",
       "field_c",
     ])
@@ -780,11 +780,11 @@ describe("Runtime", () => {
       ],
     })
 
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
 
     expect(observedParentCommitted).toContain(true)
     expect(
-      form.getResolvedSchemas().map((schema) => "name" in schema && schema.name)
+      form.getInternalHooks().getResolvedSchemas().map((schema) => "name" in schema && schema.name)
     ).toEqual(["type", "childTrigger", "nestedChild"])
 
     form.destroy()
@@ -824,7 +824,7 @@ describe("Runtime", () => {
     ])
 
     form.setFieldValue("type", "on")
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
 
     const dependencyNode = hooks.getRuntimeRoot()[1]
 
@@ -836,7 +836,7 @@ describe("Runtime", () => {
     form.destroy()
   })
 
-  it("keeps getSchemas as compatibility alias of getResolvedSchemas", async () => {
+  it("exposes resolved schemas through internal hooks", async () => {
     const form = createForm({
       schemas: [
         {
@@ -863,11 +863,10 @@ describe("Runtime", () => {
     })
 
     form.setFieldValue("type", "on")
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
 
-    expect(form.getResolvedSchemas()).toEqual(form.getSchemas())
     expect(
-      form.getResolvedSchemas().map((schema) => "name" in schema && schema.name)
+      form.getInternalHooks().getResolvedSchemas().map((schema) => "name" in schema && schema.name)
     ).toEqual(["type", "resolvedChild"])
 
     form.destroy()

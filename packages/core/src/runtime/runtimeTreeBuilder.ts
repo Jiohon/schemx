@@ -14,14 +14,19 @@ import { createDependenciesResolver } from "../engine/dependenciesEngine"
 import { createDependencyEngine } from "../engine/dependencyEngine"
 import { createFieldEngine } from "../engine/fieldEngine"
 import { createSignal } from "../reactivity"
-import { isBaseSchema, isDependencySchema, isGroupSchema } from "../utils"
+import {
+  isBaseSchema,
+  isDependencyRuntimeNode,
+  isDependencySchema,
+  isFieldRuntimeNode,
+  isGroupSchema,
+  normalizeSchemas,
+} from "../utils"
 
 import { createDisposeBag } from "./disposeBag"
 import { applyFieldProps, createFieldRuntime, resolveStaticProps } from "./fieldProps"
 import { getRuntimeNodeKey } from "./identity"
-import { normalizeSchemas } from "./normalize"
 import { type CompileNodeContext, reconcileChildren } from "./reconcile"
-import { staticValidateSchemas } from "./staticValidate"
 
 import type { FormRuntimeContext } from "./context"
 import type { RuntimeScheduler } from "../scheduler"
@@ -30,7 +35,6 @@ import type {
   FieldRuntimeNode,
   GroupRuntimeNode,
   RuntimeNode,
-  RuntimeSchema,
   SchemxBaseField,
   SchemxDependencyField,
   SchemxField,
@@ -146,7 +150,6 @@ export class RuntimeTreeBuilder<T extends Values = Values> {
     ownerPath: string = "root"
   ): RuntimeNode<T>[] {
     const normalized = normalizeSchemas(schemas)
-    staticValidateSchemas(normalized)
 
     return reconcileChildren(previous, normalized, parent, ownerPath, {
       compileNode: this.compileNode,
@@ -173,14 +176,14 @@ export class RuntimeTreeBuilder<T extends Values = Values> {
    * 根据类型判断创建新节点还是复用旧节点。
    */
   private readonly compileNode = (
-    schema: RuntimeSchema<T>,
+    schema: SchemxField<T>,
     context: CompileNodeContext<T>,
     existing?: RuntimeNode<T>
   ): RuntimeNode<T> => {
     const key = getRuntimeNodeKey(schema, context.ownerPath, context.index)
 
     // 类型和 key 都匹配时复用节点，只更新 schema/parent，保留节点上的运行时状态。
-    if (existing && existing.type === "field" && isBaseSchema(schema)) {
+    if (existing && isFieldRuntimeNode(existing) && isBaseSchema(schema)) {
       this.updateFieldNode(existing, schema, context.parent)
 
       return existing
@@ -192,7 +195,7 @@ export class RuntimeTreeBuilder<T extends Values = Values> {
       return existing
     }
 
-    if (existing && existing.type === "dependency" && isDependencySchema(schema)) {
+    if (existing && isDependencyRuntimeNode(existing) && isDependencySchema(schema)) {
       this.updateDependencyNode(existing, schema, context.parent)
 
       return existing

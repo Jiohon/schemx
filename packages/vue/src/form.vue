@@ -9,7 +9,6 @@
 <script lang="ts" setup generic="T extends Values = Values">
   import { computed, type CSSProperties, useAttrs } from "vue"
 
-  import { isBaseSchema } from "@schemx/core"
   import { omit } from "es-toolkit"
 
   import type { SchemxFormProps } from "@/types"
@@ -86,10 +85,9 @@
         rendererRegistry: props.rendererRegistry,
         defaultRendererType: props.defaultRendererType,
         rulesRegistry: props.rulesRegistry,
-        runtimeFieldDefaults: {
-          readonly: props.readonly,
-          disabled: props.disabled,
-        },
+
+        readonly: props.readonly,
+        disabled: props.disabled,
 
         onFinish: async (values) => {
           props.onFinish?.(values)
@@ -116,24 +114,6 @@
     "--schemx-input-align": (attrs.align as string) ?? "right",
   }))
 
-  /**
-   * 生成 schema projection 的渲染 key。
-   *
-   * resolved schemas 中 dependency 已被 renderer 结果替换，因此这里以
-   * schema.key/name 为主，index 仅作为非字段节点的 fallback。
-   */
-  const getSchemaKey = (schema: SchemxResolvedField<T>, index: number): string => {
-    const schemaKey = schema.key
-
-    if (schemaKey) return schemaKey
-
-    if (isBaseSchema(schema)) {
-      return `${schema.componentType}:${String(schema.name)}`
-    }
-
-    return `${schema.componentType}:${index}`
-  }
-
   defineExpose({
     ...form,
   })
@@ -142,8 +122,8 @@
 <template>
   <div :class="['schemx', props.class]" :style="formStyle">
     <FormItem
-      v-for="(schema, index) in resolvedSchemas"
-      :key="getSchemaKey(schema, index)"
+      v-for="schema in resolvedSchemas"
+      :key="schema.key"
       :schema="schema as SchemxResolvedField"
     >
       <template v-for="(_, slotName) in $slots" #[slotName]="slotProps">

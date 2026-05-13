@@ -1,9 +1,9 @@
 /**
- * Schema 过滤工具
+ * Schema 标准化工具
  *
- * 过滤掉必填项未填的 schema 配置，并在控制台输出警告信息。
+ * 标准化 schema 配置，移除必填项未填的配置，并在控制台输出警告信息。
  *
- * @module schemas/filterSchemas
+ * @module utils/normalize
  */
 
 import { isBaseSchema, isDependencySchema, isGroupSchema } from "./schema"
@@ -134,17 +134,18 @@ function buildWarnMessage<T extends Values>(
  *
  * @example
  * ```ts
- * const cleaned = filterSchemas([
+ * const cleaned = normalizeSchemas([
  *   { name: 'username', label: '用户名', componentType: 'input' },
  *   { name: 'email', label: '', componentType: 'input' },  // label 为空，被过滤
  *   { componentType: 'group', label: '分组', children: [] },
  * ])
  * ```
  */
-export function filterSchemas<T extends Values = Values>(
+export function normalizeSchemas<T extends Values = Values>(
   schemas: SchemxField<T>[]
 ): SchemxField<T>[] {
   const result: SchemxField<T>[] = []
+  const missings: string[] = []
 
   for (let i = 0; i < schemas.length; i++) {
     const schema = schemas[i]
@@ -154,20 +155,20 @@ export function filterSchemas<T extends Values = Values>(
       missing = getGroupFieldMissing(schema)
 
       if (missing.length > 0) {
-        console.warn(buildWarnMessage(i, schema, missing))
+        missings.push(buildWarnMessage(i, schema, missing))
         continue
       }
 
       // 递归过滤 children
       result.push({
         ...schema,
-        children: filterSchemas<T>(schema.children as SchemxField<T>[]),
+        children: normalizeSchemas<T>(schema.children as SchemxField<T>[]),
       })
     } else if (isDependencySchema(schema)) {
       missing = getDependencyFieldMissing(schema)
 
       if (missing.length > 0) {
-        console.warn(buildWarnMessage(i, schema, missing))
+        missings.push(buildWarnMessage(i, schema, missing))
         continue
       }
 
@@ -176,13 +177,15 @@ export function filterSchemas<T extends Values = Values>(
       missing = getBaseFieldMissing(schema)
 
       if (missing.length > 0) {
-        console.warn(buildWarnMessage(i, schema, missing))
+        missings.push(buildWarnMessage(i, schema, missing))
         continue
       }
 
       result.push(schema)
     }
   }
+
+  console.warn(missings.join("\n"))
 
   return result
 }

@@ -10,12 +10,11 @@
 import { defineComponent, PropType, ref } from "vue"
 import type { SetupContext, VNodeChild } from "vue"
 
-import { isBaseSchema } from "@schemx/core"
 import classnames from "classnames"
 
 import FormItem from "../FormItem"
 
-import type { SchemxResolvedField, SchemxResolvedGroupField, Values } from "@schemx/core"
+import type { SchemxGroupField, SchemxResolvedField, Values } from "@schemx/core"
 
 /**
  * FormGroup Props
@@ -23,7 +22,7 @@ import type { SchemxResolvedField, SchemxResolvedGroupField, Values } from "@sch
  * @typeParam T - 表单值类型
  */
 export interface SchemxGroupProps<T extends Values = Values> {
-  schema: SchemxResolvedGroupField<T>
+  schema: SchemxGroupField<T>
 }
 
 const FormGroup = defineComponent(
@@ -36,21 +35,6 @@ const FormGroup = defineComponent(
       if (schema.collapsible) {
         collapsed.value = !collapsed.value
       }
-    }
-
-    const getChildKey = (
-      schema: SchemxResolvedGroupField<T>["children"][number],
-      index: number
-    ): string => {
-      const schemaKey = schema.key
-
-      if (schemaKey) return schemaKey
-
-      if (isBaseSchema(schema)) {
-        return `${schema.name}-${index}`
-      }
-
-      return `group-${index}`
     }
 
     return (): VNodeChild => {
@@ -93,10 +77,10 @@ const FormGroup = defineComponent(
           )}
           {!collapsed.value && (
             <div class="schemx-group__body">
-              {schema.children.map((schema, index) => {
+              {schema.children.map((schema) => {
                 return (
                   <FormItem
-                    key={getChildKey(schema, index)}
+                    key={schema.key}
                     schema={schema as SchemxResolvedField}
                     v-slots={slots}
                   />
@@ -113,7 +97,7 @@ const FormGroup = defineComponent(
 
     props: {
       schema: {
-        type: Object as PropType<SchemxResolvedGroupField>,
+        type: Object as PropType<SchemxGroupField>,
         required: true,
       },
     },

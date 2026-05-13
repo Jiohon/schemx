@@ -14,12 +14,7 @@ import { readFieldProps } from "../runtime"
 
 import { normalizeNamePath } from "./path"
 
-import type {
-  NamePath,
-  SchemxResolvedBaseField,
-  SchemxResolvedField,
-  Values,
-} from "../types"
+import type { NamePath, SchemxBaseField, SchemxResolvedField, Values } from "../types"
 import type { FieldRuntimeNode, RuntimeNode } from "../types"
 
 /**
@@ -29,7 +24,7 @@ import type { FieldRuntimeNode, RuntimeNode } from "../types"
  */
 export function createResolvedFieldSchema<T extends Values>(
   node: FieldRuntimeNode<T>
-): SchemxResolvedBaseField<T> {
+): SchemxBaseField<T> {
   return {
     ...node.schema,
     ...readFieldProps(node.fieldRuntime),
@@ -75,8 +70,8 @@ export function createResolvedSchemaList<T extends Values>(
  */
 export function buildRuntimeFieldSchemaIndex<T extends Values>(
   nodes: RuntimeNode<T>[]
-): Map<string, SchemxResolvedBaseField<T>> {
-  const result = new Map<string, SchemxResolvedBaseField<T>>()
+): Map<string, SchemxBaseField<T>> {
+  const result = new Map<string, SchemxBaseField<T>>()
   collectFieldSchemas(nodes, result)
 
   return result
@@ -84,7 +79,7 @@ export function buildRuntimeFieldSchemaIndex<T extends Values>(
 
 function collectFieldSchemas<T extends Values>(
   nodes: RuntimeNode<T>[],
-  result: Map<string, SchemxResolvedBaseField<T>>
+  result: Map<string, SchemxBaseField<T>>
 ): void {
   for (const node of nodes) {
     if (node.type === "field") {

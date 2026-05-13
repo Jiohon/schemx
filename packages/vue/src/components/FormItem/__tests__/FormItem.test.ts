@@ -63,11 +63,11 @@ describe("FormItem 集成测试", () => {
       schemas: [schema as any],
     })
 
-    form.registerRenderer("input", InputRenderer)
-    await form.waitForDependencies()
+    form.getInternalHooks().registerRenderer("input", InputRenderer)
+    await form.getInternalHooks().waitForDependencies()
 
     const wrapper = mount(FormItem, {
-      props: { schema: form.getResolvedSchemas()[0] },
+      props: { schema: form.getInternalHooks().getResolvedSchemas()[0] },
       global: {
         provide: {
           [FORM_INSTANCE_KEY]: form,
@@ -83,8 +83,8 @@ describe("FormItem 集成测试", () => {
 
     // 将 province 设为空字符串
     form.setFieldValue("province", "")
-    await form.waitForDependencies()
-    await wrapper.setProps({ schema: form.getResolvedSchemas()[0] })
+    await form.getInternalHooks().waitForDependencies()
+    await wrapper.setProps({ schema: form.getInternalHooks().getResolvedSchemas()[0] })
     await nextTick()
 
     // province 为空 → visible 应为 false → 组件不应渲染
@@ -99,7 +99,7 @@ describe("FormItem 集成测试", () => {
       initialValues: { name: "" },
     })
 
-    form.registerRenderer("input", InputRenderer)
+    form.getInternalHooks().registerRenderer("input", InputRenderer)
 
     const schema: SchemxBaseField = {
       name: "name",
@@ -140,10 +140,10 @@ describe("FormItem 集成测试", () => {
       schemas: [schema as any],
     })
 
-    form.registerRenderer("input", InputRenderer)
+    form.getInternalHooks().registerRenderer("input", InputRenderer)
 
     const wrapper = mount(FormItem, {
-      props: { schema: form.getResolvedSchemas()[0] },
+      props: { schema: form.getInternalHooks().getResolvedSchemas()[0] },
       global: {
         provide: {
           [FORM_INSTANCE_KEY]: form,

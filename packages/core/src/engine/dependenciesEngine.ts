@@ -176,7 +176,13 @@ async function resolveFieldProps<T extends Values>(
 
     if (condition == null) return defaults[key]
 
-    return resolvePropertyCondition(options.form, condition, values, defaults[key])
+    return resolvePropertyCondition(
+      options.form,
+      condition,
+      values,
+      defaults[key],
+      key === "rules"
+    )
   })
 
   const [, results] = await Promise.all([triggerTask, Promise.all(propsTask)])
@@ -265,8 +271,8 @@ function isStale<T extends Values>(
 /**
  * 执行单个动态属性条件函数。
  *
- * 条件函数返回 null/undefined 或抛错时回退默认值，保证字段已解析属性
- * 始终有可用值，避免框架层收到半解析状态。
+ * 条件函数返回 null/undefined 时默认回退静态值；`rules` 可保留空结果，
+ * 用于显式清空校验规则。抛错时统一回退默认值。
  *
  * @typeParam T - 表单值类型
  * @typeParam R - 属性值类型
@@ -281,17 +287,18 @@ async function resolvePropertyCondition<T extends Values, R>(
   form: SchemxInstance<T>,
   condition: SchemxConditionFn<T, R>,
   formValues: T,
-  defaultValue: R
+  defaultValue: R,
+  preserveEmptyResult = false
 ): Promise<R> {
   try {
     const result = await condition(formValues, form)
 
-    // null/undefined 视为未指定，回退默认值。
-    if (result == null) {
+    // null/undefined 默认视为未指定；rules 可显式返回空值来清空校验。
+    if (result == null && !preserveEmptyResult) {
       return defaultValue
     }
 
-    return result
+    return result as R
   } catch (error) {
     console.error("[schemx] 解析动态属性时发生错误:", error)
 

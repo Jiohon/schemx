@@ -91,7 +91,7 @@ const safeTypeStr = fc
 describe("渲染器注册中心下沉 属性测试", () => {
   // **Feature: renderer-registry-into-createform, Property 1: 自定义 RendererRegistry 传递**
   // **Validates: Requirements 1.1, 5.2**
-  it("Property 1: 传入自定义 RendererRegistry 后，form.getRenderer 对每个已注册类型返回正确的渲染器", () => {
+  it("Property 1: 传入自定义 RendererRegistry 后，internal hooks 对每个已注册类型返回正确的渲染器", () => {
     fc.assert(
       fc.property(
         fc.uniqueArray(safeTypeStr, { minLength: 1, maxLength: 10 }),

@@ -14,39 +14,38 @@
  * @module core/types/runtime
  */
 
-import type { ReactiveSignal } from "../reactivity"
-import type { DependencyRuntimeNode } from "./dependency"
+import type { SchemxDependenciesStaticProps } from "./dependencies"
 import type { DisposeBag, DisposeCallback, DisposeSubscription } from "./dispose"
-import type { FieldRuntimeNode } from "./field"
 import type { Values } from "./form"
-import type { SchemxField, SchemxGroupField } from "./schema"
+import type { ReactiveSignal } from "../reactivity"
+import type {
+  SchemxComponentProps,
+  SchemxDependencyField,
+  SchemxGroupField,
+} from "./schema"
+import type { SchemxBaseField } from "./schema"
 
 // ---------------------------------------------------------------------------
-// Re-exports（子域类型统一从 runtime.ts 可获取）
+// 字段已解析属性
 // ---------------------------------------------------------------------------
 
-// export type {
-//   DisposeBag,
-//   DisposeCallback,
-//   DisposePhase,
-//   DisposeSubscription,
-// } from "./dispose"
+/**
+ * 字段运行时默认属性。
+ *
+ * 合并策略：
+ * - `readonly` / `disabled`
+ *   default props 作为初始值，schema 静态配置优先级更高，dependencies engine 结果最终覆盖
+ */
+export type RuntimeFieldDefaultProps<T extends Values = Values> = Partial<
+  Pick<SchemxDependenciesStaticProps<T>, "readonly" | "disabled">
+>
 
-// export type {
-//   FieldRuntime,
-//   FieldRuntimeNode,
-//   RuntimeFieldDefaultProps,
-//   RuntimeFieldDefaults,
-//   SchemxDependenciesStaticProps,
-// } from "./field"
-// export { isFieldRuntimeNode } from "./field"
-
-// export type {
-//   DependencyRuntime,
-//   DependencyRuntimeNode,
-//   SubtreeReplacement,
-// } from "./dependency"
-// export { isDependencyRuntimeNode } from "./dependency"
+/**
+ * 字段运行时默认属性来源。
+ */
+export type RuntimeFieldDefaults<T extends Values = Values> =
+  | RuntimeFieldDefaultProps<T>
+  | ((schema: SchemxBaseField<T>) => RuntimeFieldDefaultProps<T>)
 
 // ---------------------------------------------------------------------------
 // 基础枚举与工具类型
@@ -241,6 +240,100 @@ export interface RuntimeNodeBase<T extends Values = Values> {
 }
 
 // ---------------------------------------------------------------------------
+// FieldRuntime
+// ---------------------------------------------------------------------------
+
+/**
+ * 字段运行时状态容器。
+ *
+ * @typeParam T - 表单值类型
+ */
+export interface FieldRuntime<T extends Values = Values> {
+  /**
+   * 字段是否可见。
+   *
+   * 使用独立 computation 容器，支持 async visible 计算防竞态。
+   *
+   * ## visible=false 时的值语义
+   *
+   * 默认行为（可通过 schema 配置覆盖）：
+   * - `keepValueWhenHidden: false`：字段隐藏时其值从 form data 中移除，submit 时不携带
+   * - `validateWhenHidden: false`：字段隐藏时跳过校验
+   */
+  visible: ReactiveComputation<boolean>
+
+  /**
+   * 字段是否只读。
+   */
+  readonly: ReactiveComputation<boolean>
+
+  /**
+   * 字段是否禁用。
+   */
+  disabled: ReactiveComputation<boolean>
+
+  /**
+   * 字段是否必填。
+   */
+  required: ReactiveComputation<boolean>
+
+  /**
+   * 字段占位符。
+   *
+   * 通常为纯同步计算，直接使用 signal。
+   * 若业务场景需要 async placeholder（如 i18n 异步加载），
+   * 可将此字段升级为 ReactiveComputation<string>。
+   */
+  placeholder: ReactiveSignal<string>
+
+  /**
+   * 组件透传属性。
+   *
+   * componentProps 是最常见的 async dependencies 来源（如远程加载 options），
+   * 使用独立 computation 容器防竞态。
+   */
+  componentProps: ReactiveComputation<SchemxComponentProps<T>>
+
+  /**
+   * 字段校验规则。
+   *
+   * rules 支持动态计算（如根据其他字段值切换校验规则），使用独立 computation 容器。
+   */
+  rules: ReactiveComputation<SchemxBaseField<T>["rules"] | undefined>
+}
+
+// ---------------------------------------------------------------------------
+// FieldRuntimeNode
+// ---------------------------------------------------------------------------
+
+/**
+ * 基础字段节点。
+ *
+ * FieldRuntimeNode 负责承载：
+ *
+ * - 字段节点身份
+ * - 字段 schema
+ * - 字段 runtime state
+ *
+ * 它对应最终可渲染的表单字段。
+ */
+export interface FieldRuntimeNode<T extends Values = Values> extends RuntimeNodeBase<T> {
+  type: "field"
+
+  /**
+   * 字段原始 schema。
+   *
+   * schema 应视为 immutable input，不应在 runtime 中直接修改。
+   */
+  schema: SchemxBaseField<T>
+
+  /**
+   * 字段运行时状态。
+   */
+  fieldRuntime: FieldRuntime<T>
+}
+
+// ---------------------------------------------------------------------------
 // GroupRuntimeNode
 // ---------------------------------------------------------------------------
 
@@ -270,6 +363,116 @@ export interface GroupRuntimeNode<T extends Values = Values> extends RuntimeNode
 }
 
 // ---------------------------------------------------------------------------
+// DependencyRuntime
+// ---------------------------------------------------------------------------
+
+/**
+ * Dependency 运行时状态容器。
+ *
+ * @typeParam T - 表单值类型
+ */
+export interface DependencyRuntime<T extends Values = Values> {
+  /**
+   * async renderer 版本号。
+   *
+   * 每次 `run()` 开始时自增，async renderer 完成时比对版本号，
+   * 不一致则丢弃结果（配合 AbortController 使用）。
+   */
+  version: number
+
+  /**
+   * 当前飞行中的 AbortController。
+   *
+   * 每次新 `run()` 开始时，先 abort 上一个 controller，
+   * 再创建新的 AbortController 传入 renderer。
+   * 用于中断 fetch 类副作用，避免竞态写入。
+   */
+  abortController: AbortController | null
+
+  /**
+   * renderer 是否执行中。
+   */
+  loading: ReactiveSignal<boolean>
+
+  /**
+   * renderer 抛出的最近一次错误。
+   *
+   * null 表示无错误。
+   * 使用 `Error` 类型而非 `unknown`，鼓励调用方在 renderer 内捕获并规范化错误。
+   * 若需保留原始 throw 值，可使用 `{ cause: unknown }` 包装后再赋值。
+   */
+  error: ReactiveSignal<Error | null>
+
+  /**
+   * 响应式子树信号。
+   *
+   * 每次 subtree replace 完成（新 subtree commit）后更新。
+   * 供 Renderer Adapter 订阅 subtree 变化并重新渲染。
+   *
+   * 注意：此 signal 更新时，旧 subtree 尚未 dispose（dispose 在 signal 更新之后执行）。
+   * Renderer Adapter 不应在此 signal 变化时同步访问旧 subtree 节点。
+   */
+  subtree: ReactiveSignal<RuntimeNode<T>[]>
+
+  /**
+   * 执行 dependency renderer，增量编译返回的 subtree，并按生命周期契约完成替换。
+   *
+   * 注意：
+   *
+   * - `run` 不应由外部业务直接调用
+   * - `run` 由 dependency engine / scheduler 调度
+   * - `run` 内部负责：
+   *   1. 自增 version，创建新 AbortController，abort 上一个
+   *   2. 执行 renderer（传入 AbortSignal）
+   *   3. 版本校验（结果回来后比对 version，过期则丢弃）
+   *   4. compiler 编译新 subtree
+   *   5. 新 subtree 内 field 初始化
+   *   6. 嵌套 dependency queueJob（在新 subtree commit 之后）
+   *   7. commit subtree signal
+   *   8. dispose 旧 subtree（先子后父）
+   */
+  run: () => Promise<void>
+}
+
+// ---------------------------------------------------------------------------
+// DependencyRuntimeNode
+// ---------------------------------------------------------------------------
+
+/**
+ * 依赖节点。
+ *
+ * DependencyRuntimeNode 是 runtime tree 中的一个结构节点。
+ *
+ * 它自己不对应 UI 字段，而是一个动态 subtree container。
+ * `children` 反映当前已 commit 到 runtime graph 的子树快照，
+ * 与 `dependencyRuntime.subtree` signal 保持同步。
+ */
+export interface DependencyRuntimeNode<
+  T extends Values = Values,
+> extends RuntimeNodeBase<T> {
+  type: "dependency"
+
+  /**
+   * dependency 原始 schema。
+   */
+  schema: SchemxDependencyField<T>
+
+  /**
+   * 当前已提交到 runtime graph 的 dependency 子树。
+   *
+   * 此字段是 `dependencyRuntime.subtree.value` 的同步镜像，
+   * 供需要同步遍历 runtime tree 的逻辑（如 form.getValues、全量 validate）使用，
+   * 无需订阅 signal。
+   */
+  children: RuntimeNode<T>[]
+
+  /**
+   * dependency 执行状态。
+   */
+  dependencyRuntime: DependencyRuntime<T>
+}
+
+// ---------------------------------------------------------------------------
 // 联合类型
 // ---------------------------------------------------------------------------
 
@@ -280,30 +483,3 @@ export type RuntimeNode<T extends Values = Values> =
   | FieldRuntimeNode<T>
   | GroupRuntimeNode<T>
   | DependencyRuntimeNode<T>
-
-/**
- * 编译器可接收的 schema 类型。
- */
-export type RuntimeSchema<T extends Values = Values> = SchemxField<T>
-
-// ---------------------------------------------------------------------------
-// 类型守卫
-// ---------------------------------------------------------------------------
-
-/**
- * 判断节点是否为分组节点。
- */
-export function isGroupRuntimeNode<T extends Values = Values>(
-  node: RuntimeNode<T>
-): node is GroupRuntimeNode<T> {
-  return node.type === "group"
-}
-
-/**
- * 判断节点是否含有静态 children（group 或 dependency）。
- */
-export function hasChildren<T extends Values = Values>(
-  node: RuntimeNode<T>
-): node is GroupRuntimeNode<T> | DependencyRuntimeNode<T> {
-  return node.type === "group" || node.type === "dependency"
-}

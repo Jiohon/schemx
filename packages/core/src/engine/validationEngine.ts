@@ -11,7 +11,7 @@ import { readFieldProps } from "../runtime"
 import { setByPath } from "../utils"
 
 import type { ValidationEngineOptions } from "./types"
-import type { NamePath, SchemxBaseField, SchemxResolvedBaseField, Values } from "../types"
+import type { NamePath, SchemxBaseField, Values } from "../types"
 import type { FieldRuntimeNode } from "../types"
 
 /**
@@ -68,7 +68,7 @@ export function createValidationEngine<T extends Values = Values>(
    * @param defaultMessage - 默认错误提示文案
    */
   const registerSchemaRules = (
-    schema: SchemxBaseField<T> | SchemxResolvedBaseField<T>,
+    schema: SchemxBaseField<T> | SchemxBaseField<T>,
     defaultMessage?: string
   ): void => {
     const { name } = schema
@@ -118,9 +118,7 @@ export function createValidationEngine<T extends Values = Values>(
    * @param node - 字段运行时节点
    * @returns 已解析的字段 schema
    */
-  const getRuntimeFieldSchema = (
-    node: FieldRuntimeNode<T>
-  ): SchemxResolvedBaseField<T> => ({
+  const getRuntimeFieldSchema = (node: FieldRuntimeNode<T>): SchemxBaseField<T> => ({
     ...node.schema,
     ...readFieldProps(node.fieldRuntime),
     key: node.key,

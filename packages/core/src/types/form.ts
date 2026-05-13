@@ -583,7 +583,7 @@ export interface SchemxInternalHooks<T extends Values = Values> {
    *
    * @example
    * ```typescript
-   * const renderer = form.getRenderer('input')
+   * const renderer = form.getInternalHooks().getRenderer('input')
    * if (renderer) {
    *   // 使用渲染器组件
    * }
@@ -602,7 +602,7 @@ export interface SchemxInternalHooks<T extends Values = Values> {
    *
    * @example
    * ```typescript
-   * form.registerRenderer('input', InputComponent)
+   * form.getInternalHooks().registerRenderer('input', InputComponent)
    * ```
    */
   registerRenderer: (type: SchemxRendererKey<T>, renderer: unknown) => void
@@ -615,7 +615,7 @@ export interface SchemxInternalHooks<T extends Values = Values> {
    *
    * @example
    * ```typescript
-   * if (form.hasRenderer('input')) {
+   * if (form.getInternalHooks().hasRenderer('input')) {
    *   // 渲染器已注册
    * }
    * ```
@@ -633,7 +633,7 @@ export interface SchemxInternalHooks<T extends Values = Values> {
    *
    * @example
    * ```typescript
-   * const entry = form.getRule('phone')
+   * const entry = form.getInternalHooks().getRule('phone')
    * ```
    */
   getRule: (name: string) => RuleEntry<T> | undefined
@@ -649,7 +649,7 @@ export interface SchemxInternalHooks<T extends Values = Values> {
    *
    * @example
    * ```typescript
-   * form.registerRule('phone', phoneRule)
+   * form.getInternalHooks().registerRule('phone', phoneRule)
    * ```
    */
   registerRule: (name: string, rule: RuleEntry<T>) => void
@@ -664,7 +664,7 @@ export interface SchemxInternalHooks<T extends Values = Values> {
    *
    * @example
    * ```typescript
-   * form.hasRule('phone') // => true
+   * form.getInternalHooks().hasRule('phone') // => true
    * ```
    */
   hasRule: (name: string) => boolean

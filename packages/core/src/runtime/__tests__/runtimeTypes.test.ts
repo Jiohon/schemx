@@ -4,10 +4,6 @@ import { createSignal } from "../../reactivity"
 import {
   DependencyRuntimeNode,
   FieldRuntimeNode,
-  hasChildren,
-  isDependencyRuntimeNode,
-  isFieldRuntimeNode,
-  isGroupRuntimeNode,
   ReactiveComputation,
   RuntimeNode,
   SchemxBaseField,
@@ -16,6 +12,11 @@ import {
   SchemxGroupField,
   Values,
 } from "../../types"
+import {
+  isDependencyRuntimeNode,
+  isFieldRuntimeNode,
+  isGroupRuntimeNode,
+} from "../../utils"
 import { createDisposeBag } from "../disposeBag"
 
 function computation<T>(value: T): ReactiveComputation<T> {
@@ -96,8 +97,8 @@ describe("runtime node type guards", () => {
 
     expect(isGroupRuntimeNode(group)).toBe(true)
     expect(isDependencyRuntimeNode(dependency)).toBe(true)
-    expect(hasChildren(group)).toBe(true)
-    expect(hasChildren(dependency)).toBe(true)
+    expect(group.type === "group" || group.type === "dependency").toBe(true)
+    expect(dependency.type === "group" || dependency.type === "dependency").toBe(true)
 
     if (isDependencyRuntimeNode(dependency)) {
       expectTypeOf(dependency).toEqualTypeOf<DependencyRuntimeNode>()

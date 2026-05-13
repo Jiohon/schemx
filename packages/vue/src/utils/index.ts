@@ -23,6 +23,3 @@ export {
 export { resolveSlot, extractChildSlots } from "./slot"
 
 export { diff } from "./diff"
-
-/** 依赖对象解析工具 */
-export { resolvePropertyCondition } from "./dependency"

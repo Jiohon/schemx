@@ -40,7 +40,7 @@ describe("dependencyEngine", () => {
       ],
     })
 
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
 
     form.setFieldValue("mode", "slow")
     await Promise.resolve()
@@ -50,14 +50,14 @@ describe("dependencyEngine", () => {
     expect(slowSignal?.aborted).toBe(false)
 
     form.setFieldValue("mode", "fast")
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
 
     expect(slowSignal?.aborted).toBe(true)
     expect(
-      form.getResolvedSchemas().some((schema) => "name" in schema && schema.name === "fastField")
+      form.getInternalHooks().getResolvedSchemas().some((schema) => "name" in schema && schema.name === "fastField")
     ).toBe(true)
     expect(
-      form.getResolvedSchemas().some((schema) => "name" in schema && schema.name === "slowField")
+      form.getInternalHooks().getResolvedSchemas().some((schema) => "name" in schema && schema.name === "slowField")
     ).toBe(false)
 
     form.destroy()
@@ -100,20 +100,20 @@ describe("dependencyEngine", () => {
       ],
     })
 
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
 
     form.setFieldValue("mode", "slow")
     await Promise.resolve()
     form.setFieldValue("mode", "fast")
 
-    await expect(form.waitForDependencies()).resolves.toBe(true)
+    await expect(form.getInternalHooks().waitForDependencies()).resolves.toBe(true)
     await sleep(50)
 
     expect(
-      form.getResolvedSchemas().some((schema) => "name" in schema && schema.name === "fastField")
+      form.getInternalHooks().getResolvedSchemas().some((schema) => "name" in schema && schema.name === "fastField")
     ).toBe(true)
     expect(
-      form.getResolvedSchemas().some((schema) => "name" in schema && schema.name === "slowField")
+      form.getInternalHooks().getResolvedSchemas().some((schema) => "name" in schema && schema.name === "slowField")
     ).toBe(false)
 
     form.destroy()

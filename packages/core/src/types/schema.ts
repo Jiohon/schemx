@@ -7,10 +7,7 @@
  * @module types/schema
  */
 
-import type {
-  SchemxDependencies,
-  SchemxDependencyRendererContext,
-} from "./dependencies"
+import type { SchemxDependencies, SchemxDependencyRendererContext } from "./dependencies"
 import type { Dynamic } from "./dynamic"
 import type { NamePath, SchemxInstance, ValidationTrigger, Value, Values } from "./form"
 import type { SchemxRendererDefinition } from "./renderer"
@@ -90,6 +87,13 @@ export interface SchemxBase<
   T extends Values = Values,
   K extends keyof SchemxRendererDefinition<T> = keyof SchemxRendererDefinition<T>,
 > extends SchemxFieldDefinition {
+  /**
+   * 唯一标识字段配置的键，供框架层使用，业务方无需设置
+   *
+   * Runtime 会为可渲染 schema 投影补充稳定 `key`，供框架层作为 vnode key
+   * 使用。Raw Schema 不包含该字段，也不会被 runtime 原地修改。
+   */
+  key?: string
   /**
    * 字段名称
    *
@@ -284,6 +288,13 @@ export interface SchemxGroupField<
   T extends Values = Values,
 > extends SchemxGroupFieldDefinition {
   /**
+   * 唯一标识字段配置的键，供框架层使用，业务方无需设置
+   *
+   * Runtime 会为可渲染 schema 投影补充稳定 `key`，供框架层作为 vnode key
+   * 使用。Raw Schema 不包含该字段，也不会被 runtime 原地修改。
+   */
+  key?: string
+  /**
    * 分组标签
    */
   label: string
@@ -314,6 +325,13 @@ export interface SchemxGroupField<
  */
 export interface SchemxDependencyField<T extends Values = Values> {
   /**
+   * 唯一标识字段配置的键，供框架层使用，业务方无需设置
+   *
+   * Runtime 会为可渲染 schema 投影补充稳定 `key`，供框架层作为 vnode key
+   * 使用。Raw Schema 不包含该字段，也不会被 runtime 原地修改。
+   */
+  key?: string
+  /**
    * 组件类型（固定为 dependency）
    */
   componentType: "dependency"
@@ -343,35 +361,36 @@ export type SchemxField<T extends Values = Values> =
   | SchemxGroupField<T>
   | SchemxDependencyField<T>
 
-/**
- * Runtime 解析后的字段公共扩展。
- *
- * Runtime 会为可渲染 schema 投影补充稳定 `key`，供框架层作为 vnode key
- * 使用。Raw Schema 不包含该字段，也不会被 runtime 原地修改。
- */
-type ExpandedSchemxField<F> = F & { key: string }
+// /**
+//  * Runtime 解析后的字段公共扩展。
+//  *
+//  * Runtime 会为可渲染 schema 投影补充稳定 `key`，供框架层作为 vnode key
+//  * 使用。Raw Schema 不包含该字段，也不会被 runtime 原地修改。
+//  */
+// type ExpandedSchemxField<F> = F & { key: string }
 
-/**
- * Runtime 解析后的基础字段类型。
- *
- * Dependency 已在 runtime tree 中展开，组件内部只消费可直接渲染的
- * base/group resolved schema。
- */
-export type SchemxResolvedBaseField<T extends Values = Values> =
-  ExpandedSchemxField<SchemxBaseField<T>>
+// /**
+//  * Runtime 解析后的基础字段类型。
+//  *
+//  * Dependency 已在 runtime tree 中展开，组件内部只消费可直接渲染的
+//  * base/group resolved schema。
+//  */
+// export type SchemxBaseField<T extends Values = Values> = ExpandedSchemxField<
+//   SchemxBaseField<T>
+// >
 
-/**
- * Runtime 解析后的分组字段类型。
- *
- * 与 raw {@link SchemxGroupField} 不同，resolved group 的 children 也已经
- * 递归展开为 {@link SchemxResolvedField}，不会再包含 dependency schema。
- */
-export type SchemxResolvedGroupField<T extends Values = Values> = Omit<
-  ExpandedSchemxField<SchemxGroupField<T>>,
-  "children"
-> & {
-  children: SchemxResolvedField<T>[]
-}
+// /**
+//  * Runtime 解析后的分组字段类型。
+//  *
+//  * 与 raw {@link SchemxGroupField} 不同，resolved group 的 children 也已经
+//  * 递归展开为 {@link SchemxResolvedField}，不会再包含 dependency schema。
+//  */
+// export type SchemxGroupField<T extends Values = Values> = Omit<
+//   ExpandedSchemxField<SchemxGroupField<T>>,
+//   "children"
+// > & {
+//   children: SchemxResolvedField<T>[]
+// }
 
 /**
  * Runtime 解析后的可渲染 schema 类型。
@@ -380,5 +399,5 @@ export type SchemxResolvedGroupField<T extends Values = Values> = Omit<
  * 递归展开后，组件层最终只会收到 base 或 group 类型。
  */
 export type SchemxResolvedField<T extends Values = Values> =
-  | SchemxResolvedBaseField<T>
-  | SchemxResolvedGroupField<T>
+  | SchemxBaseField<T>
+  | SchemxGroupField<T>

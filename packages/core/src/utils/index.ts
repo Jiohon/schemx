@@ -5,7 +5,20 @@
  */
 
 /** schema 列配置工具 */
-export { isBaseSchema, isGroupSchema, isDependencySchema, findSchema } from "./schema"
+export {
+  isBaseResolvedSchema,
+  isGroupResolvedSchema,
+  isBaseSchema,
+  isGroupSchema,
+  isDependencySchema,
+  findSchema,
+  isFieldRuntimeNode,
+  isGroupRuntimeNode,
+  isDependencyRuntimeNode,
+} from "./schema"
+
+/** Schema 标准化工具 */
+export { normalizeSchemas } from "./normalize"
 
 /** 路径工具 */
 export { getByPath, setByPath, collectObjectPathsByLeaf, normalizeNamePath } from "./path"
@@ -18,9 +31,6 @@ export { diff } from "./diff"
 
 /** 单例工具 */
 export { createStrictSingleton } from "./single"
-
-// Schemas - Schema 处理工具
-export { filterSchemas } from "./filterSchemas"
 
 /** runtime resolved schema 工具 */
 export {

@@ -1,14 +1,19 @@
 /**
  * schema 列配置工具单元测试
  *
- * 覆盖 isBaseSchema、isGroupSchema、isDependencySchema 类型守卫
+ * 覆盖 isBaseResolvedSchema、isGroupResolvedSchema、isDependencyResolvedSchema 类型守卫
  * 和 findSchema 递归查找。
  *
  * @module utils/__tests__/schema
  */
 import { describe, expect, it } from "vitest"
 
-import { findSchema, isBaseSchema, isDependencySchema, isGroupSchema } from "../schema"
+import {
+  findSchema,
+  isBaseResolvedSchema,
+  isDependencyResolvedSchema,
+  isGroupResolvedSchema,
+} from "../schema"
 
 import type { SchemxField } from "../../types"
 
@@ -29,39 +34,39 @@ const dependencyField: SchemxField = {
   children: () => [],
 } as any
 
-describe("isBaseSchema", () => {
+describe("isBaseResolvedSchema", () => {
   it("基础字段配置返回 true", () => {
-    expect(isBaseSchema(baseField)).toBe(true)
+    expect(isBaseResolvedSchema(baseField)).toBe(true)
   })
 
   it("group 类型返回 false", () => {
-    expect(isBaseSchema(groupField)).toBe(false)
+    expect(isBaseResolvedSchema(groupField)).toBe(false)
   })
 
   it("dependency 类型返回 false", () => {
-    expect(isBaseSchema(dependencyField)).toBe(false)
+    expect(isBaseResolvedSchema(dependencyField)).toBe(false)
   })
 })
 
-describe("isGroupSchema", () => {
+describe("isGroupResolvedSchema", () => {
   it("group 类型返回 true", () => {
-    expect(isGroupSchema(groupField)).toBe(true)
+    expect(isGroupResolvedSchema(groupField)).toBe(true)
   })
 
   it("非 group 类型返回 false", () => {
-    expect(isGroupSchema(baseField)).toBe(false)
-    expect(isGroupSchema(dependencyField)).toBe(false)
+    expect(isGroupResolvedSchema(baseField)).toBe(false)
+    expect(isGroupResolvedSchema(dependencyField)).toBe(false)
   })
 })
 
-describe("isDependencySchema", () => {
+describe("isDependencyResolvedSchema", () => {
   it("dependency 类型返回 true", () => {
-    expect(isDependencySchema(dependencyField)).toBe(true)
+    expect(isDependencyResolvedSchema(dependencyField)).toBe(true)
   })
 
   it("非 dependency 类型返回 false", () => {
-    expect(isDependencySchema(baseField)).toBe(false)
-    expect(isDependencySchema(groupField)).toBe(false)
+    expect(isDependencyResolvedSchema(baseField)).toBe(false)
+    expect(isDependencyResolvedSchema(groupField)).toBe(false)
   })
 })
 

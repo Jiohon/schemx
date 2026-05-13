@@ -10,19 +10,20 @@ Vue 适配层只负责把 core 暴露的 form instance、resolved schemas projec
 
 ## Runtime Consumption
 
-Vue 渲染层默认消费 `form.getResolvedSchemas()` 或 internal hooks 中的 runtime root。字段组件接收到的 schema 已经包含 core runtime 解析后的 `visible`、`readonly`、`disabled`、`required`、`placeholder`、`componentProps` 和 `rules`，因此 FormItem 不再重新执行 dependencies 或 dependency renderer。
+Vue 渲染层默认通过 `form.getInternalHooks().getResolvedSchemas()` 或 internal hooks 中的 runtime root 消费 runtime projection。字段组件接收到的 schema 已经包含 core runtime 解析后的 `visible`、`readonly`、`disabled`、`required`、`placeholder`、`componentProps` 和 `rules`，因此 FormItem 不再重新执行 dependencies 或 dependency renderer。
 
 ```ts
 const form = createForm({
   schemas,
 })
+const hooks = form.getInternalHooks()
 
-await form.waitForDependencies()
-const renderedSchemas = form.getResolvedSchemas()
+await hooks.waitForDependencies()
+const renderedSchemas = hooks.getResolvedSchemas()
 ```
 
-若需要注册 Vue 组件渲染器，继续使用公开快捷方法：
+若需要注册 Vue 组件渲染器，使用 internal hooks：
 
 ```ts
-form.registerRenderer("input", InputRenderer)
+form.getInternalHooks().registerRenderer("input", InputRenderer)
 ```

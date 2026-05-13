@@ -9,7 +9,7 @@
 
 import { getRuntimeNodeKey } from "./identity"
 
-import type { RuntimeNode, RuntimeSchema, Values } from "../types"
+import type { RuntimeNode, SchemxField, Values } from "../types"
 
 /**
  * 编译节点的上下文信息。
@@ -46,7 +46,7 @@ export interface ReconcileChildrenOptions<T extends Values> {
    * @returns 编译后的节点
    */
   compileNode: (
-    schema: RuntimeSchema<T>,
+    schema: SchemxField<T>,
     context: CompileNodeContext<T>,
     existing?: RuntimeNode<T>
   ) => RuntimeNode<T>
@@ -97,7 +97,7 @@ export interface ReconcileChildrenOptions<T extends Values> {
  */
 export function reconcileChildren<T extends Values>(
   previous: RuntimeNode<T>[],
-  schemas: RuntimeSchema<T>[],
+  schemas: SchemxField<T>[],
   parent: RuntimeNode<T> | null,
   ownerPath: string,
   options: ReconcileChildrenOptions<T>

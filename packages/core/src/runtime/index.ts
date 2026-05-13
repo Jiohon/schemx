@@ -40,7 +40,7 @@ export { createRuntimeTreeBuilder } from "./runtimeTreeBuilder"
 export type { RuntimeTreeBuilder, RuntimeTreeBuilderOptions } from "./runtimeTreeBuilder"
 
 // Schema 规范化
-export { normalizeSchemas } from "./normalize"
+export { normalizeSchemas } from "../utils/normalize"
 
 // 节点身份策略
 export { getRuntimeNodeKey } from "./identity"
@@ -48,6 +48,3 @@ export { getRuntimeNodeKey } from "./identity"
 // 增量对账
 export { reconcileChildren } from "./reconcile"
 export type { CompileNodeContext, ReconcileChildrenOptions } from "./reconcile"
-
-// 静态校验
-export { staticValidateSchemas } from "./staticValidate"

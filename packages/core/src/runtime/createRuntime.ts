@@ -11,15 +11,12 @@
  * @module core/runtime/createRuntime
  */
 
-import { cloneDeep } from "es-toolkit"
-
 import { createRuntimeScheduler } from "../scheduler"
 import {
   buildRuntimeFieldSchemaIndex,
   createResolvedSchemaList,
   normalizeNamePath,
 } from "../utils"
-import { filterSchemas } from "../utils/filterSchemas"
 
 import { createFormRuntimeContext } from "./context"
 import { createRuntimeGraph } from "./graph"
@@ -30,9 +27,9 @@ import type {
   NamePath,
   RuntimeFieldDefaults,
   RuntimeNode,
+  SchemxBaseField,
   SchemxField,
   SchemxInstance,
-  SchemxResolvedBaseField,
   SchemxResolvedField,
   Values,
 } from "../types"
@@ -140,7 +137,7 @@ export class Runtime<T extends Values = Values> {
   /**
    * 按规范化字段路径建立的字段 schema 查询缓存。
    */
-  private fieldSchemaMap = new Map<string, SchemxResolvedBaseField<T>>()
+  private fieldSchemaMap = new Map<string, SchemxBaseField<T>>()
 
   /**
    * 创建 Runtime。
@@ -168,12 +165,9 @@ export class Runtime<T extends Values = Values> {
       onTreeChange: this.bumpRevision,
     })
 
-    // Runtime: 过滤后的 raw schemas 编译为运行时树。
-    const filteredSchemas = filterSchemas(schemas)
-
     // 开始编译 runtime tree，并设置到 graph 中。
     // 后续的 runtime tree 结构变更都通过 graph 的 replaceSubtree 来进行，
-    this.graph.setRoot(this.treeBuilder.compileRoot(filteredSchemas))
+    this.graph.setRoot(this.treeBuilder.compileRoot(schemas))
   }
 
   /**
@@ -211,8 +205,6 @@ export class Runtime<T extends Values = Values> {
    * @returns dependency 已展开后的标准 schema 列表
    */
   getResolvedSchemas(): SchemxResolvedField<T>[] {
-    console.log(cloneDeep(createResolvedSchemaList(this.graph.getRoot())))
-
     return createResolvedSchemaList(this.graph.getRoot())
   }
 
@@ -225,7 +217,7 @@ export class Runtime<T extends Values = Values> {
    * @param name - 字段路径
    * @returns 匹配的基础字段 schema，未找到时返回 undefined
    */
-  getFieldSchema(name: NamePath<T>): SchemxResolvedBaseField<T> | undefined {
+  getFieldSchema(name: NamePath<T>): SchemxBaseField<T> | undefined {
     const revision = this.graph.revision
 
     if (this.fieldSchemaMapRevision !== revision) {

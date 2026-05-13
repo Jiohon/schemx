@@ -92,10 +92,7 @@ export function resolveStaticProps<T extends Values>(
     disabled: schema.disabled ?? defaults.disabled ?? false,
     required: schema.required ?? !!schema.rules,
     placeholder: schema.placeholder ?? `${schema.label}为必填项`,
-    componentProps: {
-      // 全局 componentProps 先铺底，字段自身配置覆盖全局默认值。
-      ...schemaComponentProps,
-    },
+    componentProps: schemaComponentProps,
     rules: Object.hasOwn(schema, "rules") ? schema.rules : [],
   }
 }

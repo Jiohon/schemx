@@ -7,10 +7,15 @@
  */
 
 import type {
+  DependencyRuntimeNode,
+  FieldRuntimeNode,
+  GroupRuntimeNode,
+  RuntimeNode,
   SchemxBaseField,
   SchemxDependencyField,
   SchemxField,
   SchemxGroupField,
+  SchemxResolvedField,
   Values,
 } from "../types"
 
@@ -82,4 +87,76 @@ export function findSchema<T extends Values = Values>(
   }
 
   return undefined
+}
+
+// ---------------------------------------------------------------------------
+// ResolvedSchema
+// ---------------------------------------------------------------------------
+
+/**
+ * 类型守卫：判断是否为 序列化后的 基础字段配置
+ *
+ * 排除 group、dependency、nested 三种特殊类型后，剩余的即为基础字段。
+ *
+ * @param schema - 列配置
+ * @returns 是否为基础字段
+ */
+export function isBaseResolvedSchema<T extends Values = Values>(
+  schema: SchemxResolvedField<T>
+): schema is SchemxBaseField<T> {
+  return !isGroupResolvedSchema(schema)
+}
+
+/**
+ * 类型守卫：判断是否为 序列化后的 分组列配置
+ *
+ * @param schema - 列配置
+ * @returns 是否为 `componentType === "group"` 的分组列
+ */
+export function isGroupResolvedSchema<T extends Values = Values>(
+  schema: SchemxResolvedField<T>
+): schema is SchemxGroupField<T> {
+  return schema.componentType === "group"
+}
+
+// ---------------------------------------------------------------------------
+// RuntimeNode
+// ---------------------------------------------------------------------------
+
+/**
+ * 类型守卫：判断是否为基础字段配置
+ *
+ * 排除 group、dependency 两种特殊类型后，剩余的即为基础字段。
+ *
+ * @param node - 列配置
+ * @returns 是否为基础字段
+ */
+export function isFieldRuntimeNode<T extends Values = Values>(
+  node: RuntimeNode<T>
+): node is FieldRuntimeNode<T> {
+  return !isGroupRuntimeNode(node) && !isDependencyRuntimeNode(node)
+}
+
+/**
+ * 类型守卫：判断是否为分组列配置
+ *
+ * @param node - 列配置
+ * @returns 是否为 `type === "group"` 的分组列
+ */
+export function isGroupRuntimeNode<T extends Values = Values>(
+  node: RuntimeNode<T>
+): node is GroupRuntimeNode<T> {
+  return node.type === "group"
+}
+
+/**
+ * 类型守卫：判断是否为依赖列配置
+ *
+ * @param node - 列配置
+ * @returns 是否为 `type === "dependency"` 的依赖列
+ */
+export function isDependencyRuntimeNode<T extends Values = Values>(
+  node: RuntimeNode<T>
+): node is DependencyRuntimeNode<T> {
+  return node.type === "dependency"
 }

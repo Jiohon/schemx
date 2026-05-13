@@ -32,9 +32,7 @@ export type {
   SchemxFieldDefinition,
   SchemxGroupFieldDefinition,
   SchemxBase,
-  SchemxResolvedBaseField,
   SchemxResolvedField,
-  SchemxResolvedGroupField,
   SchemxGroupField,
   SchemxDependencyField,
   SchemxBaseField,
@@ -53,33 +51,20 @@ export type {
   DisposeSubscription,
 } from "./dispose"
 
-/** runtime field类型 */
-export type {
-  FieldRuntime,
-  FieldRuntimeNode,
-  RuntimeFieldDefaultProps,
-  RuntimeFieldDefaults,
-} from "./field"
-export { isFieldRuntimeNode } from "./field"
-
-/** runtime dependency类型 */
-export type {
-  DependencyRuntime,
-  DependencyRuntimeNode,
-  SubtreeReplacement,
-} from "./dependency"
-export { isDependencyRuntimeNode } from "./dependency"
-
 /** Runtime 类型契约 */
 export type {
-  GroupRuntimeNode,
   ReactiveComputation,
+  GroupRuntimeNode,
   RuntimeNode,
   RuntimeNodeBase,
+  FieldRuntime,
+  FieldRuntimeNode,
+  DependencyRuntime,
+  DependencyRuntimeNode,
   RuntimeNodeType,
-  RuntimeSchema,
+  RuntimeFieldDefaultProps,
+  RuntimeFieldDefaults,
 } from "./runtime"
-export { hasChildren, isGroupRuntimeNode } from "./runtime"
 
 /** 深层路径类型工具 */
 export type { DeepNamePath } from "./namePathType"
