@@ -23,7 +23,9 @@
 
 import { get, set } from "es-toolkit/compat"
 
-import type { NamePath, Value, Values } from "../types"
+import type { NamePath, PathValue, Values } from "../types"
+
+type RuntimePath = string | number | readonly (string | number)[]
 
 /**
  * 从对象中根据路径获取嵌套值
@@ -32,10 +34,16 @@ import type { NamePath, Value, Values } from "../types"
  * @param path - NamePath 路径（string / number / array）
  * @returns 路径对应的值，如果路径不存在则返回 undefined
  */
-export function getByPath(obj: Values, path: NamePath): Value {
-  if (path === "" || (Array.isArray(path) && path.length === 0)) return obj
+export function getByPath<
+  TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+  TValue = PathValue<TValues, TName>,
+>(obj: Partial<TValues>, path: TName): TValue | undefined {
+  if (path === "" || (Array.isArray(path) && path.length === 0)) {
+    return obj as unknown as TValue
+  }
 
-  return get(obj, path)
+  return get(obj, normalizeRuntimePath(path))
 }
 
 /**
@@ -45,10 +53,14 @@ export function getByPath(obj: Values, path: NamePath): Value {
  * @param path - NamePath 路径（string / number / array）
  * @param value - 要设置的值
  */
-export function setByPath(obj: Values, path: NamePath, value: Value): void {
+export function setByPath<
+  TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+  TValue = PathValue<TValues, TName>,
+>(obj: Partial<TValues>, path: TName, value: TValue): void {
   if (obj == null) return
 
-  set(obj, path, value)
+  set(obj, normalizeRuntimePath(path), value)
 }
 
 /**
@@ -69,29 +81,29 @@ export function setByPath(obj: Values, path: NamePath, value: Value): void {
  * // => ['name', 'address.city', 'address.zip']
  * ```
  */
-export function collectObjectPathsByLeaf<T extends NamePath>(
-  obj: Record<string, any>,
-  prefix = ""
-): T[] {
-  const paths: T[] = []
+export function collectObjectPathsByLeaf<
+  TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+>(obj: Partial<TValues>, prefix = ""): TName[] {
+  const paths: TName[] = []
 
   for (const key of Object.keys(obj)) {
     const path = prefix ? `${prefix}.${key}` : key
     const value = obj[key]
 
     if (Array.isArray(value)) {
-      value.forEach((item, index) => {
-        const itemPath = `${path}[${index}]` as T
+      value.forEach((item: unknown, index: number) => {
+        const itemPath = `${path}[${index}]` as TName
         if (item !== null && typeof item === "object") {
-          paths.push(...(collectObjectPathsByLeaf(item, itemPath) as T[]))
+          paths.push(...(collectObjectPathsByLeaf(item, itemPath as string) as TName[]))
         } else {
           paths.push(itemPath)
         }
       })
     } else if (value !== null && typeof value === "object") {
-      paths.push(...(collectObjectPathsByLeaf(value, path) as T[]))
+      paths.push(...(collectObjectPathsByLeaf(value, path) as TName[]))
     } else {
-      paths.push(path as T)
+      paths.push(path as TName)
     }
   }
 
@@ -107,7 +119,10 @@ export function collectObjectPathsByLeaf<T extends NamePath>(
  * normalizeNamePath('user[0].name')   // => 'user.0.name'
  * ```
  */
-export function normalizeNamePath<T extends Values>(path: NamePath<T>): string {
+export function normalizeNamePath<
+  TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+>(path: TName[]): string {
   if (Array.isArray(path)) {
     return path.map((part) => String(part)).join(".")
   }
@@ -115,4 +130,12 @@ export function normalizeNamePath<T extends Values>(path: NamePath<T>): string {
   return String(path)
     .replace(/\[(.*?)\]/g, ".$1")
     .replace(/^\./, "")
+}
+
+const normalizeRuntimePath = (path: NamePath): RuntimePath => {
+  if (Array.isArray(path)) {
+    return path.map((part) => (typeof part === "number" ? part : String(part)))
+  }
+
+  return path as string | number
 }

@@ -4,46 +4,45 @@
  * @module types
  */
 
-/** 基础类型 */
 export type {
   Value,
   Values,
+  Dynamic,
   NamePath,
   ValidationTrigger,
   SchemxInstance,
-  SchemxInternalHooks,
+  SchemxFormApi,
+  SchemxDefaultContext,
 } from "./form"
 
-/** 规则类型 */
 export type {
   SchemxRuleDefinition,
   SchemxRuleDefinitionKey,
-  SchemxBuiltinRules,
+  SchemxRuleBuiltinKey,
   SchemxRules,
 } from "./rule"
 
-/** 渲染器类型 */
 export type { SchemxRendererKey, SchemxRendererDefinition } from "./renderer"
 
-/** Schema 列配置类型 */
 export type {
   SchemxBaseComponentProps,
   SchemxComponentProps,
   SchemxFieldDefinition,
   SchemxGroupFieldDefinition,
   SchemxBase,
+  SchemxResolvedBaseField,
   SchemxResolvedField,
+  SchemxResolvedGroupField,
   SchemxGroupField,
   SchemxDependencyField,
   SchemxBaseField,
   SchemxField,
   SchemxFormItemProps,
+  SchemxDependencyRendererContext,
 } from "./schema"
 
-/** 表单组件 Props 类型 */
 export type { SchemxProps, SchemxGlobalContext } from "./form"
 
-/** DisposeBag 相关类型 */
 export type {
   DisposeBag,
   DisposeCallback,
@@ -51,44 +50,24 @@ export type {
   DisposeSubscription,
 } from "./dispose"
 
-/** Runtime 类型契约 */
 export type {
-  ReactiveComputation,
-  GroupRuntimeNode,
-  RuntimeNode,
-  RuntimeNodeBase,
-  FieldRuntime,
-  FieldRuntimeNode,
-  DependencyRuntime,
-  DependencyRuntimeNode,
-  RuntimeNodeType,
-  RuntimeFieldDefaultProps,
-  RuntimeFieldDefaults,
-} from "./runtime"
+  DeepNamePath,
+  PathValue,
+  PathValueByArray,
+  PathValueByString,
+} from "./namePathType"
 
-/** 深层路径类型工具 */
-export type { DeepNamePath } from "./namePathType"
+export type { DeepReadonly, Exact, CSSProperties } from "./utils"
 
-/** 框架无关的工具类型 */
-export type { DeepReadonly, CSSProperties } from "./readonly"
-
-/** TypeScript 工具类型 */
-export type { Exact } from "./utils"
-
-/** 动态属性解析类型 */
-export { type Dynamic } from "./dynamic"
-
-/** 依赖对象类型 */
 export type {
   SchemxConditionFn,
-  SchemxDependencyRendererContext,
   SchemxDependencies,
   SchemxDependenciesConditionKey,
   SchemxDependenciesStaticProps,
 } from "./dependencies"
 
-/** 字典对象类型 */
+export type { DependencyValues } from "./dependency"
+
 export type { SchemxDictionary, SchemxWithDictionary } from "./dictionary"
 
-/** Standard Schema 类型 */
 export type { StandardSchemaV1 } from "./standardSchema"

@@ -85,6 +85,7 @@
           name: "website",
           label: "个人网站",
           componentType: "input",
+          initialValue: "www.baidu.com",
           componentProps: {
             placeholder: "请输入个人网站地址",
             clearable: true,

@@ -37,9 +37,10 @@ graph TB
     end
 
     subgraph "Core Modules"
-        FS[FormStore<br/>状态管理]
+        FR[FieldRegistry<br/>字段注册]
+        STORE[Store<br/>表单状态]
         VAL[Validator<br/>校验器]
-        RT[Runtime<br/>运行时引擎]
+        FG[Form Graph<br/>内部结构图]
     end
 
     subgraph "Infrastructure"
@@ -49,17 +50,18 @@ graph TB
         UTIL[Utils<br/>工具函数]
     end
 
-    CF --> FS
     CF --> VAL
-    CF --> RT
+    CF --> STORE
+    CF --> FG
     CF --> RR
     CF --> RUR
 
     CField --> CF
 
-    FS --> REA
+    FG --> FR
+    STORE --> REA
     VAL --> REA
-    RT --> REA
+    FG --> REA
 
     CE --> REA
     CW --> REA
@@ -67,14 +69,34 @@ graph TB
 
 ### 模块职责
 
-| 模块                 | 职责                                                |
-| -------------------- | --------------------------------------------------- |
-| **FormStore**        | 表单数据存储，基于 ReactiveMap 实现细粒度响应式追踪 |
-| **Validator**        | 校验规则管理与错误状态，支持 Standard Schema 接口   |
-| **Runtime**          | Schema 编译、Dependency 解析、字段生命周期管理      |
-| **Reactivity**       | 响应式基础设施，提供 Signal、Effect、Batch 能力     |
-| **RendererRegistry** | 渲染器组件注册与查找                                |
-| **RulesRegistry**    | 校验规则注册与解析                                  |
+| 模块                 | 职责                                               |
+| -------------------- | -------------------------------------------------- |
+| **FieldRegistry**    | 字段模型注册与查找，连接 Fiber 与字段呈现态        |
+| **Store**            | 字段值、初始值、touched、pending 等表单状态源      |
+| **Validator**        | 校验规则管理与错误状态，支持 Standard Schema 接口  |
+| **Form Graph**       | Descriptor 编译、Dependency 解析、字段生命周期管理 |
+| **Reactivity**       | 响应式基础设施，提供 Signal、Effect、Batch 能力    |
+| **RendererRegistry** | 渲染器组件注册与查找                               |
+| **RulesRegistry**    | 校验规则注册与解析                                 |
+
+### Runtime Graph Flow
+
+运行时结构更新遵循单向流程：
+
+```text
+schemas
+  -> compileToDescriptors
+  -> commitChildren
+  -> RuntimeReconciler
+  -> RuntimeFiberManager
+  -> ViewRevision
+```
+
+- root schemas 和 dependency renderer 生成的 child schemas 都先编译为 descriptor，再通过同一个 `commitChildren(parent, descriptors)` 边界提交。
+- `RuntimeReconciler` 只负责结构复用：它只读取 `parent.children` 作为 previous graph，不发布生命周期事件，也不推进视图版本。
+- `RuntimeFiberManager` 是生命周期与资源 owner，负责 field model、registry、validation/dependency effects、dependency slot 与 lifecycle event。
+- `ViewRevision` 在一次 public commit 完成后只推进一次，因此嵌套 group reconcile 不会造成重复 view tree 投影。
+- disposed runtime node 会从 active parent traversal 中移除，但保留 descriptor 和 field model 快照，便于调试与生命周期观察。
 
 ## 快速开始
 
@@ -154,11 +176,18 @@ const form = createForm({
 ### 动态依赖字段
 
 ```typescript
-import { createForm } from "@schemx/core"
+import { createForm, defineSchemas } from "@schemx/core"
 
-const form = createForm({
+interface FormValues {
+  mode: "simple" | "advanced"
+  detail?: string
+}
+
+const schema = defineSchemas<FormValues>()
+
+const form = createForm<FormValues>({
   initialValues: { mode: "simple" },
-  schemas: [
+  schemas: schema([
     {
       componentType: "select",
       name: "mode",
@@ -170,7 +199,7 @@ const form = createForm({
         ],
       },
     },
-    {
+    schema.dependency({
       componentType: "dependency",
       to: ["mode"],
       renderer: (values) => {
@@ -179,15 +208,15 @@ const form = createForm({
         }
         return []
       },
-    },
-  ],
+    }),
+  ]),
 })
 
 // 等待依赖解析完成
-await form.getInternalHooks().waitForDependencies()
+await form.waitForDependencies()
 
-// 获取解析后的 schema 列表
-const schemas = form.getInternalHooks().getResolvedSchemas()
+// 获取 ViewNode 投影
+const viewTree = form.getViewTree()
 ```
 
 ## 核心 API
@@ -366,10 +395,10 @@ flowchart TB
         C[reset]
     end
 
-    subgraph "FormStore"
-        D[ReactiveMap]
-        E[values]
-        F[pending]
+    subgraph "Form internals"
+        D[FieldRegistry]
+        E[Store.values]
+        F[Store.pending]
     end
 
     subgraph "Validator"
@@ -537,7 +566,7 @@ const form2 = createForm({
 })
 ```
 
-## Runtime 系统
+## 内部 Graph 系统
 
 ### 字段生命周期
 
@@ -574,10 +603,10 @@ stateDiagram-v2
 flowchart TB
     A[schemas 输入] --> B[normalizeSchemas]
     B --> C[staticValidate]
-    C --> D[Runtime 编译]
+    C --> D[Descriptor 编译]
 
     D --> E{字段类型}
-    E -->|静态字段| F[创建 RuntimeNode]
+    E -->|静态字段| F[创建 Fiber]
     E -->|dependency| G[注册依赖关系]
 
     G --> H[监听 triggerFields]
@@ -590,27 +619,23 @@ flowchart TB
     M --> N[版本检查]
     N --> L
 
-    L --> O[getResolvedSchemas]
+    L --> O[getViewTree]
     F --> O
 ```
 
-### Runtime 公开入口
+### Projection 公开入口
 
-通过 `getInternalHooks()` 访问 Runtime 能力：
+通过 `SchemxInstance` 访问内部 projection 能力：
 
 ```typescript
-const hooks = form.getInternalHooks()
-
 // 等待所有依赖解析完成
-await hooks.waitForDependencies(10000)
+await form.waitForDependencies(10000)
 
-// 获取解析后的 schema 列表
-const schemas = hooks.getResolvedSchemas()
-
-// 获取 Runtime Root（框架适配层使用）
-const root = hooks.getRuntimeRoot()
+// 获取 ViewNode 投影
+const viewTree = form.getViewTree()
 
 // 渲染器操作
+const hooks = form.getInternalHooks()
 hooks.registerRenderer("custom-input", CustomInputComponent)
 hooks.getRenderer("input")
 hooks.hasRenderer("input")
@@ -709,11 +734,12 @@ export function useSchemxForm<T extends Values>(options: CreateFormOptions<T>) {
 
 ```
 src/
-├── store/          # FormStore - 纯状态管理
 ├── validator/      # Validator - 校验规则与错误
-├── runtime/        # Runtime - schema 编译与字段生命周期
-├── engine/         # Engine - 具体执行器
-├── scheduler/      # Scheduler - 任务调度
+├── descriptor/     # Descriptor - schema 编译与内部描述符
+├── graph/          # Graph - Fiber、Reconciler、Scope 等结构基础设施
+├── field/          # Field - 字段模型、字段索引和动态依赖
+├── scheduler/      # Scheduler - 异步任务调度
+├── view/           # View - ViewNode 投影与订阅
 ├── reactivity/     # Reactivity - 响应式基础设施
 ├── registry/       # Registry - 渲染器与规则注册
 ├── types/          # Types - 类型定义
@@ -722,11 +748,13 @@ src/
 
 ### 模块依赖关系
 
-- `store/` - 依赖 `reactivity/`，不依赖其他模块
 - `validator/` - 依赖 `reactivity/`，不依赖其他模块
-- `runtime/` - 依赖 `reactivity/`、`types/`
-- `engine/` - 依赖 `store/`、`validator/`、`runtime/`
-- `scheduler/` - 独立模块
+- `descriptor/` - 将 raw schema 编译为内部 descriptor
+- `graph/` - 领域无关的 Fiber、Reconciler、Scope 等结构基础设施
+- `field/` - 表单字段生命周期资源，负责字段和 dependency 的 mount/update/unmount
+- `scheduler/` - 管理异步任务与 idle 状态
+- `view/` - 将内部 graph 投影为 ViewNode
+- `lifecycle/` - 领域无关的生命周期 hook 标准化工具
 
 框架适配层应通过 `SchemxInstance` 公开 API 和 `getInternalHooks()` 访问能力，不直接依赖内部模块实现。
 

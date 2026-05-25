@@ -2,7 +2,7 @@
  * FormItem
  *
  * schemx 和 FormGroup 实际渲染字段的组件。
- * 动态属性已由 core runtime 解析到 schema 投影中；这里只负责消费
+ * 动态属性已由 core 解析到 schema 投影中；这里只负责消费
  * 已解析 schema、创建字段实例、组装渲染器属性与插槽。
  *
  * @module components/FormItem
@@ -11,7 +11,6 @@
 import { computed, defineComponent, h, PropType, toRef } from "vue"
 import type { SetupContext, VNodeChild } from "vue"
 
-import { isGroupResolvedSchema } from "@schemx/core"
 import classnames from "classnames"
 import { omit } from "es-toolkit"
 
@@ -29,9 +28,8 @@ import type {
   SchemxBaseField,
   SchemxComponentProps,
   SchemxFormItemProps,
-  SchemxGroupField,
-  SchemxResolvedField,
   Values,
+  ViewNode,
 } from "@schemx/core"
 
 /**
@@ -40,28 +38,33 @@ import type {
  * @typeParam T - 表单值类型
  */
 export interface SchemxItemProps<T extends Values = Values> {
-  schema: SchemxResolvedField<T>
+  node: ViewNode
 }
 
 const FormItem = defineComponent(
   <T extends Values = Values>(props: SchemxItemProps<T>, { slots }: SetupContext) => {
-    // const { schema } = toRefs(props)
-    const schemaRef = toRef(props, "schema")
+    const nodeRef = toRef(props, "node")
 
-    if (isGroupResolvedSchema(schemaRef.value)) {
-      const groupSchema = schemaRef.value as SchemxGroupField
-
+    if (nodeRef.value.type !== "field") {
       return (): VNodeChild => {
-        return h(FormGroup, { schema: groupSchema }, slots)
+        if (nodeRef.value.type === "group") {
+          return h(FormGroup, { node: nodeRef.value }, slots)
+        }
+
+        return (
+          <div class={`schemx-${nodeRef.value.type}`} data-key={nodeRef.value.key}>
+            {nodeRef.value.children.map((child) => (
+              <FormItem key={child.key} node={child} />
+            ))}
+          </div>
+        )
       }
     }
 
     const form = useFormInstance<T>()
     const formContext = useContext()
 
-    const schema = () => schemaRef.value as SchemxBaseField<T>
-
-    const { getRenderer } = form.getInternalHooks()
+    const schema = (): SchemxBaseField<T> => viewNodeToSchema(nodeRef.value)
 
     const field = useField(schema().name)
 
@@ -194,7 +197,7 @@ const FormItem = defineComponent(
      * @returns content VNode
      */
     const renderContent = (): VNodeChild => {
-      const component = getRenderer(schema().componentType)
+      const component = form.getRenderer(schema().componentType)
 
       if (!component) {
         throw new Error(
@@ -203,7 +206,7 @@ const FormItem = defineComponent(
       }
 
       // 提取子渲染器插槽（fieldName:slotName 格式）
-      const childSlots = extractChildSlots(schema().name, slots)
+      const childSlots = extractChildSlots(normalizeNameKey(schema().name), slots)
       const columnElement = h(component, componentProps.value, childSlots)
 
       const contentSlot = resolveSlot(slots, `${schema().name}Content`)
@@ -250,7 +253,7 @@ const FormItem = defineComponent(
       }
 
       // 整体插槽：完全接管渲染，不包裹任何默认结构
-      const itemSlot = resolveSlot(slots, schema().name)
+      const itemSlot = resolveSlot(slots, normalizeNameKey(schema().name))
 
       if (itemSlot) {
         return itemSlot(formItemProps.value)
@@ -288,8 +291,8 @@ const FormItem = defineComponent(
     name: "SchemxItem",
 
     props: {
-      schema: {
-        type: Object as PropType<SchemxResolvedField>,
+      node: {
+        type: Object as PropType<ViewNode>,
         required: true,
       },
     },
@@ -297,3 +300,41 @@ const FormItem = defineComponent(
 )
 
 export default FormItem
+
+const viewNodeToSchema = <T extends Values>(node: ViewNode): SchemxBaseField<T> => {
+  if (node.type !== "field") {
+    throw new Error("[schemx] FormItem expected a field ViewNode.")
+  }
+
+  return {
+    ...node.schema,
+    key: node.key,
+    name: node.name as SchemxBaseField<T>["name"],
+    componentType: node.renderer as SchemxBaseField<T>["componentType"],
+    label: node.props.label,
+    visible: node.props.visible,
+    readonly: node.props.readonly,
+    disabled: node.props.disabled,
+    required: node.props.required,
+    placeholder: node.props.placeholder,
+    componentProps: node.props.componentProps as SchemxComponentProps<T>,
+    rules: node.props.rules,
+    validationTrigger: node.props.validationTrigger,
+    labelIcon: node.props.labelIcon,
+    labelAlign: node.props.labelAlign,
+    labelPosition: node.props.labelPosition,
+    labelWidth: node.props.labelWidth,
+    contentAlign: node.props.contentAlign,
+    colon: node.props.colon,
+    class: node.props.class,
+    style: node.props.style,
+  } as SchemxBaseField<T>
+}
+
+const normalizeNameKey = (name: unknown): string => {
+  if (Array.isArray(name)) {
+    return name.map((part) => String(part)).join(".")
+  }
+
+  return String(name)
+}

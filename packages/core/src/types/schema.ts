@@ -7,11 +7,38 @@
  * @module types/schema
  */
 
-import type { SchemxDependencies, SchemxDependencyRendererContext } from "./dependencies"
-import type { Dynamic } from "./dynamic"
-import type { NamePath, SchemxInstance, ValidationTrigger, Value, Values } from "./form"
+import { DependencyValues } from "./dependency"
+
+import type { SchemxDependencies } from "./dependencies"
+import type {
+  NamePath,
+  SchemxFormApi,
+  SchemxInstance,
+  ValidationTrigger,
+  Value,
+  Values,
+} from "./form"
 import type { SchemxRendererDefinition } from "./renderer"
 import type { SchemxRules } from "./rule"
+
+type SchemxComponentTypeKey<TValues extends Values> = [
+  keyof SchemxRendererDefinition<TValues>,
+] extends [never]
+  ? string
+  : keyof SchemxRendererDefinition<TValues>
+
+/**
+ * dependency schema renderer 执行上下文。
+ *
+ * signal 会在同一 dependency 节点的新一轮 renderer 开始或节点销毁时 abort，
+ * 便于调用方取消远程请求等异步工作。
+ */
+export interface SchemxDependencyRendererContext {
+  /**
+   * 中止信号，用于取消渲染器执行。
+   */
+  abortSignal: AbortSignal
+}
 
 /**
  * 渲染器组件通用扩展属性
@@ -20,25 +47,25 @@ import type { SchemxRules } from "./rule"
  * 与 {@link SchemxRendererDefinition} 中各组件的专属 Props 交叉后，
  * 作为 `componentProps` 的最终类型。
  */
-export interface SchemxBaseComponentProps<T extends Values = Values> {
+export interface SchemxBaseComponentProps<TValues extends Values = Values> {
   /** 是否必填 */
-  required?: Dynamic<boolean>
+  required?: boolean
   /** 是否只读 */
-  readonly?: Dynamic<boolean>
+  readonly?: boolean
   /** 是否禁用 */
-  disabled?: Dynamic<boolean>
+  disabled?: boolean
   /** 是否隐藏 */
-  visible?: Dynamic<boolean>
+  visible?: boolean
   /** 占位符 */
   placeholder?: string
   /** FormItem 组件 Props */
-  formItemProps?: SchemxFormItemProps<T>
+  formItemProps?: SchemxFormItemProps<TValues>
   /** 字段值 */
   value?: Value
   /** 值变化处理 */
-  onChange?: (value: Value, form: SchemxInstance<T>) => void
+  onChange?: (value: Value, form: SchemxInstance<TValues>) => void
   /** 失焦处理 */
-  onBlur?: (value: Value, form: SchemxInstance<T>) => void
+  onBlur?: (value: Value, form: SchemxInstance<TValues>) => void
 }
 
 /**
@@ -47,14 +74,16 @@ export interface SchemxBaseComponentProps<T extends Values = Values> {
  * 将 {@link SchemxRendererDefinition} 中对应组件的专属 Props 与 {@link SchemxBaseComponentProps} 交叉，
  * 得到传递给渲染组件的完整属性类型。
  *
- * @typeParam K - 组件类型键
+ * @typeParam  TKey - 组件类型键
  */
 export type SchemxComponentProps<
-  T extends Values = Values,
-  K extends keyof SchemxRendererDefinition<T> = keyof SchemxRendererDefinition<T>,
-> = [keyof SchemxRendererDefinition<T>] extends [never]
-  ? SchemxBaseComponentProps<T>
-  : SchemxRendererDefinition<T>[K] & SchemxBaseComponentProps<T>
+  TValues extends Values = Values,
+  TKey extends SchemxComponentTypeKey<TValues> = SchemxComponentTypeKey<TValues>,
+> = [keyof SchemxRendererDefinition<TValues>] extends [never]
+  ? SchemxBaseComponentProps<TValues>
+  : TKey extends keyof SchemxRendererDefinition<TValues>
+    ? SchemxRendererDefinition<TValues>[TKey] & SchemxBaseComponentProps<TValues>
+    : SchemxBaseComponentProps<TValues>
 
 /**
  * 自定义 Schema 基础字段扩展接口
@@ -80,27 +109,27 @@ export interface SchemxFieldDefinition {}
  *
  * 描述单个表单字段的完整配置，包括组件类型、校验规则、动态属性等。
  *
- * @typeParam T - 表单值类型
- * @typeParam K - 组件类型键，用于收窄 componentProps 类型
+ * @typeParam  TValues - 表单值类型
+ * @typeParam  TKey - 组件类型键，用于收窄 componentProps 类型
  */
 export interface SchemxBase<
-  T extends Values = Values,
-  K extends keyof SchemxRendererDefinition<T> = keyof SchemxRendererDefinition<T>,
+  TValues extends Values = Values,
+  TKey extends SchemxComponentTypeKey<TValues> = SchemxComponentTypeKey<TValues>,
 > extends SchemxFieldDefinition {
   /**
    * 唯一标识字段配置的键，供框架层使用，业务方无需设置
    *
-   * Runtime 会为可渲染 schema 投影补充稳定 `key`，供框架层作为 vnode key
-   * 使用。Raw Schema 不包含该字段，也不会被 runtime 原地修改。
+   * Core 会为 ViewNode 投影补充稳定 `key`，供框架层作为 vnode key 使用。
+   * Raw Schema 不包含该字段，也不会被原地修改。
    */
   key?: string
   /**
    * 字段名称
    *
    * 支持嵌套路径语法，如 `'user.name'`、`['user', 'address', 'city']`。
-   * 用于在 FormStore 中定位字段值的存取路径。
+   * 用于在表单内部状态中定位字段值。
    */
-  name: NamePath<T>
+  name: NamePath<TValues>
 
   /**
    * 字段标签文本
@@ -115,7 +144,7 @@ export interface SchemxBase<
    * 对应 SchemxRendererDefinition 中注册的组件键名，
    * 用于从 rendererRegistry 中查找并渲染对应的表单控件。
    */
-  componentType: K
+  componentType: TKey
 
   /**
    * 结构化依赖配置对象
@@ -123,14 +152,14 @@ export interface SchemxBase<
    * 声明 {@link SchemxDependencies.triggerFields | triggerFields} 和各属性的条件函数，
    * 当任一触发字段变化时执行已配置的条件函数，覆盖对应的静态默认值。
    */
-  dependencies?: SchemxDependencies<T>
+  dependencies?: SchemxDependencies<TValues>
 
   /**
    * 传递给渲染组件的属性（静态默认值）
    *
    * 类型根据 `componentType` 自动收窄为对应组件的 Props 类型。
    */
-  componentProps?: SchemxComponentProps<T, K>
+  componentProps?: SchemxComponentProps<TValues, TKey>
 
   /**
    * 占位提示文本（静态默认值）
@@ -169,7 +198,7 @@ export interface SchemxBase<
   /**
    * 字段初始值
    *
-   * 组件挂载时写入 FormStore，同时作为 `reset()` 的还原目标。
+   * 组件挂载时写入表单状态，同时作为 `reset()` 的还原目标。
    */
   initialValue?: Value
 
@@ -234,8 +263,8 @@ export interface SchemxBase<
 /**
  * FormItem 组件 Props
  */
-export type SchemxFormItemProps<T extends Values = Values> = Omit<
-  SchemxBase<T>,
+export type SchemxFormItemProps<TValues extends Values = Values> = Omit<
+  SchemxBase<TValues>,
   "componentProps"
 >
 
@@ -248,15 +277,15 @@ export type SchemxFormItemProps<T extends Values = Values> = Omit<
  * 当 SchemxRendererDefinition 未注册任何渲染器时，回退为宽松的 SchemxBase 类型，
  * 避免因 keyof 为 never 导致整个类型坍塌。
  *
- * @typeParam T - 表单值类型
+ * @typeParam  TValues - 表单值类型
  */
-export type SchemxBaseField<T extends Values = Values> = [
-  keyof SchemxRendererDefinition<T>,
+export type SchemxBaseField<TValues extends Values = Values> = [
+  keyof SchemxRendererDefinition<TValues>,
 ] extends [never]
-  ? SchemxBase<T>
+  ? SchemxBase<TValues, string>
   : {
-      [K in keyof SchemxRendererDefinition<T>]: SchemxBase<T, K>
-    }[keyof SchemxRendererDefinition<T>]
+      [TKey in keyof SchemxRendererDefinition<TValues>]: SchemxBase<TValues, TKey>
+    }[keyof SchemxRendererDefinition<TValues>]
 
 /**
  * 自定义 Group Schema 基础字段扩展接口
@@ -282,16 +311,16 @@ export interface SchemxGroupFieldDefinition {}
  *
  * 将多个字段组织为可折叠的分组，componentType 固定为 `"group"`。
  *
- * @typeParam T - 表单值类型
+ * @typeParam  TValues - 表单值类型
  */
 export interface SchemxGroupField<
-  T extends Values = Values,
+  TValues extends Values = Values,
 > extends SchemxGroupFieldDefinition {
   /**
    * 唯一标识字段配置的键，供框架层使用，业务方无需设置
    *
-   * Runtime 会为可渲染 schema 投影补充稳定 `key`，供框架层作为 vnode key
-   * 使用。Raw Schema 不包含该字段，也不会被 runtime 原地修改。
+   * Core 会为 ViewNode 投影补充稳定 `key`，供框架层作为 vnode key 使用。
+   * Raw Schema 不包含该字段，也不会被原地修改。
    */
   key?: string
   /**
@@ -305,7 +334,7 @@ export interface SchemxGroupField<
   /**
    * 分组内的列配置
    */
-  children: SchemxField<T>[]
+  children: SchemxField<TValues>[]
   /**
    * 是否可折叠
    */
@@ -317,18 +346,22 @@ export interface SchemxGroupField<
 }
 
 /**
- * 依赖字段配置
+ * 动态子树依赖字段配置
  *
- * 根据其他字段的值动态生成列配置，componentType 固定为 `"dependency"`。
+ * 根据其他字段的值动态生成一段子 schema，componentType 固定为 `"dependency"`。
+ * 该配置会被编译为 DependencyEffectSlot。
  *
- * @typeParam T - 表单值类型
+ * @typeParam  TValues - 表单值类型
  */
-export interface SchemxDependencyField<T extends Values = Values> {
+export interface SchemxDependencyField<
+  TValues extends Values = Values,
+  TNames extends readonly NamePath<TValues>[] = readonly NamePath<TValues>[],
+> {
   /**
    * 唯一标识字段配置的键，供框架层使用，业务方无需设置
    *
-   * Runtime 会为可渲染 schema 投影补充稳定 `key`，供框架层作为 vnode key
-   * 使用。Raw Schema 不包含该字段，也不会被 runtime 原地修改。
+   * Core 会为 ViewNode 投影补充稳定 `key`，供框架层作为 vnode key 使用。
+   * Raw Schema 不包含该字段，也不会被原地修改。
    */
   key?: string
   /**
@@ -338,15 +371,15 @@ export interface SchemxDependencyField<T extends Values = Values> {
   /**
    * 依赖的字段路径
    */
-  to: NamePath<T>[]
+  to: TNames
   /**
    * 动态列配置生成函数
    */
   renderer: (
-    values: T,
-    form: SchemxInstance<T>,
+    values: DependencyValues<TValues, TNames>,
+    form: SchemxFormApi<TValues>,
     context: SchemxDependencyRendererContext
-  ) => SchemxField<T>[] | Promise<SchemxField<T>[]>
+  ) => SchemxField<TValues>[] | Promise<SchemxField<TValues>[]>
 }
 
 /**
@@ -354,50 +387,37 @@ export interface SchemxDependencyField<T extends Values = Values> {
  *
  * 表单 schemas 数组中每个元素的类型。
  *
- * @typeParam T - 表单值类型
+ * @typeParam  TValues - 表单值类型
  */
-export type SchemxField<T extends Values = Values> =
-  | SchemxBaseField<T>
-  | SchemxGroupField<T>
-  | SchemxDependencyField<T>
-
-// /**
-//  * Runtime 解析后的字段公共扩展。
-//  *
-//  * Runtime 会为可渲染 schema 投影补充稳定 `key`，供框架层作为 vnode key
-//  * 使用。Raw Schema 不包含该字段，也不会被 runtime 原地修改。
-//  */
-// type ExpandedSchemxField<F> = F & { key: string }
-
-// /**
-//  * Runtime 解析后的基础字段类型。
-//  *
-//  * Dependency 已在 runtime tree 中展开，组件内部只消费可直接渲染的
-//  * base/group resolved schema。
-//  */
-// export type SchemxBaseField<T extends Values = Values> = ExpandedSchemxField<
-//   SchemxBaseField<T>
-// >
-
-// /**
-//  * Runtime 解析后的分组字段类型。
-//  *
-//  * 与 raw {@link SchemxGroupField} 不同，resolved group 的 children 也已经
-//  * 递归展开为 {@link SchemxResolvedField}，不会再包含 dependency schema。
-//  */
-// export type SchemxGroupField<T extends Values = Values> = Omit<
-//   ExpandedSchemxField<SchemxGroupField<T>>,
-//   "children"
-// > & {
-//   children: SchemxResolvedField<T>[]
-// }
+export type SchemxField<TValues extends Values = Values> =
+  | SchemxBaseField<TValues>
+  | SchemxGroupField<TValues>
+  | SchemxDependencyField<TValues>
 
 /**
- * Runtime 解析后的可渲染 schema 类型。
+ * 编译后的字段静态 schema。
  *
- * renderer 返回的 SchemxField[] 中可能包含 dependency，但经过 runtime
- * 递归展开后，组件层最终只会收到 base 或 group 类型。
+ * 校验和动态依赖由 FieldDescriptor 顶层字段承载，避免静态默认值、
+ * 校验规则和运行时动态派生规则混在同一个对象里。
  */
-export type SchemxResolvedField<T extends Values = Values> =
-  | SchemxBaseField<T>
-  | SchemxGroupField<T>
+export type SchemxResolvedBaseField<TValues extends Values = Values> = Omit<
+  SchemxBaseField<TValues>,
+  "dependencies"
+>
+
+/**
+ * 编译后的分组静态 schema。
+ */
+export type SchemxResolvedGroupField<TValues extends Values = Values> = Omit<
+  SchemxGroupField<TValues>,
+  "children"
+> & {
+  children: SchemxResolvedField<TValues>[]
+}
+
+/**
+ * 解析后的静态 schema 类型。
+ */
+export type SchemxResolvedField<TValues extends Values = Values> =
+  | SchemxResolvedBaseField<TValues>
+  | SchemxResolvedGroupField<TValues>

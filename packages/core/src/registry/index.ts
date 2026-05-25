@@ -7,7 +7,6 @@
  * @module core/registry
  */
 
-// 渲染器注册中心：管理字段组件渲染器
 export {
   createRendererRegistry,
   RendererRegistry,
@@ -15,7 +14,6 @@ export {
   type RendererMap,
 } from "./rendererRegistry"
 
-// 校验规则注册中心：管理字段校验规则工厂
 export {
   createRulesRegistry,
   RulesRegistry,

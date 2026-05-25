@@ -49,8 +49,6 @@ export interface SchemxRendererDefinition<T extends Values> {}
  * const type: SchemxRendererKey = 'my-input'
  * ```
  */
-export type SchemxRendererKey<T extends Values = Values> = [
-  keyof SchemxRendererDefinition<T>,
-] extends [never]
+export type SchemxRendererKey = [keyof SchemxRendererDefinition<Values>] extends [never]
   ? string
-  : keyof SchemxRendererDefinition<T>
+  : keyof SchemxRendererDefinition<Values>

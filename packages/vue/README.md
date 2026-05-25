@@ -4,22 +4,21 @@
 
 ## Adapter 边界
 
-Vue 适配层只负责把 core 暴露的 form instance、resolved schemas projection 和 runtime root 投影成 Vue 组件树。runtime 编译、dependency execution、dependencies 解析、validation bridge、scheduler 和 graph ownership 都由 `@schemx/core` 内部负责。
+Vue 适配层只负责把 core 暴露的 form instance 和 ViewNode projection 投影成 Vue 组件树。descriptor 编译、dependency execution、dependencies 解析、validation bridge、scheduler 和 graph ownership 都由 `@schemx/core` 内部负责。
 
-适配层不应直接 import `packages/core/src/engine` 或 `packages/core/src/runtime/graph`。
+适配层不应直接 import `packages/core/src/engine`、`packages/core/src/graph`、`packages/core/src/field` 等 core 内部模块。
 
-## Runtime Consumption
+## Projection Consumption
 
-Vue 渲染层默认通过 `form.getInternalHooks().getResolvedSchemas()` 或 internal hooks 中的 runtime root 消费 runtime projection。字段组件接收到的 schema 已经包含 core runtime 解析后的 `visible`、`readonly`、`disabled`、`required`、`placeholder`、`componentProps` 和 `rules`，因此 FormItem 不再重新执行 dependencies 或 dependency renderer。
+Vue 渲染层默认通过 `form.getViewTree()` / `form.subscribeViewTree()` 消费 core projection。字段组件接收到的 schema 已经包含 core 内部解析后的 `visible`、`readonly`、`disabled`、`required`、`placeholder`、`componentProps` 和 `rules`，因此 FormItem 不再重新执行 dependencies 或 dependency renderer。
 
 ```ts
 const form = createForm({
   schemas,
 })
-const hooks = form.getInternalHooks()
 
-await hooks.waitForDependencies()
-const renderedSchemas = hooks.getResolvedSchemas()
+await form.waitForDependencies()
+const viewTree = form.getViewTree()
 ```
 
 若需要注册 Vue 组件渲染器，使用 internal hooks：

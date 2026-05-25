@@ -59,23 +59,29 @@ type FieldPayload = {
 }
 
 /** 多字段订阅回调的载荷 */
-type FieldsPayload<T> = {
+type FieldsPayload<
+  TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+> = {
   /** 本次变更涉及的所有字段路径 */
-  changedPaths: NamePath<T>[]
+  changedPaths: TName[]
   /** 本次变更涉及的字段值（部分表单数据） */
-  changedValues: Partial<T>
+  changedValues: Partial<TValues>
   /** 变更前对应字段的旧值（部分表单数据） */
-  prevValues: Partial<T>
+  prevValues: Partial<TValues>
 }
 
 /** 全局订阅回调的载荷 */
-type GlobalPayload<T> = {
+type GlobalPayload<
+  TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+> = {
   /** 本次变更涉及的所有字段路径 */
-  changedPaths: NamePath<T>[]
+  changedPaths: TName[]
   /** 本次变更涉及的字段值（部分表单数据） */
-  changedValues: Partial<T>
+  changedValues: Partial<TValues>
   /** 变更前对应字段的旧值（部分表单数据） */
-  prevValues: Partial<T>
+  prevValues: Partial<TValues>
 }
 
 /**
@@ -83,16 +89,22 @@ type GlobalPayload<T> = {
  *
  * 回调接收两个参数：变更载荷（payload）和变更后的表单完整快照（latestSnapshot）。
  */
-type BaseSubscribeCallback<T, P> = (payload: P, latestSnapshot: T) => void
+type BaseSubscribeCallback<TValues, P> = (payload: P, latestSnapshot: TValues) => void
 
 /** 单字段订阅回调类型，监听指定字段的变更 */
-export type WatchFieldCallback<T> = BaseSubscribeCallback<T, FieldPayload>
+export type WatchFieldCallback<TValues> = BaseSubscribeCallback<TValues, FieldPayload>
 
 /** 多字段订阅回调类型，监听一组字段的变更 */
-export type WatchFieldsCallback<T> = BaseSubscribeCallback<T, FieldsPayload<T>>
+export type WatchFieldsCallback<TValues extends Values> = BaseSubscribeCallback<
+  TValues,
+  FieldsPayload<TValues>
+>
 
 /** 全局订阅回调类型，监听表单中任意字段的变更 */
-export type WatchAllCallback<T> = BaseSubscribeCallback<T, GlobalPayload<T>>
+export type WatchAllCallback<TValues extends Values> = BaseSubscribeCallback<
+  TValues,
+  GlobalPayload<TValues>
+>
 
 /**
  * useWatch / createWatch 选项
@@ -143,10 +155,13 @@ export type CreateWatchReturn = () => void
  * dispose()
  * ```
  */
-export const createWatchField = <T extends Values>(
-  form: SchemxInstance<T>,
-  name: NamePath<T>,
-  callback: WatchFieldCallback<T>,
+export const createWatchField = <
+  TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+>(
+  form: SchemxInstance<TValues>,
+  name: TName,
+  callback: WatchFieldCallback<TValues>,
   options: CreateWatchOptions
 ): CreateWatchReturn => {
   let prev: Value = form.getFieldSnapshot(name)
@@ -198,17 +213,20 @@ export const createWatchField = <T extends Values>(
  * dispose()
  * ```
  */
-export const createWatchFields = <T extends Values>(
-  form: SchemxInstance<T>,
-  names: NamePath<T>[],
-  callback: WatchFieldsCallback<T>,
+export const createWatchFields = <
+  TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+>(
+  form: SchemxInstance<TValues>,
+  names: TName[],
+  callback: WatchFieldsCallback<TValues>,
   options: CreateWatchOptions
 ): CreateWatchReturn => {
-  let prevValues: Partial<T> = form.getFieldsSnapshot(names)
+  let prevValues: Partial<TValues> = form.getFieldsSnapshot(names)
   let isFirst = true
 
   const dispose = form.effect(() => {
-    const currentValues: Partial<T> = form.getFieldsValue(names)
+    const currentValues: Partial<TValues> = form.getFieldsValue(names)
     const latestSnapshot = form.getFieldsSnapshot()
 
     if (isFirst) {
@@ -228,8 +246,8 @@ export const createWatchFields = <T extends Values>(
 
     if (options.inequality && isEqual(currentValues, prevValues)) return
 
-    const changedValues = diff<Partial<T>>(currentValues, prevValues)
-    const changedPaths = collectObjectPathsByLeaf<NamePath<T>>(changedValues)
+    const changedValues = diff<Partial<TValues>>(currentValues, prevValues)
+    const changedPaths = collectObjectPathsByLeaf<TValues, TName>(changedValues)
 
     callback({ changedPaths, changedValues, prevValues }, latestSnapshot)
 
@@ -259,13 +277,16 @@ export const createWatchFields = <T extends Values>(
  * dispose()
  * ```
  */
-export const createWatchAll = <T extends Values>(
-  form: SchemxInstance<T>,
-  callback: WatchAllCallback<T>,
+export const createWatchAll = <
+  TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+>(
+  form: SchemxInstance<TValues>,
+  callback: WatchAllCallback<TValues>,
   options: CreateWatchOptions
 ): CreateWatchReturn => {
   let isFirst = true
-  let prevValues: T = form.getFieldsSnapshot()
+  let prevValues: TValues = form.getFieldsSnapshot()
 
   const dispose = form.effect(() => {
     const latestSnapshot = form.getFieldsSnapshot()
@@ -277,7 +298,7 @@ export const createWatchAll = <T extends Values>(
           {
             changedPaths: [],
             changedValues: latestSnapshot,
-            prevValues: {} as Partial<T>,
+            prevValues: {} as Partial<TValues>,
           },
           latestSnapshot
         )
@@ -290,8 +311,8 @@ export const createWatchAll = <T extends Values>(
 
     if (options.inequality && isEqual(latestSnapshot, prevValues)) return
 
-    const changedValues = diff<Partial<T>>(latestSnapshot, prevValues)
-    const changedPaths = collectObjectPathsByLeaf<NamePath<T>>(changedValues)
+    const changedValues = diff<Partial<TValues>>(latestSnapshot, prevValues)
+    const changedPaths = collectObjectPathsByLeaf<TValues, TName>(changedValues)
 
     callback({ changedPaths, changedValues, prevValues }, latestSnapshot)
 
@@ -312,9 +333,9 @@ export const createWatchAll = <T extends Values>(
  * @param options - 监听选项
  * @returns 取消监听函数
  */
-export function createWatch<T extends Values>(
-  form: SchemxInstance<T>,
-  callback: WatchAllCallback<T>,
+export function createWatch<TValues extends Values = Values>(
+  form: SchemxInstance<TValues>,
+  callback: WatchAllCallback<TValues>,
   options?: CreateWatchOptions
 ): CreateWatchReturn
 /**
@@ -324,10 +345,13 @@ export function createWatch<T extends Values>(
  * @param options - 监听选项
  * @returns 取消监听函数
  */
-export function createWatch<T extends Values>(
-  form: SchemxInstance<T>,
-  name: NamePath<T>,
-  callback: WatchFieldCallback<T>,
+export function createWatch<
+  TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+>(
+  form: SchemxInstance<TValues>,
+  name: TName,
+  callback: WatchFieldCallback<TValues>,
   options?: CreateWatchOptions
 ): CreateWatchReturn
 /**
@@ -337,24 +361,33 @@ export function createWatch<T extends Values>(
  * @param options - 监听选项
  * @returns 取消监听函数
  */
-export function createWatch<T extends Values>(
-  form: SchemxInstance<T>,
-  names: NamePath<T>[],
-  callback: WatchFieldsCallback<T>,
+export function createWatch<
+  TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+>(
+  form: SchemxInstance<TValues>,
+  names: TName[],
+  callback: WatchFieldsCallback<TValues>,
   options?: CreateWatchOptions
 ): CreateWatchReturn
 /**
  * createWatch 实现 — 根据第二个参数类型分发到对应的底层函数
  */
-export function createWatch<T extends Values>(
-  form: SchemxInstance<T>,
-  nameOrNamesOrCallback: NamePath<T> | NamePath<T>[] | WatchAllCallback<T>,
-  callbackOrOptions?: WatchFieldCallback<T> | WatchFieldsCallback<T> | CreateWatchOptions,
+export function createWatch<
+  TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+>(
+  form: SchemxInstance<TValues>,
+  nameOrNamesOrCallback: TName | TName[] | WatchAllCallback<TValues>,
+  callbackOrOptions?:
+    | WatchFieldCallback<TValues>
+    | WatchFieldsCallback<TValues>
+    | CreateWatchOptions,
   maybeOptions?: CreateWatchOptions
 ): CreateWatchReturn {
   // 全局监听：createWatch(form, callback, options?)
   if (typeof nameOrNamesOrCallback === "function") {
-    return createWatchAll<T>(
+    return createWatchAll<TValues>(
       form,
       nameOrNamesOrCallback,
       (callbackOrOptions as CreateWatchOptions) || {}
@@ -366,19 +399,19 @@ export function createWatch<T extends Values>(
     typeof nameOrNamesOrCallback === "string" ||
     typeof nameOrNamesOrCallback === "number"
   ) {
-    return createWatchField<T>(
+    return createWatchField<TValues, TName>(
       form,
-      nameOrNamesOrCallback as NamePath<T>,
-      callbackOrOptions as WatchFieldCallback<T>,
+      nameOrNamesOrCallback as TName,
+      callbackOrOptions as WatchFieldCallback<TValues>,
       maybeOptions || {}
     )
   }
 
   // 多字段监听：createWatch(form, names, callback, options?)
-  return createWatchFields<T>(
+  return createWatchFields<TValues, TName>(
     form,
-    nameOrNamesOrCallback,
-    callbackOrOptions as WatchFieldsCallback<T>,
+    nameOrNamesOrCallback as TName[],
+    callbackOrOptions as WatchFieldsCallback<TValues>,
     maybeOptions || {}
   )
 }

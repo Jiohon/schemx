@@ -1,43 +1,37 @@
 /**
- * 表单实例工厂 - 框架无关的核心实现
+ * 表单实例工厂 - 框架无关的核心实现。
  *
- * 组合 Store、Validator，提供统一的表单操作接口。
- * 订阅能力由 Store 内部的 reactivity 机制提供。
+ * createForm 是表单内核的唯一公开装配入口。
  *
  * @module core/createForm
- *
- * @example
- * ```typescript
- * import { createForm } from '@schemx/core'
- *
- * const form = createForm({
- *   initialValues: { name: '', age: 0 },
- *   onFinish: (values) => console.log(values),
- * })
- *
- * form.setFieldValue('name', 'John')
- * await form.submit()
- * ```
  */
-import { createValidationEngine, type ValidationEngine } from "./engine"
+
+import { compileToDescriptors } from "./descriptor"
+import { createFieldRegistry, type FieldRegistry } from "./field"
+import {
+  type ContainerFiber,
+  createReconciler,
+  type Fiber,
+  type FiberManager,
+  type Reconciler,
+  type RootFiber,
+} from "./graph"
+import { createFiberManager } from "./graph/fiberManager"
+import {
+  createLifecycleBus,
+  type LifecycleBus,
+  type SchemxLifecycleHooks,
+} from "./lifecycle/lifecycle"
 import { batchUpdates, createReactiveEffect } from "./reactivity"
 import {
   createRendererRegistry,
   createRulesRegistry,
   RendererRegistry,
-  type RuleEntry,
   type RulesRegistry,
 } from "./registry"
-import { createRuntime, type Runtime } from "./runtime"
 import { createRuntimeScheduler, type RuntimeScheduler } from "./scheduler"
-import { createFormStore, FormStore, FormStorePendingField } from "./store"
-import {
-  collectObjectPathsByLeaf,
-  diff,
-  getByPath,
-  normalizeNamePath,
-  withLock,
-} from "./utils"
+import { createStore, Store } from "./store"
+import { collectObjectPathsByLeaf, diff, withLock } from "./utils"
 import {
   createRequiredRule,
   createSelectRequiredRule,
@@ -47,213 +41,225 @@ import {
   type ValidateResult,
   Validator,
 } from "./validator"
+import {
+  createViewRevision,
+  projectViewTree,
+  subscribeViewTree,
+  type ViewRevision,
+} from "./view"
 
+import type { CompileOptions, FormDescriptor } from "./descriptor"
 import type {
   NamePath,
+  SchemxDefaultContext,
   SchemxField,
+  SchemxFormApi,
   SchemxInstance,
-  SchemxInternalHooks,
   SchemxRendererKey,
-  SchemxResolvedField,
   SchemxRules,
   StandardSchemaV1,
-  Value,
   Values,
 } from "./types"
+import type { ViewNode } from "./view"
 
-/**
- * 表单回调函数集合
- *
- * 从 CreateFormOptions 中提取的回调函数子集，用于内部存储。
- *
- * @typeParam T - 表单值类型
- */
-type Callbacks<T extends Values> = Pick<
-  CreateFormOptions<T>,
+type Callbacks<
+  TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+> = Pick<
+  CreateFormOptions<TValues, TName>,
   "onValuesChange" | "onFinish" | "onFinishFailed" | "onFieldsChange"
 >
 
-/**
- * 表单实例配置选项
- *
- * 用于 createForm 工厂函数的参数，定义表单的初始状态和回调。
- *
- * @typeParam T - 表单值类型
- */
-export interface CreateFormOptions<T extends Values> {
-  /**
-   * 表单列配置，用于提取初始值和校验规则
-   */
-  schemas?: SchemxField<T>[]
-  /**
-   * 初始值，与 schemas 中的 initialValue 合并
-   */
-  initialValues?: T
-  /**
-   * 双向绑定的表单值（v-model）
-   */
-  modelValue?: T
-  /**
-   * 渲染器注册实例
-   */
-  rendererRegistry?: RendererRegistry
-  /**
-   * 默认渲染器类型，当字段未指定 renderer 时使用
-   */
-  defaultRendererType?: SchemxRendererKey<T>
-  /**
-   * 规则注册实例
-   */
-  rulesRegistry?: RulesRegistry
-  /**
-   * 全局配置 是否只读
-   */
-  readonly?: boolean
-  /**
-   * 全局配置 是否禁用
-   */
-  disabled?: boolean
-
-  /**
-   * 表单提交校验通过后的回调
-   */
-  onFinish?: (values: Readonly<T>) => void | Promise<void>
-  /**
-   * 表单提交校验失败后的回调
-   */
-  onFinishFailed?: (error: ValidateError<T>) => void
-  /**
-   * 字段值更新时触发的回调
-   */
-  onValuesChange?: (
-    changedValues: Readonly<Partial<T>>,
-    latestSnapshot: Readonly<T> | T
-  ) => void
-  /**
-   * 字段更新时触发的回调
-   */
-  onFieldsChange?: (changedFields: NamePath<T>[], allFields: NamePath<T>[]) => void
+export interface SchemxFormContext<
+  TValues extends Values = Values,
+> extends SchemxDefaultContext {
+  /** 校验规则注册表，解析字符串规则名称到 StandardSchema 或规则工厂 */
+  readonly rulesRegistry: RulesRegistry<TValues>
+  /** 表单状态存储，管理字段值、初始值和订阅 */
+  readonly store: Store<TValues>
+  /** 字段校验器，维护规则、错误状态和校验执行流程 */
+  readonly validator: Validator<TValues>
+  /** 运行时异步调度器，用于追踪 dependency renderer 和字段动态依赖 */
+  readonly scheduler: RuntimeScheduler
+  /** descriptor 到 Fiber tree 的协调器，负责创建、复用和销毁节点 */
+  readonly reconciler: Reconciler<TValues>
+  /** graph 生命周期事件总线，连接 reconciler 与字段资源挂载流程 */
+  readonly lifecycleBus: LifecycleBus<Fiber, FormDescriptor<TValues>>
+  /** schema 编译默认选项，供 root 与 dependency 子树复用 */
+  readonly compileOptions: CompileOptions
+  /** 唯一子节点提交边界，负责 reconcile 后推进 viewRevision */
+  commitChildren(
+    parent: ContainerFiber<TValues>,
+    descriptors: FormDescriptor<TValues>[]
+  ): void
+  readonly getFormApi: () => SchemxFormApi<TValues>
 }
 
 /**
- * 表单实例核心类
+ * 创建表单实例的配置项。
  *
- * 组合 FormStore（状态管理 + 订阅）和 Validator（校验）两个模块，
- * 对外提供统一的表单操作 API。实现 SchemxInstance 接口。
- *
- * @typeParam T - 表单值类型，默认为 Values
- *
- * @example
- * ```typescript
- * const form = new CreateForm({
- *   initialValues: { name: '', email: '' },
- *   onFinish: (values) => api.submit(values),
- * })
- *
- * const instance = form.getForm()
- * instance.setFieldValue('name', 'John')
- * await instance.submit()
- * ```
- *
- * @remarks
- * 内部通过 Store 的 reactivity 机制实现发布-订阅，所有值变更自动通知相关订阅者。
- * 提交操作通过 withLock 防止重复提交。
+ * @typeParam TValues - 表单值类型
+ * @typeParam TName - 字段路径类型
+ * @typeParam TValue - 字段值类型
  */
-class CreateForm<T extends Values = Values> {
-  /** Runtime tree 引擎，负责 schema 编译、dependency subtree 与调度 */
-  private runtime: Runtime<T>
+export interface CreateFormOptions<
+  TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+> extends SchemxDefaultContext {
+  schemas?: SchemxField<TValues>[]
+  initialValues?: TValues
+  modelValue?: TValues
+  rendererRegistry?: RendererRegistry
+  defaultRendererType?: SchemxRendererKey
+  rulesRegistry?: RulesRegistry
+
+  onFinish?: (values: Readonly<TValues>) => void | Promise<void>
+  onFinishFailed?: (error: ValidateError<TValues>) => void
+  onValuesChange?: (
+    changedValues: Readonly<Partial<TValues>>,
+    latestSnapshot: Readonly<TValues> | TValues
+  ) => void
+  onFieldsChange?: (changedFields: TName[], allFields: TName[]) => void
+  lifecycleHooks?: SchemxLifecycleHooks<TValues>
+}
+
+class CreateForm<
+  TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+> {
+  /** 表单内部上下文，集中持有全局配置和运行时服务 */
+  private context: SchemxFormContext<TValues>
+
+  /** 用户传入的表单级回调集合 */
+  readonly callbacks: Callbacks<TValues>
 
   /** 表单状态存储，管理字段值、初始值和订阅 */
-  private store: FormStore<T>
+  private store: Store<TValues>
 
-  /** 表单校验器，管理校验规则和错误信息 */
-  private validator: Validator<T>
+  /** 渲染器注册表，解析 schema.componentType 到具体渲染实现 */
+  readonly rendererRegistry: RendererRegistry
 
-  /** Runtime field lifecycle 到 validator lifecycle 的桥接 */
-  private validationEngine: ValidationEngine<T>
+  /** 校验规则注册表，解析字符串规则名称到 StandardSchema 或规则工厂 */
+  readonly rulesRegistry: RulesRegistry<TValues>
 
-  /** 校验规则注册中心，管理校验规则和错误信息 */
-  private rulesRegistry: RulesRegistry<T>
+  /** 字段校验器，维护规则、错误状态和校验执行流程 */
+  readonly validator: Validator<TValues>
 
-  /** 渲染器注册中心，管理组件类型到渲染器的映射 */
-  private rendererRegistry: RendererRegistry
+  /** Runtime graph 的透明根节点，承载所有编译后的表单描述符节点 */
+  readonly root: RootFiber
 
-  /** 回调函数集合（onValuesChange / onFinish / onFinishFailed / onFieldsChange） */
-  private callbacks: Callbacks<T> = {}
+  /** 运行时异步调度器，用于追踪 dependency renderer 和字段动态依赖 */
+  readonly scheduler: RuntimeScheduler
 
-  /** 所有 effect 的 dispose 函数，destroy 时统一清理 */
-  private disposers = new Set<() => void>()
+  /** 视图结构版本号，graph 结构变化时推进以触发 ViewTree 重新投影 */
+  readonly viewRevision: ViewRevision
 
-  /** 字段初始化调度器，将多个 FormItem 的 onMounted 初始化合并为一次 batch */
-  private scheduler: RuntimeScheduler
+  /** descriptor 到 Fiber tree 的协调器，负责创建、复用和销毁节点 */
+  readonly reconciler: Reconciler<TValues>
 
-  /** 等待写入的字段初始化任务，按字段路径去重。 */
-  private pendingFieldInitializers = new Map<
-    string,
-    { name: NamePath<T>; value: Value }
-  >()
+  /** 单个 Fiber 生命周期执行器，负责挂载和释放运行期资源 */
+  readonly fiberManager: FiberManager<TValues>
 
-  /**
-   * 创建表单实例
-   *
-   * 初始化 Runtime、FormStore、Validator 和 ValidationEngine，注册内置校验规则，
-   *
-   * @param options - 表单配置选项
-   */
-  constructor(options: CreateFormOptions<T>) {
+  /** 字段 Fiber 到字段模型的注册表，供表单 API 和视图投影读取 */
+  readonly fieldRegistry: FieldRegistry<TValues>
+
+  /** 表单销毁时需要统一释放的副作用 */
+  readonly disposers = new Set<() => void>()
+
+  /** 标记表单实例是否已销毁，保证 dispose 幂等 */
+  private disposed = false
+
+  /** schema 编译默认选项，root 与 dependency 子树共享 */
+  private compileOptions: CompileOptions
+
+  /** graph 生命周期事件总线，连接 reconciler 与字段资源挂载流程 */
+  private lifecycleBus: LifecycleBus<Fiber, FormDescriptor<TValues>>
+
+  constructor(options: CreateFormOptions<TValues> = {}) {
     const {
-      initialValues = {} as T,
-      schemas = [] as SchemxField<T>[],
+      schemas = [] as SchemxField<TValues>[],
+      initialValues = {} as TValues,
+      modelValue,
       rendererRegistry,
       defaultRendererType,
       rulesRegistry,
+      validationTrigger,
       readonly,
       disabled,
-    } = options || {}
+    } = options
 
-    this.rendererRegistry =
-      rendererRegistry ?? createRendererRegistry(defaultRendererType)
-
-    this.rulesRegistry = (rulesRegistry ?? createRulesRegistry<T>()) as RulesRegistry<T>
-
-    this.setCallbacks({
+    // 统一保存用户回调，后续 effect 和 submit 流程从同一入口读取。
+    this.callbacks = {
       onValuesChange: options.onValuesChange,
       onFinish: options.onFinish,
       onFinishFailed: options.onFinishFailed,
       onFieldsChange: options.onFieldsChange,
+    }
+
+    // 注册表允许外部注入；未注入时创建表单实例私有注册表，避免跨实例污染。
+    this.rendererRegistry =
+      rendererRegistry ?? createRendererRegistry(defaultRendererType)
+    this.rulesRegistry = (rulesRegistry ??
+      createRulesRegistry<TValues>()) as RulesRegistry<TValues>
+
+    this.validator = createValidator<TValues, TName>()
+
+    // modelValue 优先覆盖 initialValues，用于受控场景的初始快照对齐。
+    this.store = createStore<TValues>({
+      initialValues: { ...initialValues, ...(modelValue ?? {}) },
     })
 
-    // 注册内置校验规则
+    // 内置必填类规则默认注册到当前表单，用户仍可通过规则注册表覆盖。
     this.rulesRegistry.registerAll({
       required: createRequiredRule,
       selectRequired: createSelectRequiredRule,
       uploadRequired: createUploadRequiredRule,
-    } as Record<string, RuleEntry<T>>)
-
-    // Store: 初始化状态管理（含订阅能力）
-    this.store = createFormStore<T>({ initialValues })
-
-    // Validator: 初始化校验器
-    this.validator = createValidator<T>()
-
-    // 字段校验
-    this.validationEngine = createValidationEngine<T>({
-      validator: this.validator,
-      rulesRegistry: this.rulesRegistry,
-      getFieldSnapshot: (name) => this.store.getFieldSnapshot(name),
-      setInitialValues: (values) => this.store.setInitialValues(values),
-      setFieldValue: (name, value) => this.store.setFieldValue(name, value),
     })
 
-    // 字段初始化调度器：收集多个 FormItem 的 onMounted 初始化，microtask 时统一 batch flush
+    // 生命周期总线连接 graph 结构变化与字段模型、依赖资源的挂载和更新流程。
+    this.lifecycleBus = createLifecycleBus<Fiber, FormDescriptor<TValues>>()
+
+    // 初始化运行时 graph 所需的核心基础设施。
     this.scheduler = createRuntimeScheduler()
+    this.viewRevision = createViewRevision()
+    this.fieldRegistry = createFieldRegistry<TValues>()
+    this.compileOptions = {
+      readonly,
+      disabled,
+      validationTrigger,
+    }
 
-    this.runtime = createRuntime<T>(schemas, this.getForm(), {
-      fieldDefaults: { readonly, disabled },
-      onFieldMount: this.validationEngine.mountField,
-      onFieldUpdate: this.validationEngine.updateField,
-      onFieldUnmount: this.validationEngine.unmountField,
+    this.fiberManager = createFiberManager<TValues>({
+      getContext: () => this.context,
+      fieldRegistry: this.fieldRegistry,
+      lifecycleBus: this.lifecycleBus,
     })
+
+    this.reconciler = createReconciler(this.fiberManager)
+
+    this.root = this.fiberManager.createRoot()
+
+    // dependency renderer 运行时需要回写 graph，因此上下文在首次编译前准备好。
+    this.context = {
+      store: this.store,
+      rulesRegistry: this.rulesRegistry,
+      validator: this.validator,
+      scheduler: this.scheduler,
+      reconciler: this.reconciler,
+      lifecycleBus: this.lifecycleBus,
+      compileOptions: this.compileOptions,
+      commitChildren: this.commitChildren,
+      getFormApi: () => this.getFormApi(),
+    }
+
+    if (options.lifecycleHooks) {
+      this.lifecycleBus.on(options.lifecycleHooks)
+    }
+
+    // 将外部 schema 编译成内部 descriptor tree，再交给 reconciler 建立 runtime graph。
+    const descriptors = compileToDescriptors(schemas, this.compileOptions)
+
+    this.commitChildren(this.root as ContainerFiber<TValues>, descriptors)
 
     // 注册值变化回调（通过 store.effect 自动追踪依赖）
     if (this.callbacks?.onValuesChange || this.callbacks?.onFieldsChange) {
@@ -265,7 +271,7 @@ class CreateForm<T extends Values = Values> {
 
         const changedValues = diff(latestSnapshot, prevSnapshot)
 
-        const changedPaths = collectObjectPathsByLeaf<NamePath<T>>(changedValues)
+        const changedPaths = collectObjectPathsByLeaf<TValues, TName>(changedValues)
 
         if (changedPaths.length > 0) {
           this.callbacks.onValuesChange?.(changedValues, latestSnapshot)
@@ -282,295 +288,113 @@ class CreateForm<T extends Values = Values> {
   }
 
   /**
-   * 导出符合 SchemxInstance 接口的纯对象
+   * 表单实例接口
    *
-   * 将类实例的公共方法绑定到当前实例后，以普通对象形式返回。
-   *
-   * @returns SchemxInstance 对象
+   * 定义表单的所有操作方法，是 useForm 返回值的基础接口。
+   * SchemxInstance 类实现此接口，提供完整的表单操作能力。
    */
-  public getForm = (): SchemxInstance<T> => ({
-    // Store - 值操作
-    setFieldValue: this.setFieldValue.bind(this),
-    setFieldsValue: this.setFieldsValue.bind(this),
-    getFieldValue: this.getFieldValue.bind(this),
-    getFieldsValue: this.getFieldsValue.bind(this),
-    getFieldSnapshot: this.getFieldSnapshot.bind(this),
-    getFieldsSnapshot: this.getFieldsSnapshot.bind(this),
-    getInitialValues: this.getInitialValues.bind(this),
-    setInitialValues: this.setInitialValues.bind(this),
+  getFormInstance = (): SchemxInstance<TValues> => {
+    const instance = {
+      setFieldValue: this.store.setFieldValue.bind(this.store),
+      setFieldsValue: this.store.setFieldsValue.bind(this.store),
+      getFieldValue: this.store.getFieldValue.bind(this.store),
+      getFieldsValue: this.store.getFieldsValue.bind(this.store),
+      getFieldSnapshot: this.store.getFieldSnapshot.bind(this.store),
+      getFieldsSnapshot: this.store.getFieldsSnapshot.bind(this.store),
+      getInitialValue: this.store.getInitialValue.bind(this.store),
+      getInitialValues: this.store.getInitialValues.bind(this.store),
+      setInitialValues: this.store.setInitialValues.bind(this.store),
+      isFieldTouched: this.store.isFieldTouched.bind(this.store),
+      setFieldTouched: this.store.setFieldTouched.bind(this.store),
+      getTouchedFields: this.store.getTouchedFields.bind(this.store),
+      setFieldPending: this.store.setFieldPending.bind(this.store),
+      isFieldPending: this.store.isFieldPending.bind(this.store),
+      getPendingFields: this.store.getPendingFields.bind(this.store),
+      resetFields: this.store.resetFields.bind(this.store),
+      reset: this.reset.bind(this),
 
-    // Store - touched 状态
-    isFieldTouched: this.isFieldTouched.bind(this),
-    isFieldsTouched: this.isFieldsTouched.bind(this),
-    getTouchedFields: this.getTouchedFields.bind(this),
+      validateField: this.validateField.bind(this),
+      validate: this.validate.bind(this),
+      getFieldError: this.validator.getFieldError.bind(this.validator),
+      setFieldError: this.validator.setFieldError.bind(this.validator),
+      submit: this.submit.bind(this),
 
-    // Pending - 操作中状态
-    setFieldPending: this.setFieldPending.bind(this),
-    isFieldPending: this.isFieldPending.bind(this),
-    getPendingFields: this.getPendingFields.bind(this),
+      effect: this.effect.bind(this),
+      batch: this.batch.bind(this),
 
-    // Validator - 校验
-    registerRules: this.registerRules.bind(this),
-    unregisterRules: this.unregisterRules.bind(this),
+      getViewRevision: () => this.viewRevision.revision.value,
+      getViewTree: this.getViewTree.bind(this),
+      subscribeViewTree: this.subscribeViewTree.bind(this),
+      waitForDependencies: this.waitForIdle.bind(this),
+
+      getRenderer: this.rendererRegistry.getRenderer.bind(this.rendererRegistry),
+      registerRenderer: this.rendererRegistry.register.bind(this.rendererRegistry),
+      hasRenderer: this.rendererRegistry.hasRenderer.bind(this.rendererRegistry),
+      getRule: this.rulesRegistry.getRule.bind(this.rulesRegistry),
+      registerRule: this.rulesRegistry.register.bind(this.rulesRegistry),
+      hasRule: this.rulesRegistry.hasRule.bind(this.rulesRegistry),
+
+      registerRules: this.registerRules.bind(this),
+      unregisterRules: this.validator.unregisterRules.bind(this.validator),
+
+      destroy: this.destroy.bind(this),
+    } as SchemxInstance<TValues> & { getInternalHooks: () => SchemxInstance<TValues> }
+
+    instance.getInternalHooks = () => instance
+
+    return instance
+  }
+
+  /**
+   * 表单 API，提供与表单交互的方法。
+   *
+   * 传递给动态渲染器，允许程序化操作表单。
+   */
+  private getFormApi = (): SchemxFormApi<TValues> => ({
+    setValue: this.store.setFieldValue.bind(this.store),
+    setValues: this.store.setFieldsValue.bind(this.store),
+    getValue: this.store.getFieldValue.bind(this.store),
+    getValues: this.store.getFieldsValue.bind(this.store),
+    getSnapshots: this.store.getFieldsSnapshot.bind(this.store),
+    setPending: this.store.setFieldPending.bind(this.store),
+    isPending: this.store.isFieldPending.bind(this.store),
+    setTouched: this.store.setFieldTouched.bind(this.store),
+    isTouched: this.store.isFieldTouched.bind(this.store),
+    getError: this.validator.getFieldError.bind(this.validator),
+    setError: this.validator.setFieldError.bind(this.validator),
+    resetFields: this.store.resetFields.bind(this.store),
+    reset: this.reset.bind(this),
     validateField: this.validateField.bind(this),
     validate: this.validate.bind(this),
-    getFieldError: this.getFieldError.bind(this),
-    setFieldError: this.setFieldError.bind(this),
-
-    // 表单操作
-    resetFields: this.resetFields.bind(this),
-    reset: this.reset.bind(this),
-    submit: this.submit.bind(this),
-
-    // Reactivity - effect / batch
-    effect: this.effect.bind(this),
-    batch: this.batch.bind(this),
-
-    // 生命周期
-    destroy: this.destroy.bind(this),
-
-    // 内部方法
-    getInternalHooks: this.getInternalHooks.bind(this),
   })
-
-  /**
-   * 获取内部钩子
-   *
-   * 返回渲染器注册和校验规则注册等内部操作的钩子对象。
-   */
-  private getInternalHooks = (): SchemxInternalHooks<T> => ({
-    // Runtime - runtime tree 适配层入口
-    getRuntimeRevision: this.getRuntimeRevision.bind(this),
-    getRuntimeRoot: this.getRuntimeRoot.bind(this),
-    getResolvedSchemas: this.getResolvedSchemas.bind(this),
-    waitForDependencies: this.waitForDependencies.bind(this),
-
-    // RendererRegistry - 渲染器
-    getRenderer: this.getRenderer.bind(this),
-    registerRenderer: this.registerRenderer.bind(this),
-    hasRenderer: this.hasRenderer.bind(this),
-
-    // RulesRegistry - 校验规则
-    getRule: this.getRule.bind(this),
-    registerRule: this.registerRule.bind(this),
-    hasRule: this.hasRule.bind(this),
-  })
-
-  /**
-   * 获取 runtime root 节点。
-   *
-   * Vue 等框架适配层使用该入口直接渲染 runtime tree；对外读取
-   * resolved schema 列表时请使用 getResolvedSchemas()。
-   *
-   * @returns runtime root 节点数组
-   */
-  private getRuntimeRoot() {
-    return this.runtime.getRoot()
-  }
-
-  /**
-   * 获取 runtime revision
-   *
-   */
-  private getRuntimeRevision() {
-    return this.runtime.revision
-  }
-
-  /**
-   * 等待所有 runtime 异步依赖解析完成。
-   *
-   * 包括 dependency subtree renderer 和字段 dependencies resolver。
-   *
-   * @param timeout - 最大等待时间（毫秒），默认 10000
-   * @returns true 表示全部完成
-   */
-  private waitForDependencies(timeout: number = 10000): Promise<boolean> {
-    return this.runtime.waitForIdle(timeout).then((ready) => {
-      if (!ready) {
-        console.warn(`[schemx] Dependency resolution timed out after ${timeout}ms`)
-      }
-
-      return ready
-    })
-  }
-
-  /**
-   * 获取已解析 schema 列表。
-   *
-   * Raw Schema 保持 immutable；runtime tree 持有 dependency 的动态
-   * subtree。本方法只把 runtime tree 投影为 schema list，便于旧 UI
-   * 或外部调试读取。
-   *
-   * @returns dependency 已展开后的 schema 列表
-   */
-  private getResolvedSchemas(): SchemxResolvedField<T>[] {
-    return this.runtime.getResolvedSchemas()
-  }
-
-  /**
-   * 设置回调函数
-   *
-   * @param callbacks - 回调函数集合
-   */
-  private setCallbacks(callbacks: Callbacks<T>): void {
-    this.callbacks = callbacks
-  }
-
-  /**
-   * 设置单个字段值（Store 内部自动通知订阅者）
-   */
-  private setFieldValue(name: NamePath<T>, value: Value): void {
-    this.store.setFieldValue(name, value)
-  }
-
-  /**
-   * 批量设置字段值（Store 内部自动通知订阅者）
-   */
-  private setFieldsValue(values: Readonly<Partial<T>>): void {
-    this.store.setFieldsValue(values as Partial<T>)
-  }
-
-  /**
-   * 获取单个字段的当前值
-   */
-  private getFieldValue(path: NamePath<T>): Readonly<Value> {
-    return this.store.getFieldValue(path)
-  }
-
-  /**
-   * 获取多个字段的值
-   */
-  private getFieldsValue(paths?: NamePath<T>[]): any {
-    if (paths) {
-      return this.store.getFieldsValue(paths)
-    }
-
-    return this.store.getFieldsValue()
-  }
-
-  /**
-   * 获取单个字段值的快照
-   */
-  private getFieldSnapshot(path: NamePath<T>): Value {
-    return this.store.getFieldSnapshot(path)
-  }
-
-  /**
-   * 获取当前表单值的快照
-   */
-  private getFieldsSnapshot(paths?: NamePath<T>[]): any {
-    return this.store.getFieldsSnapshot(paths as any)
-  }
-
-  /**
-   * 获取字段的初始值
-   */
-  private getInitialValues(paths?: NamePath<T>[]): any {
-    if (!paths) {
-      return this.store.getInitialValues()
-    }
-
-    return this.store.getInitialValues(paths)
-  }
-
-  /**
-   * 设置字段的初始值
-   */
-  private setInitialValues(values: Partial<T>): void {
-    const paths = collectObjectPathsByLeaf<NamePath<T>>(values)
-
-    for (const path of paths) {
-      this.pendingFieldInitializers.set(normalizeNamePath(path), {
-        name: path,
-        value: getByPath(values, path),
-      })
-    }
-
-    this.scheduler.queue({
-      channel: "fieldInit",
-      key: "initial-values",
-      run: this.flushPendingFieldInitializers,
-    })
-  }
-
-  private readonly flushPendingFieldInitializers = (): void => {
-    const tasks = Array.from(this.pendingFieldInitializers.values())
-
-    if (tasks.length === 0) return
-
-    this.pendingFieldInitializers.clear()
-
-    batchUpdates(() => {
-      for (const task of tasks) {
-        this.store.setInitialValues({ [task.name]: task.value } as Partial<T>)
-        this.store.setFieldValue(task.name, task.value)
-      }
-    })
-  }
-
-  /**
-   * 检查单个字段是否被修改
-   */
-  private isFieldTouched(path: NamePath<T>): boolean {
-    return this.store.isFieldTouched(path)
-  }
-
-  /**
-   * 检查多个字段是否被修改
-   */
-  private isFieldsTouched(path?: NamePath<T>[]): boolean {
-    return this.store.isFieldsTouched(path)
-  }
-
-  /**
-   * 获取所有被修改的字段路径
-   */
-  private getTouchedFields(): string[] {
-    return this.store.getTouchedFields()
-  }
-
-  /**
-   * 设置字段的操作中状态
-   */
-  private setFieldPending(name: NamePath<T>, pending: boolean, message?: string): void {
-    this.store.setFieldPending(name, pending, message)
-  }
-
-  /**
-   * 检查单个字段是否处于操作中
-   */
-  private isFieldPending(name: NamePath<T>): boolean {
-    return this.store.isFieldPending(name)
-  }
-
-  /**
-   * 获取所有处于操作中的字段路径
-   */
-  private getPendingFields(): FormStorePendingField[] {
-    return this.store.getPendingFields()
-  }
 
   /**
    * 注册字段校验规则
    */
   private registerRules(
-    path: NamePath<T>,
+    path: NamePath<TValues>,
     rules: SchemxRules | SchemxRules[],
     defaultMessage?: string
   ): void {
     const resolvedRules: StandardSchemaV1[] = []
-    const schema = this.runtime?.getFieldSchema(path)
+    const schema = this.fieldRegistry.get(path)?.descriptor.schema
 
     this.validator.unregisterRules(path)
 
     if (schema) {
-      resolvedRules.push(...this.rulesRegistry.resolve(path, { ...schema, rules }))
+      resolvedRules.push(
+        ...this.rulesRegistry.resolveRuleBySchema({
+          ...schema,
+          rules,
+        })
+      )
     } else {
       const ruleList = Array.isArray(rules) ? rules : [rules]
 
       for (const rule of ruleList) {
         if (typeof rule === "string") {
-          const resolved = this.rulesRegistry.resolve(rule)
+          const entry = this.rulesRegistry.getRule(rule as never)
+          const resolved = typeof entry === "function" ? entry(undefined) : entry
 
           if (resolved) resolvedRules.push(resolved)
         } else if (rule) {
@@ -585,18 +409,11 @@ class CreateForm<T extends Values = Values> {
   }
 
   /**
-   * 注销字段校验规则
-   */
-  private unregisterRules(path: NamePath<T>): void {
-    this.validator.unregisterRules(path)
-  }
-
-  /**
    * 校验指定字段
    */
   private async validateField(
-    name: NamePath<T> | NamePath<T>[]
-  ): Promise<ValidateResult<T>> {
+    name: NamePath<TValues> | NamePath<TValues>[]
+  ): Promise<ValidateResult<TValues>> {
     const result = await this.validator.validateField(name, this.store.getFieldsValue())
 
     return result
@@ -607,7 +424,7 @@ class CreateForm<T extends Values = Values> {
    *
    * 校验前检查是否有字段处于操作中状态，有则直接返回失败结果。
    */
-  private validate = withLock(async (): Promise<ValidateResult<T>> => {
+  private validate = withLock(async (): Promise<ValidateResult<TValues>> => {
     const pendingFields = this.store.getPendingFields()
 
     if (pendingFields.length > 0) {
@@ -618,11 +435,12 @@ class CreateForm<T extends Values = Values> {
       return {
         ok: false,
         error: {
-          errors: pendingFields.map(({ field, message }) => {
-            this.setFieldError(field as NamePath<T>, [message])
+          errors: pendingFields.map(({ field }) => {
+            const message = "字段正在处理中，请稍后重试"
+            this.validator.setFieldError(field as NamePath<TValues>, [message])
 
             return {
-              field,
+              field: field as string,
               message: [message],
             }
           }),
@@ -637,71 +455,6 @@ class CreateForm<T extends Values = Values> {
   })
 
   /**
-   * 获取指定字段的错误信息
-   */
-  private getFieldError(path: NamePath<T>): string[] | undefined {
-    return this.validator.getFieldError(path)
-  }
-
-  /**
-   * 手动设置字段的错误信息
-   */
-  private setFieldError(path: NamePath<T>, errors: string[]): void {
-    this.validator.setFieldError(path, errors)
-  }
-
-  /**
-   * 获取指定类型的渲染器组件
-   */
-  private getRenderer(type: SchemxRendererKey<T>): unknown | undefined {
-    return this.rendererRegistry.getRenderer(type)
-  }
-
-  /**
-   * 注册渲染器组件
-   */
-  private registerRenderer(type: SchemxRendererKey<T>, renderer: unknown): void {
-    this.rendererRegistry.register(type, renderer)
-  }
-
-  /**
-   * 检查指定类型的渲染器是否已注册
-   */
-  private hasRenderer(type: SchemxRendererKey<T>): boolean {
-    return this.rendererRegistry.hasRenderer(type)
-  }
-
-  /**
-   * 获取指定名称的校验规则条目
-   */
-  private getRule(name: string): RuleEntry<T> | undefined {
-    return this.rulesRegistry.getRule(name)
-  }
-
-  /**
-   * 注册校验规则
-   */
-  private registerRule(name: string, rule: RuleEntry<T>): void {
-    this.rulesRegistry.register(name, rule)
-  }
-
-  /**
-   * 检查指定名称的校验规则是否已注册
-   */
-  private hasRule(name: string): boolean {
-    return this.rulesRegistry.hasRule(name)
-  }
-
-  /**
-   * 重置指定字段到初始值
-   */
-  private resetFields(names: NamePath<T>[]): void {
-    names.forEach((name) => {
-      this.store.resetField(name)
-    })
-  }
-
-  /**
    * 重置整个表单到初始值
    */
   private reset(): void {
@@ -714,7 +467,7 @@ class CreateForm<T extends Values = Values> {
    */
   private submit = withLock(async (): Promise<void> => {
     // 等待依赖解析完成
-    const depsReady = await this.waitForDependencies()
+    const depsReady = await this.waitForIdle()
     if (!depsReady) {
       // 超时则拒绝提交
       return
@@ -756,45 +509,74 @@ class CreateForm<T extends Values = Values> {
   }
 
   /**
+   * 唯一子节点提交边界。
+   *
+   * 所有结构输入先编译成 descriptor，再经由这里提交到某个 parent Fiber。
+   * Reconciler 只负责 graph 结构；public commit 完成后由这里推进一次 viewRevision。
+   */
+  private commitChildren = (
+    parent: ContainerFiber<TValues>,
+    descriptors: FormDescriptor<TValues>[]
+  ): void => {
+    this.reconciler.reconcileChildren(parent, descriptors)
+    this.viewRevision.bump()
+  }
+
+  /**
    * 销毁表单实例
    *
    * 清除所有订阅回调和 effect，释放资源。通常在组件卸载时调用。
    */
   private destroy(): void {
+    if (this.disposed) {
+      return
+    }
+
+    this.disposed = true
+
     for (const dispose of this.disposers) {
       dispose()
     }
 
     this.disposers.clear()
 
-    this.runtime.destroy()
+    this.fiberManager.disposeTree(this.root)
     this.scheduler.dispose()
-
     this.store.destroy()
+  }
+
+  /**
+   * 获取当前 ViewTree。
+   */
+  private getViewTree(): readonly ViewNode[] {
+    return projectViewTree(this.root, this.getFormApi())
+  }
+
+  /**
+   * 订阅 ViewTree 结构变化。
+   */
+  private subscribeViewTree(callback: (tree: readonly ViewNode[]) => void): () => void {
+    return subscribeViewTree(this.root, this.viewRevision, callback, this.getFormApi())
+  }
+
+  /**
+   * 等待内部异步任务完成。
+   */
+  private waitForIdle(timeout: number = 10000): Promise<boolean> {
+    return this.scheduler.whenIdle(timeout)
   }
 }
 
 /**
- * 创建 SchemxInstance 实例的工厂函数
+ * 创建 Schemx 表单实例。
  *
- * 组合 FormStore、Validator 提供统一的表单操作接口。
- * 框架无关，可在任意 JavaScript 运行时中使用。
- *
- * @typeParam T - 表单值类型
- *
- * @param options - 表单配置选项
- * @returns 符合 SchemxInstance 接口的表单实例
- *
- * @example
- * ```typescript
- * const form = createForm({
- *   initialValues: { name: 'John' },
- *   onFinish: (values) => console.log(values),
- * })
- * ```
+ * @param options - 表单配置项
+ * @returns 表单实例
  */
-export function createForm<T extends Values>(
-  options: CreateFormOptions<T>
-): SchemxInstance<T> {
-  return new CreateForm<T>(options).getForm()
+export function createForm<TValues extends Values = Values>(
+  options: CreateFormOptions<TValues> = {}
+): SchemxInstance<TValues> {
+  return new CreateForm<TValues>(options).getFormInstance()
 }
+
+export default createForm

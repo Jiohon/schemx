@@ -44,7 +44,7 @@ export interface DisposeSubscription {
 /**
  * DisposeBag 接口。
  *
- * RuntimeNode 通过此接口注册和释放响应式资源。
+ * 内部节点通过此接口注册和释放响应式资源。
  */
 export interface DisposeBag {
   /**

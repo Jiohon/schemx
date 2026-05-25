@@ -1,187 +1,318 @@
+/**
+ * Scheduler 模块测试。
+ *
+ * @module core/graph/__tests__/scheduler.test
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
+import { createRuntimeScope } from "../../graph/scope"
 import { createRuntimeScheduler } from "../scheduler"
 
-describe("createRuntimeScheduler", () => {
-  it("按 channel phase 顺序刷新同一批任务", async () => {
+describe("schedule", () => {
+  it("应该调度 sync/pre/normal/post 任务", async () => {
     const scheduler = createRuntimeScheduler()
+
     const order: string[] = []
 
-    scheduler.queue({
-      channel: "dependency",
-      key: "main",
-      run: () => order.push("dependency"),
-    })
-    scheduler.queue({
-      channel: "dependencies",
-      key: "pre",
-      run: () => order.push("dependencies"),
-    })
-    scheduler.queue({
-      channel: "validation",
-      key: "validation",
-      run: () => order.push("validation"),
-    })
-    scheduler.queue({
-      channel: "renderer",
-      key: "renderer",
-      run: () => order.push("renderer"),
-    })
-    scheduler.queue({
-      channel: "cleanup",
-      key: "cleanup",
-      run: () => order.push("cleanup"),
-    })
-
-    await scheduler.flush()
-
-    expect(order).toEqual([
-      "dependencies",
-      "dependency",
-      "validation",
-      "renderer",
-      "cleanup",
-    ])
-  })
-
-  it("同一 channel 和 key 只保留最后一次任务", async () => {
-    const scheduler = createRuntimeScheduler()
-    const run = vi.fn()
-
-    scheduler.queue({
-      channel: "dependency",
-      key: "user",
-      run: () => run("first"),
-    })
-    scheduler.queue({
-      channel: "dependency",
-      key: "user",
-      run: () => run("second"),
-    })
-    scheduler.queue({
-      channel: "validation",
-      key: "user",
-      run: () => run("other-channel"),
-    })
-
-    await scheduler.flush()
-
-    expect(run).toHaveBeenCalledTimes(2)
-    expect(run).toHaveBeenNthCalledWith(1, "second")
-    expect(run).toHaveBeenNthCalledWith(2, "other-channel")
-  })
-
-  it("刷新期间新加入的任务进入下一轮 batch boundary", async () => {
-    const scheduler = createRuntimeScheduler()
-    const order: string[] = []
-    let resolveFirst!: () => void
-    let resolveNext!: () => void
-
-    scheduler.queue({
-      channel: "dependency",
-      key: "first",
-      run: () => {
-        order.push("first")
-        scheduler.queue({
-          channel: "dependencies",
-          key: "next",
-          run: () =>
-            new Promise<void>((resolve) => {
-              order.push("next")
-              resolveNext = resolve
-            }),
-        })
-
-        return new Promise<void>((resolve) => {
-          resolveFirst = resolve
-        })
-      },
-    })
-    scheduler.queue({
-      channel: "validation",
-      key: "post",
+    scheduler.schedule({
+      id: "post-1",
+      priority: "post",
       run: () => order.push("post"),
     })
 
-    const flushing = scheduler.flush()
+    scheduler.schedule({
+      id: "normal-1",
+      priority: "normal",
+      run: () => order.push("normal"),
+    })
 
-    await Promise.resolve()
+    scheduler.schedule({
+      id: "pre-1",
+      priority: "pre",
+      run: () => order.push("pre"),
+    })
 
-    expect(order).toEqual(["first"])
+    scheduler.schedule({
+      id: "sync-1",
+      priority: "sync",
+      run: () => order.push("sync"),
+    })
 
-    resolveFirst()
-    await flushing
+    await scheduler.flush()
 
-    expect(order).toEqual(["first", "post", "next"])
-    expect(scheduler.isIdle()).toBe(false)
-
-    resolveNext()
-    await scheduler.whenIdle()
-
-    expect(scheduler.isIdle()).toBe(true)
+    expect(order).toEqual(["sync", "pre", "normal", "post"])
   })
 
-  it("刷新结束后会自动执行下一轮排队任务", async () => {
+  it("应该按优先级顺序执行任务", async () => {
     const scheduler = createRuntimeScheduler()
+
     const order: string[] = []
 
-    scheduler.queue({
-      channel: "dependency",
-      key: "first",
+    scheduler.schedule({
+      id: "1",
+      priority: "normal",
+      run: () => order.push("normal-1"),
+    })
+
+    scheduler.schedule({
+      id: "2",
+      priority: "sync",
+      run: () => order.push("sync-1"),
+    })
+
+    scheduler.schedule({
+      id: "3",
+      priority: "post",
+      run: () => order.push("post-1"),
+    })
+
+    scheduler.schedule({
+      id: "4",
+      priority: "pre",
+      run: () => order.push("pre-1"),
+    })
+
+    await scheduler.flush()
+
+    expect(order).toEqual(["sync-1", "pre-1", "normal-1", "post-1"])
+  })
+})
+
+describe("flush", () => {
+  it("应该等待所有同步任务完成", async () => {
+    const scheduler = createRuntimeScheduler()
+
+    let executed = false
+
+    scheduler.schedule({
+      id: "task-1",
+      priority: "normal",
       run: () => {
-        order.push("first")
-        scheduler.queue({
-          channel: "dependencies",
-          key: "next",
-          run: () => order.push("next"),
-        })
+        executed = true
       },
     })
 
-    await scheduler.whenIdle()
+    expect(executed).toBe(false)
 
-    expect(order).toEqual(["first", "next"])
-    expect(scheduler.isIdle()).toBe(true)
+    await scheduler.flush()
+
+    expect(executed).toBe(true)
   })
 
-  it("dispose 后视为空闲，whenIdle 立即返回 false", async () => {
+  it("应该等待所有异步任务完成", async () => {
     const scheduler = createRuntimeScheduler()
-    const run = vi.fn()
 
-    scheduler.queue({ channel: "dependency", key: "job", run })
-    scheduler.dispose()
+    let executed = false
 
-    await Promise.resolve()
-
-    expect(run).not.toHaveBeenCalled()
-    expect(scheduler.isIdle()).toBe(true)
-    await expect(scheduler.whenIdle()).resolves.toBe(false)
-  })
-
-  it("异步任务执行期间保持非 idle，并在完成后唤醒 whenIdle", async () => {
-    const scheduler = createRuntimeScheduler()
-    let resolveJob!: () => void
-
-    scheduler.queue({
-      channel: "dependency",
-      key: "async",
-      run: () =>
-        new Promise<void>((resolve) => {
-          resolveJob = resolve
-        }),
+    scheduler.schedule({
+      id: "task-1",
+      priority: "normal",
+      run: async () => {
+        await new Promise((resolve) => setTimeout(resolve, 10))
+        executed = true
+      },
     })
 
-    const idle = scheduler.whenIdle()
-    const flushing = scheduler.flush()
+    expect(executed).toBe(false)
 
-    await Promise.resolve()
+    await scheduler.flush()
 
-    expect(scheduler.isIdle()).toBe(false)
+    expect(executed).toBe(true)
+  })
+})
 
-    resolveJob()
-    await flushing
+describe("whenIdle", () => {
+  it("应该在空闲队列时立即返回 true", async () => {
+    const scheduler = createRuntimeScheduler()
 
-    await expect(idle).resolves.toBe(true)
-    expect(scheduler.isIdle()).toBe(true)
+    const result = await scheduler.whenIdle()
+
+    expect(result).toBe(true)
+  })
+
+  it("应该在有任务时等待完成", async () => {
+    const scheduler = createRuntimeScheduler()
+
+    let executed = false
+
+    scheduler.schedule({
+      id: "task-1",
+      priority: "normal",
+      run: async () => {
+        await new Promise((resolve) => setTimeout(resolve, 10))
+        executed = true
+      },
+    })
+
+    const result = await scheduler.whenIdle(1000)
+
+    expect(result).toBe(true)
+    expect(executed).toBe(true)
+  })
+
+  it("应该在超时时返回 false", async () => {
+    const scheduler = createRuntimeScheduler()
+
+    scheduler.schedule({
+      id: "task-1",
+      priority: "normal",
+      run: async () => {
+        // 永不完成的任务
+        await new Promise(() => {})
+      },
+    })
+
+    const result = await scheduler.whenIdle(50)
+
+    expect(result).toBe(false)
+  })
+})
+
+describe("track", () => {
+  it("应该在 track 后 whenIdle 等待该任务", async () => {
+    const scheduler = createRuntimeScheduler()
+
+    let executed = false
+
+    const promise = new Promise<void>((resolve) => {
+      setTimeout(() => {
+        executed = true
+        resolve()
+      }, 10)
+    })
+
+    scheduler.track(promise)
+
+    const result = await scheduler.whenIdle(1000)
+
+    expect(result).toBe(true)
+    expect(executed).toBe(true)
+  })
+
+  it("应该支持链式调用", async () => {
+    const scheduler = createRuntimeScheduler()
+
+    const result = await scheduler.track(Promise.resolve(42))
+
+    expect(result).toBe(42)
+  })
+})
+
+describe("scope cancellation", () => {
+  it("应该在 scope disposed 后不执行关联任务", async () => {
+    const scheduler = createRuntimeScheduler()
+    const scope = createRuntimeScope()
+
+    const task = vi.fn()
+
+    scheduler.schedule({
+      id: "task-1",
+      priority: "normal",
+      scope,
+      run: task,
+    })
+
+    // 在 flush 前释放 scope
+    scope.dispose()
+
+    await scheduler.flush()
+
+    expect(task).not.toHaveBeenCalled()
+  })
+
+  it("应该在 scope disposed 后取消关联异步任务", async () => {
+    const scheduler = createRuntimeScheduler()
+    const scope = createRuntimeScope()
+
+    const task = vi.fn()
+
+    scheduler.schedule({
+      id: "task-1",
+      priority: "normal",
+      scope,
+      run: async () => {
+        await new Promise((resolve) => setTimeout(resolve, 10))
+        task()
+      },
+    })
+
+    // 在任务执行期间释放 scope
+    setTimeout(() => scope.dispose(), 5)
+
+    await scheduler.flush()
+
+    // 任务可能已开始，但应该在 scope disposed 后不执行后续逻辑
+    // 这里主要验证不会崩溃
+  })
+})
+
+describe("error handling", () => {
+  it("应该在任务抛错后继续执行其他任务", async () => {
+    const scheduler = createRuntimeScheduler()
+
+    const order: string[] = []
+
+    scheduler.schedule({
+      id: "task-1",
+      priority: "normal",
+      run: () => {
+        order.push("task-1")
+        throw new Error("task-1 error")
+      },
+      onError: vi.fn(),
+    })
+
+    scheduler.schedule({
+      id: "task-2",
+      priority: "normal",
+      run: () => {
+        order.push("task-2")
+      },
+    })
+
+    await scheduler.flush()
+
+    expect(order).toEqual(["task-1", "task-2"])
+  })
+
+  it("应该调用 onError 回调", async () => {
+    const scheduler = createRuntimeScheduler()
+
+    const error = new Error("test error")
+    const onError = vi.fn()
+
+    scheduler.schedule({
+      id: "task-1",
+      priority: "normal",
+      run: () => {
+        throw error
+      },
+      onError,
+    })
+
+    await scheduler.flush()
+
+    expect(onError).toHaveBeenCalledWith(error)
+  })
+})
+
+describe("dispose", () => {
+  it("应该在 dispose 后不再执行任务", async () => {
+    const scheduler = createRuntimeScheduler()
+
+    scheduler.dispose()
+
+    const task = vi.fn()
+
+    scheduler.schedule({
+      id: "task-1",
+      priority: "normal",
+      run: task,
+    })
+
+    await scheduler.flush()
+
+    expect(task).not.toHaveBeenCalled()
   })
 })

@@ -71,8 +71,6 @@ export interface SchemxDictionary<T extends Values = Values, R = any> {
    */
   formatter?: (res: Awaited<R>, form: SchemxInstance<T>) => any[] | Promise<any[]>
 
-  // ========== 依赖联动配置 ==========
-
   /**
    * 依赖的表单字段路径
    *
@@ -90,8 +88,6 @@ export interface SchemxDictionary<T extends Values = Values, R = any> {
    * 不配置时默认始终执行。
    */
   shouldFetch?: (values: T) => boolean
-
-  // ========== 生命周期控制 ==========
 
   /**
    * 是否在组件挂载时立即执行
@@ -111,14 +107,10 @@ export interface SchemxDictionary<T extends Values = Values, R = any> {
    */
   resetOnDepsChange?: boolean
 
-  // ========== 重试配置 ==========
-
   /** 失败重试次数，默认 `0`（不重试） */
   retryCount?: number
   /** 重试间隔（毫秒），默认 `1000` */
   retryInterval?: number
-
-  // ========== 回调 ==========
 
   /** 请求失败回调 */
   onError?: (error: Error, form: SchemxInstance<T>) => void

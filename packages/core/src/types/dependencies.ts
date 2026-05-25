@@ -7,7 +7,7 @@
  * @module types/dependency
  */
 
-import type { NamePath, SchemxInstance, Values } from "./form"
+import type { NamePath, SchemxFormApi, Values } from "./form"
 import type { SchemxBase } from "./schema"
 
 /**
@@ -20,18 +20,8 @@ import type { SchemxBase } from "./schema"
  */
 export type SchemxConditionFn<T extends Values = Values, R = unknown> = (
   values: T,
-  form: SchemxInstance<T>
+  form: SchemxFormApi<T>
 ) => R | Promise<R>
-
-/**
- * dependency renderer 执行上下文。
- *
- * signal 会在同一 dependency 节点的新一轮 renderer 开始或节点销毁时 abort，
- * 便于调用方取消远程请求等异步工作。
- */
-export interface SchemxDependencyRendererContext {
-  signal: AbortSignal
-}
 
 /**
  * 结构化依赖配置对象

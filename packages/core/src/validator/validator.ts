@@ -24,7 +24,7 @@
  * ```
  */
 
-import { ReactiveMap } from "../reactivity"
+import { batchUpdates, ReactiveMap } from "../reactivity"
 import { getByPath } from "../utils"
 
 import type { NamePath, StandardSchemaV1, Value, Values } from "../types"
@@ -36,15 +36,15 @@ export interface FieldError {
 }
 
 /** 校验错误（包含所有失败字段和当前值） */
-export interface ValidateError<T extends Values = Values> {
+export interface ValidateError<TValues extends Values = Values> {
   errors: FieldError[]
-  values: T
+  values: TValues
 }
 
 /** 校验结果（Result 模式） */
-export type ValidateResult<T extends Values = Values> =
-  | { ok: true; values: T }
-  | { ok: false; error: ValidateError<T> }
+export type ValidateResult<TValues extends Values = Values> =
+  | { ok: true; values: TValues }
+  | { ok: false; error: ValidateError<TValues> }
 
 /**
  * 校验规则条目。
@@ -53,7 +53,7 @@ export type ValidateResult<T extends Values = Values> =
  * 当字段值为 `undefined`/`null` 时，使用 `defaultMessage` 作为错误提示，
  * 避免验证库报出类型错误（如 Zod 的 "expected string, received undefined"）。
  */
-export interface RuleEntry {
+export interface ValidateEntry<TValues extends Values = Values> {
   /** 符合 StandardSchemaV1 接口的校验 schema 列表 */
   schemas: StandardSchemaV1[]
   /**
@@ -75,7 +75,7 @@ export interface RuleEntry {
  * 每个字段可配置 `defaultMessage`，当值为 `undefined`/`null` 时
  * 跳过 schema 校验并返回该提示，避免验证库报类型错误。
  *
- * @typeParam T - 表单值类型，默认为 Values
+ * @typeParam TValues - 表单值类型，默认为 Values
  *
  * @example
  * ```typescript
@@ -89,12 +89,15 @@ export interface RuleEntry {
  * 校验规则通过纯 Map 管理，错误状态通过 ReactiveMap 管理，
  * 在 effect 内调用 getFieldError 时自动追踪依赖。
  */
-export class Validator<T extends Values = Values> {
+export class Validator<
+  TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+> {
   /** 校验规则映射表：字段路径 → 规则条目 */
-  private rules = new Map<NamePath<T>, RuleEntry>()
+  private rules = new Map<TName, ValidateEntry<TValues>>()
 
   /** 校验错误映射表：字段路径 → 错误信息数组（响应式） */
-  private errors = new ReactiveMap<NamePath<T>, string[]>()
+  private errors = new ReactiveMap<TName, string[]>()
 
   /**
    * 注册单个字段的校验规则。
@@ -112,7 +115,7 @@ export class Validator<T extends Values = Values> {
    * ```
    */
   public registerRules(
-    path: NamePath<T>,
+    path: TName,
     rules: StandardSchemaV1 | StandardSchemaV1[],
     defaultMessage?: string
   ): void {
@@ -140,7 +143,7 @@ export class Validator<T extends Values = Values> {
    * validator.unregisterRules('email')
    * ```
    */
-  public unregisterRules(path: NamePath<T>): void {
+  public unregisterRules(path: TName): void {
     this.rules.delete(path)
     this.errors.delete(path)
   }
@@ -156,7 +159,7 @@ export class Validator<T extends Values = Values> {
    * validator.getFieldError('email') // => ['邮箱格式不正确']
    * ```
    */
-  public getFieldError(path: NamePath<T>): string[] | undefined {
+  public getFieldError(path: TName): string[] | undefined {
     return this.errors.get(path)
   }
 
@@ -171,7 +174,7 @@ export class Validator<T extends Values = Values> {
    * validator.setFieldError('email', ['该邮箱已被注册'])
    * ```
    */
-  public setFieldError(path: NamePath<T>, errors: string[]): void {
+  public setFieldError(path: TName, errors: string[]): void {
     this.errors.set(path, errors)
   }
 
@@ -187,21 +190,23 @@ export class Validator<T extends Values = Values> {
    * @example
    * ```typescript
    * const result = await validator.validateField('email', formValues)
+   * const result = await validator.validateField(['name', 'email'], formValues)
+   *
    * if (!result.ok) console.log(result.error.errors)
    * ```
    */
   async validateField(
-    path: NamePath<T> | NamePath<T>[],
-    latestValues: T
-  ): Promise<ValidateResult<T>> {
-    const paths = Array.isArray(path) ? path : [path]
+    path: TName | TName[],
+    latestValues: TValues
+  ): Promise<ValidateResult<TValues>> {
+    const paths = (Array.isArray(path) ? path : [path]) as TName[]
 
     this.reset(paths)
 
     let allValid = true
 
     for (const p of paths) {
-      const result = await this.validateSingleRule(p as NamePath<T>, latestValues)
+      const result = await this.validateSingleRule(p as TName, latestValues)
       if (!result.ok) allValid = false
     }
 
@@ -222,7 +227,7 @@ export class Validator<T extends Values = Values> {
    * if (result.ok) submit(result.values)
    * ```
    */
-  async validate(latestValues: T): Promise<ValidateResult<T>> {
+  async validate(latestValues: TValues): Promise<ValidateResult<TValues>> {
     let allValid = true
 
     this.reset()
@@ -245,9 +250,9 @@ export class Validator<T extends Values = Values> {
    * validator.resetErrors()
    * ```
    */
-  public reset(paths?: NamePath<T>[]): void {
+  public reset(paths?: TName[]): void {
     if (paths) {
-      this.errors.batch(() => {
+      batchUpdates(() => {
         for (const key of paths) {
           this.errors.set(key, [])
         }
@@ -259,7 +264,7 @@ export class Validator<T extends Values = Values> {
     // 无参数时：为所有已注册 rules 的字段初始化 error reactive value（设为 []），
     // 确保 effect 能追踪到具体字段的 reactive value 而非仅依赖 version。
     // 同时清除不在 rules 中但已有 error 的字段（如手动 setFieldError 的残留）。
-    this.errors.batch(() => {
+    batchUpdates(() => {
       for (const key of this.rules.keys()) {
         this.errors.set(key, [])
       }
@@ -279,7 +284,7 @@ export class Validator<T extends Values = Values> {
    * @param latestValues - 当前表单全量值
    * @returns 统一的校验结果对象
    */
-  private buildResult(ok: boolean, latestValues: T): ValidateResult<T> {
+  private buildResult(ok: boolean, latestValues: TValues): ValidateResult<TValues> {
     if (ok) {
       return { ok: true, values: latestValues }
     }
@@ -288,7 +293,7 @@ export class Validator<T extends Values = Values> {
       ok: false,
       error: {
         errors: Array.from(this.errors.keys()).map((field) => ({
-          field: field,
+          field: field as string,
           message: this.errors.peek(field) || [],
         })),
         values: latestValues,
@@ -305,16 +310,16 @@ export class Validator<T extends Values = Values> {
    * @returns 失败的校验结果
    */
   private failResult(
-    path: NamePath<T>,
+    path: TName,
     messages: string[],
-    latestValues: T
-  ): ValidateResult<T> {
+    latestValues: TValues
+  ): ValidateResult<TValues> {
     this.errors.set(path, messages)
 
     return {
       ok: false,
       error: {
-        errors: [{ field: path, message: messages }],
+        errors: [{ field: path as string, message: messages }],
         values: latestValues,
       },
     }
@@ -331,9 +336,9 @@ export class Validator<T extends Values = Values> {
    * @returns 校验结果
    */
   private async validateSingleRule(
-    path: NamePath<T>,
-    latestValues: T
-  ): Promise<ValidateResult<T>> {
+    path: TName,
+    latestValues: TValues
+  ): Promise<ValidateResult<TValues>> {
     const entry = this.rules.get(path)
 
     if (!entry || entry.schemas.length === 0) {
@@ -379,7 +384,7 @@ export class Validator<T extends Values = Values> {
 /**
  * 创建 Validator 实例的工厂函数。
  *
- * @typeParam T - 表单值类型
+ * @typeParam TValues - 表单值类型
  *
  * @returns Validator 实例
  *
@@ -388,8 +393,9 @@ export class Validator<T extends Values = Values> {
  * const validator = createValidator<Values>()
  * ```
  */
-export function createValidator<T extends Values>(): Validator<T> {
-  return new Validator<T>()
+export function createValidator<
+  TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+>(): Validator<TValues, TName> {
+  return new Validator<TValues, TName>()
 }
-
-export default Validator

@@ -6,22 +6,28 @@
  * @module types/form
  */
 
-import { FormStorePendingField } from "@/store"
-
-import { DeepNamePath } from "./namePathType"
+import { DeepNamePath, PathValue } from "./namePathType"
 import { SchemxRendererKey } from "./renderer"
 import { SchemxRules } from "./rule"
 
-import type { SchemxField, SchemxResolvedField } from "./schema"
+import type { StorePending } from "../store"
+import type { SchemxField } from "./schema"
 import type { RendererRegistry, RuleEntry, RulesRegistry } from "../registry"
-import type { RuntimeNode } from "./runtime"
 import type { ValidateError, ValidateResult } from "../validator"
+import type { ViewNode } from "../view"
 
 /** 字段值类型 */
-export type Value = any
+export type Value = unknown
 
 /** 表单值类型，键值对结构 */
-export type Values = Record<string, Value>
+export type Values = Record<string, any>
+
+/**
+ * 动态属性类型
+ *
+ * 支持静态值或函数形式，函数接收当前表单值并返回属性值（支持异步）。
+ */
+export type Dynamic<T, V extends Values = Values> = ((values: V) => T | Promise<T>) | T
 
 /**
  * 字段路径类型
@@ -45,6 +51,21 @@ export type ValidationTrigger =
   | "change"
   | "submit"
 
+export type SchemxDefaultContext = {
+  /**
+   * 校验触发时机
+   */
+  validationTrigger?: ValidationTrigger | ValidationTrigger[]
+  /**
+   * 全局 readonly 默认值。
+   */
+  readonly?: boolean
+  /**
+   * 全局 disabled 默认值。
+   */
+  disabled?: boolean
+}
+
 /**
  * schemx 组件 Props
  *
@@ -63,7 +84,7 @@ export interface SchemxProps<T extends Values = Values> {
   /** 渲染器注册实例 */
   rendererRegistry?: RendererRegistry
   /** 默认渲染器类型，当字段未指定 renderer 时使用 */
-  defaultRendererType?: SchemxRendererKey<T>
+  defaultRendererType?: SchemxRendererKey
   /** 规则注册实例 */
   rulesRegistry?: RulesRegistry
 
@@ -107,37 +128,11 @@ export interface SchemxProps<T extends Values = Values> {
  *
  * @typeParam T - 表单值类型，默认为 Values
  */
-export interface SchemxInstance<T extends Values = Values> {
-  /**
-   * 设置单个字段值并通知订阅者
-   *
-   * 支持嵌套路径，如 'user.address.city'。
-   *
-   * @param name - 字段路径
-   * @param value - 字段值
-   *
-   * @example
-   * ```typescript
-   * form.setFieldValue('name', 'John')
-   * form.setFieldValue('user.address.city', 'Beijing')
-   * ```
-   */
-  setFieldValue: (name: NamePath<T>, value: Value) => void
-
-  /**
-   * 批量设置字段值并通知订阅者
-   *
-   * 一次性更新多个字段，只触发一次通知。
-   *
-   * @param values - 要设置的字段值对象
-   *
-   * @example
-   * ```typescript
-   * form.setFieldsValue({ name: 'John', age: 25 })
-   * ```
-   */
-  setFieldsValue: (values: Readonly<Partial<T>>) => void
-
+export interface SchemxInstance<
+  TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+  TValue = PathValue<TValues, TName>,
+> {
   /**
    * 获取单个字段的当前值
    *
@@ -152,22 +147,7 @@ export interface SchemxInstance<T extends Values = Values> {
    * const city = form.getFieldValue('user.address.city')
    * ```
    */
-  getFieldValue: (name: NamePath<T>) => Readonly<Value>
-
-  /**
-   * 获取单个字段值的快照
-   *
-   * 返回深拷贝的值，不收集依赖，适用于需要脱离响应式的场景。
-   *
-   * @param name - 字段路径
-   * @returns 该字段当前值的深拷贝
-   *
-   * @example
-   * ```typescript
-   * const name = form.getFieldSnapshot('name') // => 'John'（深拷贝）
-   * ```
-   */
-  getFieldSnapshot: (name: NamePath<T>) => Value
+  getFieldValue: (name: TName) => TValue | undefined
 
   /**
    * 获取多个字段值
@@ -184,9 +164,55 @@ export interface SchemxInstance<T extends Values = Values> {
    * ```
    */
   getFieldsValue: {
-    (): Readonly<T>
-    (names: NamePath<T>[]): Readonly<Partial<T>>
+    (): TValues
+    (names: TName[]): TValues
+    (names?: TName[]): Partial<TValues>
   }
+
+  /**
+   * 设置单个字段值并通知订阅者
+   *
+   * 支持嵌套路径，如 'user.address.city'。
+   *
+   * @param name - 字段路径
+   * @param value - 字段值
+   *
+   * @example
+   * ```typescript
+   * form.setFieldValue('name', 'John')
+   * form.setFieldValue('user.address.city', 'Beijing')
+   * ```
+   */
+  setFieldValue: (name: TName, value: TValue) => void
+
+  /**
+   * 批量设置字段值并通知订阅者
+   *
+   * 一次性更新多个字段，只触发一次通知。
+   *
+   * @param values - 要设置的字段值对象
+   *
+   * @example
+   * ```typescript
+   * form.setFieldsValue({ name: 'John', age: 25 })
+   * ```
+   */
+  setFieldsValue: (values: Partial<TValues>) => void
+
+  /**
+   * 获取单个字段值的快照
+   *
+   * 返回深拷贝的值，不收集依赖，适用于需要脱离响应式的场景。
+   *
+   * @param name - 字段路径
+   * @returns 该字段当前值的深拷贝
+   *
+   * @example
+   * ```typescript
+   * const name = form.getFieldSnapshot('name') // => 'John'（深拷贝）
+   * ```
+   */
+  getFieldSnapshot: (name: TName) => TValue | undefined
 
   /**
    * 获取当前表单值的快照
@@ -203,9 +229,25 @@ export interface SchemxInstance<T extends Values = Values> {
    * ```
    */
   getFieldsSnapshot: {
-    (): T
-    (paths: NamePath<T>[]): Partial<T>
+    (): TValues
+    (paths: TName[]): TValues
+    (paths?: TName[]): Partial<TValues>
   }
+
+  /**
+   * 获取表单字段初始值。
+   *
+   * 不传参返回全量初始值的深拷贝，传入路径返回指定字段的初始值。
+   *
+   * @param path - 字段路径
+   * @returns 全量初始值或指定字段的初始值
+   *
+   * @example
+   * ```typescript
+   * form.getInitialValue('name') // => 'John'
+   * ```
+   */
+  getInitialValue: (name: TName) => TValue | undefined
 
   /**
    * 获取表单初始值。
@@ -222,8 +264,9 @@ export interface SchemxInstance<T extends Values = Values> {
    * ```
    */
   getInitialValues: {
-    (): T
-    (paths: NamePath<T>[]): Partial<T>
+    (): Partial<TValues>
+    (paths: TName[]): Partial<TValues>
+    (paths?: TName[]): Partial<TValues>
   }
 
   /**
@@ -236,137 +279,7 @@ export interface SchemxInstance<T extends Values = Values> {
    * form.setInitialValues({ name: 'Bob', age: 30 })
    * ```
    */
-  setInitialValues: (values: Partial<T>) => void
-
-  /**
-   * 注册字段校验规则
-   *
-   * @param name - 字段路径
-   * @param rules - SchemxRules 校验规则
-   * @param defaultMessage - 可选，空值时的默认错误提示
-   *
-   * @example
-   * ```typescript
-   * import { z } from 'zod'
-   * form.registerRules('email', z.string().email('邮箱格式错误'))
-   * form.registerRules('name', nameSchema, '请输入姓名')
-   * ```
-   */
-  registerRules: (
-    name: NamePath<T>,
-    rules: SchemxRules | SchemxRules[],
-    defaultMessage?: string
-  ) => void
-
-  /**
-   * 注销字段校验规则
-   *
-   * 同时清除该字段的错误信息。
-   *
-   * @param name - 字段路径
-   *
-   * @example
-   * ```typescript
-   * form.unregisterRules('email')
-   * ```
-   */
-  unregisterRules: (name: NamePath<T>) => void
-
-  /**
-   * 校验指定字段
-   *
-   * @param names - 字段路径或路径数组
-   * @returns 校验结果，成功返回 values，失败返回 errors
-   *
-   * @example
-   * ```typescript
-   * const result = await form.validateField('email')
-   * const result = await form.validateField(['name', 'email'])
-   * if (!result.ok) {
-   *   console.log(result.error.errors)
-   * }
-   * ```
-   */
-  validateField: (names: NamePath<T> | NamePath<T>[]) => Promise<ValidateResult<T>>
-
-  /**
-   * 校验所有已注册字段
-   *
-   * @returns 校验结果，成功返回 values，失败返回 errors
-   *
-   * @example
-   * ```typescript
-   * const result = await form.validate()
-   * if (result.ok) {
-   *   submitToServer(result.values)
-   * }
-   * ```
-   */
-  validate: () => Promise<ValidateResult<T>>
-
-  /**
-   * 获取单个字段的错误信息
-   *
-   * @param name - 字段路径
-   * @returns 错误信息数组，无错误时返回 undefined
-   *
-   * @example
-   * ```typescript
-   * const errors = form.getFieldError('email')
-   * // => ['邮箱格式错误'] 或 undefined
-   * ```
-   */
-  getFieldError: (name: NamePath<T>) => string[] | undefined
-
-  /**
-   * 手动设置字段的错误信息
-   *
-   * @param name - 字段路径
-   * @param errors - 错误信息数组
-   *
-   * @example
-   * ```typescript
-   * form.setFieldError('username', ['用户名已存在'])
-   * ```
-   */
-  setFieldError: (name: NamePath<T>, errors: string[]) => void
-
-  /**
-   * 提交表单
-   *
-   * 先校验所有字段，通过后调用 onFinish，失败调用 onFinishFailed。
-   * 内置防重复提交锁，提交进行中重复调用返回同一个 Promise。
-   *
-   * @example
-   * ```typescript
-   * await form.submit()
-   * ```
-   */
-  submit: () => Promise<void>
-
-  /**
-   * 重置整个表单到初始值
-   *
-   * 恢复所有字段到构造时的初始值，并通知订阅者。
-   *
-   * @example
-   * ```typescript
-   * form.reset()
-   * ```
-   */
-  reset: () => void
-
-  /**
-   * 重置指定字段到初始值
-   *
-   * @param names - 要重置的字段路径数组
-   *
-   * @example
-   * ```typescript
-   * form.resetFields(['name', 'email'])
-   * ```
-   */
-  resetFields: (names: NamePath<T>[]) => void
+  setInitialValues: (values: Partial<TValues>) => void
 
   /**
    * 检查单个字段是否被修改
@@ -381,23 +294,22 @@ export interface SchemxInstance<T extends Values = Values> {
    * form.isFieldTouched('name') // => true
    * ```
    */
-  isFieldTouched: (name: NamePath<T>) => boolean
+  isFieldTouched: (name: TName) => boolean
 
   /**
-   * 检查多个字段是否被修改
+   * 设置个字段被修改
    *
-   * 传入路径数组时检查所有指定字段是否都被修改，不传则检查是否有任一字段被修改。
+   * 传入路径设置字段修改状态。
    *
-   * @param names - 可选，要检查的字段路径
-   * @returns 是否被修改
+   * @param name - 字段路径
+   * @param value - 值
    *
    * @example
    * ```typescript
-   * form.isFieldsTouched(['name', 'email']) // 所有字段都被修改才返回 true
-   * form.isFieldsTouched()                  // 任一字段被修改即返回 true
+   * form.setFieldTouched('name', false)
    * ```
    */
-  isFieldsTouched: (names?: NamePath<T>[]) => boolean
+  setFieldTouched: (name: TName, value: boolean) => void
 
   /**
    * 获取所有被修改的字段路径
@@ -410,7 +322,150 @@ export interface SchemxInstance<T extends Values = Values> {
    * // => ['name', 'user.address.city']
    * ```
    */
-  getTouchedFields: () => string[]
+  getTouchedFields: () => TName[]
+
+  /**
+   * 设置字段的操作中状态
+   *
+   * 用于标记字段正在进行异步操作（如文件上传），
+   * 校验和提交时会检查是否有字段处于操作中状态。
+   *
+   * @param name - 字段路径
+   * @param pending - 是否处于操作中
+   * @example
+   * ```typescript
+   * form.setFieldPending('avatar', true)   // 上传开始
+   * form.setFieldPending('avatar', false)  // 上传结束
+   * ```
+   */
+  setFieldPending: (name: TName, pending: boolean) => void
+
+  /**
+   * 检查单个字段是否处于操作中
+   *
+   * 返回响应式值，在 effect 中使用时自动追踪变化。
+   *
+   * @param name - 字段路径
+   * @returns 是否处于操作中
+   *
+   * @example
+   * ```typescript
+   * form.isFieldPending('avatar') // => true
+   * ```
+   */
+  isFieldPending: (name: TName) => boolean
+
+  /**
+   * 获取所有处于操作中的字段信息
+   *
+   * 返回当前所有 pending 状态为 true 的字段路径，无操作中字段时返回空数组。
+   *
+   * @returns 操作中的字段信息数组，每项包含 field（路径）
+   *
+   * @example
+   * ```typescript
+   * form.getPendingFields()
+   * // => [{ field: 'avatar' }, { field: 'attachment' }]
+   * ```
+   */
+  getPendingFields: () => StorePending<TValues, TName>[]
+
+  /**
+   * 重置指定字段到初始值
+   *
+   * @param names - 要重置的字段路径数组
+   *
+   * @example
+   * ```typescript
+   * form.resetFields(['name', 'email'])
+   * ```
+   */
+  resetFields: (names: TName[]) => void
+
+  /**
+   * 重置整个表单到初始值
+   *
+   * 恢复所有字段到构造时的初始值，并通知订阅者。
+   *
+   * @example
+   * ```typescript
+   * form.reset()
+   * ```
+   */
+  reset: () => void
+
+  /**
+   * 校验指定字段
+   *
+   * @param names - 字段路径或路径数组
+   * @returns 校验结果，成功返回 values，失败返回 errors
+   *
+   * @example
+   * ```typescript
+   * const result = await form.validateField('email', formValues)
+   * const result = await form.validateField(['name', 'email'], formValues)
+   *
+   * if (!result.ok) {
+   *   console.log(result.error.errors)
+   * }
+   * ```
+   */
+  validateField: (names: TName | TName[]) => Promise<ValidateResult<TValues>>
+
+  /**
+   * 校验所有已注册字段
+   *
+   * @returns 校验结果，成功返回 values，失败返回 errors
+   *
+   * @example
+   * ```typescript
+   * const result = await form.validate()
+   * if (result.ok) {
+   *   submitToServer(result.values)
+   * }
+   * ```
+   */
+  validate: () => Promise<ValidateResult<TValues>>
+
+  /**
+   * 获取单个字段的错误信息
+   *
+   * @param name - 字段路径
+   * @returns 错误信息数组，无错误时返回 undefined
+   *
+   * @example
+   * ```typescript
+   * const errors = form.getFieldError('email')
+   * // => ['邮箱格式错误'] 或 undefined
+   * ```
+   */
+  getFieldError: (name: TName) => string[] | undefined
+
+  /**
+   * 手动设置字段的错误信息
+   *
+   * @param name - 字段路径
+   * @param errors - 错误信息数组
+   *
+   * @example
+   * ```typescript
+   * form.setFieldError('username', ['用户名已存在'])
+   * ```
+   */
+  setFieldError: (name: TName, errors: string[]) => void
+
+  /**
+   * 提交表单
+   *
+   * 先校验所有字段，通过后调用 onFinish，失败调用 onFinishFailed。
+   * 内置防重复提交锁，提交进行中重复调用返回同一个 Promise。
+   *
+   * @example
+   * ```typescript
+   * await form.submit()
+   * ```
+   */
+  submit: () => Promise<void>
 
   /**
    * 创建 reactive effect 监听字段或错误变化。
@@ -449,121 +504,20 @@ export interface SchemxInstance<T extends Values = Values> {
   batch: (fn: () => void) => void
 
   /**
-   * 设置字段的操作中状态
-   *
-   * 用于标记字段正在进行异步操作（如文件上传），
-   * 校验和提交时会检查是否有字段处于操作中状态。
-   *
-   * @param name - 字段路径
-   * @param pending - 是否处于操作中
-   * @param message - 操作描述信息（如 "上传中..."）
-   *
-   * @example
-   * ```typescript
-   * form.setFieldPending('avatar', true, '上传中...')   // 上传开始
-   * form.setFieldPending('avatar', false, '')           // 上传结束
-   * ```
+   * 获取当前 ViewTree。
    */
-  setFieldPending: (name: NamePath<T>, pending: boolean, message?: string) => void
+  getViewTree: () => readonly ViewNode[]
 
   /**
-   * 检查单个字段是否处于操作中
-   *
-   * 返回响应式值，在 effect 中使用时自动追踪变化。
-   *
-   * @param name - 字段路径
-   * @returns 是否处于操作中
-   *
-   * @example
-   * ```typescript
-   * form.isFieldPending('avatar') // => true
-   * ```
+   * 订阅 ViewTree 结构变化。
    */
-  isFieldPending: (name: NamePath<T>) => boolean
+  subscribeViewTree: (callback: (tree: readonly ViewNode[]) => void) => () => void
 
   /**
-   * 获取所有处于操作中的字段信息
-   *
-   * 返回当前所有 pending 状态为 true 的字段路径及其描述信息，
-   * 无操作中字段时返回空数组。
-   *
-   * @returns 操作中的字段信息数组，每项包含 field（路径）和 message（描述）
-   *
-   * @example
-   * ```typescript
-   * form.getPendingFields()
-   * // => [{ field: 'avatar', message: '上传中...' }, { field: 'attachment', message: '上传中...' }]
-   * ```
+   * 获取 ViewTree 结构版本。
    */
-  getPendingFields: () => FormStorePendingField[]
+  getViewRevision: () => number
 
-  /**
-   * 销毁表单实例
-   *
-   * 清除所有订阅回调，释放资源。通常在组件卸载时调用。
-   *
-   * @example
-   * ```typescript
-   * form.destroy()
-   * ```
-   */
-  destroy: () => void
-
-  /**
-   * 表单内部钩子接口
-   *
-   * 封装渲染器注册和校验规则注册等内部操作，
-   * 与 {@link SchemxInstance} 的公开 API 分离，避免暴露给业务代码。
-   *
-   * @typeParam T - 表单值类型
-   */
-  getInternalHooks: () => SchemxInternalHooks<T>
-}
-
-/**
- * 表单内部钩子接口
- *
- * 封装渲染器注册和校验规则注册等内部操作，
- * 与 {@link SchemxInstance} 的公开 API 分离，避免暴露给业务代码。
- *
- * @typeParam T - 表单值类型
- */
-export interface SchemxInternalHooks<T extends Values = Values> {
-  /**
-   * 获取 runtime revision
-   *
-   */
-  getRuntimeRevision: () => void
-
-  /**
-   * 获取当前 runtime root。
-   *
-   * 仅供框架适配层渲染 runtime tree 使用。它保留 dependency/group
-   * runtime container、稳定 key、children 与生命周期状态。业务侧若只需要
-   * schema list，请使用 getResolvedSchemas()。
-   *
-   * @returns runtime root 节点数组
-   */
-  getRuntimeRoot: () => RuntimeNode<T>[]
-
-  /**
-   * 获取已解析 schema 列表。
-   *
-   * 与 getResolvedSchemas() 返回相同内容，但命名更明确。Raw Schema 保持
-   * immutable；该方法只是从 runtime tree 派生 schema list。
-   *
-   * @returns dependency 已展开后的 schema 列表
-   */
-  getResolvedSchemas: () => SchemxResolvedField<T>[]
-
-  /**
-   * 获取内部钩子
-   *
-   * 返回包含渲染器注册和校验规则注册等内部操作的钩子对象。
-   * 仅供框架内部使用（如 FormItem），不建议业务代码直接调用。
-   *
-   * @returns 内部钩子对象
-   */
   /**
    * 等待所有异步依赖解析完成
    *
@@ -589,7 +543,7 @@ export interface SchemxInternalHooks<T extends Values = Values> {
    * }
    * ```
    */
-  getRenderer: (type: SchemxRendererKey<T>) => unknown | undefined
+  getRenderer: (type: SchemxRendererKey) => unknown | undefined
 
   /**
    * 注册渲染器组件
@@ -605,7 +559,7 @@ export interface SchemxInternalHooks<T extends Values = Values> {
    * form.getInternalHooks().registerRenderer('input', InputComponent)
    * ```
    */
-  registerRenderer: (type: SchemxRendererKey<T>, renderer: unknown) => void
+  registerRenderer: (type: SchemxRendererKey, renderer: unknown) => void
 
   /**
    * 检查指定类型的渲染器是否已注册
@@ -620,7 +574,7 @@ export interface SchemxInternalHooks<T extends Values = Values> {
    * }
    * ```
    */
-  hasRenderer: (type: SchemxRendererKey<T>) => boolean
+  hasRenderer: (type: SchemxRendererKey) => boolean
 
   /**
    * 获取指定名称的校验规则条目
@@ -636,7 +590,7 @@ export interface SchemxInternalHooks<T extends Values = Values> {
    * const entry = form.getInternalHooks().getRule('phone')
    * ```
    */
-  getRule: (name: string) => RuleEntry<T> | undefined
+  getRule: (name: string) => RuleEntry<TValues> | undefined
 
   /**
    * 注册校验规则
@@ -652,7 +606,7 @@ export interface SchemxInternalHooks<T extends Values = Values> {
    * form.getInternalHooks().registerRule('phone', phoneRule)
    * ```
    */
-  registerRule: (name: string, rule: RuleEntry<T>) => void
+  registerRule: (name: string, rule: RuleEntry<TValues>) => void
 
   /**
    * 检查指定名称的校验规则是否已注册
@@ -668,6 +622,52 @@ export interface SchemxInternalHooks<T extends Values = Values> {
    * ```
    */
   hasRule: (name: string) => boolean
+
+  /**
+   * 注册字段校验规则
+   *
+   * @param name - 字段路径
+   * @param rules - SchemxRules 校验规则
+   * @param defaultMessage - 可选，空值时的默认错误提示
+   *
+   * @example
+   * ```typescript
+   * import { z } from 'zod'
+   * form.registerRules('email', z.string().email('邮箱格式错误'))
+   * form.registerRules('name', nameSchema, '请输入姓名')
+   * ```
+   */
+  registerRules: (
+    name: TName,
+    rules: SchemxRules | SchemxRules[],
+    defaultMessage?: string
+  ) => void
+
+  /**
+   * 注销字段校验规则
+   *
+   * 同时清除该字段的错误信息。
+   *
+   * @param name - 字段路径
+   *
+   * @example
+   * ```typescript
+   * form.unregisterRules('email')
+   * ```
+   */
+  unregisterRules: (name: TName) => void
+
+  /**
+   * 销毁表单实例
+   *
+   * 清除所有订阅回调，释放资源。通常在组件卸载时调用。
+   *
+   * @example
+   * ```typescript
+   * form.destroy()
+   * ```
+   */
+  destroy: () => void
 }
 
 /**
@@ -680,3 +680,140 @@ export interface SchemxGlobalContext extends Pick<
   SchemxProps,
   "readonly" | "disabled" | "validationTrigger"
 > {}
+
+/**
+ * 表单 API，提供与表单交互的方法。
+ *
+ * 传递给动态渲染器，允许程序化操作表单。
+ *
+ * @typeParam TValues - 表单值类型
+ */
+export interface SchemxFormApi<
+  TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+  TValue = PathValue<TValues, TName>,
+> {
+  /**
+   * 设置字段值。
+   *
+   * @param name - 字段路径
+   * @param value - 新值
+   */
+  setValue(name: TName, value: unknown): void
+
+  /**
+   * 设置多个字段值。
+   *
+   * @param values - 字段值对象
+   */
+  setValues(values: Partial<TValues>): void
+
+  /**
+   * 获取字段值。
+   *
+   * @param name - 字段路径
+   */
+  getValue(name: TName): TValue | undefined
+
+  /**
+   * 获取多个字段值。
+   *
+   * @param name - 字段路径
+   */
+  getValues(name?: TName[]): Partial<TValues>
+
+  /**
+   * 获取当前表单值的快照
+   *
+   * @param names - 字段路径
+   */
+  getSnapshots(names?: TName[]): Partial<TValues>
+
+  /**
+   * 重置指定字段到初始值
+   *
+   * @param names - 要重置的字段路径数组
+   *
+   * @example
+   * ```typescript
+   * form.resetFields(['name', 'email'])
+   * ```
+   */
+  resetFields: (names: TName[]) => void
+
+  /**
+   * 重置整个表单到初始值
+   *
+   * 恢复所有字段到构造时的初始值，并通知订阅者。
+   */
+  reset: () => void
+
+  /**
+   * 设置字段的操作中状态
+   *
+   * 用于标记字段正在进行异步操作（如文件上传），
+   * 校验和提交时会检查是否有字段处于操作中状态。
+   *
+   * @param name - 字段路径
+   * @param pending - 是否处于操作中
+   */
+  setPending: (name: TName, pending: boolean) => void
+
+  /**
+   * 检查单个字段是否处于操作中
+   *
+   * 返回响应式值，在 effect 中使用时自动追踪变化。
+   *
+   * @param name - 字段路径
+   * @returns 是否处于操作中
+   *
+   */
+  isPending: (name: TName) => boolean
+
+  /**
+   * 设置字段是否已被触摸。
+   *
+   * @param name - 字段路径
+   * @param value - 值
+   */
+  setTouched(name: TName, value: boolean): void
+
+  /**
+   * 检查字段是否已被触摸。
+   *
+   * @param name - 字段路径
+   * @returns 是否已被触摸
+   */
+  isTouched(name: TName): boolean
+
+  /**
+   * 校验单个字段。
+   *
+   * @param name - 字段路径
+   * @returns 校验结果
+   */
+  validateField(name: TName): Promise<ValidateResult<TValues>>
+
+  /**
+   * 校验所有字段。
+   *
+   * @returns 校验结果
+   */
+  validate(): Promise<ValidateResult<TValues>>
+
+  /**
+   * 设置字段是否有错误。
+   *
+   * @param name - 字段路径
+   * @param errors - 错误信息数组
+   */
+  setError(name: TName, errors: string[]): void
+
+  /**
+   * 获取字段错误列表。
+   *
+   * @param name - 字段路径
+   * @returns 错误消息数组
+   */
+  getError(name: TName): string[] | undefined
+}

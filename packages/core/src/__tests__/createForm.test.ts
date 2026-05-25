@@ -8,7 +8,7 @@
  */
 
 import fc from "fast-check"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import { createForm } from "../createForm"
 
@@ -58,7 +58,7 @@ describe("CreateFormInstance 属性测试", () => {
           expect(receivedLatestSnapshot).toBeDefined()
           expect((receivedLatestSnapshot as any)[path]).toBe(newValue)
 
-          form.destroy()
+          form.getInternalHooks().destroy()
         }
       ),
       { numRuns: 100 }
@@ -111,7 +111,7 @@ describe("渲染器注册中心下沉 属性测试", () => {
             expect(form.getInternalHooks().getRenderer(type)).toBe(renderers[type])
           }
 
-          form.destroy()
+          form.getInternalHooks().destroy()
         }
       ),
       { numRuns: 100 }
@@ -138,7 +138,7 @@ describe("渲染器注册中心下沉 属性测试", () => {
             registry.getRenderer(queryType)
           )
 
-          form.destroy()
+          form.getInternalHooks().destroy()
         }
       ),
       { numRuns: 100 }
@@ -158,7 +158,7 @@ describe("渲染器注册中心下沉 属性测试", () => {
         expect(form.getInternalHooks().hasRenderer(type)).toBe(true)
         expect(form.getInternalHooks().getRenderer(type)).toBe(rendererObj)
 
-        form.destroy()
+        form.getInternalHooks().destroy()
       }),
       { numRuns: 100 }
     )
@@ -187,7 +187,7 @@ describe("渲染器注册中心下沉 属性测试", () => {
             expect(result).not.toBe(registryB.getRenderer(type))
           }
 
-          form.destroy()
+          form.getInternalHooks().destroy()
         }
       ),
       { numRuns: 100 }
@@ -214,7 +214,7 @@ describe("渲染器注册中心下沉 单元测试", () => {
     expect(typeof form.getInternalHooks().registerRenderer).toBe("function")
     expect(typeof form.getInternalHooks().hasRenderer).toBe("function")
 
-    form.destroy()
+    form.getInternalHooks().destroy()
   })
 
   // 8.3 验证外部传入 form 实例时渲染器正确关联
@@ -237,12 +237,127 @@ describe("渲染器注册中心下沉 单元测试", () => {
     expect(form.getInternalHooks().hasRenderer("input")).toBe(true)
     expect(form.getInternalHooks().hasRenderer("select")).toBe(true)
 
-    form.destroy()
+    form.getInternalHooks().destroy()
   })
 })
 
 describe("字段规则注册上下文 单元测试", () => {
-  it("registerRules 使用 runtime resolved schema 为字符串工厂规则补充字段上下文", async () => {
+  it("createForm 应该注册并触发生命周期 hooks", () => {
+    const mount = vi.fn()
+    const form = createForm({
+      schemas: [
+        {
+          name: "name",
+          label: "姓名",
+          componentType: "input",
+        },
+      ],
+      lifecycleHooks: {
+        mount,
+      },
+    })
+
+    expect(mount).toHaveBeenCalledTimes(1)
+    expect(mount.mock.calls[0][0].kind).toBe("field")
+    expect(mount.mock.calls[0][1]).toMatchObject({
+      kind: "field",
+      schema: {
+        name: ["name"],
+      },
+    })
+
+    form.getInternalHooks().destroy()
+  })
+
+  it("dependency 子树挂载时应该水合挂载前写入的字段值", async () => {
+    const submitted: any[] = []
+    const form = createForm({
+      initialValues: { orderType: "express" },
+      schemas: [
+        {
+          name: "orderType",
+          label: "订单类型",
+          componentType: "selector",
+          initialValue: "express",
+        },
+        {
+          componentType: "dependency",
+          to: ["orderType"],
+          renderer: (values: any) => {
+            if (values.orderType !== "standard") return []
+
+            return [
+              {
+                label: "标准订单配置",
+                componentType: "group",
+                children: [
+                  {
+                    name: "expectedDate",
+                    label: "预计日期",
+                    componentType: "date",
+                    required: true,
+                    rules: "required",
+                  },
+                  {
+                    name: "deliveryMode",
+                    label: "配送方式",
+                    componentType: "radio",
+                  },
+                  {
+                    componentType: "dependency",
+                    to: ["deliveryMode"],
+                    renderer: (deliveryValues: any) => {
+                      if (deliveryValues.deliveryMode !== "pickup") return []
+
+                      return [
+                        {
+                          name: "pickupStore",
+                          label: "自提门店",
+                          componentType: "selector",
+                          required: true,
+                          rules: "required",
+                        },
+                      ]
+                    },
+                  },
+                ],
+              },
+            ]
+          },
+        },
+      ] as any,
+      onFinish: (values) => {
+        submitted.push(values)
+      },
+    })
+
+    await form.waitForDependencies()
+
+    form.setFieldValue("orderType", "standard")
+    form.setFieldValue("expectedDate", "2026-05-09")
+    form.setFieldValue("deliveryMode", "pickup")
+    form.setFieldValue("pickupStore", "hubin")
+
+    await form.waitForDependencies()
+
+    expect(form.getFieldValue("expectedDate")).toBe("2026-05-09")
+    expect(form.getFieldValue("deliveryMode")).toBe("pickup")
+    expect(form.getFieldValue("pickupStore")).toBe("hubin")
+
+    await form.submit()
+
+    expect(submitted).toHaveLength(1)
+    expect(submitted[0]).toMatchObject({
+      orderType: "standard",
+      expectedDate: "2026-05-09",
+      deliveryMode: "pickup",
+      pickupStore: "hubin",
+    })
+
+    form.getInternalHooks().destroy()
+  })
+
+  it("registerRules 使用 resolved schema 为字符串工厂规则补充字段上下文", async () => {
     const form = createForm({
       initialValues: { user: { name: "Alice" } },
       schemas: [
@@ -270,15 +385,15 @@ describe("字段规则注册上下文 单元测试", () => {
       },
     }))
 
-    form.unregisterRules("user.name" as any)
-    form.registerRules("user.name" as any, "contextual")
+    form.getInternalHooks().unregisterRules("user.name" as any)
+    form.getInternalHooks().registerRules("user.name" as any, "contextual")
 
     const result = await form.validateField("user.name" as any)
 
     expect(result.ok).toBe(false)
     expect(form.getFieldError("user.name" as any)).toEqual(["User Name"])
 
-    form.destroy()
+    form.getInternalHooks().destroy()
   })
 })
 
@@ -333,7 +448,7 @@ describe("RulesRegistry 快捷方法 属性测试", () => {
         expect(form.getInternalHooks().hasRule(name)).toBe(true)
         expect(form.getInternalHooks().getRule(name)).toBe(rule)
 
-        form.destroy()
+        form.getInternalHooks().destroy()
       }),
       { numRuns: 100 }
     )
@@ -354,7 +469,7 @@ describe("RulesRegistry 快捷方法 属性测试", () => {
         expect(form.getInternalHooks().getRule(name)).toBe(ruleB)
         expect(form.getInternalHooks().getRule(name)).not.toBe(ruleA)
 
-        form.destroy()
+        form.getInternalHooks().destroy()
       }),
       { numRuns: 100 }
     )
@@ -398,7 +513,7 @@ describe("RulesRegistry 快捷方法 属性测试", () => {
             form.getInternalHooks().getRenderer(rendererType + "_via_internals")
           ).toBe(renderer2)
 
-          form.destroy()
+          form.getInternalHooks().destroy()
         }
       ),
       { numRuns: 100 }
@@ -424,7 +539,7 @@ describe("RulesRegistry 快捷方法与 getInternals 单元测试", () => {
     expect(typeof form.getInternalHooks().hasRule).toBe("function")
     expect(typeof form.getInternalHooks).toBe("function")
 
-    form.destroy()
+    form.getInternalHooks().destroy()
   })
 
   // 6.2 验证 getInternals() 返回对象包含 rendererRegistry 和 rulesRegistry 属性
@@ -441,7 +556,7 @@ describe("RulesRegistry 快捷方法与 getInternals 单元测试", () => {
     expect(typeof hooks.registerRule).toBe("function")
     expect(typeof hooks.hasRule).toBe("function")
 
-    form.destroy()
+    form.getInternalHooks().destroy()
   })
 
   // 6.3 验证未注册的规则名称 getRule 返回 undefined 且 hasRule 返回 false
@@ -452,7 +567,7 @@ describe("RulesRegistry 快捷方法与 getInternals 单元测试", () => {
     expect(form.getInternalHooks().getRule("__nonexistent_rule__")).toBeUndefined()
     expect(form.getInternalHooks().hasRule("__nonexistent_rule__")).toBe(false)
 
-    form.destroy()
+    form.getInternalHooks().destroy()
   })
 
   // 6.4 验证传入自定义 rendererRegistry 后，getInternalHooks 使用该 registry 的渲染器
@@ -466,6 +581,6 @@ describe("RulesRegistry 快捷方法与 getInternals 单元测试", () => {
 
     expect(form.getInternalHooks().getRenderer("test-type")).toBe(testRenderer)
 
-    form.destroy()
+    form.getInternalHooks().destroy()
   })
 })

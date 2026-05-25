@@ -7,7 +7,7 @@
  * @module core/validator/defaultRules
  */
 
-import type { SchemxBaseField, StandardSchemaV1 } from "../types"
+import type { SchemxBaseField, StandardSchemaV1, Values } from "../types"
 
 /**
  * 创建内置必填校验 schema。
@@ -26,8 +26,8 @@ import type { SchemxBaseField, StandardSchemaV1 } from "../types"
  * schema['~standard'].validate(undefined) // => { issues: [{ message: '请输入用户名' }] }
  * schema['~standard'].validate('hello')   // => { value: 'hello' }
  */
-export function createRequiredRule(
-  schema?: SchemxBaseField
+export function createRequiredRule<TValues extends Values = Values>(
+  schema?: SchemxBaseField<TValues>
 ): StandardSchemaV1<unknown, unknown> {
   return {
     "~standard": {
@@ -66,7 +66,9 @@ export function createRequiredRule(
  * schema['~standard'].validate('beijing') // => { value: 'beijing' }
  * schema['~standard'].validate([1, 2])    // => { value: [1, 2] }
  */
-export function createSelectRequiredRule(schema?: SchemxBaseField): StandardSchemaV1 {
+export function createSelectRequiredRule<TValues extends Values = Values>(
+  schema?: SchemxBaseField<TValues>
+): StandardSchemaV1 {
   return {
     "~standard": {
       version: 1,
@@ -107,8 +109,8 @@ export function createSelectRequiredRule(schema?: SchemxBaseField): StandardSche
  * schema['~standard'].validate([])        // => { issues: [{ message: '请上传文件' }] }
  * schema['~standard'].validate([file])    // => { value: [file] }
  */
-export function createUploadRequiredRule(
-  schema?: SchemxBaseField
+export function createUploadRequiredRule<TValues extends Values = Values>(
+  schema?: SchemxBaseField<TValues>
 ): StandardSchemaV1<unknown, unknown> {
   return {
     "~standard": {

@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@schemx/core",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "description": "框架无关的表单引擎核心（Framework-agnostic form engine core）",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",

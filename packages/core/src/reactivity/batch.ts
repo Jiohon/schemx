@@ -9,7 +9,7 @@
 import { batch } from "@preact/signals-core"
 
 /**
- * 将多次 reactive 写入合并到一次通知周期中。
+ * 将多次 signal 写入合并到一次通知周期中。
  */
 export function batchUpdates(fn: () => void): void {
   batch(fn)

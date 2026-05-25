@@ -136,7 +136,7 @@
     {
       componentType: "dependency",
       to: ["orderType"],
-      renderer: async (values): Promise<SchemxField[]> => {
+      renderer: async (values) => {
         console.log("values.orderType", values.orderType)
         const orderType = values.orderType
 
@@ -177,7 +177,7 @@
                 {
                   componentType: "dependency",
                   to: ["deliveryMode"],
-                  renderer: (deliveryValues): SchemxField[] => {
+                  renderer: (deliveryValues) => {
                     if (deliveryValues.deliveryMode === "pickup") {
                       console.log(deliveryValues.deliveryMode)
 
@@ -238,7 +238,7 @@
                 {
                   componentType: "dependency",
                   to: ["quantity"],
-                  renderer: (quantityValues): SchemxField[] => {
+                  renderer: (quantityValues) => {
                     if ((quantityValues.quantity || 0) < 100) return []
 
                     return [
@@ -288,7 +288,7 @@
                 {
                   componentType: "dependency",
                   to: ["expressLevel"],
-                  renderer: async (expressValues): Promise<SchemxField[]> => {
+                  renderer: async (expressValues) => {
                     const level = expressValues.expressLevel
 
                     // same_day 故意慢一点，配合快速切换验证旧异步结果不会覆盖新 subtree。
@@ -390,7 +390,7 @@
               {
                 componentType: "dependency",
                 to: ["customCategory"],
-                renderer: (customValues): SchemxField[] => {
+                renderer: (customValues) => {
                   if (customValues.customCategory === "event") {
                     return [
                       {
@@ -436,7 +436,7 @@
                       {
                         componentType: "dependency",
                         to: ["approvalLevel"],
-                        renderer: (approvalValues): SchemxField[] => {
+                        renderer: (approvalValues) => {
                           if (approvalValues.approvalLevel !== "legal") return []
 
                           return [
@@ -502,8 +502,8 @@
     {
       componentType: "dependency",
       to: ["additionalServices"],
-      renderer: (values): SchemxField[] => {
-        const services: string[] = values.additionalServices || []
+      renderer: (values) => {
+        const services = values.additionalServices || []
 
         const dynamicServices: SchemxField[] = []
 
@@ -558,7 +558,7 @@
               {
                 componentType: "dependency",
                 to: ["giftWrapStyle"],
-                renderer: (giftValues): SchemxField[] => {
+                renderer: (giftValues) => {
                   if (giftValues.giftWrapStyle !== "festival") return []
 
                   return [
@@ -629,18 +629,27 @@
   }
 
   const handleUnmountValidation = async () => {
-    formRef.value?.setFieldValue("orderType", "standard")
-    formRef.value?.setFieldValue("quantity", 1)
-    formRef.value?.setFieldValue("expectedDate", "2026-05-09")
-    formRef.value?.setFieldValue("deliveryMode", "pickup")
-    formRef.value?.setFieldValue("pickupStore", "hubin")
-    formRef.value?.setFieldValue("additionalServices", ["invoice"])
-    console.log(formRef.value?.getFieldsSnapshot())
+    const form = formRef.value
+    if (!form) return
+
+    form.setFieldValue("orderType", "standard")
+    await form.waitForDependencies()
+
+    form.setFieldValue("quantity", 1)
+    form.setFieldValue("expectedDate", "2026-05-09")
+    form.setFieldValue("deliveryMode", "pickup")
+    await form.waitForDependencies()
+
+    form.setFieldValue("pickupStore", "hubin")
+    form.setFieldValue("additionalServices", ["invoice"])
+    await form.waitForDependencies()
+
+    console.log(form.getFieldsSnapshot())
     await sleep(0)
-    await formRef.value?.submit()
-    formRef.value?.setFieldValue("additionalServices", [])
-    await sleep(0)
-    await formRef.value?.submit()
+
+    form.setFieldValue("additionalServices", [])
+    await form.waitForDependencies()
+    await form.submit()
   }
 
   /**

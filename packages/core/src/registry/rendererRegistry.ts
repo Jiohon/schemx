@@ -6,7 +6,7 @@
  * @module core/registry/rendererRegistry
  */
 
-import { SchemxRendererKey } from "@/types"
+import type { SchemxRendererKey } from "../types"
 
 /** 渲染器注册选项 */
 export interface RegistryOptions {

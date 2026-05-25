@@ -24,6 +24,8 @@
  * ```
  */
 
+import { SchemxRuleKey } from "@/types/rule"
+
 import { SchemxBaseField, Values } from "../types"
 
 import type { StandardSchemaV1 } from "../types"
@@ -34,8 +36,8 @@ import type { StandardSchemaV1 } from "../types"
  * 接收 label 参数，返回 StandardSchemaV1 实例。
  * 用于内置规则等需要运行时上下文才能生成 rule 的场景。
  */
-export type RuleFactory<T extends Values = Values> = (
-  schema?: SchemxBaseField<T>
+export type RuleFactory<TValues extends Values = Values> = (
+  schema?: SchemxBaseField<TValues>
 ) => StandardSchemaV1
 
 /**
@@ -43,7 +45,9 @@ export type RuleFactory<T extends Values = Values> = (
  *
  * 支持直接的 StandardSchemaV1 实例或工厂函数。
  */
-export type RuleEntry<T extends Values = Values> = StandardSchemaV1 | RuleFactory<T>
+export type RuleEntry<TValues extends Values = Values> =
+  | StandardSchemaV1
+  | RuleFactory<TValues>
 
 /** Rule 注册选项 */
 export interface RuleRegistryOptions {
@@ -52,7 +56,10 @@ export interface RuleRegistryOptions {
 }
 
 /** Rule 映射类型（实例或工厂） */
-export type RuleEntryMap<T extends Values = Values> = Record<string, RuleEntry<T>>
+export type RuleEntryMap<TValues extends Values = Values> = Record<
+  SchemxRuleKey,
+  RuleEntry<TValues>
+>
 
 /**
  * Rule 校验注册中心。
@@ -72,12 +79,12 @@ export type RuleEntryMap<T extends Values = Values> = Record<string, RuleEntry<T
  * rulesRegistry.register('required', (label) => createRequiredRule(label))
  *
  * // 解析 schema（工厂会自动调用）
- * const rule = rulesRegistry.resolve('required', '用户名')
+ * const rule = rulesRegistry.resolveRuleBySchema('required', '用户名')
  * ```
  */
-export class RulesRegistry<T extends Values = Values> {
+export class RulesRegistry<TValues extends Values = Values> {
   /** Rule 存储 */
-  private rules: Map<string, RuleEntry<T>>
+  private rules: Map<SchemxRuleKey, RuleEntry<TValues>>
 
   /**
    * 创建 RulesRegistry 实例。
@@ -110,7 +117,11 @@ export class RulesRegistry<T extends Values = Values> {
    * rulesRegistry.register('required', (label) => createRequiredRule(label))
    * ```
    */
-  register(name: string, rule: RuleEntry<T>, options?: RuleRegistryOptions): void {
+  register(
+    name: SchemxRuleKey,
+    rule: RuleEntry<TValues>,
+    options?: RuleRegistryOptions
+  ): void {
     if (this.rules.has(name) && options?.override === false) {
       console.warn(`[RulesRegistry] Rule "${name}" 已存在，跳过注册`)
 
@@ -135,9 +146,9 @@ export class RulesRegistry<T extends Values = Values> {
    * })
    * ```
    */
-  registerAll(rules: RuleEntryMap<T>): void {
+  registerAll(rules: RuleEntryMap<TValues>): void {
     Object.entries(rules).forEach(([name, rule]) => {
-      this.rules.set(name, rule)
+      this.rules.set(name as SchemxRuleKey, rule)
     })
   }
 
@@ -155,7 +166,7 @@ export class RulesRegistry<T extends Values = Values> {
    * const entry = rulesRegistry.getRule('phone')
    * ```
    */
-  getRule(name: string): RuleEntry<T> | undefined {
+  getRule(name: SchemxRuleKey): RuleEntry<TValues> | undefined {
     return this.rules.get(name)
   }
 
@@ -172,25 +183,14 @@ export class RulesRegistry<T extends Values = Values> {
    * @example
    * ```typescript
    * // 固定 rule 直接返回
-   * rulesRegistry.resolve('phone', { label :'手机号', ComponentType: 'input', ... }) // => phoneRule
+   * rulesRegistry.resolveRuleBySchema('phone', { label :'手机号', ComponentType: 'input', ... }) // => phoneRule
    *
    * // 工厂函数会被调用
-   * rulesRegistry.resolve('required', {  label :'用户名', ComponentType: 'input', ... }) // => createRequiredRule('用户名')
+   * rulesRegistry.resolveRuleBySchema('required', {  label :'用户名', ComponentType: 'input', ... }) // => createRequiredRule('用户名')
    * ```
    */
-  resolve(name: string): StandardSchemaV1 | undefined
-  resolve(name: string, schema: SchemxBaseField<T>): StandardSchemaV1[]
-  resolve(
-    name: string,
-    schema?: SchemxBaseField<T>
-  ): RuleEntry<T> | StandardSchemaV1[] | undefined {
-    if (!schema) {
-      const entry = this.getRule(name)
-
-      return typeof entry === "function" ? entry() : entry
-    }
-
-    const { rules } = schema
+  resolveRuleBySchema(schema: SchemxBaseField<TValues>): StandardSchemaV1[] {
+    const rules = schema?.rules ?? []
 
     const ruleList = Array.isArray(rules) ? rules : [rules]
 
@@ -227,7 +227,7 @@ export class RulesRegistry<T extends Values = Values> {
    * rulesRegistry.hasRule('custom')  // => false
    * ```
    */
-  hasRule(name: string): boolean {
+  hasRule(name: SchemxRuleKey): boolean {
     return this.rules.has(name)
   }
 
@@ -242,7 +242,7 @@ export class RulesRegistry<T extends Values = Values> {
    * rulesRegistry.unregister('phone') // => true
    * ```
    */
-  unregister(name: string): boolean {
+  unregister(name: SchemxRuleKey): boolean {
     return this.rules.delete(name)
   }
 
@@ -256,7 +256,7 @@ export class RulesRegistry<T extends Values = Values> {
    * rulesRegistry.getNames() // => ['phone', 'email', 'idCard']
    * ```
    */
-  getNames(): string[] {
+  getNames(): SchemxRuleKey[] {
     return Array.from(this.rules.keys())
   }
 
@@ -302,8 +302,10 @@ export class RulesRegistry<T extends Values = Values> {
  * 用于 useForm 内部创建表单级别的注册中心实例，
  * 既能继承全局自定义规则，又能支持表单级别的规则覆盖。
  */
-export function createRulesRegistry<T extends Values = Values>(): RulesRegistry<T> {
-  return new RulesRegistry<T>()
+export function createRulesRegistry<
+  TValues extends Values = Values,
+>(): RulesRegistry<TValues> {
+  return new RulesRegistry<TValues>()
 }
 
 export default RulesRegistry

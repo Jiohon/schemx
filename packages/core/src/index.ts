@@ -1,21 +1,11 @@
 /**
  * core 模块统一导出
  *
- * 聚合 FormStore、Validator、RendererRegistry、RulesRegistry 四个核心模块的公开 API。
+ * 聚合 Validator、RendererRegistry、RulesRegistry 等核心模块的公开 API。
  *
  * @module core
  */
 
-// FormStore - 纯状态管理
-export {
-  FormStore,
-  createFormStore,
-  type FormStoreState,
-  type FormStoreOptions,
-  type FormStorePendingField,
-} from "./store"
-
-// Validator - 校验
 export {
   Validator,
   createValidator,
@@ -24,7 +14,6 @@ export {
   type FieldError,
 } from "./validator"
 
-// RendererRegistry - 渲染器注册
 export {
   createRendererRegistry,
   type RendererRegistry,
@@ -32,14 +21,28 @@ export {
   type RendererMap,
 } from "./registry"
 
-// createForm - 表单实例工厂
 export { createForm, type CreateFormOptions } from "./createForm"
 export { createForm as createFormInstance } from "./createForm"
+export { defineSchemas, type DefineSchemasApi } from "./defineSchemas"
 
-// createField - 单字段控制器
+export {
+  createLifecycle,
+  createLifecycleBus,
+  type LifecycleBus,
+  type LifecycleHooks,
+  type LifecycleListener,
+} from "./lifecycle"
+
+export type {
+  ViewNode,
+  FieldViewNode,
+  ContainerViewNode,
+  FieldViewProps,
+  FieldViewState,
+} from "./view"
+
 export { createField, type SchemxFieldInstance } from "./createField"
 
-// createEffect - 底层通用 reactive effect
 export {
   createEffect,
   type CleanupFn,
@@ -47,7 +50,6 @@ export {
   type CreateEffectReturn,
 } from "./createEffect"
 
-// createWatch - 纯函数版本的字段监听
 export {
   createWatch,
   createWatchField,
@@ -60,7 +62,6 @@ export {
   type CreateWatchReturn,
 } from "./createWatch"
 
-// RulesRegistry - 校验规则注册
 export {
   createRulesRegistry,
   type RulesRegistry,
@@ -70,7 +71,6 @@ export {
   type RuleEntryMap,
 } from "./registry"
 
-// Utils - 工具函数
 export {
   isBaseSchema,
   isGroupSchema,
@@ -82,7 +82,6 @@ export {
   collectObjectPathsByLeaf,
 } from "./utils"
 
-// Types - 类型定义
 export type {
   Value,
   Values,
@@ -96,7 +95,7 @@ export type {
   SchemxGlobalContext,
   SchemxRuleDefinition,
   SchemxRuleDefinitionKey,
-  SchemxBuiltinRules,
+  SchemxRuleBuiltinKey,
   SchemxRules,
   SchemxRendererKey,
   SchemxRendererDefinition,
@@ -114,7 +113,6 @@ export type {
   SchemxDependencies,
   SchemxConditionFn,
   SchemxDependenciesStaticProps,
-  SchemxInternalHooks,
   SchemxDictionary,
   SchemxWithDictionary,
 } from "./types"

@@ -1,0 +1,540 @@
+/**
+ * FiberManager - 单个 Fiber 生命周期执行器。
+ *
+ * Reconciler 负责决定创建、复用、移动和销毁哪些 Fiber；FiberManager 负责执行
+ * 单个 Fiber 的创建、挂载、更新和释放，并把字段、dependency 等领域资源挂到 Fiber。
+ *
+ * @module core/graph/fiberManager
+ */
+
+import {
+  createDependenciesEffect,
+  createDependencyEffect,
+  createFieldModel,
+  createValidationEffect,
+  mountDependencyEffect,
+  updateFieldModel,
+} from "../field"
+import { createSignal } from "../reactivity"
+
+import {
+  getChildFibers,
+  isContainerFiber,
+  isDependencyFiber,
+  isFieldFiber,
+  isGroupFiber,
+  setChildFibers,
+} from "./fiber"
+import { createScope } from "./scope"
+
+import type { SchemxFormContext } from "../createForm"
+import type {
+  DependencyDescriptor,
+  FieldDescriptor,
+  FormDescriptor,
+  GroupDescriptor,
+} from "../descriptor"
+import type { FieldRegistry } from "../field"
+import type { LifecycleBus } from "../lifecycle"
+import type { NamePath, Values } from "../types"
+import type {
+  ContainerFiber,
+  DependencyFiber,
+  Fiber,
+  FieldFiber,
+  GroupFiber,
+  RootFiber,
+} from "./fiber"
+
+/**
+ * 创建 `RuntimeFiberManager` 所需的运行时依赖。
+ *
+ * @typeParam TValues - 表单值类型。
+ */
+export interface CreateFiberManagerOptions<TValues extends Values = Values> {
+  /** 延迟获取表单上下文，避免 manager 创建阶段依赖尚未装配完成。 */
+  readonly getContext: () => SchemxFormContext<TValues>
+  /** 字段 Fiber 与 FieldModel 的运行时索引。 */
+  readonly fieldRegistry: FieldRegistry<TValues>
+  /** Fiber 生命周期事件总线。 */
+  readonly lifecycleBus: LifecycleBus<Fiber, FormDescriptor<TValues>>
+}
+
+/**
+ * Reconciler 使用的 Fiber 生命周期执行器。
+ *
+ * @remarks
+ * Reconciler 只做结构决策；FiberManager 负责把 descriptor 对应的领域资源
+ * 挂载到具体 Fiber，并在更新或销毁时释放这些资源。
+ *
+ * @typeParam TValues - 表单值类型。
+ */
+export interface FiberManager<TValues extends Values> {
+  /** 创建透明 root Fiber。 */
+  createRoot(): RootFiber
+  /** 根据 descriptor 创建一个未挂载的 Fiber。 */
+  create(
+    descriptor: FormDescriptor<TValues>,
+    parent: ContainerFiber<TValues>
+  ): Fiber<TValues>
+  /** 挂载 Fiber 对应的领域资源。 */
+  mount(fiber: Fiber<TValues>): void
+  /** 使用新的 descriptor 更新 Fiber 资源。 */
+  update(fiber: Fiber<TValues>, next: FormDescriptor<TValues>): void
+  /** 卸载 Fiber 自身的领域资源，不递归处理子树。 */
+  unmount(fiber: Fiber<TValues>): void
+  /** 递归销毁 Fiber 及其所有 runtime 子节点。 */
+  disposeTree(fiber: Fiber<TValues>): void
+}
+
+/**
+ * 表单 runtime graph 的默认 Fiber 生命周期管理器。
+ *
+ * @typeParam TValues - 表单值类型。
+ */
+export class RuntimeFiberManager<
+  TValues extends Values = Values,
+> implements FiberManager<TValues> {
+  /** 下一个非 root Fiber 的自增 id；root 固定使用 0。 */
+  private nextId = 1
+  /** 当前表单运行时上下文的延迟访问器。 */
+  private readonly getContext: () => SchemxFormContext<TValues>
+  /** 字段运行时索引，用于按字段路径查找 model 与 Fiber。 */
+  private readonly fieldRegistry: FieldRegistry<TValues>
+  /** Fiber 生命周期事件总线。 */
+  private readonly lifecycleBus: LifecycleBus<Fiber, FormDescriptor<TValues>>
+
+  constructor(options: CreateFiberManagerOptions<TValues>) {
+    this.getContext = options.getContext
+    this.fieldRegistry = options.fieldRegistry
+    this.lifecycleBus = options.lifecycleBus
+  }
+
+  /**
+   * 创建透明根 Fiber。
+   *
+   * @returns root Fiber，不对应任何表单 descriptor。
+   */
+  createRoot(): RootFiber {
+    return {
+      id: 0,
+      key: "schemx:root",
+      kind: "root",
+      parent: null,
+      scope: createScope(),
+      disposed: createSignal(false),
+      mounted: createSignal(false),
+      childFibers: [],
+    }
+  }
+
+  /**
+   * 根据 descriptor 创建单个未挂载 Fiber。
+   *
+   * @param descriptor - 编译后的表单节点描述符。
+   * @param parent - 新 Fiber 所属的容器 Fiber。
+   */
+  create(
+    descriptor: FormDescriptor<TValues>,
+    parent: ContainerFiber<TValues>
+  ): Fiber<TValues> {
+    if (descriptor.kind === "field") {
+      return this.createField(descriptor, parent)
+    }
+
+    if (descriptor.kind === "group") {
+      return this.createGroup(descriptor, parent)
+    }
+
+    if (descriptor.kind === "dependency") {
+      return this.createDependency(descriptor, parent)
+    }
+
+    throwUnknownDescriptor(descriptor)
+  }
+
+  /**
+   * 挂载单个 Fiber 的运行期资源。
+   *
+   * @remarks
+   * Group Fiber 只表示结构，不会创建领域资源；Field 和 Dependency 会在这里
+   * 创建各自的模型、effect 与资源 scope。
+   */
+  mount(fiber: Fiber<TValues>): void {
+    if (fiber.kind === "root" || !fiber.descriptor) {
+      return
+    }
+
+    this.lifecycleBus.emitBeforeMount(fiber as unknown as Fiber)
+
+    if (isFieldFiber(fiber)) {
+      this.mountField(
+        fiber as FieldFiber<TValues>,
+        fiber.descriptor as FieldDescriptor<TValues>
+      )
+    } else if (isGroupFiber(fiber)) {
+      this.mountGroup(fiber as GroupFiber<TValues>)
+    } else if (isDependencyFiber(fiber)) {
+      this.mountDependency(fiber as DependencyFiber<TValues>)
+    }
+
+    fiber.mounted.value = true
+    this.lifecycleBus.emitMount(
+      fiber as unknown as Fiber,
+      fiber.descriptor as FormDescriptor<TValues>
+    )
+  }
+
+  /**
+   * 更新单个 Fiber 的 descriptor 快照和运行期资源。
+   *
+   * @remarks
+   * descriptor 快照会先写入 Fiber，再由具体 update 分支决定复用还是重启资源。
+   * 结构层面的 children reconcile 不在这里处理。
+   */
+  update(fiber: Fiber<TValues>, next: FormDescriptor<TValues>): void {
+    if (fiber.kind === "root") {
+      return
+    }
+
+    const previous = fiber.descriptor as FormDescriptor<TValues> | undefined
+
+    if (previous) {
+      this.lifecycleBus.emitBeforeUpdate(fiber as unknown as Fiber, previous)
+    }
+
+    if (isFieldFiber(fiber)) {
+      fiber.descriptor = next as FieldDescriptor<TValues>
+      this.updateField(fiber as FieldFiber<TValues>, next as FieldDescriptor<TValues>)
+    } else if (isGroupFiber(fiber)) {
+      fiber.descriptor = next as GroupDescriptor<TValues>
+      this.updateGroup(fiber as GroupFiber<TValues>, next as GroupDescriptor<TValues>)
+    } else if (isDependencyFiber(fiber)) {
+      fiber.descriptor = next as DependencyDescriptor<TValues>
+      this.updateDependency(
+        fiber as DependencyFiber<TValues>,
+        next as DependencyDescriptor<TValues>,
+        previous as DependencyDescriptor<TValues> | undefined
+      )
+    }
+
+    if (previous) {
+      this.lifecycleBus.emitUpdate(fiber as unknown as Fiber, next)
+      this.lifecycleBus.emitUpdated(fiber as unknown as Fiber, previous)
+    }
+  }
+
+  /**
+   * 卸载单个 Fiber 的运行期资源。
+   *
+   * @remarks
+   * 这个方法不递归销毁子节点；需要销毁整棵子树时使用 `disposeTree`。
+   */
+  unmount(fiber: Fiber<TValues>): void {
+    if (fiber.kind === "root") {
+      return
+    }
+
+    if (isFieldFiber(fiber)) {
+      this.unmountField(fiber as FieldFiber<TValues>)
+    } else if (isGroupFiber(fiber)) {
+      this.unmountGroup(fiber as GroupFiber<TValues>)
+    } else if (isDependencyFiber(fiber)) {
+      this.unmountDependency(fiber as DependencyFiber<TValues>)
+    }
+
+    fiber.mounted.value = false
+  }
+
+  /**
+   * 递归销毁 Fiber 子树。
+   *
+   * @remarks
+   * 销毁顺序是：标记 disposed、递归销毁 runtime 子节点、卸载自身领域资源、
+   * 释放 Fiber scope、断开 parent。这样可以确保子资源先于父资源释放。
+   */
+  disposeTree(fiber: Fiber<TValues>): void {
+    if (fiber.disposed.value) {
+      return
+    }
+
+    if (fiber.kind !== "root") {
+      this.lifecycleBus.emitBeforeUnmount(fiber as unknown as Fiber)
+    }
+
+    fiber.disposed.value = true
+
+    if (isContainerFiber(fiber)) {
+      for (const child of getChildFibers(fiber)) {
+        this.disposeTree(child)
+      }
+
+      setChildFibers(fiber, [])
+    }
+
+    this.unmount(fiber)
+    fiber.scope.dispose()
+
+    fiber.parent = null
+
+    if (fiber.kind !== "root") {
+      this.lifecycleBus.emitUnmount(fiber as unknown as Fiber)
+    }
+  }
+
+  private createField(
+    descriptor: FieldDescriptor<TValues>,
+    parent: ContainerFiber<TValues>
+  ): FieldFiber<TValues> {
+    const fieldModel = createFieldModel(descriptor)
+
+    const fiber: FieldFiber<TValues> = {
+      id: this.nextId++,
+      key: descriptor.key,
+      kind: descriptor.kind,
+      parent,
+      scope: parent.scope.child(),
+      disposed: createSignal(false),
+      mounted: createSignal(false),
+      descriptor,
+      fieldModel,
+      fieldResourceScope: null,
+      fieldDependenciesScope: null,
+    }
+
+    return fiber
+  }
+
+  private createGroup(
+    descriptor: GroupDescriptor<TValues>,
+    parent: ContainerFiber<TValues>
+  ): GroupFiber<TValues> {
+    const fiber: GroupFiber<TValues> = {
+      id: this.nextId++,
+      key: descriptor.key,
+      kind: descriptor.kind,
+      parent,
+      scope: parent.scope.child(),
+      disposed: createSignal(false),
+      mounted: createSignal(false),
+      descriptor,
+      childFibers: [],
+    }
+
+    return fiber
+  }
+
+  private createDependency(
+    descriptor: DependencyDescriptor<TValues>,
+    parent: ContainerFiber<TValues>
+  ): DependencyFiber<TValues> {
+    const fiber: DependencyFiber<TValues> = {
+      id: this.nextId++,
+      key: descriptor.key,
+      kind: descriptor.kind,
+      parent,
+      scope: parent.scope.child(),
+      disposed: createSignal(false),
+      mounted: createSignal(false),
+      descriptor,
+      dependencySlot: null,
+      dependencyResourceScope: null,
+      subChildren: [],
+    }
+
+    return fiber
+  }
+
+  private mountField(
+    fiber: FieldFiber<TValues>,
+    descriptor: FieldDescriptor<TValues>
+  ): void {
+    const resourceScope = fiber.scope.child()
+
+    const model = fiber.fieldModel
+    if (!model) {
+      return
+    }
+
+    fiber.fieldResourceScope = resourceScope
+    this.fieldRegistry.register({
+      name: descriptor.schema.name,
+      fiber: fiber as unknown as Fiber,
+      descriptor,
+      model,
+    })
+    resourceScope.add(() => {
+      this.fieldRegistry.unregister(descriptor.schema.name, fiber as unknown as Fiber)
+
+      if (fiber.fieldResourceScope === resourceScope) {
+        fiber.fieldResourceScope = null
+      }
+    })
+
+    this.mountFieldValidation(fiber, descriptor, model, resourceScope)
+    this.mountOrRestartFieldDependencies(fiber, descriptor, model)
+  }
+
+  private mountGroup(_fiber: GroupFiber<TValues>): void {
+    // group 只参与结构生命周期，不创建领域资源。
+  }
+
+  private mountDependency(fiber: DependencyFiber<TValues>): void {
+    const resourceScope = fiber.scope.child()
+    const slot = createDependencyEffect(fiber)
+
+    fiber.dependencyResourceScope = resourceScope
+    fiber.dependencySlot = slot
+
+    resourceScope.add(() => {
+      if (fiber.dependencyResourceScope === resourceScope) {
+        fiber.dependencyResourceScope = null
+      }
+    })
+
+    mountDependencyEffect<TValues>(
+      fiber,
+      fiber.descriptor,
+      this.getContext(),
+      slot,
+      resourceScope
+    )
+  }
+
+  private updateField(
+    fiber: FieldFiber<TValues>,
+    descriptor: FieldDescriptor<TValues>
+  ): void {
+    const model = fiber.fieldModel
+    const previous = this.fieldRegistry
+      .list()
+      .find((entry) => entry.fiber.id === fiber.id)
+
+    if (model && previous && previous.name === descriptor.schema.name) {
+      updateFieldModel(model, descriptor)
+      this.fieldRegistry.register({
+        name: descriptor.schema.name,
+        fiber: fiber as unknown as Fiber,
+        descriptor,
+        model,
+      })
+      this.mountOrRestartFieldDependencies(fiber, descriptor, model)
+
+      return
+    }
+
+    this.unmountField(fiber)
+    this.mountField(fiber, descriptor)
+  }
+
+  private updateGroup(
+    _fiber: GroupFiber<TValues>,
+    _descriptor: GroupDescriptor<TValues>
+  ): void {
+    // group 没有领域资源，descriptor 快照已由 update() 写入。
+  }
+
+  private updateDependency(
+    fiber: DependencyFiber<TValues>,
+    descriptor: DependencyDescriptor<TValues>,
+    previous?: DependencyDescriptor<TValues>
+  ): void {
+    // trigger 订阅属于 dependencyResourceScope；trigger 列表变化时必须重启 effect。
+    if (
+      !fiber.dependencySlot ||
+      !previous ||
+      !isSameNamePathList(previous.trigger, descriptor.trigger)
+    ) {
+      this.unmountDependency(fiber)
+      this.mountDependency(fiber)
+    }
+  }
+
+  private mountFieldValidation(
+    fiber: FieldFiber<TValues>,
+    descriptor: FieldDescriptor<TValues>,
+    model = fiber.fieldModel,
+    scope = fiber.fieldResourceScope
+  ): void {
+    if (!model || !scope) {
+      return
+    }
+
+    createValidationEffect<TValues>({
+      props: createSignal(descriptor.schema),
+      descriptor,
+      fieldModel: model,
+      context: this.getContext(),
+      scope,
+    })
+  }
+
+  private mountOrRestartFieldDependencies(
+    fiber: FieldFiber<TValues>,
+    descriptor: FieldDescriptor<TValues>,
+    model = fiber.fieldModel
+  ): void {
+    fiber.fieldDependenciesScope?.dispose()
+
+    if (!model || !descriptor.dependencies) {
+      fiber.fieldDependenciesScope = null
+
+      return
+    }
+
+    const dependenciesScope = fiber.scope.child()
+    fiber.fieldDependenciesScope = dependenciesScope
+    dependenciesScope.add(() => {
+      if (fiber.fieldDependenciesScope === dependenciesScope) {
+        fiber.fieldDependenciesScope = null
+      }
+    })
+
+    createDependenciesEffect<TValues>({
+      descriptor,
+      fieldModel: model,
+      context: this.getContext(),
+      scope: dependenciesScope,
+    })
+  }
+
+  private unmountField(fiber: FieldFiber<TValues>): void {
+    fiber.fieldDependenciesScope?.dispose()
+    fiber.fieldDependenciesScope = null
+    fiber.fieldResourceScope?.dispose()
+    fiber.fieldResourceScope = null
+  }
+
+  private unmountGroup(_fiber: GroupFiber<TValues>): void {
+    // group 只参与结构生命周期，不创建领域资源。
+  }
+
+  private unmountDependency(fiber: DependencyFiber<TValues>): void {
+    fiber.dependencyResourceScope?.dispose()
+    fiber.dependencyResourceScope = null
+    fiber.dependencySlot = null
+  }
+}
+
+/**
+ * 创建表单运行时 FiberManager。
+ *
+ * @param options - manager 所需的上下文、注册表和生命周期总线。
+ */
+export function createFiberManager<TValues extends Values = Values>(
+  options: CreateFiberManagerOptions<TValues>
+): RuntimeFiberManager<TValues> {
+  return new RuntimeFiberManager(options)
+}
+
+function isSameNamePathList(a: NamePath[], b: NamePath[]): boolean {
+  if (a.length !== b.length) {
+    return false
+  }
+
+  return a.every((name, index) => name === b[index])
+}
+
+function throwUnknownDescriptor(descriptor: never): never {
+  throw new Error(`unknown kind: ${(descriptor as { kind?: string }).kind ?? "unknown"}`)
+}

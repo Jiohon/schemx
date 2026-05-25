@@ -5,9 +5,9 @@
  */
 
 export {
-  FormStore,
-  createFormStore,
-  type FormStoreState,
-  type FormStoreOptions,
-  type FormStorePendingField,
-} from "./formStore"
+  Store,
+  createStore,
+  type StoreState,
+  type StoreOptions,
+  type StorePending,
+} from "./store"

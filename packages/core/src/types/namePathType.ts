@@ -1,7 +1,7 @@
 /**
  * 深层路径类型工具。
  *
- * 提供类型安全的嵌套对象路径推导，用于 FormStore 的字段路径约束。
+ * 提供类型安全的嵌套对象路径推导，用于表单字段路径约束。
  *
  * @module types/namePathType
  */
@@ -130,3 +130,112 @@ export type DeepNamePath<
                   >
         }[keyof Store & string]
       : never
+
+/**
+ * 从当前层类型中提取字符串路径片段对应的值类型。
+ */
+type StringPathSegmentValue<T, K extends string> = K extends keyof NonNullable<T>
+  ? NonNullable<T>[K]
+  : NonNullable<T> extends readonly (infer Item)[]
+    ? K extends `${number}`
+      ? Item
+      : unknown
+    : unknown
+
+/**
+ * 递归解析点号分隔字符串路径，内部使用，公共类型见 PathValueByString。
+ */
+type StringPathValueInner<T, P extends string> = string extends P
+  ? unknown
+  : P extends `${infer K}.${infer R}`
+    ? StringPathValueInner<StringPathSegmentValue<T, K>, R>
+    : StringPathSegmentValue<T, P>
+
+/**
+ * 递归解析数组路径，内部使用，公共类型见 PathValueByArray。
+ */
+type ArrayPathValueInner<T, P extends (string | number)[]> = P extends [
+  infer K extends string | number,
+  ...infer R extends (string | number)[],
+]
+  ? K extends keyof NonNullable<T>
+    ? R extends []
+      ? NonNullable<T>[K]
+      : ArrayPathValueInner<NonNullable<T>[K], R>
+    : unknown
+  : unknown
+
+/**
+ * 按点号分隔字符串路径从对象类型中提取值类型。
+ *
+ * 路径访问在运行时可能得到 `undefined`，例如字段尚未初始化、
+ * 中间对象不存在、数组索引不存在等，因此结果始终包含 `undefined`。
+ *
+ * @typeParam T - 对象类型
+ * @typeParam P - 点号分隔字符串路径
+ *
+ * @example
+ * ```ts
+ * interface FormData {
+ *   user?: { name: string }
+ *   tags: string[]
+ * }
+ *
+ * type A = PathValueByString<FormData, "user.name"> // string | undefined
+ * type B = PathValueByString<FormData, "tags.0">    // string | undefined
+ * ```
+ */
+export type PathValueByString<T, P extends string> =
+  | StringPathValueInner<T, P>
+  | undefined
+
+/**
+ * 按数组路径从对象类型中提取值类型。
+ *
+ * 路径访问在运行时可能得到 `undefined`，例如字段尚未初始化、
+ * 中间对象不存在、数组索引不存在等，因此结果始终包含 `undefined`。
+ *
+ * @typeParam T - 对象类型
+ * @typeParam P - 数组路径，元素为字符串 key 或数字索引
+ *
+ * @example
+ * ```ts
+ * interface FormData {
+ *   user?: { name: string }
+ *   tags: string[]
+ * }
+ *
+ * type A = PathValueByArray<FormData, ["user", "name"]> // string | undefined
+ * type B = PathValueByArray<FormData, ["tags", number]> // string | undefined
+ * ```
+ */
+export type PathValueByArray<T, P extends (string | number)[]> =
+  | ArrayPathValueInner<T, P>
+  | undefined
+
+/**
+ * 按路径从对象类型中提取值类型。
+ *
+ * 这是统一入口：当路径是点号分隔字符串时分发到 PathValueByString，
+ * 当路径是数组时分发到 PathValueByArray。
+ *
+ * @typeParam T - 对象类型
+ * @typeParam P - 路径，可以是 `(string | number)[]` 或点号分隔字符串
+ *
+ * @example
+ * ```ts
+ * interface FormData {
+ *   user: { name: string; age: number }
+ *   tags: string[]
+ * }
+ *
+ * type A = PathValue<FormData, ["user", "name"]> // string | undefined
+ * type B = PathValue<FormData, "user.age">       // number | undefined
+ * type C = PathValue<FormData, ["tags", number]> // string | undefined
+ * ```
+ */
+export type PathValue<T, P extends (string | number)[] | string> = P extends string
+  ? PathValueByString<T, P>
+  : P extends (string | number)[]
+    ? PathValueByArray<T, P>
+    : unknown

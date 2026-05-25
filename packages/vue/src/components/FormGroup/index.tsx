@@ -14,7 +14,7 @@ import classnames from "classnames"
 
 import FormItem from "../FormItem"
 
-import type { SchemxGroupField, SchemxResolvedField, Values } from "@schemx/core"
+import type { ContainerViewNode, Values } from "@schemx/core"
 
 /**
  * FormGroup Props
@@ -22,40 +22,38 @@ import type { SchemxGroupField, SchemxResolvedField, Values } from "@schemx/core
  * @typeParam T - 表单值类型
  */
 export interface SchemxGroupProps<T extends Values = Values> {
-  schema: SchemxGroupField<T>
+  node: ContainerViewNode
 }
 
 const FormGroup = defineComponent(
   <T extends Values = Values>(props: SchemxGroupProps<T>, { slots }: SetupContext) => {
-    const collapsed = ref(props.schema.defaultCollapsed)
+    const collapsed = ref(Boolean(props.node.props.componentProps.defaultCollapsed))
 
     const toggle = () => {
-      const schema = props.schema
-
-      if (schema.collapsible) {
+      if (props.node.props.componentProps.collapsible) {
         collapsed.value = !collapsed.value
       }
     }
 
     return (): VNodeChild => {
-      const schema = props.schema
+      const node = props.node
+      const collapsible = Boolean(node.props.componentProps.collapsible)
 
       return (
         <div
           class={classnames(
             "schemx-group",
-            {
-              "schemx-group--collapsed": collapsed.value,
-            },
-            schema.class
+            { "schemx-group--collapsed": collapsed.value },
+            node.props.class as string | undefined
           )}
+          data-key={node.key}
         >
-          {schema.label && (
+          {node.props.label && (
             <div
-              role={schema.collapsible ? "button" : undefined}
-              tabindex={schema.collapsible ? 0 : undefined}
+              role={collapsible ? "button" : undefined}
+              tabindex={collapsible ? 0 : undefined}
               class={classnames("schemx-group__header", {
-                "schemx-group__header--clickable": schema.collapsible,
+                "schemx-group__header--clickable": collapsible,
               })}
               onClick={toggle}
               onKeydown={(e: KeyboardEvent) => {
@@ -65,8 +63,8 @@ const FormGroup = defineComponent(
                 }
               }}
             >
-              <span class="schemx-group__title">{schema.label}</span>
-              {schema.collapsible && (
+              <span class="schemx-group__title">{node.props.label}</span>
+              {collapsible && (
                 <span
                   class={classnames("schemx-group__arrow", {
                     "schemx-group__arrow--down": !collapsed.value,
@@ -77,15 +75,9 @@ const FormGroup = defineComponent(
           )}
           {!collapsed.value && (
             <div class="schemx-group__body">
-              {schema.children.map((schema) => {
-                return (
-                  <FormItem
-                    key={schema.key}
-                    schema={schema as SchemxResolvedField}
-                    v-slots={slots}
-                  />
-                )
-              })}
+              {node.children.map((child) => (
+                <FormItem key={child.key} node={child} v-slots={slots} />
+              ))}
             </div>
           )}
         </div>
@@ -96,8 +88,8 @@ const FormGroup = defineComponent(
     name: "SchemxGroup",
 
     props: {
-      schema: {
-        type: Object as PropType<SchemxGroupField>,
+      node: {
+        type: Object as PropType<ContainerViewNode>,
         required: true,
       },
     },

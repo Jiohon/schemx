@@ -1,24 +1,31 @@
 /**
  * ReactiveMap - 按 key 管理的响应式值存储。
  *
- * 封装“每个 key 一个 signal + effect/batch + dispose”能力，store 和 validator
- * 可以共享细粒度响应式能力，同时不依赖具体 signals 实现。
+ * API 贴近原生 Map：`get`、`set`、`has`、`delete`、`clear`、
+ * `keys`、`values`、`entries`。额外提供 `peek` 用于无依赖追踪读取。
+ *
+ * 与普通 Map 的差异：
+ * - 每个 key 独占一个 signal，value 更新可以被细粒度追踪。
+ * - 读取缺失 key 时会订阅结构版本；后续 set 同 key 会触发 effect 重跑。
+ * - 删除/清空 key 时会通知旧 value 的订阅者。
  *
  * @module core/reactivity/reactiveMap
  */
 
 import { batchUpdates } from "./batch"
-import { createReactiveEffect } from "./effect"
 import { createSignal } from "./signal"
 
-import type { ReactiveSignal } from "./signal"
+import type { Signal } from "./signal"
 
+/**
+ * 按 key 细粒度追踪更新的响应式 Map。
+ *
+ * @typeParam K - key 类型
+ * @typeParam V - value 类型
+ */
 export class ReactiveMap<K, V> {
   /** 每个 key 独占一个 signal，保证字段级更新能细粒度触发 */
-  private signals = new Map<K, ReactiveSignal<V>>()
-
-  /** 由当前 map 创建的 effect disposer，destroy 时统一释放 */
-  private disposers = new Set<() => void>()
+  private signals = new Map<K, Signal<V>>()
 
   /**
    * 结构版本 signal，用于追踪“新 key 创建”事件。
@@ -26,7 +33,7 @@ export class ReactiveMap<K, V> {
    * effect 读取缺失 key 时会依赖这个版本；之后创建该 key 会推进版本，
    * 让 effect 重新执行并订阅新 key 对应的 signal。
    */
-  private version: ReactiveSignal<number> = createSignal(0)
+  private version: Signal<number> = createSignal(0)
 
   /**
    * 读取 key，并在 effect 内自动收集响应式依赖。
@@ -43,7 +50,7 @@ export class ReactiveMap<K, V> {
   /**
    * 写入 key；如果 key 不存在，则创建新的 signal。
    */
-  set(key: K, value: V): void {
+  set(key: K, value: V): this {
     const s = this.signals.get(key)
     if (s) {
       s.value = value
@@ -51,6 +58,8 @@ export class ReactiveMap<K, V> {
       this.signals.set(key, createSignal(value))
       this.version.value++
     }
+
+    return this
   }
 
   /**
@@ -58,14 +67,6 @@ export class ReactiveMap<K, V> {
    */
   peek(key: K): V | undefined {
     return this.signals.get(key)?.peek()
-  }
-
-  /**
-   * 基于当前值更新 key。
-   */
-  update(key: K, updater: (prev: V) => V): void {
-    const prev = this.peek(key)
-    this.set(key, updater(prev as V))
   }
 
   /**
@@ -78,16 +79,16 @@ export class ReactiveMap<K, V> {
   /**
    * 删除 key，并通知订阅旧 signal 或 map 结构的 effects。
    */
-  delete(key: K): void {
+  delete(key: K): boolean {
     const s = this.signals.get(key)
-    if (!s) return
+    if (!s) return false
 
     this.signals.delete(key)
 
-    batchUpdates(() => {
-      s.value = undefined as unknown as V
-      this.version.value++
-    })
+    s.value = undefined as unknown as V
+    this.version.value++
+
+    return true
   }
 
   /**
@@ -112,64 +113,29 @@ export class ReactiveMap<K, V> {
    * 遍历所有已注册 key。
    */
   keys(): IterableIterator<K> {
+    void this.version.value
+
     return this.signals.keys()
   }
 
   /**
-   * 遍历内部 reactive signals。
+   * 遍历所有值。
    */
-  values(): IterableIterator<ReactiveSignal<V>> {
-    return this.signals.values()
+  values(): IterableIterator<V> {
+    void this.version.value
+
+    return Array.from(this.signals.values(), (signal) => signal.value).values()
   }
 
   /**
-   * 遍历 key/signal 对。
+   * 遍历 key/value 对。
    */
-  entries(): IterableIterator<[K, ReactiveSignal<V>]> {
-    return this.signals.entries()
-  }
+  entries(): IterableIterator<[K, V]> {
+    void this.version.value
 
-  /**
-   * 无依赖追踪地读取全部值。
-   */
-  getSnapshot(): Map<K, V> {
-    const result = new Map<K, V>()
-    for (const [key, s] of this.signals) {
-      result.set(key, s.peek())
-    }
-
-    return result
-  }
-
-  /**
-   * 创建 reactive effect，并由当前 map 统一管理释放。
-   */
-  effect(fn: () => void): () => void {
-    const dispose = createReactiveEffect(fn)
-    this.disposers.add(dispose)
-
-    return () => {
-      dispose()
-      this.disposers.delete(dispose)
-    }
-  }
-
-  /**
-   * 批量合并多次响应式写入。
-   */
-  batch(fn: () => void): void {
-    batchUpdates(fn)
-  }
-
-  /**
-   * 释放所有 effects 并清空内部存储。
-   */
-  destroy(): void {
-    for (const dispose of this.disposers) {
-      dispose()
-    }
-
-    this.disposers.clear()
-    this.signals.clear()
+    return Array.from(
+      this.signals.entries(),
+      ([key, signal]) => [key, signal.value] as [K, V]
+    ).values()
   }
 }

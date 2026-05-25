@@ -16,9 +16,9 @@
   import FormItem from "./components/FormItem"
   import { createContext } from "./hooks/useContext"
   import { useForm } from "./hooks/useForm"
-  import { useResolvedSchemas } from "./hooks/useResolvedSchemas"
+  import { useViewTree } from "./hooks/useViewTree"
 
-  import type { SchemxResolvedField, Values } from "@schemx/core"
+  import type { Values, ViewNode } from "@schemx/core"
 
   import "./styles/index.css"
 
@@ -104,8 +104,7 @@
         },
       })
 
-  // 获取解析后的 schemas
-  const resolvedSchemas = useResolvedSchemas(form)
+  const viewTree = useViewTree(form)
 
   /**
    * 表单容器样式
@@ -122,9 +121,9 @@
 <template>
   <div :class="['schemx', props.class]" :style="formStyle">
     <FormItem
-      v-for="schema in resolvedSchemas"
-      :key="schema.key"
-      :schema="schema as SchemxResolvedField"
+      v-for="node in viewTree"
+      :key="node.key"
+      :node="node as ViewNode"
     >
       <template v-for="(_, slotName) in $slots" #[slotName]="slotProps">
         <slot :name="slotName" v-bind="slotProps ?? {}" />

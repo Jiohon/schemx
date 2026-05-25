@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest"
 
-import { batchUpdates, createSignal, ReactiveMap } from "../index"
+import {
+  batchUpdates,
+  createReactiveEffect,
+  createSignal,
+  ReactiveMap,
+} from "../index"
 
 describe("ReactiveMap", () => {
   it("reads and writes keyed values", () => {
@@ -13,12 +18,12 @@ describe("ReactiveMap", () => {
     expect(map.has("name")).toBe(true)
   })
 
-  it("updates values from the current snapshot", () => {
+  it("supports fluent set chaining", () => {
     const map = new ReactiveMap<string, number>()
 
-    map.set("count", 1)
-    map.update("count", (prev) => prev + 1)
+    const returned = map.set("count", 1).set("count", 2)
 
+    expect(returned).toBe(map)
     expect(map.get("count")).toBe(2)
   })
 
@@ -27,7 +32,8 @@ describe("ReactiveMap", () => {
 
     map.set("a", 1)
     map.set("b", 2)
-    map.delete("a")
+    expect(map.delete("a")).toBe(true)
+    expect(map.delete("missing")).toBe(false)
 
     expect(map.get("a")).toBeUndefined()
     expect(map.has("a")).toBe(false)
@@ -38,18 +44,18 @@ describe("ReactiveMap", () => {
     expect([...map.keys()]).toEqual([])
   })
 
-  it("returns a non-tracking snapshot", () => {
+  it("iterates keys, values, and entries like Map", () => {
     const map = new ReactiveMap<string, number>()
 
     map.set("a", 1)
     map.set("b", 2)
 
-    expect(map.getSnapshot()).toEqual(
-      new Map<string, number>([
-        ["a", 1],
-        ["b", 2],
-      ])
-    )
+    expect([...map.keys()]).toEqual(["a", "b"])
+    expect([...map.values()]).toEqual([1, 2])
+    expect([...map.entries()]).toEqual([
+      ["a", 1],
+      ["b", 2],
+    ])
   })
 
   it("tracks keys that are created after an effect reads them", () => {
@@ -57,7 +63,7 @@ describe("ReactiveMap", () => {
     let runs = 0
     let latest: unknown
 
-    const dispose = map.effect(() => {
+    const dispose = createReactiveEffect(() => {
       latest = map.get("late")
       runs++
     })
@@ -80,7 +86,7 @@ describe("ReactiveMap", () => {
     let runs = 0
     let isFirst = true
 
-    map.effect(() => {
+    const dispose = createReactiveEffect(() => {
       map.get("count")
       if (isFirst) {
         isFirst = false
@@ -91,33 +97,37 @@ describe("ReactiveMap", () => {
       runs++
     })
 
-    map.batch(() => {
+    batchUpdates(() => {
       map.set("count", 1)
       map.set("count", 2)
     })
 
     expect(runs).toBe(1)
 
-    map.destroy()
+    dispose()
   })
 
-  it("does not run disposed effects after destroy", () => {
+  it("notifies subscribers when a key is deleted", () => {
     const map = new ReactiveMap<string, number>()
     map.set("count", 0)
 
     let runs = 0
+    let latest: number | undefined
 
-    map.effect(() => {
-      map.get("count")
+    const dispose = createReactiveEffect(() => {
+      latest = map.get("count")
       runs++
     })
 
     expect(runs).toBe(1)
+    expect(latest).toBe(0)
 
-    map.destroy()
-    map.set("count", 1)
+    map.delete("count")
 
-    expect(runs).toBe(1)
+    expect(runs).toBe(2)
+    expect(latest).toBeUndefined()
+
+    dispose()
   })
 })
 
@@ -128,7 +138,7 @@ describe("reactivity runtime", () => {
 
     const map = new ReactiveMap<string, number>()
     map.set("count", count.value)
-    map.effect(() => {
+    const dispose = createReactiveEffect(() => {
       seen.push(map.get("count") ?? 0)
     })
 
@@ -141,6 +151,6 @@ describe("reactivity runtime", () => {
 
     expect(seen).toEqual([0, 2])
 
-    map.destroy()
+    dispose()
   })
 })

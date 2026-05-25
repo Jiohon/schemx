@@ -7,14 +7,14 @@
  * @module types/rule
  */
 
-import type { StandardSchemaV1 } from "@/types/standardSchema"
+import type { StandardSchemaV1 } from "./standardSchema"
 
 /**
  * 内置校验规则快捷方式。
  *
  * `"required"` 会被 FormItem 自动转换为 `createRequiredRule` 生成的 StandardSchemaV1 实例。
  */
-export type SchemxBuiltinRules = "required" | "selectRequired" | "uploadRequired"
+export type SchemxRuleBuiltinKey = "required" | "selectRequired" | "uploadRequired"
 
 /**
  * 自定义规则扩展接口。
@@ -48,18 +48,25 @@ export interface SchemxRuleDefinition {}
  * 代表所有已注册的自定义规则名称字符串。
  * 当 SchemxRuleDefinition 为空时自动降级为 never，不影响 SchemxRules 联合类型。
  */
-export type SchemxRuleDefinitionKey = keyof SchemxRuleDefinition
+export type SchemxRuleDefinitionKey = [keyof SchemxRuleDefinition] extends [never]
+  ? string
+  : keyof SchemxRuleDefinition
 
 /**
  * 校验规则类型。
  *
  * 支持三种形式：
  * - `StandardSchemaV1` — 任何实现了 Standard Schema 接口的验证库实例
- * - `SchemxBuiltinRules` — 内置快捷方式（如 `"required"`）
+ * - `SchemxRuleBuiltinKey` — 内置快捷方式（如 `"required"`）
  * - `SchemxRuleDefinitionKey` — 用户通过声明合并注册的自定义规则名称
  *
- * 当 SchemxRuleDefinition 未注册任何规则时，自动降级为 `StandardSchemaV1 | SchemxBuiltinRules`。
+ * 当 SchemxRuleDefinition 未注册任何规则时，自动降级为 `StandardSchemaV1 | SchemxRuleBuiltinKey`。
  */
 export type SchemxRules = [keyof SchemxRuleDefinition] extends [never]
-  ? StandardSchemaV1 | SchemxBuiltinRules
-  : StandardSchemaV1 | SchemxBuiltinRules | SchemxRuleDefinitionKey
+  ? StandardSchemaV1 | SchemxRuleBuiltinKey
+  : StandardSchemaV1 | SchemxRuleBuiltinKey | SchemxRuleDefinitionKey
+
+/**
+ *
+ */
+export type SchemxRuleKey = SchemxRuleBuiltinKey & SchemxRuleDefinitionKey

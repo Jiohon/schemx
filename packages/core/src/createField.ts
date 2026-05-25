@@ -26,9 +26,16 @@
  * ```
  */
 
-import { getByPath, setByPath } from "./utils"
+import { setByPath } from "./utils"
 
-import type { NamePath, SchemxInstance, SchemxRules, Value, Values } from "./types"
+import type {
+  NamePath,
+  PathValue,
+  SchemxInstance,
+  SchemxRules,
+  Value,
+  Values,
+} from "./types"
 import type { ValidateResult } from "./validator"
 
 /**
@@ -51,23 +58,27 @@ export interface FieldSubscribeCallbacks {
  * 封装 SchemxInstance 中与单个字段相关的所有操作，
  * 以及基于 reactive effect 的状态订阅能力。
  *
- * @typeParam T - 表单值类型
+ * @typeParam TValues - 表单值类型
  */
-export interface SchemxFieldInstance<T extends Values = Values> {
+export interface SchemxFieldInstance<
+  TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+  TValue = PathValue<TValues, TName>,
+> {
   /** 获取当前字段值（读取 reactive value，在 effect 中自动追踪） */
-  getValue: () => Value
+  getValue: () => TValue | undefined
   /** 设置字段值 */
-  setValue: (value: Value) => void
+  setValue: (value: TValue) => void
   /** 获取字段初始值 */
-  getInitialValue: () => Value
+  getInitialValue: () => TValue | undefined
   /** 设置字段初始值 */
-  setInitialValue: (value: Value) => void
+  setInitialValue: (value: TValue) => void
   /** 获取表单全量值 */
-  getValues: () => Readonly<T>
+  getValues: () => Readonly<TValues>
   /** 获取表单全量快照 */
-  getSnapshot: () => T
+  getSnapshot: () => TValues
   /** 校验当前字段 */
-  validate: () => Promise<ValidateResult<T>>
+  validate: () => Promise<ValidateResult<TValues>>
   /** 获取错误信息 */
   getError: () => string[] | undefined
   /** 设置错误信息 */
@@ -113,7 +124,7 @@ export interface SchemxFieldInstance<T extends Values = Values> {
  * 将 SchemxInstance 的方法作用域限定到指定字段，
  * 返回包含读写、校验、状态订阅等能力的控制器对象。
  *
- * @typeParam T - 表单值类型
+ * @typeParam TValues - 表单值类型
  *
  * @param form - 表单实例
  * @param name - 字段路径
@@ -131,31 +142,35 @@ export interface SchemxFieldInstance<T extends Values = Values> {
  * })
  * ```
  */
-export function createField<T extends Values = Values>(
-  form: SchemxInstance<T>,
-  name: NamePath<T>
-): SchemxFieldInstance<T> {
-  const getValue = (): Value => form.getFieldValue(name)
+export function createField<
+  TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+  TValue = PathValue<TValues, TName>,
+>(
+  form: SchemxInstance<TValues, TName, TValue>,
+  name: TName
+): SchemxFieldInstance<TValues, TName, TValue> {
+  const getValue = (): TValue | undefined => form.getFieldValue(name)
 
-  const setValue = (value: Value): void => {
+  const setValue = (value: TValue): void => {
     form.setFieldValue(name, value)
   }
 
-  const getInitialValue = (): Value => {
-    return getByPath(form.getInitialValues([name]), name)
+  const getInitialValue = (): TValue | undefined => {
+    return form.getInitialValue(name)
   }
 
-  const setInitialValue = (value: Value): void => {
+  const setInitialValue = (value: TValue): void => {
     const result = {}
     setByPath(result, name, value)
     form.setInitialValues(result)
   }
 
-  const getValues = (): Readonly<T> => form.getFieldsValue()
+  const getValues = (): Readonly<TValues> => form.getFieldsValue()
 
-  const getSnapshot = (): T => form.getFieldsSnapshot()
+  const getSnapshot = (): TValues => form.getFieldsSnapshot()
 
-  const validate = (): Promise<ValidateResult<T>> => {
+  const validate = (): Promise<ValidateResult<TValues>> => {
     return form.validateField([name])
   }
 
@@ -186,8 +201,8 @@ export function createField<T extends Values = Values>(
     form.resetFields([name])
   }
 
-  const setPending = (pending: boolean, message?: string): void => {
-    form.setFieldPending(name, pending, message)
+  const setPending = (pending: boolean, _message?: string): void => {
+    form.setFieldPending(name, pending)
   }
 
   const isPending = (): boolean => form.isFieldPending(name) ?? false
