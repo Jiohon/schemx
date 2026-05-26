@@ -114,21 +114,29 @@ export interface FieldSignalState<TValue> {
 export interface FieldSignalAction<TValue> {
   /**
    * 设置字段当前值。
+   *
+   * @param value - 新字段值。
    */
   setValue(value: TValue | undefined): void
 
   /**
    * 设置字段初始值 baseline。
+   *
+   * @param value - 新初始值。
    */
   setInitialValue(value: TValue | undefined): void
 
   /**
    * 设置字段 touched 状态。
+   *
+   * @param touched - 是否已触碰或修改。
    */
   setTouched(touched: boolean): void
 
   /**
    * 设置字段 pending 状态。
+   *
+   * @param pending - 是否正在处理异步操作。
    */
   setPending(pending: boolean): void
 
@@ -136,11 +144,15 @@ export interface FieldSignalAction<TValue> {
    * 将字段重置到指定值；未传入时重置到当前 initialValue。
    *
    * reset 同时清空 touched 和 pending。
+   *
+   * @param value - 可选重置目标值。
    */
   reset(value?: TValue): void
 
   /**
    * 无依赖追踪地获取字段 signal。
+   *
+   * @returns 当前字段状态快照。
    */
   peek(): FieldSignalSnapshot<TValue>
 }
@@ -156,7 +168,7 @@ export type FieldSignal<TValue> = FieldSignalState<TValue> & FieldSignalAction<T
  * 创建表单字段状态专用 signal。
  *
  * @typeParam TValue - 字段值类型
- * @param options - 字段状态配置项
+ * @param options - 字段状态配置项。
  * @returns 字段状态 signal
  */
 export function createFieldSignal<TValue>(

@@ -12,8 +12,4 @@ export {
   type AsyncComputationOptions,
 } from "./asyncComputation"
 
-export {
-  createRuntimeScheduler,
-  type RuntimeScheduler,
-  type ScheduledTask,
-} from "./scheduler"
+export { createScheduler, type Scheduler, type ScheduledTask } from "./scheduler"

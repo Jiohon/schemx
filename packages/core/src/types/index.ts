@@ -12,7 +12,7 @@ export type {
   ValidationTrigger,
   SchemxInstance,
   SchemxFormApi,
-  SchemxDefaultContext,
+  SchemxDefaultProps,
 } from "./form"
 
 export type {
@@ -65,8 +65,6 @@ export type {
   SchemxDependenciesConditionKey,
   SchemxDependenciesStaticProps,
 } from "./dependencies"
-
-export type { DependencyValues } from "./dependency"
 
 export type { SchemxDictionary, SchemxWithDictionary } from "./dictionary"
 

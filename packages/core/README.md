@@ -183,11 +183,9 @@ interface FormValues {
   detail?: string
 }
 
-const schema = defineSchemas<FormValues>()
-
 const form = createForm<FormValues>({
   initialValues: { mode: "simple" },
-  schemas: schema([
+  schemas: defineSchemas<FormValues>([
     {
       componentType: "select",
       name: "mode",
@@ -199,7 +197,7 @@ const form = createForm<FormValues>({
         ],
       },
     },
-    schema.dependency({
+    {
       componentType: "dependency",
       to: ["mode"],
       renderer: (values) => {
@@ -208,15 +206,15 @@ const form = createForm<FormValues>({
         }
         return []
       },
-    }),
+    },
   ]),
 })
 
 // 等待依赖解析完成
 await form.waitForDependencies()
 
-// 获取 ViewNode 投影
-const viewTree = form.getViewTree()
+// 获取处理后的 ViewSchemas
+const viewSchemas = form.getViewSchemas()
 ```
 
 ## 核心 API
@@ -619,7 +617,7 @@ flowchart TB
     M --> N[版本检查]
     N --> L
 
-    L --> O[getViewTree]
+    L --> O[getViewSchemas]
     F --> O
 ```
 
@@ -631,8 +629,8 @@ flowchart TB
 // 等待所有依赖解析完成
 await form.waitForDependencies(10000)
 
-// 获取 ViewNode 投影
-const viewTree = form.getViewTree()
+// 获取处理后的 ViewSchemas
+const viewSchemas = form.getViewSchemas()
 
 // 渲染器操作
 const hooks = form.getInternalHooks()
@@ -739,7 +737,7 @@ src/
 ├── graph/          # Graph - Fiber、Reconciler、Scope 等结构基础设施
 ├── field/          # Field - 字段模型、字段索引和动态依赖
 ├── scheduler/      # Scheduler - 异步任务调度
-├── view/           # View - ViewNode 投影与订阅
+├── view/           # View - ViewSchema 构建与订阅
 ├── reactivity/     # Reactivity - 响应式基础设施
 ├── registry/       # Registry - 渲染器与规则注册
 ├── types/          # Types - 类型定义
@@ -753,7 +751,7 @@ src/
 - `graph/` - 领域无关的 Fiber、Reconciler、Scope 等结构基础设施
 - `field/` - 表单字段生命周期资源，负责字段和 dependency 的 mount/update/unmount
 - `scheduler/` - 管理异步任务与 idle 状态
-- `view/` - 将内部 graph 投影为 ViewNode
+- `view/` - 将内部 graph 构建为处理后的 ViewSchemas
 - `lifecycle/` - 领域无关的生命周期 hook 标准化工具
 
 框架适配层应通过 `SchemxInstance` 公开 API 和 `getInternalHooks()` 访问能力，不直接依赖内部模块实现。

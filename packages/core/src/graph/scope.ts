@@ -1,5 +1,5 @@
 /**
- * RuntimeScope - 资源生命周期边界。
+ * Scope - 资源生命周期边界。
  *
  * Scope 管理 cleanup 的注册、嵌套 scope、dispose 执行。
  * 规则：
@@ -12,7 +12,7 @@
  */
 
 /**
- * RuntimeScope 执行的清理函数。
+ * Scope 执行的清理函数。
  */
 export type DisposeFn = () => void
 
@@ -37,7 +37,7 @@ export interface DisposeHandle {
  * Scope 支持嵌套生命周期：父 scope dispose 时会先 dispose 子 scope，再按注册逆序
  * 执行自身 cleanup。cleanup 抛错会被捕获并上报，不会阻断后续清理。
  */
-export interface RuntimeScope {
+export interface Scope {
   /** 当前 scope 是否已经释放。 */
   readonly disposed: boolean
 
@@ -58,7 +58,7 @@ export interface RuntimeScope {
    *
    * @returns 子 scope 实例
    */
-  child(): RuntimeScope
+  child(): Scope
 
   /**
    * 释放当前 scope 及所有子 scope。
@@ -71,16 +71,16 @@ export interface RuntimeScope {
 /**
  * 创建一个资源生命周期作用域。
  *
- * @returns 新创建的 `RuntimeScope`。
+ * @returns 新创建的 `Scope`。
  *
  * @remarks
  * 已释放的 scope 再调用 `add()` 时会立即执行 cleanup，这让调用方无需为异步
  * mount 流程额外判断资源是否已经过期。
  */
-export function createScope(): RuntimeScope {
+export function createScope(): Scope {
   let disposed = false
   const cleanups = new Set<DisposeFn>()
-  const children = new Set<RuntimeScope>()
+  const children = new Set<Scope>()
 
   const addCleanup = (dispose: DisposeFn): DisposeHandle => {
     if (disposed) {
@@ -110,7 +110,7 @@ export function createScope(): RuntimeScope {
     }
   }
 
-  const createChildScope = (): RuntimeScope => {
+  const createChildScope = (): Scope => {
     const childScope = createScope()
     children.add(childScope)
 
@@ -184,5 +184,5 @@ const runCleanup = (cleanup: DisposeFn): void => {
  * @param error - cleanup 抛出的错误。
  */
 export function reportRuntimeCleanupError(error: unknown): void {
-  console.error("[RuntimeScope] Cleanup error:", error)
+  console.error("[Scope] Cleanup error:", error)
 }

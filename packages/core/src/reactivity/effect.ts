@@ -9,12 +9,17 @@
 
 import { effect } from "@preact/signals-core"
 
-/** reactive effect 的释放函数。 */
+/**
+ * reactive effect 的释放函数。
+ */
 export type ReactiveEffectDispose = () => void
 
 /**
  * 创建 reactive effect，但不暴露具体 reactivity 后端。
+ *
+ * @param fn - effect 回调，执行期间读取的 signal 会被追踪。
+ * @returns 释放该 effect 的函数。
  */
-export function createReactiveEffect(fn: () => void): ReactiveEffectDispose {
+export function createSignalEffect(fn: () => void): ReactiveEffectDispose {
   return effect(fn)
 }

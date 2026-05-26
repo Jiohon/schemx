@@ -53,9 +53,22 @@ describe("createViewAdapterBridge", () => {
     bridge.render([])
     expect(mock.render).toHaveBeenCalledWith([])
 
-    const tree = [{ id: 1, key: "f1", type: "field" as const, renderer: "input", name: ["f1"], props: { visible: true, readonly: false, disabled: false, required: false, placeholder: "", componentProps: {} }, state: { value: "", touched: false, pending: null, errors: [], validating: false }, children: [] }]
-    bridge.render(tree)
-    expect(mock.render).toHaveBeenCalledWith(tree)
+    const schemas = [
+      {
+        key: "f1",
+        componentType: "input",
+        name: ["f1"],
+        label: "f1",
+        visible: true,
+        readonly: false,
+        disabled: false,
+        required: false,
+        placeholder: "",
+        componentProps: {},
+      },
+    ]
+    bridge.render(schemas)
+    expect(mock.render).toHaveBeenCalledWith(schemas)
   })
 
   it("应该在无效 NamePath 时 onFieldValueChange 抛出 TypeError", () => {

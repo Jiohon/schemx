@@ -15,16 +15,18 @@ import type { SchemxBaseField, StandardSchemaV1, Values } from "../types"
  * 返回一个符合 StandardSchemaV1 接口的轻量校验对象。
  * 当值为 `undefined`、`null` 或空字符串时校验失败，返回包含提示信息的 issues。
  *
- * @param schema: SchemxBaseField 字段schema
+ * @param schema - 字段 schema，用于从 label 生成默认提示文案。
  *
  * @returns 符合 StandardSchemaV1 接口的必填校验 schema
  *
  * @example
+ * ```ts
  * const schema = createRequiredRule({ label: '用户名', ... })
  *
  * schema['~standard'].validate('')        // => { issues: [{ message: '请输入用户名' }] }
  * schema['~standard'].validate(undefined) // => { issues: [{ message: '请输入用户名' }] }
  * schema['~standard'].validate('hello')   // => { value: 'hello' }
+ * ```
  */
 export function createRequiredRule<TValues extends Values = Values>(
   schema?: SchemxBaseField<TValues>
@@ -52,11 +54,12 @@ export function createRequiredRule<TValues extends Values = Values>(
  * 适用于下拉选择、级联选择等组件。
  * 当值为 `undefined`、`null`、空字符串或空数组时校验失败。
  *
- * @param schema: SchemxBaseField 字段schema
+ * @param schema - 字段 schema，用于从 label 生成默认提示文案。
  *
  * @returns 符合 StandardSchemaV1 接口的选择必填校验 schema
  *
  * @example
+ * ```ts
  * const schema = createSelectRequiredRule({ label: '城市', ... })
  *
  * schema['~standard'].validate(undefined) // => { issues: [{ message: '请选择城市' }] }
@@ -65,6 +68,7 @@ export function createRequiredRule<TValues extends Values = Values>(
  * schema['~standard'].validate([])        // => { issues: [{ message: '请选择城市' }] }
  * schema['~standard'].validate('beijing') // => { value: 'beijing' }
  * schema['~standard'].validate([1, 2])    // => { value: [1, 2] }
+ * ```
  */
 export function createSelectRequiredRule<TValues extends Values = Values>(
   schema?: SchemxBaseField<TValues>
@@ -97,17 +101,19 @@ export function createSelectRequiredRule<TValues extends Values = Values>(
  * 适用于文件上传组件，值通常为数组。
  * 当值为 `undefined`、`null` 或空数组时校验失败。
  *
- * @param schema: SchemxBaseField 字段schema
+ * @param schema - 字段 schema，用于从 label 生成默认提示文案。
  *
  * @returns 符合 StandardSchemaV1 接口的上传必填校验 schema
  *
  * @example
+ * ```ts
  * const schema = createUploadRequiredRule({ label: '文件', ... })
  *
  * schema['~standard'].validate(undefined) // => { issues: [{ message: '请上传文件' }] }
  * schema['~standard'].validate(null)      // => { issues: [{ message: '请上传文件' }] }
  * schema['~standard'].validate([])        // => { issues: [{ message: '请上传文件' }] }
  * schema['~standard'].validate([file])    // => { value: [file] }
+ * ```
  */
 export function createUploadRequiredRule<TValues extends Values = Values>(
   schema?: SchemxBaseField<TValues>

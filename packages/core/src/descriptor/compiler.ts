@@ -19,7 +19,7 @@ import type {
 } from "./descriptor"
 import type {
   NamePath,
-  SchemxDefaultContext,
+  SchemxDefaultProps,
   SchemxResolvedBaseField,
   SchemxResolvedGroupField,
   SchemxRules,
@@ -35,25 +35,12 @@ import type {
 /**
  * 编译器选项。
  */
-export interface CompileOptions extends SchemxDefaultContext {
-  /**
-   * @deprecated 请改用 readonly。
-   */
-  globalReadonly?: boolean
-  /**
-   * @deprecated 请改用 disabled。
-   */
-  globalDisabled?: boolean
-  /**
-   * @deprecated 请改用 validationTrigger。
-   */
-  globalValidationTrigger?: SchemxDefaultContext["validationTrigger"]
-}
+export interface CompileOptions extends SchemxDefaultProps {}
 
 /**
  * 编译错误。
  */
-export class CompileError extends Error {
+class CompileErrorImpl extends Error {
   /**
    * Schema key（如果可提取）。
    */
@@ -77,6 +64,16 @@ export class CompileError extends Error {
     }
   }
 }
+
+/**
+ * CompileError 的实例类型。
+ */
+export type CompileError = InstanceType<typeof CompileErrorImpl>
+
+/**
+ * CompileError 运行时构造器。
+ */
+export const CompileError = CompileErrorImpl
 
 /**
  * 将 SchemxField[] 编译为 FormDescriptor[]。
@@ -128,14 +125,14 @@ function compileField<TValues extends Values>(
     throw new CompileError("Field name must be non-empty", schema)
   }
 
-  const key = schema.key ?? `field:${index}:${normalizeNameKey(schema.name)}`
+  const key = schema.key ?? `field:${index}:${schema.name}`
 
   // 构建规范化 schema
   const normalizedSchema = buildNormalizedFieldSchema<TValues>(schema, options)
   const validation = buildValidation<TValues>(schema, options)
 
   return {
-    kind: "field",
+    type: "field",
     key,
     schema: normalizedSchema,
     validation,
@@ -157,7 +154,7 @@ function compileGroup<TValues extends Values>(
   const children = compileToDescriptors<TValues>(rawChildren, options)
 
   return {
-    kind: "group",
+    type: "group",
     key,
     schema: {
       ...schemaWithoutChildren,
@@ -194,7 +191,7 @@ function compileDependencySlot<TValues extends Values>(
   }
 
   return {
-    kind: "dependency",
+    type: "dependency",
     key,
     trigger,
     renderer,
@@ -222,10 +219,8 @@ function buildNormalizedFieldSchema<TValues extends Values>(
   } = schema
 
   const mergedVisible = cp?.visible ?? visible ?? true
-  const mergedReadonly =
-    cp?.readonly ?? readonly ?? options.readonly ?? options.globalReadonly ?? false
-  const mergedDisabled =
-    cp?.disabled ?? disabled ?? options.disabled ?? options.globalDisabled ?? false
+  const mergedReadonly = cp?.readonly ?? readonly ?? options.readonly ?? false
+  const mergedDisabled = cp?.disabled ?? disabled ?? options.disabled ?? false
   const mergedRequired = cp?.required ?? hasRequiredRule(rules)
   const mergedPlaceholder = cp?.placeholder ?? placeholder ?? ""
 
@@ -272,7 +267,7 @@ function buildValidation<TValues extends Values>(
 ): ValidationDescriptor {
   const mergedTrigger = mergeTrigger(
     schema.validationTrigger,
-    options.validationTrigger ?? options.globalValidationTrigger,
+    options.validationTrigger,
     "blur"
   )
   const required =
@@ -319,26 +314,4 @@ function mergeRules(
   }
 
   return required ? "required" : []
-}
-
-/**
- * 标准化 NamePath 为字符串数组。
- */
-function normalizeNamePath(name: NamePath): string[] {
-  if (Array.isArray(name)) {
-    return name.map((part) => String(part))
-  }
-
-  return String(name).split(".")
-}
-
-/**
- * 标准化 NamePath 为 key 字符串。
- */
-function normalizeNameKey(name: NamePath): string {
-  if (Array.isArray(name)) {
-    return name.map((part) => String(part)).join(".")
-  }
-
-  return String(name)
 }

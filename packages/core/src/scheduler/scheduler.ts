@@ -1,5 +1,5 @@
 /**
- * RuntimeScheduler - 通用任务调度器。
+ * Scheduler - 通用任务调度器。
  *
  * Scheduler 不存在 validation/dependency/renderer 业务 channel，
  * 只管理 sync/pre/normal/post 优先级任务。
@@ -7,7 +7,7 @@
  * @module core/scheduler/scheduler
  */
 
-import type { RuntimeScope } from "../graph"
+import type { Scope } from "../graph"
 
 /**
  * 任务优先级。
@@ -33,7 +33,7 @@ export interface ScheduledTask {
   /**
    * 关联的 Scope，scope dispose 时任务被取消。
    */
-  scope?: RuntimeScope
+  scope?: Scope
 
   /**
    * 执行任务。
@@ -53,7 +53,7 @@ export interface ScheduledTask {
 /**
  * 任务调度器。
  */
-export interface RuntimeScheduler {
+export interface Scheduler {
   /**
    * 调度任务。
    *
@@ -97,13 +97,13 @@ export interface RuntimeScheduler {
 const PRIORITY_ORDER: TaskPriority[] = ["sync", "pre", "normal", "post"]
 
 /**
- * 创建一个 RuntimeScheduler 实例。
+ * 创建一个 Scheduler 实例。
  *
- * @returns 新创建的 RuntimeScheduler
+ * @returns 新创建的 Scheduler
  *
  * @example
  * ```ts
- * const scheduler = createRuntimeScheduler()
+ * const scheduler = createScheduler()
  *
  * // 调度任务
  * scheduler.schedule({
@@ -122,7 +122,7 @@ const PRIORITY_ORDER: TaskPriority[] = ["sync", "pre", "normal", "post"]
  * scheduler.dispose()
  * ```
  */
-export function createRuntimeScheduler(): RuntimeScheduler {
+export function createScheduler(): Scheduler {
   // 四个优先级队列
   const queues = new Map<TaskPriority, Map<string, ScheduledTask>>(
     PRIORITY_ORDER.map((priority) => [priority, new Map()])

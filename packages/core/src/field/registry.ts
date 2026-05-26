@@ -15,71 +15,64 @@ import type { NamePath, Values } from "../types/form"
 /**
  * 字段索引条目。
  */
-export interface FieldRegistryEntry<TValues extends Values = Values> {
-  readonly name: NamePath<TValues>
+export interface FieldRegistryEntry<
+  TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+> {
+  readonly name: TName
   readonly fiber: Fiber
   readonly descriptor: FieldDescriptor<TValues>
   readonly model: FieldModel<TValues>
 }
 
 /**
- * 字段索引接口。
- */
-export interface FieldRegistry<TValues extends Values = Values> {
-  register(entry: FieldRegistryEntry<TValues>): void
-  unregister(name: NamePath<TValues>, fiber?: Fiber): void
-  get(name: NamePath<TValues>): FieldRegistryEntry<TValues> | undefined
-  list(): FieldRegistryEntry<TValues>[]
-}
-
-/**
- * NamePath 标准化为字符串 key。
- */
-function normalizeNamePath(name: NamePath | unknown): string {
-  if (Array.isArray(name)) {
-    return name.map((part) => String(part)).join(".")
-  }
-
-  return String(name)
-}
-
-/**
  * FieldRegistry 默认实现。
  */
-export class RuntimeFieldRegistry<
+class RuntimeFieldRegistry<
   TValues extends Values = Values,
-> implements FieldRegistry<TValues> {
-  #fields = new Map<string, FieldRegistryEntry<TValues>>()
+  TName extends NamePath<TValues> = NamePath<TValues>,
+> {
+  private fields = new Map<string, FieldRegistryEntry<TValues>>()
 
   register(entry: FieldRegistryEntry<TValues>): void {
-    const key = normalizeNamePath(entry.name)
-    this.#fields.set(key, entry)
+    const key = entry.name
+    this.fields.set(key, entry)
   }
 
-  unregister(name: NamePath<TValues> | unknown, fiber?: Fiber): void {
-    const key = normalizeNamePath(name)
-    const current = this.#fields.get(key)
+  unregister(name: TName, fiber?: Fiber): void {
+    const key = name
+    const current = this.fields.get(key)
 
     if (fiber && current?.fiber !== fiber) {
       return
     }
 
-    this.#fields.delete(key)
+    this.fields.delete(key)
   }
 
-  get(name: NamePath<TValues> | unknown): FieldRegistryEntry<TValues> | undefined {
-    const key = normalizeNamePath(name)
+  get(name: TName): FieldRegistryEntry<TValues> | undefined {
+    const key = name
 
-    return this.#fields.get(key)
+    return this.fields.get(key)
   }
 
   list(): FieldRegistryEntry<TValues>[] {
-    return Array.from(this.#fields.values())
+    return Array.from(this.fields.values())
   }
 }
 
 /**
+ * FieldRegistry 的实例类型。
+ */
+export type FieldRegistry<
+  TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+> = InstanceType<typeof RuntimeFieldRegistry<TValues, TName>>
+
+/**
  * 创建一个 FieldRegistry 实例。
+ *
+ * @returns 新的字段注册表。
  */
 export function createFieldRegistry<
   TValues extends Values = Values,

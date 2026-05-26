@@ -1,7 +1,7 @@
 /**
- * subscribeViewTree 订阅机制单元测试。
+ * subscribeViewSchemas 订阅机制单元测试。
  *
- * @module core/view/__tests__/subscribeViewTree.test
+ * @module core/view/__tests__/subscribeViewSchemas.test
  */
 
 import { describe, expect, it, vi } from "vitest"
@@ -12,7 +12,7 @@ import {
   createTestFieldFiber,
   createTestRootFiber,
 } from "../../graph/__tests__/fiberTestUtils"
-import { subscribeViewTree } from "../subscribeViewTree"
+import { subscribeViewSchemas } from "../subscribeViewSchemas"
 
 import type { FieldDescriptor } from "../../descriptor/descriptor"
 import type { ContainerFiber } from "../../graph/fiber"
@@ -40,13 +40,13 @@ const createFieldFiber = (parent: ContainerFiber, key: string, name: string[]) =
   return fiber
 }
 
-describe("subscribeViewTree", () => {
+describe("subscribeViewSchemas", () => {
   it("应该返回取消订阅函数并立即回调", () => {
     const root = createTestRootFiber()
     const revision = createViewRevision()
     const onChange = vi.fn()
 
-    const unsubscribe = subscribeViewTree(root, revision, onChange)
+    const unsubscribe = subscribeViewSchemas(root, revision, onChange)
 
     expect(typeof unsubscribe).toBe("function")
     expect(onChange).toHaveBeenCalledWith([])
@@ -54,16 +54,16 @@ describe("subscribeViewTree", () => {
     unsubscribe()
   })
 
-  it("应该在有字段时立即回调包含字段的 ViewTree", () => {
+  it("应该在有字段时立即回调包含字段的 ViewSchemas", () => {
     const root = createTestRootFiber()
     root.childFibers = [createFieldFiber(root, "f1", ["f1"])]
     const revision = createViewRevision()
     const onChange = vi.fn()
 
-    subscribeViewTree(root, revision, onChange)
+    subscribeViewSchemas(root, revision, onChange)
 
     expect(onChange).toHaveBeenCalledWith([
-      expect.objectContaining({ key: "f1", type: "field" }),
+      expect.objectContaining({ key: "f1", componentType: "input" }),
     ])
   })
 
@@ -72,7 +72,7 @@ describe("subscribeViewTree", () => {
     const revision = createViewRevision()
     const onChange = vi.fn()
 
-    const unsubscribe = subscribeViewTree(root, revision, onChange)
+    const unsubscribe = subscribeViewSchemas(root, revision, onChange)
     const callCountAfterFirst = onChange.mock.calls.length
 
     unsubscribe()
@@ -90,19 +90,19 @@ describe("subscribeViewTree", () => {
     })
 
     expect(() => {
-      subscribeViewTree(root, revision, onChange)
+      subscribeViewSchemas(root, revision, onChange)
     }).not.toThrow()
 
     errorSpy.mockRestore()
   })
 
-  it("root dispose 后应回调空 ViewTree", () => {
+  it("root dispose 后应回调空 ViewSchemas", () => {
     const root = createTestRootFiber()
     root.childFibers = [createFieldFiber(root, "f1", ["f1"])]
     const revision = createViewRevision()
     const onChange = vi.fn()
 
-    subscribeViewTree(root, revision, onChange)
+    subscribeViewSchemas(root, revision, onChange)
     root.scope.dispose()
     revision.bump()
 

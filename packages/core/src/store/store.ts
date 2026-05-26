@@ -21,7 +21,7 @@
 
 import { cloneDeep, isEqual } from "es-toolkit"
 
-import { batchUpdates, createFieldSignal, FieldSignalMap } from "../reactivity"
+import { batchUpdates, createFieldSignal, createFieldSignalMap } from "../reactivity"
 import { collectObjectPathsByLeaf, getByPath, setByPath } from "../utils"
 
 import type { NamePath, PathValue, Value, Values } from "../types"
@@ -29,7 +29,7 @@ import type { NamePath, PathValue, Value, Values } from "../types"
 /**
  * Store 配置选项。
  *
- * @typeParam T - 表单值类型
+ * @typeParam TValues - 表单值类型
  */
 export interface StoreOptions<TValues extends Partial<Values>> {
   /** 初始值 */
@@ -37,9 +37,9 @@ export interface StoreOptions<TValues extends Partial<Values>> {
 }
 
 /**
- * Store 状态接口（兼容旧代码引用）。
+ * Store 状态接口。
  *
- * @typeParam T - 表单值类型
+ * @typeParam TValues - 表单值类型
  */
 export interface StoreState<TValues extends Values> {
   /** 当前表单值 */
@@ -49,9 +49,9 @@ export interface StoreState<TValues extends Values> {
 }
 
 /**
- * Pending 字段类型
+ * Pending 字段类型。
  *
- * 正在操作中的字段信息
+ * 正在操作中的字段信息。
  */
 export interface StorePending<
   TValues extends Values = Values,
@@ -66,7 +66,9 @@ export interface StorePending<
  * 每个字段路径对应一个独立的字段状态 signal。所有状态变更通过 reactive
  * effect 自动感知，无需手动订阅。
  *
- * @typeParam T - 表单值类型，默认为 Values
+ * @typeParam TValues - 表单值类型，默认为 Values
+ * @typeParam TName - 字段路径类型
+ * @typeParam TValue - 字段值类型
  *
  * @example
  * ```typescript
@@ -74,13 +76,13 @@ export interface StorePending<
  * store.getFieldValue('name') // => 'John'
  * ```
  */
-export class Store<
+class StoreImpl<
   TValues extends Values = Values,
   TName extends NamePath<TValues> = NamePath<TValues>,
   TValue = PathValue<TValues, TName>,
 > {
   /** 每个字段路径对应一个 FieldSignal */
-  private fieldSignals = new FieldSignalMap<TName, TValue>()
+  private fieldSignals = createFieldSignalMap<TName, TValue>()
 
   /** 初始值 */
   private initialValues: Partial<TValues>
@@ -447,8 +449,8 @@ export class Store<
   /**
    * 批量设置字段的修改状态。
    *
-   * @param paths - 要检查的字段路径数组
-   * @returns 是否被修改
+   * @param paths - 要设置 touched 状态的字段路径数组
+   * @param touched - 目标 touched 状态，默认 true
    *
    * @example
    * ```typescript
@@ -550,8 +552,8 @@ export class Store<
   /**
    * 批量设置字段的操作中状态。
    *
-   * @param paths - 要检查的字段路径数组
-   * @returns 是否被操作中
+   * @param paths - 要设置 pending 状态的字段路径数组
+   * @param pending - 目标 pending 状态，默认 true
    *
    * @example
    * ```typescript
@@ -567,9 +569,9 @@ export class Store<
   }
 
   /**
-   * 重置指定字段到初始值。
+   * 重置单个字段到初始值。
    *
-   * @param path - 要重置的字段路径
+   * @param path - 要重置的字段路径。
    *
    * @example
    * ```typescript
@@ -581,9 +583,9 @@ export class Store<
   }
 
   /**
-   * 重置指定字段到初始值。
+   * 批量重置指定字段到初始值。
    *
-   * @param path - 要重置的字段路径
+   * @param paths - 要重置的字段路径数组。
    *
    * @example
    * ```typescript
@@ -605,7 +607,7 @@ export class Store<
    * 对比新旧路径集合：复用已有字段 signal、删除多余字段 signal、
    * 创建新字段 signal。
    *
-   * @param values - 可选，新的初始值
+   * @param values - 可选的新初始值；传入后会同时更新 initialValues baseline。
    *
    * @example
    * ```typescript
@@ -648,6 +650,15 @@ export class Store<
 }
 
 /**
+ * Store 的实例类型。
+ */
+export type Store<
+  TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+  TValue = PathValue<TValues, TName>,
+> = InstanceType<typeof StoreImpl<TValues, TName, TValue>>
+
+/**
  * 创建 Store 实例的工厂函数。
  *
  * @typeParam T - 表单值类型
@@ -665,5 +676,5 @@ export function createStore<
   TName extends NamePath<TValues> = NamePath<TValues>,
   TValue = PathValue<TValues, TName>,
 >(options: StoreOptions<TValues> = {}): Store<TValues, TName, TValue> {
-  return new Store<TValues, TName, TValue>(options)
+  return new StoreImpl<TValues, TName, TValue>(options)
 }

@@ -10,12 +10,15 @@
 import { createSignal } from "../reactivity"
 
 import type { FieldDescriptor } from "../descriptor"
-import type { FieldFiber, RuntimeScope } from "../graph"
+import type { FieldFiber, Scope } from "../graph"
 import type { Signal } from "../reactivity"
 import type { SchemxComponentProps, SchemxRules, Values } from "../types"
 
 /**
  * 从 FieldFiber 资源中读取 FieldModel。
+ *
+ * @param fiber - 字段 runtime 节点。
+ * @returns 当前字段模型；字段资源尚未挂载时返回 null。
  */
 export function getFieldModelResource<TValues extends Values = Values>(
   fiber: FieldFiber<TValues>
@@ -51,6 +54,9 @@ export interface FieldModel<TValues extends Values = Values> {
 
 /**
  * 创建字段呈现态模型。
+ *
+ * @param descriptor - 字段 descriptor，提供呈现态初始值。
+ * @returns 新创建的 FieldModel。
  */
 export function createFieldModel<TValues extends Values = Values>(
   descriptor: FieldDescriptor<TValues>
@@ -70,11 +76,16 @@ export function createFieldModel<TValues extends Values = Values>(
 
 /**
  * 挂载字段呈现态到 Fiber。
+ *
+ * @param fiber - 字段 runtime 节点。
+ * @param descriptor - 字段 descriptor，提供呈现态初始值。
+ * @param _scope - 预留资源作用域参数，保持挂载签名一致。
+ * @returns 已挂载到 fiber 的 FieldModel。
  */
 export function mountFieldModel<TValues extends Values = Values>(
   fiber: FieldFiber<TValues>,
   descriptor: FieldDescriptor<TValues>,
-  _scope: RuntimeScope = fiber.scope
+  _scope: Scope = fiber.scope
 ): FieldModel<TValues> {
   const model = createFieldModel(descriptor)
 
@@ -85,6 +96,9 @@ export function mountFieldModel<TValues extends Values = Values>(
 
 /**
  * 用 descriptor 静态 schema 刷新字段呈现态 baseline。
+ *
+ * @param model - 需要更新的字段模型。
+ * @param descriptor - 最新字段 descriptor。
  */
 export function updateFieldModel<TValues extends Values = Values>(
   model: FieldModel<TValues>,

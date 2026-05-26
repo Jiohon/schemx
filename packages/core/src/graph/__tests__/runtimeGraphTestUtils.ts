@@ -4,7 +4,7 @@ import { compileToDescriptors, type FormDescriptor } from "../../descriptor"
 import { createFieldRegistry, type FieldRegistry } from "../../field"
 import { createLifecycleBus, type LifecycleListener } from "../../lifecycle"
 import { createSignal } from "../../reactivity"
-import { createRuntimeScheduler, type RuntimeScheduler } from "../../scheduler"
+import { createScheduler, type Scheduler } from "../../scheduler"
 import { createViewRevision, type ViewRevision } from "../../view"
 import { createFiberManager, type FiberManager } from "../fiberManager"
 import { createReconciler, type Reconciler } from "../reconciler"
@@ -20,7 +20,7 @@ export interface RuntimeGraphTestHarness<TValues extends Values = Values> {
   readonly fiberManager: FiberManager<TValues>
   readonly reconciler: Reconciler<TValues>
   readonly root: RootFiber
-  readonly scheduler: RuntimeScheduler
+  readonly scheduler: Scheduler
   readonly viewRevision: ViewRevision
   readonly commitChildren: (
     parent: ContainerFiber<TValues>,
@@ -41,6 +41,7 @@ export function createFieldDescriptor<TValues extends Values = Values>(
     {
       key,
       name: name as any,
+      label: "label",
       componentType: "text",
     },
   ])[0] as FieldDescriptor<TValues>
@@ -65,7 +66,7 @@ export function createRuntimeGraphHarness<TValues extends Values = Values>(
   const values = { ...initialValues }
   const fieldRegistry = createFieldRegistry<TValues>()
   const lifecycleBus = createLifecycleBus<Fiber, FormDescriptor<TValues>>(listener)
-  const scheduler = createRuntimeScheduler()
+  const scheduler = createScheduler()
   const viewRevision = createViewRevision()
 
   const readValue = (name: unknown): unknown => {
@@ -130,15 +131,11 @@ export function createRuntimeGraphHarness<TValues extends Values = Values>(
     rulesRegistry: {
       resolve: vi.fn(() => []),
     },
-    compileOptions: {},
+    defaultProps: {},
     getFormApi: () => formApi,
   } as unknown as SchemxFormContext<TValues>
 
-  const fiberManager = createFiberManager<TValues>({
-    getContext: () => context,
-    fieldRegistry,
-    lifecycleBus,
-  })
+  const fiberManager = createFiberManager<TValues>(context)
   const reconciler = createReconciler(fiberManager)
   const root = fiberManager.createRoot()
   const commitChildren = (
@@ -148,6 +145,7 @@ export function createRuntimeGraphHarness<TValues extends Values = Values>(
     reconciler.reconcileChildren(parent, descriptors)
     viewRevision.bump()
   }
+
   const commitSchemas = (
     parent: ContainerFiber<TValues>,
     schemas: SchemxField<TValues>[]
@@ -169,7 +167,7 @@ export function createRuntimeGraphHarness<TValues extends Values = Values>(
   }
 }
 
-export async function flushRuntimeGraph(scheduler: RuntimeScheduler): Promise<void> {
+export async function flushRuntimeGraph(scheduler: Scheduler): Promise<void> {
   await Promise.resolve()
   await scheduler.whenIdle()
   await Promise.resolve()

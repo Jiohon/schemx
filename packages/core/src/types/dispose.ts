@@ -72,6 +72,9 @@ export interface DisposeBag {
    *
    * `onDispose` 注册的回调始终在 `post` phase 执行，
    * 确保在内部资源清理完成后再通知外部。
+   *
+   * @param callback - flush 时执行的外部回调。
+   * @returns 可取消此次注册的订阅句柄。
    */
   onDispose: (callback: DisposeCallback) => DisposeSubscription
 

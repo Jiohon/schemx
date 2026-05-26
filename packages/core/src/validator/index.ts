@@ -5,8 +5,8 @@
  */
 
 export {
-  Validator,
   createValidator,
+  type Validator,
   type ValidateResult,
   type ValidateError,
   type FieldError,

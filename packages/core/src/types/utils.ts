@@ -102,10 +102,12 @@ export type DeepReadonly<T> = T extends Builtin
  * 基于 csstype 的完整 CSS 属性定义，提供类型安全的样式声明。
  *
  * @example
+ * ```ts
  * const style: CSSProperties = {
  *   color: 'red',
  *   fontSize: '14px',
  *   lineHeight: 1.5,
  * }
+ * ```
  */
 export type CSSProperties = CSS.Properties

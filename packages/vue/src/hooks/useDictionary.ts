@@ -13,7 +13,7 @@ import { onMounted, Ref, ref } from "vue"
 import { useFormInstance } from "./useForm"
 import { useWatchFields } from "./useWatch"
 
-import type { NamePath, SchemxDictionary, Values } from "@schemx/core"
+import type { NamePath, PathValue, SchemxDictionary, Values } from "@schemx/core"
 
 export type { SchemxDictionary, SchemxWithDictionary } from "@schemx/core"
 
@@ -54,7 +54,7 @@ export function normalizeError(err: unknown): Error {
  * 自动在组件挂载时加载，支持依赖字段联动、竞态控制、
  * 重试、错误处理等能力。
  *
- * @typeParam T - 表单值类型
+ * @typeParam TValues - 表单值类型
  * @param options - 字典配置选项
  * @param fieldName - 当前字段名，用于 resetOnDepsChange 时清空字段值
  * @returns 响应式选项列表、loading/error 状态及控制方法
@@ -79,11 +79,15 @@ export function normalizeError(err: unknown): Error {
  * }, 'city')
  * ```
  */
-export const useDictionary = <T extends Values = Values>(
-  options: SchemxDictionary<T>,
-  fieldName?: NamePath
+export const useDictionary = <
+  TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+  TValue = PathValue<TValues, TName>,
+>(
+  options: SchemxDictionary<TValues>,
+  fieldName?: TName
 ): UseDictOptionsReturn => {
-  const instance = useFormInstance<T>()
+  const instance = useFormInstance<TValues>()
 
   const list = ref<any[]>([])
   const loading = ref<boolean>(false)
@@ -106,7 +110,7 @@ export const useDictionary = <T extends Values = Values>(
   /**
    * 带重试的执行
    */
-  const executeWithRetry = async (formValues: T): Promise<any> => {
+  const executeWithRetry = async (formValues: TValues): Promise<any> => {
     const maxRetries = options.retryCount ?? 0
     const retryDelay = options.retryInterval ?? 1000
     let lastError: Error = new Error("Unknown error")
@@ -187,15 +191,15 @@ export const useDictionary = <T extends Values = Values>(
 
   // ========== 依赖字段监听 ==========
   if (options.dependsOn?.length) {
-    useWatchFields(options.dependsOn as NamePath[], (_payload, latestSnapshot) => {
+    useWatchFields(options.dependsOn, (_payload, latestSnapshot) => {
       // 1. 触发 onDepsChange 回调
       if (typeof options.onDepsChange === "function") {
-        options.onDepsChange(latestSnapshot as T, instance)
+        options.onDepsChange(latestSnapshot as TValues, instance)
       }
 
       // 2. 清空当前字段值
       if (options.resetOnDepsChange && fieldName) {
-        instance.setFieldValue(fieldName as NamePath<T>, undefined)
+        instance.setFieldValue(fieldName, undefined)
       }
 
       // 3. 重新执行 api

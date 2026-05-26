@@ -50,6 +50,10 @@ export interface SchemxDictionary<T extends Values = Values, R = any> {
    * 接收当前表单值和表单实例，返回数据（支持异步）。
    * 返回值类型 R 会自动传递给 formatter 的第一个参数。
    *
+   * @param values - 当前表单值。
+   * @param form - 当前表单实例。
+   * @returns 原始字典数据，支持同步或异步返回。
+   *
    * @example
    * ```ts
    * dict: {
@@ -68,6 +72,10 @@ export interface SchemxDictionary<T extends Values = Values, R = any> {
    * 响应数据格式化函数
    *
    * 第一个参数 res 的类型自动从 api 的返回值推导。
+   *
+   * @param res - api 返回并 await 后的结果。
+   * @param form - 当前表单实例。
+   * @returns 标准化后的选项数组，支持同步或异步返回。
    */
   formatter?: (res: Awaited<R>, form: SchemxInstance<T>) => any[] | Promise<any[]>
 
@@ -86,6 +94,9 @@ export interface SchemxDictionary<T extends Values = Values, R = any> {
    * 典型场景：省份为空时不请求城市列表。
    *
    * 不配置时默认始终执行。
+   *
+   * @param values - 当前表单值。
+   * @returns 是否执行 api。
    */
   shouldFetch?: (values: T) => boolean
 

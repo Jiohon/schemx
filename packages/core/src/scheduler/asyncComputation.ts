@@ -8,10 +8,10 @@
 
 import { createSignal } from "../reactivity"
 
-import type { RuntimeScope } from "../graph"
+import type { Scope } from "../graph"
 import type { Signal } from "../reactivity"
 import type { NamePath, PathValue, Values } from "../types"
-import type { RuntimeScheduler } from "./scheduler"
+import type { Scheduler } from "./scheduler"
 
 /**
  * 异步派生状态容器。
@@ -37,10 +37,12 @@ export interface AsyncComputation<TValue> {
   /**
    * 关联的 scope。
    */
-  readonly scope: RuntimeScope
+  readonly scope: Scope
 
   /**
    * 执行计算。
+   *
+   * @returns 计算完成后 resolve 的 Promise。
    */
   run(): Promise<void>
 
@@ -70,12 +72,12 @@ export interface AsyncComputationOptions<
   /**
    * 关联的 scope。
    */
-  scope: RuntimeScope
+  scope: Scope
 
   /**
    * 调度器。
    */
-  scheduler: RuntimeScheduler
+  scheduler: Scheduler
 
   /**
    * 初始值。

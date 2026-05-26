@@ -7,7 +7,7 @@
  * @module types/schema
  */
 
-import { DependencyValues } from "./dependency"
+/* eslint-disable @typescript-eslint/no-empty-object-type */
 
 import type { SchemxDependencies } from "./dependencies"
 import type {
@@ -22,10 +22,10 @@ import type { SchemxRendererDefinition } from "./renderer"
 import type { SchemxRules } from "./rule"
 
 type SchemxComponentTypeKey<TValues extends Values> = [
-  keyof SchemxRendererDefinition<TValues>,
+  Extract<keyof SchemxRendererDefinition<TValues>, string>,
 ] extends [never]
   ? string
-  : keyof SchemxRendererDefinition<TValues>
+  : Extract<keyof SchemxRendererDefinition<TValues>, string>
 
 /**
  * dependency schema renderer 执行上下文。
@@ -78,8 +78,8 @@ export interface SchemxBaseComponentProps<TValues extends Values = Values> {
  */
 export type SchemxComponentProps<
   TValues extends Values = Values,
-  TKey extends SchemxComponentTypeKey<TValues> = SchemxComponentTypeKey<TValues>,
-> = [keyof SchemxRendererDefinition<TValues>] extends [never]
+  TKey extends string = SchemxComponentTypeKey<TValues>,
+> = [Extract<keyof SchemxRendererDefinition<TValues>, string>] extends [never]
   ? SchemxBaseComponentProps<TValues>
   : TKey extends keyof SchemxRendererDefinition<TValues>
     ? SchemxRendererDefinition<TValues>[TKey] & SchemxBaseComponentProps<TValues>
@@ -101,7 +101,6 @@ export type SchemxComponentProps<
  * }
  * ```
  */
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface SchemxFieldDefinition {}
 
 /**
@@ -114,12 +113,12 @@ export interface SchemxFieldDefinition {}
  */
 export interface SchemxBase<
   TValues extends Values = Values,
-  TKey extends SchemxComponentTypeKey<TValues> = SchemxComponentTypeKey<TValues>,
+  TKey extends string = SchemxComponentTypeKey<TValues>,
 > extends SchemxFieldDefinition {
   /**
    * 唯一标识字段配置的键，供框架层使用，业务方无需设置
    *
-   * Core 会为 ViewNode 投影补充稳定 `key`，供框架层作为 vnode key 使用。
+   * Core 会为 ViewSchema 补充稳定 `key`，供框架层作为 vnode key 使用。
    * Raw Schema 不包含该字段，也不会被原地修改。
    */
   key?: string
@@ -280,12 +279,15 @@ export type SchemxFormItemProps<TValues extends Values = Values> = Omit<
  * @typeParam  TValues - 表单值类型
  */
 export type SchemxBaseField<TValues extends Values = Values> = [
-  keyof SchemxRendererDefinition<TValues>,
+  Extract<keyof SchemxRendererDefinition<TValues>, string>,
 ] extends [never]
   ? SchemxBase<TValues, string>
   : {
-      [TKey in keyof SchemxRendererDefinition<TValues>]: SchemxBase<TValues, TKey>
-    }[keyof SchemxRendererDefinition<TValues>]
+      [TKey in Extract<keyof SchemxRendererDefinition<TValues>, string>]: SchemxBase<
+        TValues,
+        TKey
+      >
+    }[Extract<keyof SchemxRendererDefinition<TValues>, string>]
 
 /**
  * 自定义 Group Schema 基础字段扩展接口
@@ -303,7 +305,6 @@ export type SchemxBaseField<TValues extends Values = Values> = [
  * }
  * ```
  */
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface SchemxGroupFieldDefinition {}
 
 /**
@@ -319,7 +320,7 @@ export interface SchemxGroupField<
   /**
    * 唯一标识字段配置的键，供框架层使用，业务方无需设置
    *
-   * Core 会为 ViewNode 投影补充稳定 `key`，供框架层作为 vnode key 使用。
+   * Core 会为 ViewSchema 补充稳定 `key`，供框架层作为 vnode key 使用。
    * Raw Schema 不包含该字段，也不会被原地修改。
    */
   key?: string
@@ -360,7 +361,7 @@ export interface SchemxDependencyField<
   /**
    * 唯一标识字段配置的键，供框架层使用，业务方无需设置
    *
-   * Core 会为 ViewNode 投影补充稳定 `key`，供框架层作为 vnode key 使用。
+   * Core 会为 ViewSchema 补充稳定 `key`，供框架层作为 vnode key 使用。
    * Raw Schema 不包含该字段，也不会被原地修改。
    */
   key?: string
@@ -376,7 +377,7 @@ export interface SchemxDependencyField<
    * 动态列配置生成函数
    */
   renderer: (
-    values: DependencyValues<TValues, TNames>,
+    values: TValues,
     form: SchemxFormApi<TValues>,
     context: SchemxDependencyRendererContext
   ) => SchemxField<TValues>[] | Promise<SchemxField<TValues>[]>

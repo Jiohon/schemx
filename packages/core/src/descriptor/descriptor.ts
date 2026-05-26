@@ -42,7 +42,7 @@ export type FormDescriptor<
  * - Dependencies：dependencies 是字段动态派生规则
  */
 export interface FieldDescriptor<TValues extends Values = Values> {
-  readonly kind: "field"
+  readonly type: "field"
   readonly key: string
   readonly schema: SchemxResolvedBaseField<TValues>
   readonly validation: ValidationDescriptor
@@ -59,7 +59,7 @@ export interface GroupDescriptor<
   TValues extends Values = Values,
   TName extends NamePath<TValues> = NamePath<TValues>,
 > {
-  readonly kind: "group"
+  readonly type: "group"
   readonly key: string
   readonly schema: SchemxResolvedGroupField<TValues>
   readonly children: FormDescriptor<TValues, TName>[]
@@ -75,7 +75,7 @@ export interface DependencyDescriptor<
   TValues extends Values = Values,
   TName extends NamePath<TValues> = NamePath<TValues>,
 > {
-  readonly kind: "dependency"
+  readonly type: "dependency"
   readonly key: string
   readonly trigger: TName[]
   readonly renderer: DependencyRenderer<TValues>
@@ -89,9 +89,7 @@ export interface DependencyDescriptor<
  * @param abortSignal - 中止信号，用于取消过期渲染
  * @returns 子树的 schema 数组
  */
-export type DependencyRenderer<
-  TValues extends Values = Values,
-> = (
+export type DependencyRenderer<TValues extends Values = Values> = (
   /**
    * 表单 API，用于程序化操作表单。
    */
@@ -132,7 +130,7 @@ export interface ValidationDescriptor {
 export const isFieldDescriptor = <TValues extends Values = Values>(
   descriptor: FormDescriptor<TValues>
 ): descriptor is FieldDescriptor<TValues> => {
-  return descriptor.kind === "field"
+  return descriptor.type === "field"
 }
 
 /**
@@ -145,7 +143,7 @@ export const isFieldDescriptor = <TValues extends Values = Values>(
 export const isGroupDescriptor = <TValues extends Values = Values>(
   descriptor: FormDescriptor<TValues>
 ): descriptor is GroupDescriptor<TValues> => {
-  return descriptor.kind === "group"
+  return descriptor.type === "group"
 }
 
 /**
@@ -158,5 +156,5 @@ export const isGroupDescriptor = <TValues extends Values = Values>(
 export const isDependencyDescriptor = <TValues extends Values = Values>(
   descriptor: FormDescriptor<TValues>
 ): descriptor is DependencyDescriptor<TValues> => {
-  return descriptor.kind === "dependency"
+  return descriptor.type === "dependency"
 }

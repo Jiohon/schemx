@@ -17,10 +17,14 @@ export {
 
 export { createFieldSignal, type FieldSignal } from "./fieldSignal"
 
-export { FieldSignalMap, type FieldSignalMapOptions } from "./fieldSignalMap"
+export {
+  createFieldSignalMap,
+  type FieldSignalMap,
+  type FieldSignalMapOptions,
+} from "./fieldSignalMap"
 
-export { createReactiveEffect, type ReactiveEffectDispose } from "./effect"
+export { createSignalEffect, type ReactiveEffectDispose } from "./effect"
 
 export { batchUpdates } from "./batch"
 
-export { ReactiveMap } from "./reactiveMap"
+export { createReactiveMap, type ReactiveMap } from "./signalMap"

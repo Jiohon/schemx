@@ -3,7 +3,7 @@
  *
  * Fiber 不感知 schema、form、validation、renderer。
  * 只表达：
- * - 身份（id, key, kind）
+ * - 身份（id, key, type）
  * - 父子结构（parent, childFibers/subChildren）
  * - 所有权（scope）
  * - 生命周期（disposed）
@@ -15,7 +15,7 @@
 
 import { Values } from "@/types"
 
-import type { RuntimeScope } from "./scope"
+import type { Scope } from "./scope"
 import type {
   DependencyDescriptor,
   FieldDescriptor,
@@ -28,7 +28,7 @@ import type { Signal } from "../reactivity"
 /**
  * Runtime graph 支持的节点类型。
  */
-export type FiberKind = "root" | "field" | "group" | "dependency"
+export type FiberType = "root" | "field" | "group" | "dependency"
 
 /**
  * 所有 Fiber 共享的结构字段。
@@ -48,7 +48,7 @@ interface BaseFiber {
   parent: Fiber<any> | null
 
   /** Fiber 的顶层生命周期作用域。 */
-  scope: RuntimeScope
+  scope: Scope
 
   /** 是否已经进入销毁流程。 */
   disposed: Signal<boolean>
@@ -64,7 +64,7 @@ interface BaseFiber {
  * Root 不对应任何 schema，只负责承载顶层 `childFibers`。
  */
 export interface RootFiber extends BaseFiber {
-  readonly kind: "root"
+  readonly type: "root"
   /** 顶层 runtime 子节点列表。 */
   childFibers: Fiber<any>[]
 }
@@ -75,14 +75,14 @@ export interface RootFiber extends BaseFiber {
  * @typeParam TValues - 表单值类型。
  */
 export interface FieldFiber<TValues extends Values = Values> extends BaseFiber {
-  readonly kind: "field"
+  readonly type: "field"
   descriptor: FieldDescriptor<TValues>
   /** 字段运行时模型；卸载字段主体资源后会被清空或重建。 */
   fieldModel: FieldModel<TValues> | null
   /** 字段模型、注册表、校验 effect 等字段主体资源的生命周期边界。 */
-  fieldResourceScope: RuntimeScope | null
+  fieldResourceScope: Scope | null
   /** 字段 `dependencies` effect 的独立生命周期边界。 */
-  fieldDependenciesScope: RuntimeScope | null
+  fieldDependenciesScope: Scope | null
 }
 
 /**
@@ -91,7 +91,7 @@ export interface FieldFiber<TValues extends Values = Values> extends BaseFiber {
  * @typeParam TValues - 表单值类型。
  */
 export interface GroupFiber<TValues extends Values = Values> extends BaseFiber {
-  readonly kind: "group"
+  readonly type: "group"
   descriptor: GroupDescriptor<TValues>
   /** 分组下的 runtime 子节点列表。 */
   childFibers: Fiber<TValues>[]
@@ -107,12 +107,12 @@ export interface GroupFiber<TValues extends Values = Values> extends BaseFiber {
  * 以便和 group 的静态 children 语义区分开。
  */
 export interface DependencyFiber<TValues extends Values = Values> extends BaseFiber {
-  readonly kind: "dependency"
+  readonly type: "dependency"
   descriptor: DependencyDescriptor<TValues>
   /** renderer effect 的可观察执行状态。 */
   dependencySlot: DependencyEffectSlot | null
   /** 当前 renderer effect、trigger 订阅和 abort 清理的生命周期边界。 */
-  dependencyResourceScope: RuntimeScope | null
+  dependencyResourceScope: Scope | null
   /** dependency renderer 产出的 runtime 子树。 */
   subChildren: Fiber<TValues>[]
 }
@@ -153,47 +153,62 @@ export type ContainerFiber<TValues extends Values = Values> =
 
 /**
  * 判断 Fiber 是否带有表单描述符。
+ *
+ * @param fiber - 待判断的 runtime 节点。
+ * @returns 非 root 节点时返回 true，并收窄为带 descriptor 的 Fiber。
  */
 export function hasDescriptor(
   fiber: Fiber<any>
 ): fiber is FieldFiber<any> | GroupFiber<any> | DependencyFiber<any> {
-  return fiber.kind !== "root"
+  return fiber.type !== "root"
 }
 
 /**
  * 判断 Fiber 是否为字段 Fiber。
+ *
+ * @param fiber - 待判断的 runtime 节点。
+ * @returns 字段节点时返回 true。
  */
 export function isFieldFiber<TValues extends Values = Values>(
   fiber: Fiber<TValues>
 ): fiber is FieldFiber<TValues> {
-  return fiber?.kind === "field"
+  return fiber?.type === "field"
 }
 
 /**
  * 判断 Fiber 是否为分组 Fiber。
+ *
+ * @param fiber - 待判断的 runtime 节点。
+ * @returns 分组节点时返回 true。
  */
 export function isGroupFiber<TValues extends Values = Values>(
   fiber: Fiber<TValues>
 ): fiber is GroupFiber<TValues> {
-  return fiber?.kind === "group"
+  return fiber?.type === "group"
 }
 
 /**
  * 判断 Fiber 是否为 dependency Fiber。
+ *
+ * @param fiber - 待判断的 runtime 节点。
+ * @returns dependency 节点时返回 true。
  */
 export function isDependencyFiber<TValues extends Values = Values>(
   fiber: Fiber<TValues>
 ): fiber is DependencyFiber<TValues> {
-  return fiber?.kind === "dependency"
+  return fiber?.type === "dependency"
 }
 
 /**
  * 判断 Fiber 是否可以承载 runtime 子节点。
+ *
+ * @param fiber - 待判断的 runtime 节点。
+ * @returns root、group 或 dependency 节点时返回 true。
  */
 export function isContainerFiber<TValues extends Values = Values>(
   fiber: Fiber<TValues>
 ): fiber is ContainerFiber<TValues> {
-  return fiber.kind === "root" || fiber.kind === "group" || fiber.kind === "dependency"
+  return fiber.type === "root" || fiber.type === "group" || fiber.type === "dependency"
 }
 
 /**
@@ -202,11 +217,14 @@ export function isContainerFiber<TValues extends Values = Values>(
  * @remarks
  * 这个 helper 隐藏了 `GroupFiber.childFibers` 与 `DependencyFiber.subChildren`
  * 的存储差异，调用方不需要把两种子树语义揉在一起处理。
+ *
+ * @param fiber - 容器节点。
+ * @returns 当前 runtime 子节点数组。
  */
 export function getChildFibers<TValues extends Values = Values>(
   fiber: ContainerFiber<TValues>
 ): Fiber<TValues>[] {
-  if (fiber.kind === "dependency") {
+  if (fiber.type === "dependency") {
     return fiber.subChildren
   }
 
@@ -218,12 +236,15 @@ export function getChildFibers<TValues extends Values = Values>(
  *
  * @remarks
  * 仅用于 reconcile 提交结构结果；字段 Fiber 没有 runtime 子节点。
+ *
+ * @param fiber - 容器节点。
+ * @param children - 下一组 runtime 子节点。
  */
 export function setChildFibers<TValues extends Values = Values>(
   fiber: ContainerFiber<TValues>,
   children: Fiber<TValues>[]
 ): void {
-  if (fiber.kind === "dependency") {
+  if (fiber.type === "dependency") {
     fiber.subChildren = children
 
     return

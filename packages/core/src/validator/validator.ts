@@ -24,24 +24,34 @@
  * ```
  */
 
-import { batchUpdates, ReactiveMap } from "../reactivity"
+import { batchUpdates, createReactiveMap } from "../reactivity"
 import { getByPath } from "../utils"
 
 import type { NamePath, StandardSchemaV1, Value, Values } from "../types"
 
-/** 单个字段的校验错误 */
+/**
+ * 单个字段的校验错误。
+ */
 export interface FieldError {
   field: string
   message: string[]
 }
 
-/** 校验错误（包含所有失败字段和当前值） */
+/**
+ * 表单校验失败结果。
+ *
+ * 包含所有失败字段以及校验时使用的值快照。
+ */
 export interface ValidateError<TValues extends Values = Values> {
   errors: FieldError[]
   values: TValues
 }
 
-/** 校验结果（Result 模式） */
+/**
+ * 表单校验结果。
+ *
+ * 成功分支返回通过校验的 values，失败分支返回字段错误集合。
+ */
 export type ValidateResult<TValues extends Values = Values> =
   | { ok: true; values: TValues }
   | { ok: false; error: ValidateError<TValues> }
@@ -53,7 +63,7 @@ export type ValidateResult<TValues extends Values = Values> =
  * 当字段值为 `undefined`/`null` 时，使用 `defaultMessage` 作为错误提示，
  * 避免验证库报出类型错误（如 Zod 的 "expected string, received undefined"）。
  */
-export interface ValidateEntry<TValues extends Values = Values> {
+export interface ValidateEntry<_TValues extends Values = Values> {
   /** 符合 StandardSchemaV1 接口的校验 schema 列表 */
   schemas: StandardSchemaV1[]
   /**
@@ -89,7 +99,7 @@ export interface ValidateEntry<TValues extends Values = Values> {
  * 校验规则通过纯 Map 管理，错误状态通过 ReactiveMap 管理，
  * 在 effect 内调用 getFieldError 时自动追踪依赖。
  */
-export class Validator<
+class ValidatorImpl<
   TValues extends Values = Values,
   TName extends NamePath<TValues> = NamePath<TValues>,
 > {
@@ -97,7 +107,7 @@ export class Validator<
   private rules = new Map<TName, ValidateEntry<TValues>>()
 
   /** 校验错误映射表：字段路径 → 错误信息数组（响应式） */
-  private errors = new ReactiveMap<TName, string[]>()
+  private errors = createReactiveMap<TName, string[]>()
 
   /**
    * 注册单个字段的校验规则。
@@ -245,6 +255,8 @@ export class Validator<
    *
    * 清空 errors 映射表，不影响已注册的校验规则。
    *
+   * @param paths - 可选的字段路径数组；不传时重置所有已注册字段。
+   *
    * @example
    * ```typescript
    * validator.resetErrors()
@@ -382,6 +394,14 @@ export class Validator<
 }
 
 /**
+ * Validator 的实例类型。
+ */
+export type Validator<
+  TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+> = InstanceType<typeof ValidatorImpl<TValues, TName>>
+
+/**
  * 创建 Validator 实例的工厂函数。
  *
  * @typeParam TValues - 表单值类型
@@ -397,5 +417,5 @@ export function createValidator<
   TValues extends Values = Values,
   TName extends NamePath<TValues> = NamePath<TValues>,
 >(): Validator<TValues, TName> {
-  return new Validator<TValues, TName>()
+  return new ValidatorImpl<TValues, TName>()
 }

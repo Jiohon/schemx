@@ -8,10 +8,16 @@
 
 import type { ValidationTrigger } from "../types"
 
-/** 触发时机类型（支持单个或数组） */
+/**
+ * 校验触发时机配置。
+ *
+ * 可传入单个触发时机，也可传入数组表示多个触发时机。
+ */
 export type TriggerConfig = ValidationTrigger | ValidationTrigger[]
 
-/** 归一化后的触发类型 */
+/**
+ * 归一化后的校验触发类型。
+ */
 export type NormalizedTrigger = "blur" | "change" | "submit"
 
 /**
@@ -44,10 +50,12 @@ function isValidTrigger(v: TriggerConfig | undefined): v is TriggerConfig {
  * @returns 最终生效的触发时机
  *
  * @example
+ * ```ts
  * mergeTrigger("onBlur", "onChange", "onSubmit")       // => "onBlur"
  * mergeTrigger(undefined, "onChange", "onSubmit")       // => "onChange"
  * mergeTrigger([], "onChange", "onSubmit")              // => "onChange"
  * mergeTrigger(undefined, undefined, "onSubmit")        // => "onSubmit"
+ * ```
  */
 export function mergeTrigger(
   columnTrigger: TriggerConfig | undefined,
@@ -90,15 +98,17 @@ function normalizeTrigger(t: ValidationTrigger): NormalizedTrigger {
  * 将配置的触发时机归一化后，与当前事件类型进行匹配。
  *
  * @param event - 当前触发的事件类型
- * @param trigger - 配置的触发时机（支持单个或数组）
+ * @param trigger - 可选触发时机配置（支持单个或数组）
  *
  * @returns 是否应该触发校验
  *
  * @example
+ * ```ts
  * shouldValidateOn("change", "onChange")              // => true
  * shouldValidateOn("blur", ["onBlur", "onChange"])    // => true
  * shouldValidateOn("change", "onSubmit")              // => false
  * shouldValidateOn("change", undefined)               // => false
+ * ```
  */
 export function shouldValidateOn(
   event: NormalizedTrigger,

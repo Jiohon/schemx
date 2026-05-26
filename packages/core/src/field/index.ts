@@ -29,7 +29,6 @@ export {
 } from "./model"
 
 export {
-  RuntimeFieldRegistry,
   createFieldRegistry,
   type FieldRegistry,
   type FieldRegistryEntry,

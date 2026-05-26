@@ -8,16 +8,19 @@
  */
 
 import { compileToDescriptors } from "../descriptor"
-import { createReactiveEffect, createSignal } from "../reactivity"
+import { createSignal, createSignalEffect } from "../reactivity"
 
 import type { SchemxFormContext } from "../createForm"
 import type { DependencyDescriptor } from "../descriptor"
-import type { DependencyFiber, RuntimeScope } from "../graph"
+import type { DependencyFiber, Scope } from "../graph"
 import type { Signal } from "../reactivity"
 import type { NamePath, SchemxFormApi, Values } from "../types"
 
 /**
  * 检查 DependencyFiber 是否有 DependencySlot。
+ *
+ * @param fiber - dependency runtime 节点。
+ * @returns 已挂载 slot 时返回 true。
  */
 export function hasDependencySlot(fiber: DependencyFiber): boolean {
   return fiber.dependencySlot != null
@@ -25,6 +28,9 @@ export function hasDependencySlot(fiber: DependencyFiber): boolean {
 
 /**
  * 从 DependencyFiber 获取 DependencySlot。
+ *
+ * @param fiber - dependency runtime 节点。
+ * @returns 当前 slot；尚未挂载时返回 undefined。
  */
 export function getDependencySlot(
   fiber: DependencyFiber
@@ -40,12 +46,25 @@ export interface DependencyEffectSlot {
   readonly error: Signal<Error | null>
   readonly version: Signal<number>
   readonly abortController: Signal<AbortController | null>
+
+  /**
+   * 执行 dependency renderer。
+   *
+   * @returns renderer 执行完成后 resolve 的 Promise。
+   */
   run(): Promise<void>
+
+  /**
+   * 释放当前 dependency effect 持有的异步资源。
+   */
   dispose(): void
 }
 
 /**
  * 创建 DependencyEffectSlot（无副作用）。
+ *
+ * @param _fiber - 预留的 dependency runtime 节点参数，保持工厂签名与挂载流程一致。
+ * @returns 初始状态的 DependencyEffectSlot。
  */
 export function createDependencyEffect<TValues extends Values = Values>(
   _fiber: DependencyFiber<TValues>
@@ -69,13 +88,22 @@ export function createDependencyEffect<TValues extends Values = Values>(
 
 /**
  * 挂载 DependencyEffectSlot 到 Fiber。
+ *
+ * 会替换 slot 的 run/dispose 逻辑，并把 renderer 结果经由统一 commit 边界写入
+ * dependency 子树。
+ *
+ * @param fiber - dependency runtime 节点。
+ * @param descriptor - 当前 dependency descriptor。
+ * @param context - form 内部运行时上下文。
+ * @param slot - 可复用的 slot，默认使用 fiber 上已有 slot 或创建新 slot。
+ * @param scope - 可选资源作用域，默认创建 fiber 的子 scope。
  */
 export function mountDependencyEffect<TValues extends Values = Values>(
   fiber: DependencyFiber<TValues>,
   descriptor: DependencyDescriptor<TValues>,
   context: SchemxFormContext<TValues>,
   slot = fiber.dependencySlot ?? createDependencyEffect(fiber),
-  scope?: RuntimeScope
+  scope?: Scope
 ): void {
   slot.dispose()
   const resourceScope = scope ?? fiber.scope.child()
@@ -114,7 +142,7 @@ export function mountDependencyEffect<TValues extends Values = Values>(
 
       const descriptors = compileToDescriptors<TValues>(
         childSchemas,
-        context.compileOptions
+        context.defaultProps
       )
 
       context.commitChildren(fiber, descriptors)
@@ -188,7 +216,7 @@ function setupTriggerSubscription<
 ): void {
   let isFirstRun = true
 
-  const disposeEffect = createReactiveEffect(() => {
+  const disposeEffect = createSignalEffect(() => {
     void formApi.getValues(triggers)
 
     if (!isFirstRun) {

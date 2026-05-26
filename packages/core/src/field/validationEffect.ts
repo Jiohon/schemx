@@ -6,15 +6,15 @@
  * @module core/field/validationEffect
  */
 
-import { createReactiveEffect, createSignal } from "../reactivity"
+import { createSignal, createSignalEffect } from "../reactivity"
 
 import type { SchemxFormContext } from "../createForm"
 import type { FieldDescriptor } from "../descriptor"
 import type { FieldModel } from "./model"
-import type { RuntimeScope } from "../graph"
+import type { Scope } from "../graph"
 import type { Signal } from "../reactivity"
 import type { ReadonlySignal } from "../reactivity"
-import type { RuntimeScheduler } from "../scheduler"
+import type { Scheduler } from "../scheduler"
 import type { SchemxBaseField, Values } from "../types"
 import type { ValidateResult } from "../validator"
 
@@ -34,6 +34,8 @@ export interface ValidationModel<TValues extends Values> {
 
   /**
    * 执行校验。
+   *
+   * @returns 字段校验结果。
    */
   validate(): Promise<ValidateResult<TValues>>
 
@@ -67,12 +69,12 @@ export interface CreateValidationEffectOptions<TValues extends Values = Values> 
   /**
    * 关联的 scope。
    */
-  scope: RuntimeScope
+  scope: Scope
 
   /**
    * 调度器。
    */
-  scheduler?: RuntimeScheduler
+  scheduler?: Scheduler
 
   /**
    * 表单内部上下文。
@@ -97,11 +99,12 @@ interface ValidationRegistrationSnapshot<TValues extends Values> {
  * @example
  * ```ts
  * const validation = createValidationEffect({
- *   state,
  *   props,
+ *   descriptor,
+ *   fieldModel,
  *   scope,
  *   scheduler,
- *   validator,
+ *   context,
  * })
  *
  * const result = await validation.validate()
@@ -197,7 +200,7 @@ export function createValidationEffect<TValues extends Values = Values>(
   })
 
   // 创建响应式 effect：当 props 变化时自动重新评估规则注册状态
-  const disposeEffect = createReactiveEffect(() => {
+  const disposeEffect = createSignalEffect(() => {
     scheduleRegistration(readValidationProps())
   })
 

@@ -4,7 +4,7 @@
  * 定义结构化的依赖配置接口，所有动态属性共享同一组 triggerFields，
  * 当任一触发字段变化时执行已配置的条件函数。
  *
- * @module types/dependency
+ * @module types/dependencies
  */
 
 import type { NamePath, SchemxFormApi, Values } from "./form"
@@ -42,7 +42,7 @@ export type SchemxConditionFn<T extends Values = Values, R = unknown> = (
  *   trigger: (values) => {
  *     // 副作用逻辑
  *   },
- * rules: []
+ *   rules: () => ["required"],
  * }
  * ```
  */

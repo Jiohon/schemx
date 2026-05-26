@@ -30,8 +30,8 @@ export { type FormContextProps, useContext } from "./useContext"
 /** useStableRef - 引用稳定化的 shallowRef */
 export { useStableRef } from "./useStableRef"
 
-/** useViewTree - ViewNode projection Vue 桥接 */
-export { useViewTree } from "./useViewTree"
+/** useViewSchemas - ViewSchemas Vue 桥接 */
+export { useViewSchemas } from "./useViewSchemas"
 
 /** useFieldContext - 字段上下文注入与消费 */
 export { useFieldContext } from "./useFieldContext"

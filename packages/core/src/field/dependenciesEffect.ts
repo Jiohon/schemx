@@ -7,12 +7,12 @@
  * @module core/field/dependencies
  */
 
-import { createReactiveEffect } from "../reactivity"
+import { createSignalEffect } from "../reactivity"
 
 import type { FieldDescriptor, ValidationDescriptor } from "../descriptor"
 import type { FieldModel } from "./model"
 import type { SchemxFormContext } from "../createForm"
-import type { RuntimeScope } from "../graph"
+import type { Scope } from "../graph"
 import type {
   SchemxBaseField,
   SchemxConditionFn,
@@ -44,16 +44,24 @@ type DependencyResolvedProps<TValues extends Values> = Partial<
 
 /**
  * 创建字段 dependencies effect 的运行时依赖。
+ *
+ * @typeParam TValues - 表单值类型。
  */
 export interface CreateDependenciesEffectOptions<TValues extends Values = Values> {
+  /** 字段 descriptor，提供静态 schema、validation 和 dependencies 配置。 */
   descriptor: Readonly<FieldDescriptor<TValues>>
+  /** 被 dependencies 动态写入的字段呈现态模型。 */
   fieldModel: FieldModel<TValues>
+  /** form 内部运行时上下文。 */
   context: SchemxFormContext<TValues>
-  scope: RuntimeScope
+  /** 当前 effect 所属的资源作用域。 */
+  scope: Scope
 }
 
 /**
  * 创建字段级 dependencies effect。
+ *
+ * @param options - dependencies effect 所需的字段模型、descriptor 和运行时上下文。
  */
 export function createDependenciesEffect<TValues extends Values = Values>(
   options: CreateDependenciesEffectOptions<TValues>
@@ -73,7 +81,7 @@ export function createDependenciesEffect<TValues extends Values = Values>(
 
   let version = 0
 
-  const dispose = createReactiveEffect(() => {
+  const dispose = createSignalEffect(() => {
     const currentVersion = ++version
 
     // 读取 trigger 字段值以建立响应式依赖；字段值变化时 effect 会重新执行。

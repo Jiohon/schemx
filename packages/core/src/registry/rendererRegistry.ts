@@ -8,7 +8,9 @@
 
 import type { SchemxRendererKey } from "../types"
 
-/** 渲染器注册选项 */
+/**
+ * 渲染器注册选项。
+ */
 export interface RegistryOptions {
   /** 是否覆盖已存在的渲染器 */
   override?: boolean
@@ -28,7 +30,7 @@ export type RendererMap<T extends SchemxRendererKey, R = unknown> = Record<T, R>
  *
  * @example
  * ```typescript
- * const registry = new Registry()
+ * const registry = new RendererRegistry()
  *
  * // 注册组件
  * registry.register('input', InputRenderer)
@@ -40,10 +42,7 @@ export type RendererMap<T extends SchemxRendererKey, R = unknown> = Record<T, R>
  * @remarks
  * 当 getRenderer 找不到指定类型时，会自动回退到默认渲染器类型（默认为 'text'）。
  */
-export class RendererRegistry<
-  T extends SchemxRendererKey = SchemxRendererKey,
-  R = unknown,
-> {
+class Renderer<T extends SchemxRendererKey = SchemxRendererKey, R = unknown> {
   /** 渲染器存储 */
   private renderers: Map<T, R>
 
@@ -270,6 +269,14 @@ export class RendererRegistry<
 }
 
 /**
+ * RendererRegistry 的实例类型
+ */
+export type RendererRegistry<
+  T extends SchemxRendererKey = SchemxRendererKey,
+  R = unknown,
+> = InstanceType<typeof Renderer<T, R>>
+
+/**
  * 创建局部渲染器注册中心实例（仅内部使用）。
  *
  * @param defaultType - 默认渲染器类型
@@ -282,7 +289,5 @@ export class RendererRegistry<
 export function createRendererRegistry<T extends SchemxRendererKey, R = unknown>(
   defaultType?: T
 ): RendererRegistry<T, R> {
-  return new RendererRegistry<T, R>(defaultType)
+  return new Renderer<T, R>(defaultType)
 }
-
-export default RendererRegistry

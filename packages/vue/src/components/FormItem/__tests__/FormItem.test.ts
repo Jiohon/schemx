@@ -1,7 +1,7 @@
 /**
  * FormItem 集成测试
  *
- * 验证 FormItem 组件与 core 已解析 schema 投影的集成行为：
+ * 验证 FormItem 组件与 core 处理后的 ViewSchema 的集成行为：
  * - 新格式 Dependency_Object 由 core 解析并驱动动态渲染
  * - 无 dependencies 时静态值直接生效
  *
@@ -47,7 +47,7 @@ const InputRenderer = defineComponent({
 })
 
 describe("FormItem 集成测试", () => {
-  it("resolved schema projection 驱动 visible 随依赖字段变化", async () => {
+  it("ViewSchema 驱动 visible 随依赖字段变化", async () => {
     const schema: SchemxBaseField = {
       name: "city",
       label: "城市",
@@ -64,10 +64,10 @@ describe("FormItem 集成测试", () => {
     })
 
     form.getInternalHooks().registerRenderer("input", InputRenderer)
-    await form.getInternalHooks().waitForDependencies()
+    await form.waitForDependencies()
 
     const wrapper = mount(FormItem, {
-      props: { schema: form.getInternalHooks().getResolvedSchemas()[0] },
+      props: { schema: form.getViewSchemas()[0] },
       global: {
         provide: {
           [FORM_INSTANCE_KEY]: form,
@@ -83,8 +83,8 @@ describe("FormItem 集成测试", () => {
 
     // 将 province 设为空字符串
     form.setFieldValue("province", "")
-    await form.getInternalHooks().waitForDependencies()
-    await wrapper.setProps({ schema: form.getInternalHooks().getResolvedSchemas()[0] })
+    await form.waitForDependencies()
+    await wrapper.setProps({ schema: form.getViewSchemas()[0] })
     await nextTick()
 
     // province 为空 → visible 应为 false → 组件不应渲染
@@ -143,7 +143,7 @@ describe("FormItem 集成测试", () => {
     form.getInternalHooks().registerRenderer("input", InputRenderer)
 
     const wrapper = mount(FormItem, {
-      props: { schema: form.getInternalHooks().getResolvedSchemas()[0] },
+      props: { schema: form.getViewSchemas()[0] },
       global: {
         provide: {
           [FORM_INSTANCE_KEY]: form,

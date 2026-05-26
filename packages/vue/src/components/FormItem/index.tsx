@@ -2,7 +2,7 @@
  * FormItem
  *
  * schemx 和 FormGroup 实际渲染字段的组件。
- * 动态属性已由 core 解析到 schema 投影中；这里只负责消费
+ * 动态属性已由 core 解析到 ViewSchema 中；这里只负责消费
  * 已解析 schema、创建字段实例、组装渲染器属性与插槽。
  *
  * @module components/FormItem
@@ -25,11 +25,12 @@ import type { TriggerConfig } from "@/utils"
 import FormGroup from "../FormGroup"
 
 import type {
-  SchemxBaseField,
   SchemxComponentProps,
   SchemxFormItemProps,
+  SchemxViewFieldSchema,
+  SchemxViewGroupSchema,
+  SchemxViewSchema,
   Values,
-  ViewNode,
 } from "@schemx/core"
 
 /**
@@ -38,33 +39,24 @@ import type {
  * @typeParam T - 表单值类型
  */
 export interface SchemxItemProps<T extends Values = Values> {
-  node: ViewNode
+  schema: SchemxViewSchema<T>
 }
 
 const FormItem = defineComponent(
   <T extends Values = Values>(props: SchemxItemProps<T>, { slots }: SetupContext) => {
-    const nodeRef = toRef(props, "node")
+    const schemaRef = toRef(props, "schema")
 
-    if (nodeRef.value.type !== "field") {
+    if (isViewGroupSchema(schemaRef.value)) {
       return (): VNodeChild => {
-        if (nodeRef.value.type === "group") {
-          return h(FormGroup, { node: nodeRef.value }, slots)
-        }
-
-        return (
-          <div class={`schemx-${nodeRef.value.type}`} data-key={nodeRef.value.key}>
-            {nodeRef.value.children.map((child) => (
-              <FormItem key={child.key} node={child} />
-            ))}
-          </div>
-        )
+        return h(FormGroup, { schema: schemaRef.value as SchemxViewGroupSchema }, slots)
       }
     }
 
     const form = useFormInstance<T>()
     const formContext = useContext()
 
-    const schema = (): SchemxBaseField<T> => viewNodeToSchema(nodeRef.value)
+    const schema = (): SchemxViewFieldSchema<T> =>
+      schemaRef.value as SchemxViewFieldSchema<T>
 
     const field = useField(schema().name)
 
@@ -93,14 +85,14 @@ const FormItem = defineComponent(
     /** 值变化处理，设置值后根据触发时机决定是否校验 */
     const handleChange = (v: unknown) => {
       field.setValue(v)
-      if (canVerified.value && shouldValidateOn("change", trigger.value)) {
+      if (shouldValidateOn("change", trigger.value)) {
         field.validate()
       }
     }
 
     /** 失焦处理，根据触发时机决定是否校验 */
     const handleBlur = () => {
-      if (canVerified.value && shouldValidateOn("blur", trigger.value)) {
+      if (shouldValidateOn("blur", trigger.value)) {
         field.validate()
       }
     }
@@ -291,8 +283,8 @@ const FormItem = defineComponent(
     name: "SchemxItem",
 
     props: {
-      node: {
-        type: Object as PropType<ViewNode>,
+      schema: {
+        type: Object as PropType<SchemxViewSchema>,
         required: true,
       },
     },
@@ -301,34 +293,10 @@ const FormItem = defineComponent(
 
 export default FormItem
 
-const viewNodeToSchema = <T extends Values>(node: ViewNode): SchemxBaseField<T> => {
-  if (node.type !== "field") {
-    throw new Error("[schemx] FormItem expected a field ViewNode.")
-  }
-
-  return {
-    ...node.schema,
-    key: node.key,
-    name: node.name as SchemxBaseField<T>["name"],
-    componentType: node.renderer as SchemxBaseField<T>["componentType"],
-    label: node.props.label,
-    visible: node.props.visible,
-    readonly: node.props.readonly,
-    disabled: node.props.disabled,
-    required: node.props.required,
-    placeholder: node.props.placeholder,
-    componentProps: node.props.componentProps as SchemxComponentProps<T>,
-    rules: node.props.rules,
-    validationTrigger: node.props.validationTrigger,
-    labelIcon: node.props.labelIcon,
-    labelAlign: node.props.labelAlign,
-    labelPosition: node.props.labelPosition,
-    labelWidth: node.props.labelWidth,
-    contentAlign: node.props.contentAlign,
-    colon: node.props.colon,
-    class: node.props.class,
-    style: node.props.style,
-  } as SchemxBaseField<T>
+const isViewGroupSchema = <T extends Values>(
+  schema: SchemxViewSchema<T>
+): schema is SchemxViewGroupSchema<T> => {
+  return schema.componentType === "group"
 }
 
 const normalizeNameKey = (name: unknown): string => {

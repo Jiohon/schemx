@@ -9,14 +9,14 @@
 
 export {
   createRendererRegistry,
-  RendererRegistry,
+  type RendererRegistry,
   type RegistryOptions,
   type RendererMap,
 } from "./rendererRegistry"
 
 export {
   createRulesRegistry,
-  RulesRegistry,
+  type RulesRegistry,
   type RuleRegistryOptions,
   type RuleFactory,
   type RuleEntry,

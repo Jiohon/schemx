@@ -8,36 +8,42 @@ interface TestValues {
 }
 
 describe("defineSchemas", () => {
-  it("以零转换方式返回创建的 schema 数组", () => {
-    const schema = defineSchemas<TestValues>()
-
-    const field = schema.field({
-      name: "mode",
-      label: "模式",
-      componentType: "input",
-    })
-
-    const dependency = schema.dependency({
-      componentType: "dependency",
-      to: ["mode"],
-      renderer(values) {
-        if (values.mode === "advanced") {
-          return [
-            {
-              name: "detail",
-              label: "详情",
-              componentType: "input",
-            },
-          ]
-        }
-
-        return []
+  it("以零转换方式返回传入的 schema 数组", () => {
+    const schemas = defineSchemas<TestValues>([
+      {
+        name: "mode",
+        label: "模式",
+        componentType: "input",
       },
-    })
+      {
+        componentType: "dependency",
+        to: ["mode"],
+        renderer(values) {
+          const mode: TestValues["mode"] | undefined = values.mode
+          const detail: TestValues["detail"] = values.detail
 
-    const schemas = schema([field, dependency])
+          if (mode === "advanced") {
+            return [
+              {
+                name: "detail",
+                label: detail ?? "详情",
+                componentType: "input",
+              },
+            ]
+          }
 
-    expect(schemas).toEqual([field, dependency])
-    expect(schemas[1]).toBe(dependency)
+          return []
+        },
+      },
+    ])
+
+    expect(schemas).toEqual([
+      {
+        name: "mode",
+        label: "模式",
+        componentType: "input",
+      },
+      schemas[1],
+    ])
   })
 })

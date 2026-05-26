@@ -22,9 +22,10 @@ import type {
   UploadRendererProps,
   CascaderRendererProps,
 } from "@schemx/vant"
+import type { Values } from "@schemx/core"
 
 declare module "@schemx/core" {
-  interface SchemxRendererDefinition {
+  interface SchemxRendererDefinition<T extends Values> {
     input: InputRendererProps
     text: TextRendererProps
     textarea: TextAreaRendererProps

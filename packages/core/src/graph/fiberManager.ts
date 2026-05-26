@@ -47,67 +47,25 @@ import type {
 } from "./fiber"
 
 /**
- * 创建 `RuntimeFiberManager` 所需的运行时依赖。
- *
- * @typeParam TValues - 表单值类型。
- */
-export interface CreateFiberManagerOptions<TValues extends Values = Values> {
-  /** 延迟获取表单上下文，避免 manager 创建阶段依赖尚未装配完成。 */
-  readonly getContext: () => SchemxFormContext<TValues>
-  /** 字段 Fiber 与 FieldModel 的运行时索引。 */
-  readonly fieldRegistry: FieldRegistry<TValues>
-  /** Fiber 生命周期事件总线。 */
-  readonly lifecycleBus: LifecycleBus<Fiber, FormDescriptor<TValues>>
-}
-
-/**
- * Reconciler 使用的 Fiber 生命周期执行器。
- *
- * @remarks
- * Reconciler 只做结构决策；FiberManager 负责把 descriptor 对应的领域资源
- * 挂载到具体 Fiber，并在更新或销毁时释放这些资源。
- *
- * @typeParam TValues - 表单值类型。
- */
-export interface FiberManager<TValues extends Values> {
-  /** 创建透明 root Fiber。 */
-  createRoot(): RootFiber
-  /** 根据 descriptor 创建一个未挂载的 Fiber。 */
-  create(
-    descriptor: FormDescriptor<TValues>,
-    parent: ContainerFiber<TValues>
-  ): Fiber<TValues>
-  /** 挂载 Fiber 对应的领域资源。 */
-  mount(fiber: Fiber<TValues>): void
-  /** 使用新的 descriptor 更新 Fiber 资源。 */
-  update(fiber: Fiber<TValues>, next: FormDescriptor<TValues>): void
-  /** 卸载 Fiber 自身的领域资源，不递归处理子树。 */
-  unmount(fiber: Fiber<TValues>): void
-  /** 递归销毁 Fiber 及其所有 runtime 子节点。 */
-  disposeTree(fiber: Fiber<TValues>): void
-}
-
-/**
  * 表单 runtime graph 的默认 Fiber 生命周期管理器。
  *
  * @typeParam TValues - 表单值类型。
  */
-export class RuntimeFiberManager<
-  TValues extends Values = Values,
-> implements FiberManager<TValues> {
+class RuntimeFiberManager<TValues extends Values = Values> {
   /** 下一个非 root Fiber 的自增 id；root 固定使用 0。 */
   private nextId = 1
   /** 当前表单运行时上下文的延迟访问器。 */
-  private readonly getContext: () => SchemxFormContext<TValues>
+  private readonly context: SchemxFormContext<TValues>
   /** 字段运行时索引，用于按字段路径查找 model 与 Fiber。 */
   private readonly fieldRegistry: FieldRegistry<TValues>
   /** Fiber 生命周期事件总线。 */
   private readonly lifecycleBus: LifecycleBus<Fiber, FormDescriptor<TValues>>
 
-  constructor(options: CreateFiberManagerOptions<TValues>) {
-    this.getContext = options.getContext
-    this.fieldRegistry = options.fieldRegistry
-    this.lifecycleBus = options.lifecycleBus
+  constructor(context: SchemxFormContext<TValues>) {
+    this.context = context
+
+    this.fieldRegistry = context.fieldRegistry
+    this.lifecycleBus = context.lifecycleBus
   }
 
   /**
@@ -119,7 +77,7 @@ export class RuntimeFiberManager<
     return {
       id: 0,
       key: "schemx:root",
-      kind: "root",
+      type: "root",
       parent: null,
       scope: createScope(),
       disposed: createSignal(false),
@@ -138,15 +96,15 @@ export class RuntimeFiberManager<
     descriptor: FormDescriptor<TValues>,
     parent: ContainerFiber<TValues>
   ): Fiber<TValues> {
-    if (descriptor.kind === "field") {
+    if (descriptor.type === "field") {
       return this.createField(descriptor, parent)
     }
 
-    if (descriptor.kind === "group") {
+    if (descriptor.type === "group") {
       return this.createGroup(descriptor, parent)
     }
 
-    if (descriptor.kind === "dependency") {
+    if (descriptor.type === "dependency") {
       return this.createDependency(descriptor, parent)
     }
 
@@ -156,12 +114,14 @@ export class RuntimeFiberManager<
   /**
    * 挂载单个 Fiber 的运行期资源。
    *
+   * @param fiber - 要挂载的 Fiber。
+   *
    * @remarks
    * Group Fiber 只表示结构，不会创建领域资源；Field 和 Dependency 会在这里
    * 创建各自的模型、effect 与资源 scope。
    */
   mount(fiber: Fiber<TValues>): void {
-    if (fiber.kind === "root" || !fiber.descriptor) {
+    if (fiber.type === "root" || !fiber.descriptor) {
       return
     }
 
@@ -188,12 +148,15 @@ export class RuntimeFiberManager<
   /**
    * 更新单个 Fiber 的 descriptor 快照和运行期资源。
    *
+   * @param fiber - 要更新的 Fiber。
+   * @param next - 更新后的表单 descriptor。
+   *
    * @remarks
    * descriptor 快照会先写入 Fiber，再由具体 update 分支决定复用还是重启资源。
    * 结构层面的 children reconcile 不在这里处理。
    */
   update(fiber: Fiber<TValues>, next: FormDescriptor<TValues>): void {
-    if (fiber.kind === "root") {
+    if (fiber.type === "root") {
       return
     }
 
@@ -227,11 +190,13 @@ export class RuntimeFiberManager<
   /**
    * 卸载单个 Fiber 的运行期资源。
    *
+   * @param fiber - 要卸载的 Fiber。
+   *
    * @remarks
    * 这个方法不递归销毁子节点；需要销毁整棵子树时使用 `disposeTree`。
    */
   unmount(fiber: Fiber<TValues>): void {
-    if (fiber.kind === "root") {
+    if (fiber.type === "root") {
       return
     }
 
@@ -249,6 +214,8 @@ export class RuntimeFiberManager<
   /**
    * 递归销毁 Fiber 子树。
    *
+   * @param fiber - 要销毁的子树根 Fiber。
+   *
    * @remarks
    * 销毁顺序是：标记 disposed、递归销毁 runtime 子节点、卸载自身领域资源、
    * 释放 Fiber scope、断开 parent。这样可以确保子资源先于父资源释放。
@@ -258,7 +225,7 @@ export class RuntimeFiberManager<
       return
     }
 
-    if (fiber.kind !== "root") {
+    if (fiber.type !== "root") {
       this.lifecycleBus.emitBeforeUnmount(fiber as unknown as Fiber)
     }
 
@@ -277,7 +244,7 @@ export class RuntimeFiberManager<
 
     fiber.parent = null
 
-    if (fiber.kind !== "root") {
+    if (fiber.type !== "root") {
       this.lifecycleBus.emitUnmount(fiber as unknown as Fiber)
     }
   }
@@ -291,7 +258,7 @@ export class RuntimeFiberManager<
     const fiber: FieldFiber<TValues> = {
       id: this.nextId++,
       key: descriptor.key,
-      kind: descriptor.kind,
+      type: descriptor.type,
       parent,
       scope: parent.scope.child(),
       disposed: createSignal(false),
@@ -312,7 +279,7 @@ export class RuntimeFiberManager<
     const fiber: GroupFiber<TValues> = {
       id: this.nextId++,
       key: descriptor.key,
-      kind: descriptor.kind,
+      type: descriptor.type,
       parent,
       scope: parent.scope.child(),
       disposed: createSignal(false),
@@ -331,7 +298,7 @@ export class RuntimeFiberManager<
     const fiber: DependencyFiber<TValues> = {
       id: this.nextId++,
       key: descriptor.key,
-      kind: descriptor.kind,
+      type: descriptor.type,
       parent,
       scope: parent.scope.child(),
       disposed: createSignal(false),
@@ -395,7 +362,7 @@ export class RuntimeFiberManager<
     mountDependencyEffect<TValues>(
       fiber,
       fiber.descriptor,
-      this.getContext(),
+      this.context,
       slot,
       resourceScope
     )
@@ -464,7 +431,7 @@ export class RuntimeFiberManager<
       props: createSignal(descriptor.schema),
       descriptor,
       fieldModel: model,
-      context: this.getContext(),
+      context: this.context,
       scope,
     })
   }
@@ -493,7 +460,7 @@ export class RuntimeFiberManager<
     createDependenciesEffect<TValues>({
       descriptor,
       fieldModel: model,
-      context: this.getContext(),
+      context: this.context,
       scope: dependenciesScope,
     })
   }
@@ -517,14 +484,22 @@ export class RuntimeFiberManager<
 }
 
 /**
+ * FiberManager 的实例类型。
+ */
+export type FiberManager<TValues extends Values = Values> = InstanceType<
+  typeof RuntimeFiberManager<TValues>
+>
+
+/**
  * 创建表单运行时 FiberManager。
  *
- * @param options - manager 所需的上下文、注册表和生命周期总线。
+ * @param context - manager 所需的上下文、注册表和生命周期总线。
+ * @returns 新的 RuntimeFiberManager 实例。
  */
 export function createFiberManager<TValues extends Values = Values>(
-  options: CreateFiberManagerOptions<TValues>
+  context: SchemxFormContext<TValues>
 ): RuntimeFiberManager<TValues> {
-  return new RuntimeFiberManager(options)
+  return new RuntimeFiberManager(context)
 }
 
 function isSameNamePathList(a: NamePath[], b: NamePath[]): boolean {
@@ -536,5 +511,5 @@ function isSameNamePathList(a: NamePath[], b: NamePath[]): boolean {
 }
 
 function throwUnknownDescriptor(descriptor: never): never {
-  throw new Error(`unknown kind: ${(descriptor as { kind?: string }).kind ?? "unknown"}`)
+  throw new Error(`unknown type: ${(descriptor as { type?: string }).type ?? "unknown"}`)
 }

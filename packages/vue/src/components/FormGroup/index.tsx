@@ -14,7 +14,7 @@ import classnames from "classnames"
 
 import FormItem from "../FormItem"
 
-import type { ContainerViewNode, Values } from "@schemx/core"
+import type { SchemxViewGroupSchema, SchemxViewSchema, Values } from "@schemx/core"
 
 /**
  * FormGroup Props
@@ -22,33 +22,33 @@ import type { ContainerViewNode, Values } from "@schemx/core"
  * @typeParam T - 表单值类型
  */
 export interface SchemxGroupProps<T extends Values = Values> {
-  node: ContainerViewNode
+  schema: SchemxViewGroupSchema<T>
 }
 
 const FormGroup = defineComponent(
   <T extends Values = Values>(props: SchemxGroupProps<T>, { slots }: SetupContext) => {
-    const collapsed = ref(Boolean(props.node.props.componentProps.defaultCollapsed))
+    const collapsed = ref(Boolean(props.schema.defaultCollapsed))
 
     const toggle = () => {
-      if (props.node.props.componentProps.collapsible) {
+      if (props.schema.collapsible) {
         collapsed.value = !collapsed.value
       }
     }
 
     return (): VNodeChild => {
-      const node = props.node
-      const collapsible = Boolean(node.props.componentProps.collapsible)
+      const schema = props.schema
+      const collapsible = Boolean(schema.collapsible)
 
       return (
         <div
           class={classnames(
             "schemx-group",
             { "schemx-group--collapsed": collapsed.value },
-            node.props.class as string | undefined
+            schema.class as string | undefined
           )}
-          data-key={node.key}
+          data-key={schema.key}
         >
-          {node.props.label && (
+          {schema.label && (
             <div
               role={collapsible ? "button" : undefined}
               tabindex={collapsible ? 0 : undefined}
@@ -63,7 +63,7 @@ const FormGroup = defineComponent(
                 }
               }}
             >
-              <span class="schemx-group__title">{node.props.label}</span>
+              <span class="schemx-group__title">{schema.label}</span>
               {collapsible && (
                 <span
                   class={classnames("schemx-group__arrow", {
@@ -75,8 +75,12 @@ const FormGroup = defineComponent(
           )}
           {!collapsed.value && (
             <div class="schemx-group__body">
-              {node.children.map((child) => (
-                <FormItem key={child.key} node={child} v-slots={slots} />
+              {schema.children.map((child) => (
+                <FormItem
+                  key={child.key}
+                  schema={child as SchemxViewSchema}
+                  v-slots={slots}
+                />
               ))}
             </div>
           )}
@@ -88,8 +92,8 @@ const FormGroup = defineComponent(
     name: "SchemxGroup",
 
     props: {
-      node: {
-        type: Object as PropType<ContainerViewNode>,
+      schema: {
+        type: Object as PropType<SchemxViewGroupSchema>,
         required: true,
       },
     },

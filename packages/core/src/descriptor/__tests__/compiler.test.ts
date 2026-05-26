@@ -266,8 +266,8 @@ describe("compileToDescriptors", () => {
     ]
 
     const descriptors = compileToDescriptors(schemas, {
-      globalReadonly: true,
-      globalDisabled: true,
+      readonly: true,
+      disabled: true,
     })
 
     if (descriptors[0].kind === "field") {

@@ -26,15 +26,27 @@
  * ```
  */
 
-import { createReactiveEffect } from "./reactivity"
+import { createSignalEffect } from "./reactivity"
 
-/** effect 回调的清理函数类型 */
+/**
+ * effect 回调返回的清理函数。
+ *
+ * 清理函数会在 effect 重新执行前以及 dispose 时调用。
+ */
 export type CleanupFn = () => void
 
-/** effect 回调类型，可选返回清理函数 */
+/**
+ * reactive effect 回调。
+ *
+ * 回调执行期间读取的 reactive value 会被自动追踪。
+ */
 export type EffectCallback = () => CleanupFn | void
 
-/** createEffect 的返回类型 - 取消 effect 的 dispose 函数（幂等） */
+/**
+ * `createEffect` 返回的释放函数。
+ *
+ * 多次调用是安全的，只有第一次会真正释放 effect 和最后一次 cleanup。
+ */
 export type CreateEffectReturn = () => void
 
 /**
@@ -63,7 +75,7 @@ export function createEffect(callback: EffectCallback): CreateEffectReturn {
   let cleanup: CleanupFn | undefined
   let disposed = false
 
-  const dispose = createReactiveEffect(() => {
+  const dispose = createSignalEffect(() => {
     cleanup?.()
     cleanup = undefined
 

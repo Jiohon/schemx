@@ -91,16 +91,28 @@ type GlobalPayload<
  */
 type BaseSubscribeCallback<TValues, P> = (payload: P, latestSnapshot: TValues) => void
 
-/** 单字段订阅回调类型，监听指定字段的变更 */
+/**
+ * 单字段订阅回调类型。
+ *
+ * payload 包含目标字段的新旧值，第二个参数是最新表单快照。
+ */
 export type WatchFieldCallback<TValues> = BaseSubscribeCallback<TValues, FieldPayload>
 
-/** 多字段订阅回调类型，监听一组字段的变更 */
+/**
+ * 多字段订阅回调类型。
+ *
+ * payload 只包含被监听字段集合内发生变化的路径和值。
+ */
 export type WatchFieldsCallback<TValues extends Values> = BaseSubscribeCallback<
   TValues,
   FieldsPayload<TValues>
 >
 
-/** 全局订阅回调类型，监听表单中任意字段的变更 */
+/**
+ * 全局订阅回调类型。
+ *
+ * payload 包含任意字段变化后计算出的 changedPaths、changedValues 和 prevValues。
+ */
 export type WatchAllCallback<TValues extends Values> = BaseSubscribeCallback<
   TValues,
   GlobalPayload<TValues>

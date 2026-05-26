@@ -60,6 +60,9 @@ export async function waitAll<T>(
  * @param fn - 要加锁的异步函数
  * @returns 加锁后的函数
  *
+ * @remarks
+ * 返回函数会透传原函数参数；并发期间的后续调用会共享第一次调用的 Promise。
+ *
  * @example
  * ```typescript
  * const lockedSubmit = withLock(async () => {

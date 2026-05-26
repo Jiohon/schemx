@@ -1,16 +1,17 @@
 /**
  * Rule 校验注册中心。
  *
- * 管理自定义 rule 名称到 StandardSchemaV1 实例的全局映射。
- * 用户通过 `register` 注册自定义 rule 后，
- * FormItem 解析 `rules` 字段时遇到字符串会从此注册中心查找对应的 schema。
+ * 管理 rule 名称到 StandardSchemaV1 实例或规则工厂的映射。
+ * 字段 schema 中的字符串规则会在这里解析为可执行的 Standard Schema。
  *
  * @module core/registry/rulesRegistry
  *
  * @example
  * ```typescript
- * import { rulesRegistry } from '@schemx/core'
+ * import { createRulesRegistry } from '@schemx/core'
  * import { z } from 'zod'
+ *
+ * const rulesRegistry = createRulesRegistry()
  *
  * // 注册自定义 rule
  * rulesRegistry.register('phone', z.string().regex(/^1\d{10}$/))
@@ -33,7 +34,7 @@ import type { StandardSchemaV1 } from "../types"
 /**
  * Rule 工厂函数类型。
  *
- * 接收 label 参数，返回 StandardSchemaV1 实例。
+ * 接收字段 schema，返回 StandardSchemaV1 实例。
  * 用于内置规则等需要运行时上下文才能生成 rule 的场景。
  */
 export type RuleFactory<TValues extends Values = Values> = (
@@ -49,13 +50,19 @@ export type RuleEntry<TValues extends Values = Values> =
   | StandardSchemaV1
   | RuleFactory<TValues>
 
-/** Rule 注册选项 */
+/**
+ * Rule 注册选项。
+ */
 export interface RuleRegistryOptions {
   /** 是否覆盖已存在的同名 rule */
   override?: boolean
 }
 
-/** Rule 映射类型（实例或工厂） */
+/**
+ * Rule 映射类型。
+ *
+ * 每个 key 对应一个 StandardSchemaV1 实例或按字段 schema 延迟创建的工厂。
+ */
 export type RuleEntryMap<TValues extends Values = Values> = Record<
   SchemxRuleKey,
   RuleEntry<TValues>
@@ -65,7 +72,7 @@ export type RuleEntryMap<TValues extends Values = Values> = Record<
  * Rule 校验注册中心。
  *
  * 将 rule 名称映射到 StandardSchemaV1 实例或工厂函数。
- * 工厂函数接收 label 参数，用于生成带上下文提示信息的 schema。
+ * 工厂函数接收字段 schema，用于生成带字段上下文的校验 schema。
  * 与 {@link RendererRegistry}（渲染器注册中心）同构设计。
  *
  * @example
@@ -75,24 +82,26 @@ export type RuleEntryMap<TValues extends Values = Values> = Record<
  * // 注册固定 rule
  * rulesRegistry.register('phone', phoneRule)
  *
- * // 注册工厂函数（需要 label 上下文）
- * rulesRegistry.register('required', (label) => createRequiredRule(label))
+ * // 注册工厂函数（需要字段上下文）
+ * rulesRegistry.register('required', (schema) => createRequiredRule(schema))
  *
  * // 解析 schema（工厂会自动调用）
- * const rule = rulesRegistry.resolveRuleBySchema('required', '用户名')
+ * const [rule] = rulesRegistry.resolveRuleBySchema({
+ *   name: 'username',
+ *   label: '用户名',
+ *   componentType: 'input',
+ *   rules: 'required',
+ * })
  * ```
  */
-export class RulesRegistry<TValues extends Values = Values> {
+class Rules<TValues extends Values = Values> {
   /** Rule 存储 */
   private rules: Map<SchemxRuleKey, RuleEntry<TValues>>
 
   /**
    * 创建 RulesRegistry 实例。
    *
-   * 支持可选的父级注册中心，查找时先查本地，再委托父级。
-   * 用于实现全局规则继承 + 局部规则覆盖。
-   *
-   * @param parent - 父级注册中心，未找到本地 rule 时委托查找
+   * 创建空的规则注册中心。
    */
   constructor() {
     this.rules = new Map()
@@ -114,7 +123,7 @@ export class RulesRegistry<TValues extends Values = Values> {
    * rulesRegistry.register('phone', phoneRule)
    *
    * // 注册工厂函数
-   * rulesRegistry.register('required', (label) => createRequiredRule(label))
+   * rulesRegistry.register('required', (schema) => createRequiredRule(schema))
    * ```
    */
   register(
@@ -142,7 +151,7 @@ export class RulesRegistry<TValues extends Values = Values> {
    * ```typescript
    * rulesRegistry.registerAll({
    *   phone: phoneRule,
-   *   required: (label) => createRequiredRule(label),
+   *   required: (schema) => createRequiredRule(schema),
    * })
    * ```
    */
@@ -156,7 +165,7 @@ export class RulesRegistry<TValues extends Values = Values> {
    * 获取指定名称的原始注册条目。
    *
    * 返回 StandardSchemaV1 实例或工厂函数，不做解析。
-   * 如需自动解析工厂，请使用 {@link resolve}。
+   * 如需按字段 schema 自动解析字符串规则和工厂，请使用 {@link resolveRuleBySchema}。
    *
    * @param name - rule 名称
    * @returns 对应的注册条目，未找到时返回 undefined
@@ -171,22 +180,31 @@ export class RulesRegistry<TValues extends Values = Values> {
   }
 
   /**
-   * 解析指定名称的校验规则。
+   * 解析字段 schema 上声明的校验规则。
    *
-   * 如果注册的是工厂函数，传入 label 调用后返回 StandardSchemaV1 实例；
-   * 如果注册的是固定实例，直接返回。
+   * 字符串规则会从注册表查找；若注册项是工厂函数，则传入完整字段 schema
+   * 生成 StandardSchemaV1 实例。已经是 StandardSchemaV1 的规则会原样返回。
    *
-   * @param name - rule 名称
-   * @param label - 字段标签，传递给工厂函数生成上下文相关的错误提示
-   * @returns 解析后的 StandardSchemaV1 实例，未找到时返回 undefined
+   * @param schema - 含 rules 的字段 schema。
+   * @returns 解析后的 StandardSchemaV1 实例数组。
    *
    * @example
    * ```typescript
    * // 固定 rule 直接返回
-   * rulesRegistry.resolveRuleBySchema('phone', { label :'手机号', ComponentType: 'input', ... }) // => phoneRule
+   * rulesRegistry.resolveRuleBySchema({
+   *   name: 'phone',
+   *   label: '手机号',
+   *   componentType: 'input',
+   *   rules: 'phone',
+   * })
    *
    * // 工厂函数会被调用
-   * rulesRegistry.resolveRuleBySchema('required', {  label :'用户名', ComponentType: 'input', ... }) // => createRequiredRule('用户名')
+   * rulesRegistry.resolveRuleBySchema({
+   *   name: 'username',
+   *   label: '用户名',
+   *   componentType: 'input',
+   *   rules: 'required',
+   * })
    * ```
    */
   resolveRuleBySchema(schema: SchemxBaseField<TValues>): StandardSchemaV1[] {
@@ -289,6 +307,13 @@ export class RulesRegistry<TValues extends Values = Values> {
 }
 
 /**
+ * RendererRegistry 的实例类型
+ */
+export type RulesRegistry<TValues extends Values = Values> = InstanceType<
+  typeof Rules<TValues>
+>
+
+/**
  * 创建局部 rule 注册中心实例。
  *
  * 默认以全局 {@link globalRulesRegistry} 作为父级，
@@ -305,7 +330,5 @@ export class RulesRegistry<TValues extends Values = Values> {
 export function createRulesRegistry<
   TValues extends Values = Values,
 >(): RulesRegistry<TValues> {
-  return new RulesRegistry<TValues>()
+  return new Rules<TValues>()
 }
-
-export default RulesRegistry

@@ -3,7 +3,7 @@
  *
  * 将 SchemxInstance 的方法作用域限定到指定字段，
  * 提供单字段的读写、校验、状态订阅等能力。
- * 框架适配层（Vue / React）通过 subscribe 回调桥接各自的响应式系统。
+ * 框架适配层（Vue / React）可通过 `effect` 桥接各自的响应式系统。
  *
  * @module core/createField
  *
@@ -17,9 +17,9 @@
  * field.setValue('John')
  * field.getValue() // => 'John'
  *
- * const dispose = field.subscribe({
- *   onValueChange: (v) => console.log('value:', v),
- *   onErrorChange: (e) => console.log('errors:', e),
+ * const dispose = field.effect(() => {
+ *   console.log('value:', field.getValue())
+ *   console.log('errors:', field.getError())
  * })
  *
  * dispose() // 取消订阅
@@ -28,29 +28,8 @@
 
 import { setByPath } from "./utils"
 
-import type {
-  NamePath,
-  PathValue,
-  SchemxInstance,
-  SchemxRules,
-  Value,
-  Values,
-} from "./types"
+import type { NamePath, PathValue, SchemxInstance, SchemxRules, Values } from "./types"
 import type { ValidateResult } from "./validator"
-
-/**
- * subscribe 回调集合
- *
- * 框架适配层通过这些回调将 core reactive value 变化同步到各自的响应式容器中。
- */
-export interface FieldSubscribeCallbacks {
-  /** 字段值变化回调 */
-  onValueChange?: (value: Value) => void
-  /** 字段错误信息变化回调 */
-  onErrorChange?: (errors: string[] | undefined) => void
-  /** 字段操作中状态变化回调 */
-  onPendingChange?: (pending: boolean) => void
-}
 
 /**
  * 单字段控制器接口
@@ -59,43 +38,120 @@ export interface FieldSubscribeCallbacks {
  * 以及基于 reactive effect 的状态订阅能力。
  *
  * @typeParam TValues - 表单值类型
+ * @typeParam TName - 当前字段路径类型
+ * @typeParam TValue - 当前字段值类型
  */
 export interface SchemxFieldInstance<
   TValues extends Values = Values,
   TName extends NamePath<TValues> = NamePath<TValues>,
   TValue = PathValue<TValues, TName>,
 > {
-  /** 获取当前字段值（读取 reactive value，在 effect 中自动追踪） */
+  /**
+   * 获取当前字段值。
+   *
+   * @returns 当前字段值；字段不存在时返回 undefined。
+   */
   getValue: () => TValue | undefined
-  /** 设置字段值 */
+
+  /**
+   * 设置当前字段值。
+   *
+   * @param value - 新字段值。
+   */
   setValue: (value: TValue) => void
-  /** 获取字段初始值 */
+
+  /**
+   * 获取字段初始值。
+   *
+   * @returns 当前字段的初始值；未设置时返回 undefined。
+   */
   getInitialValue: () => TValue | undefined
-  /** 设置字段初始值 */
+
+  /**
+   * 设置字段初始值。
+   *
+   * @param value - 新初始值。
+   */
   setInitialValue: (value: TValue) => void
-  /** 获取表单全量值 */
+
+  /**
+   * 获取表单全量响应式值。
+   *
+   * @returns 当前表单值。
+   */
   getValues: () => Readonly<TValues>
-  /** 获取表单全量快照 */
+
+  /**
+   * 获取表单全量快照。
+   *
+   * @returns 当前表单值快照。
+   */
   getSnapshot: () => TValues
-  /** 校验当前字段 */
+
+  /**
+   * 校验当前字段。
+   *
+   * @returns 当前字段校验结果。
+   */
   validate: () => Promise<ValidateResult<TValues>>
-  /** 获取错误信息 */
+
+  /**
+   * 获取当前字段错误信息。
+   *
+   * @returns 错误信息数组；没有错误时返回 undefined。
+   */
   getError: () => string[] | undefined
-  /** 设置错误信息 */
+
+  /**
+   * 设置当前字段错误信息。
+   *
+   * @param errors - 错误信息数组。
+   */
   setError: (errors: string[]) => void
-  /** 清除错误信息 */
+
+  /**
+   * 清除当前字段错误信息。
+   */
   clearError: () => void
-  /** 注册校验规则 */
+
+  /**
+   * 注册当前字段校验规则。
+   *
+   * @param rules - 校验规则或规则数组。
+   * @param defaultMessage - 可选的默认错误信息。
+   */
   registerRules: (rules: SchemxRules | SchemxRules[], defaultMessage?: string) => void
-  /** 注销校验规则 */
+
+  /**
+   * 注销当前字段校验规则。
+   */
   unregisterRules: () => void
-  /** 是否被修改 */
+
+  /**
+   * 检查当前字段是否已被触摸。
+   *
+   * @returns 是否已被触摸。
+   */
   isTouched: () => boolean
-  /** 重置到初始值 */
+
+  /**
+   * 重置当前字段到初始值。
+   */
   reset: () => void
-  /** 设置操作中状态 */
+
+  /**
+   * 设置当前字段操作中状态。
+   *
+   * @param pending - 是否处于操作中。
+   * @param message - 可选的操作中提示信息。
+   */
   setPending: (pending: boolean, message?: string) => void
-  /** 是否操作中 */
+
+  /**
+   * 检查当前字段是否处于操作中。
+   *
+   * @returns 是否处于操作中。
+   */
   isPending: () => boolean
 
   /**
@@ -137,8 +193,8 @@ export interface SchemxFieldInstance<
  * field.setValue('John')
  * field.getValue() // => 'John'
  *
- * const dispose = field.subscribe({
- *   onValueChange: (v) => console.log(v),
+ * const dispose = field.effect(() => {
+ *   console.log(field.getValue())
  * })
  * ```
  */
@@ -171,7 +227,7 @@ export function createField<
   const getSnapshot = (): TValues => form.getFieldsSnapshot()
 
   const validate = (): Promise<ValidateResult<TValues>> => {
-    return form.validateField([name])
+    return form.validateField(name)
   }
 
   const getError = (): string[] | undefined => form.getFieldError(name)

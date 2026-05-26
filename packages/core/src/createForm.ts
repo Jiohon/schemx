@@ -22,15 +22,15 @@ import {
   type LifecycleBus,
   type SchemxLifecycleHooks,
 } from "./lifecycle/lifecycle"
-import { batchUpdates, createReactiveEffect } from "./reactivity"
+import { batchUpdates, createSignalEffect } from "./reactivity"
 import {
   createRendererRegistry,
   createRulesRegistry,
-  RendererRegistry,
+  type RendererRegistry,
   type RulesRegistry,
 } from "./registry"
-import { createRuntimeScheduler, type RuntimeScheduler } from "./scheduler"
-import { createStore, Store } from "./store"
+import { createScheduler, type Scheduler } from "./scheduler"
+import { createStore, type Store } from "./store"
 import { collectObjectPathsByLeaf, diff, withLock } from "./utils"
 import {
   createRequiredRule,
@@ -39,19 +39,21 @@ import {
   createValidator,
   type ValidateError,
   type ValidateResult,
-  Validator,
+  type Validator,
 } from "./validator"
 import {
+  buildViewSchemas,
   createViewRevision,
-  projectViewTree,
-  subscribeViewTree,
+  type SchemxViewSchema,
+  subscribeViewSchemas,
   type ViewRevision,
 } from "./view"
 
-import type { CompileOptions, FormDescriptor } from "./descriptor"
+import type { FormDescriptor } from "./descriptor"
 import type {
   NamePath,
-  SchemxDefaultContext,
+  SchemxBaseField,
+  SchemxDefaultProps,
   SchemxField,
   SchemxFormApi,
   SchemxInstance,
@@ -60,7 +62,6 @@ import type {
   StandardSchemaV1,
   Values,
 } from "./types"
-import type { ViewNode } from "./view"
 
 type Callbacks<
   TValues extends Values = Values,
@@ -70,28 +71,60 @@ type Callbacks<
   "onValuesChange" | "onFinish" | "onFinishFailed" | "onFieldsChange"
 >
 
+/**
+ * createForm 内部运行时上下文。
+ *
+ * 字段、dependency effect 和 graph lifecycle 通过该对象共享 store、
+ * validator、scheduler、registry 以及唯一的子树提交边界。
+ *
+ * @typeParam TValues - 表单值类型。
+ */
 export interface SchemxFormContext<
   TValues extends Values = Values,
-> extends SchemxDefaultContext {
-  /** 校验规则注册表，解析字符串规则名称到 StandardSchema 或规则工厂 */
+> extends SchemxDefaultProps {
+  /**
+   * schema 编译默认选项，供 root 与 dependency 子树复用
+   */
+  readonly defaultProps: SchemxDefaultProps
+  /**
+   * 校验规则注册表，解析字符串规则名称到 StandardSchema 或规则工厂
+   */
   readonly rulesRegistry: RulesRegistry<TValues>
-  /** 表单状态存储，管理字段值、初始值和订阅 */
+  /**
+   * 表单状态存储，管理字段值、初始值和订阅
+   */
   readonly store: Store<TValues>
-  /** 字段校验器，维护规则、错误状态和校验执行流程 */
+  /**
+   * 字段校验器，维护规则、错误状态和校验执行流程
+   */
   readonly validator: Validator<TValues>
-  /** 运行时异步调度器，用于追踪 dependency renderer 和字段动态依赖 */
-  readonly scheduler: RuntimeScheduler
-  /** descriptor 到 Fiber tree 的协调器，负责创建、复用和销毁节点 */
-  readonly reconciler: Reconciler<TValues>
-  /** graph 生命周期事件总线，连接 reconciler 与字段资源挂载流程 */
+  /**
+   * 运行时异步调度器，用于追踪 dependency renderer 和字段动态依赖
+   */
+  readonly scheduler: Scheduler
+  /**
+   * graph 生命周期事件总线，连接 reconciler 与字段资源挂载流程
+   */
   readonly lifecycleBus: LifecycleBus<Fiber, FormDescriptor<TValues>>
-  /** schema 编译默认选项，供 root 与 dependency 子树复用 */
-  readonly compileOptions: CompileOptions
-  /** 唯一子节点提交边界，负责 reconcile 后推进 viewRevision */
+  /**
+   * 字段 Fiber 到字段模型的注册表，供表单 API 和视图投影读取
+   */
+  readonly fieldRegistry: FieldRegistry<TValues>
+  /**
+   * 唯一子节点提交边界，负责 reconcile 后推进 viewRevision。
+   *
+   * @param parent - 接收子节点的容器 Fiber。
+   * @param descriptors - 新一轮编译得到的子 descriptor 列表。
+   */
   commitChildren(
     parent: ContainerFiber<TValues>,
     descriptors: FormDescriptor<TValues>[]
   ): void
+  /**
+   * 获取传递给动态 renderer 的表单 API。
+   *
+   * @returns 当前表单实例的公开操作 API。
+   */
   readonly getFormApi: () => SchemxFormApi<TValues>
 }
 
@@ -105,21 +138,54 @@ export interface SchemxFormContext<
 export interface CreateFormOptions<
   TValues extends Values = Values,
   TName extends NamePath<TValues> = NamePath<TValues>,
-> extends SchemxDefaultContext {
+> extends SchemxDefaultProps {
+  /**
+   * 初始 schema 列表。dependency schema 会在运行时透明展开。
+   */
   schemas?: SchemxField<TValues>[]
+  /**
+   * 表单初始值，作为 reset 的还原基准。
+   */
   initialValues?: TValues
+  /**
+   * 外部受控表单值。
+   */
   modelValue?: TValues
+  /**
+   * 当前 form 实例使用的渲染器注册表。
+   */
   rendererRegistry?: RendererRegistry
+  /**
+   * 字段未指定可用渲染器时使用的默认 renderer type。
+   */
   defaultRendererType?: SchemxRendererKey
+  /**
+   * 当前 form 实例使用的规则注册表。
+   */
   rulesRegistry?: RulesRegistry
 
+  /**
+   * submit 校验通过后的回调。
+   */
   onFinish?: (values: Readonly<TValues>) => void | Promise<void>
+  /**
+   * submit 校验失败后的回调。
+   */
   onFinishFailed?: (error: ValidateError<TValues>) => void
+  /**
+   * 字段值变化后的回调，接收本次变化片段和最新快照。
+   */
   onValuesChange?: (
     changedValues: Readonly<Partial<TValues>>,
     latestSnapshot: Readonly<TValues> | TValues
   ) => void
+  /**
+   * 字段路径变化后的回调，接收本次变化路径和所有已知字段路径。
+   */
   onFieldsChange?: (changedFields: TName[], allFields: TName[]) => void
+  /**
+   * graph lifecycle hook，用于观察字段节点挂载、更新和卸载。
+   */
   lifecycleHooks?: SchemxLifecycleHooks<TValues>
 }
 
@@ -149,9 +215,9 @@ class CreateForm<
   readonly root: RootFiber
 
   /** 运行时异步调度器，用于追踪 dependency renderer 和字段动态依赖 */
-  readonly scheduler: RuntimeScheduler
+  readonly scheduler: Scheduler
 
-  /** 视图结构版本号，graph 结构变化时推进以触发 ViewTree 重新投影 */
+  /** 视图结构版本号，graph 结构变化时推进以触发 ViewSchemas 重新构建 */
   readonly viewRevision: ViewRevision
 
   /** descriptor 到 Fiber tree 的协调器，负责创建、复用和销毁节点 */
@@ -168,9 +234,6 @@ class CreateForm<
 
   /** 标记表单实例是否已销毁，保证 dispose 幂等 */
   private disposed = false
-
-  /** schema 编译默认选项，root 与 dependency 子树共享 */
-  private compileOptions: CompileOptions
 
   /** graph 生命周期事件总线，连接 reconciler 与字段资源挂载流程 */
   private lifecycleBus: LifecycleBus<Fiber, FormDescriptor<TValues>>
@@ -199,6 +262,7 @@ class CreateForm<
     // 注册表允许外部注入；未注入时创建表单实例私有注册表，避免跨实例污染。
     this.rendererRegistry =
       rendererRegistry ?? createRendererRegistry(defaultRendererType)
+
     this.rulesRegistry = (rulesRegistry ??
       createRulesRegistry<TValues>()) as RulesRegistry<TValues>
 
@@ -220,44 +284,43 @@ class CreateForm<
     this.lifecycleBus = createLifecycleBus<Fiber, FormDescriptor<TValues>>()
 
     // 初始化运行时 graph 所需的核心基础设施。
-    this.scheduler = createRuntimeScheduler()
+    this.scheduler = createScheduler()
     this.viewRevision = createViewRevision()
     this.fieldRegistry = createFieldRegistry<TValues>()
-    this.compileOptions = {
-      readonly,
-      disabled,
-      validationTrigger,
-    }
-
-    this.fiberManager = createFiberManager<TValues>({
-      getContext: () => this.context,
-      fieldRegistry: this.fieldRegistry,
-      lifecycleBus: this.lifecycleBus,
-    })
-
-    this.reconciler = createReconciler(this.fiberManager)
-
-    this.root = this.fiberManager.createRoot()
 
     // dependency renderer 运行时需要回写 graph，因此上下文在首次编译前准备好。
     this.context = {
+      defaultProps: {
+        readonly,
+        disabled,
+        validationTrigger,
+      },
       store: this.store,
       rulesRegistry: this.rulesRegistry,
       validator: this.validator,
       scheduler: this.scheduler,
-      reconciler: this.reconciler,
       lifecycleBus: this.lifecycleBus,
-      compileOptions: this.compileOptions,
+      fieldRegistry: this.fieldRegistry,
       commitChildren: this.commitChildren,
       getFormApi: () => this.getFormApi(),
     }
+
+    this.fiberManager = createFiberManager<TValues>(this.context)
+
+    this.reconciler = createReconciler(this.fiberManager)
+
+    this.root = this.fiberManager.createRoot()
 
     if (options.lifecycleHooks) {
       this.lifecycleBus.on(options.lifecycleHooks)
     }
 
     // 将外部 schema 编译成内部 descriptor tree，再交给 reconciler 建立 runtime graph。
-    const descriptors = compileToDescriptors(schemas, this.compileOptions)
+    const descriptors = compileToDescriptors(schemas, {
+      readonly,
+      disabled,
+      validationTrigger,
+    })
 
     this.commitChildren(this.root as ContainerFiber<TValues>, descriptors)
 
@@ -265,7 +328,7 @@ class CreateForm<
     if (this.callbacks?.onValuesChange || this.callbacks?.onFieldsChange) {
       let prevSnapshot = this.store.getFieldsSnapshot()
 
-      createReactiveEffect(() => {
+      createSignalEffect(() => {
         const latestValues = this.store.getFieldsValue()
         const latestSnapshot = this.store.getFieldsSnapshot()
 
@@ -323,8 +386,8 @@ class CreateForm<
       batch: this.batch.bind(this),
 
       getViewRevision: () => this.viewRevision.revision.value,
-      getViewTree: this.getViewTree.bind(this),
-      subscribeViewTree: this.subscribeViewTree.bind(this),
+      getViewSchemas: this.getViewSchemas.bind(this),
+      subscribeViewSchemas: this.subscribeViewSchemas.bind(this),
       waitForDependencies: this.waitForIdle.bind(this),
 
       getRenderer: this.rendererRegistry.getRenderer.bind(this.rendererRegistry),
@@ -382,12 +445,12 @@ class CreateForm<
     this.validator.unregisterRules(path)
 
     if (schema) {
-      resolvedRules.push(
-        ...this.rulesRegistry.resolveRuleBySchema({
-          ...schema,
-          rules,
-        })
-      )
+      const schemaWithRules = {
+        ...schema,
+        rules,
+      } as SchemxBaseField<TValues>
+
+      resolvedRules.push(...this.rulesRegistry.resolveRuleBySchema(schemaWithRules))
     } else {
       const ruleList = Array.isArray(rules) ? rules : [rules]
 
@@ -411,9 +474,7 @@ class CreateForm<
   /**
    * 校验指定字段
    */
-  private async validateField(
-    name: NamePath<TValues> | NamePath<TValues>[]
-  ): Promise<ValidateResult<TValues>> {
+  private async validateField(name: NamePath<TValues>): Promise<ValidateResult<TValues>> {
     const result = await this.validator.validateField(name, this.store.getFieldsValue())
 
     return result
@@ -489,7 +550,7 @@ class CreateForm<
    * dispose 函数由 createForm 层面统一管理，destroy 时清理。
    */
   private effect(fn: () => void): () => void {
-    const dispose = createReactiveEffect(fn)
+    const dispose = createSignalEffect(fn)
     this.disposers.add(dispose)
 
     return () => {
@@ -546,17 +607,19 @@ class CreateForm<
   }
 
   /**
-   * 获取当前 ViewTree。
+   * 获取当前 ViewSchemas。
    */
-  private getViewTree(): readonly ViewNode[] {
-    return projectViewTree(this.root, this.getFormApi())
+  private getViewSchemas(): readonly SchemxViewSchema<TValues>[] {
+    return buildViewSchemas<TValues>(this.root)
   }
 
   /**
-   * 订阅 ViewTree 结构变化。
+   * 订阅 ViewSchemas 变化。
    */
-  private subscribeViewTree(callback: (tree: readonly ViewNode[]) => void): () => void {
-    return subscribeViewTree(this.root, this.viewRevision, callback, this.getFormApi())
+  private subscribeViewSchemas(
+    callback: (schemas: readonly SchemxViewSchema<TValues>[]) => void
+  ): () => void {
+    return subscribeViewSchemas<TValues>(this.root, this.viewRevision, callback)
   }
 
   /**

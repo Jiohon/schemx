@@ -23,7 +23,7 @@ import type { Signal } from "./signal"
  * @typeParam K - key 类型
  * @typeParam V - value 类型
  */
-export class ReactiveMap<K, V> {
+class ReactiveMapImpl<K, V> {
   /** 每个 key 独占一个 signal，保证字段级更新能细粒度触发 */
   private signals = new Map<K, Signal<V>>()
 
@@ -37,6 +37,9 @@ export class ReactiveMap<K, V> {
 
   /**
    * 读取 key，并在 effect 内自动收集响应式依赖。
+   *
+   * @param key - 待读取的 key。
+   * @returns key 对应的值；不存在时返回 undefined。
    */
   get(key: K): V | undefined {
     const s = this.signals.get(key)
@@ -49,6 +52,10 @@ export class ReactiveMap<K, V> {
 
   /**
    * 写入 key；如果 key 不存在，则创建新的 signal。
+   *
+   * @param key - 待写入的 key。
+   * @param value - 新值。
+   * @returns 当前 ReactiveMap 实例，便于链式调用。
    */
   set(key: K, value: V): this {
     const s = this.signals.get(key)
@@ -64,6 +71,9 @@ export class ReactiveMap<K, V> {
 
   /**
    * 无依赖追踪地读取 key。
+   *
+   * @param key - 待读取的 key。
+   * @returns key 对应的值；不存在时返回 undefined。
    */
   peek(key: K): V | undefined {
     return this.signals.get(key)?.peek()
@@ -71,6 +81,9 @@ export class ReactiveMap<K, V> {
 
   /**
    * 判断 key 是否存在。
+   *
+   * @param key - 待检查的 key。
+   * @returns key 已存在时返回 true。
    */
   has(key: K): boolean {
     return this.signals.has(key)
@@ -78,6 +91,9 @@ export class ReactiveMap<K, V> {
 
   /**
    * 删除 key，并通知订阅旧 signal 或 map 结构的 effects。
+   *
+   * @param key - 待删除的 key。
+   * @returns 成功删除时返回 true；key 不存在时返回 false。
    */
   delete(key: K): boolean {
     const s = this.signals.get(key)
@@ -111,6 +127,8 @@ export class ReactiveMap<K, V> {
 
   /**
    * 遍历所有已注册 key。
+   *
+   * @returns key 迭代器。
    */
   keys(): IterableIterator<K> {
     void this.version.value
@@ -120,6 +138,8 @@ export class ReactiveMap<K, V> {
 
   /**
    * 遍历所有值。
+   *
+   * @returns value 迭代器。
    */
   values(): IterableIterator<V> {
     void this.version.value
@@ -129,6 +149,8 @@ export class ReactiveMap<K, V> {
 
   /**
    * 遍历 key/value 对。
+   *
+   * @returns key/value entry 迭代器。
    */
   entries(): IterableIterator<[K, V]> {
     void this.version.value
@@ -138,4 +160,18 @@ export class ReactiveMap<K, V> {
       ([key, signal]) => [key, signal.value] as [K, V]
     ).values()
   }
+}
+
+/**
+ * ReactiveMap 的实例类型。
+ */
+export type ReactiveMap<K, V> = InstanceType<typeof ReactiveMapImpl<K, V>>
+
+/**
+ * 创建 ReactiveMap 实例。
+ *
+ * @returns 新的响应式 Map。
+ */
+export function createReactiveMap<K, V>(): ReactiveMap<K, V> {
+  return new ReactiveMapImpl<K, V>()
 }

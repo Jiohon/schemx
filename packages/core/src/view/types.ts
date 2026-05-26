@@ -1,23 +1,25 @@
 /**
- * ViewNode 类型定义。
+ * ViewSchema 类型定义。
  *
- * ViewNode 是 Adapter 消费的唯一数据结构，是 Fiber Tree 的投影结果。
- * 不暴露 Fiber、Store、DependencyEffectSlot、Schema。
+ * ViewSchema 是渲染层消费的 schema 快照：它保留 SchemxField 的扁平字段格式，
+ * 但只包含 core 已处理好的静态渲染数据。dependency schema 会被透明展开，
+ * 不会出现在最终结果中。
  *
  * @module core/view/types
  */
 
-import type {
-  NamePath,
-  SchemxResolvedBaseField,
-  SchemxRules,
-  ValidationTrigger,
-} from "../types"
+import type { SchemxResolvedBaseField, SchemxResolvedGroupField, Values } from "../types"
 
 /**
- * ViewNode 类型枚举。
+ * 对联合类型逐项执行 Omit。
+ *
+ * TypeScript 内置的 `Omit<T, K>` 直接作用在联合类型上时会先合并成员公共属性，
+ * 这里通过条件类型触发 distributive behavior，保留每个 schema 分支各自的字段。
+ *
+ * @typeParam T - 要处理的源类型，支持联合类型。
+ * @typeParam K - 要从每个联合成员中移除的属性 key。
  */
-export type ViewNodeType = "field" | "group" | "fragment"
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never
 
 /**
  * 渲染器标识。
@@ -25,215 +27,45 @@ export type ViewNodeType = "field" | "group" | "fragment"
 export type SchemxRendererKey = string
 
 /**
- * 字段视图属性。
- *
- * 所有属性从字段 normalized schema 投影得出，是不可变的只读快照。
+ * ViewSchema 调试元数据。
  */
-export interface FieldViewProps {
-  /**
-   * Schema 中声明的组件类型。
-   */
-  readonly componentType?: string
-
-  /**
-   * 字段标签。
-   */
-  readonly label: string
-
-  /**
-   * 是否可见。
-   */
-  readonly visible: boolean
-
-  /**
-   * 是否只读。
-   */
-  readonly readonly: boolean
-
-  /**
-   * 是否禁用。
-   */
-  readonly disabled: boolean
-
-  /**
-   * 是否必填。
-   */
-  readonly required: boolean
-
-  /**
-   * 占位符，最大长度 1000 字符。
-   */
-  readonly placeholder: string
-
-  /**
-   * 组件属性。
-   *
-   * 键名符合有效的 JavaScript 标识符格式或由字母、数字、下划线、连字符组成。
-   * 嵌套深度不超过 10 层。
-   */
-  readonly componentProps: Readonly<Record<string, unknown>>
-
-  /**
-   * 校验规则快照。
-   */
-  readonly rules?: SchemxRules | SchemxRules[]
-
-  /**
-   * 校验触发时机。
-   */
-  readonly validationTrigger?: ValidationTrigger | ValidationTrigger[]
-
-  readonly labelIcon?: string
-  readonly labelAlign?: "left" | "center" | "right"
-  readonly labelPosition?: "left" | "top" | "right"
-  readonly labelWidth?: string
-  readonly contentAlign?: "left" | "center" | "right"
-  readonly colon?: boolean
-  readonly class?: unknown
-  readonly style?: unknown
+export interface SchemxViewDebugMeta {
+  readonly fiberId: number
+  readonly fiberType: string
+  readonly hasFieldModel: boolean
+  readonly hasDependencySlot: boolean
 }
 
 /**
- * 字段状态视图。
+ * 字段 ViewSchema。
  *
- * 从 Store 和 Validator 提取，是不可变的只读快照。
+ * 字段项保持 SchemxField 的扁平格式，动态依赖结果已经合并为静态值。
  */
-export interface FieldViewState {
-  /**
-   * 字段值，可为 null 或 undefined。
-   */
-  readonly value: unknown
-
-  /**
-   * 是否已触碰。
-   */
-  readonly touched: boolean
-
-  /**
-   * 异步状态标记，无异步操作时为 null。
-   */
-  readonly pending: boolean
-
-  /**
-   * 错误列表，数组长度不超过 100。
-   */
-  readonly errors: readonly string[]
-
-  /**
-   * 是否正在校验。
-   */
-  readonly validating: boolean
-}
-
-/**
- * Field 类型 ViewNode。
- *
- * 仅当 Fiber 有 FieldModel 且无 DependencyEffectSlot 时投影为此类型。
- */
-export interface FieldViewNode {
-  /**
-   * 唯一标识符，对应 Fiber.id。
-   */
-  readonly id: number
-
-  /**
-   * 节点 key，用于 keyed 渲染。
-   */
+export type SchemxViewFieldSchema<TValues extends Values = Values> = DistributiveOmit<
+  SchemxResolvedBaseField<TValues>,
+  "key"
+> & {
   readonly key: string
-
-  /**
-   * 节点类型。
-   */
-  readonly type: "field"
-
-  /**
-   * 渲染器标识。
-   */
-  readonly renderer: SchemxRendererKey
-
-  /**
-   * 字段 name path。
-   */
-  readonly name: NamePath
-
-  /**
-   * 编译后的静态字段 schema。
-   */
-  readonly schema: Readonly<SchemxResolvedBaseField>
-
-  /**
-   * 计算后的字段属性（只读快照）。
-   */
-  readonly props: Readonly<FieldViewProps>
-
-  /**
-   * 字段状态快照。
-   */
-  readonly state: Readonly<FieldViewState>
-
-  /**
-   * 子节点（field 类型无子节点）。
-   */
-  readonly children: readonly ViewNode[]
-
-  /**
-   * 调试元数据（仅在开发环境且启用调试模式时存在）。
-   */
-  readonly debug?: Readonly<{
-    readonly fiberKind: string
-    readonly hasFieldModel: boolean
-    readonly hasDependencySlot: boolean
-  }>
+  readonly debug?: Readonly<SchemxViewDebugMeta>
 }
 
 /**
- * Container 类型 ViewNode（group 或 fragment）。
+ * 分组 ViewSchema。
  *
- * Group/Fragment 不包含 renderer、name、state。
+ * group 继续以 children 表达结构层级，children 中不会包含 dependency schema。
  */
-export interface ContainerViewNode {
-  /**
-   * 唯一标识符，对应 Fiber.id。
-   */
-  readonly id: number
-
-  /**
-   * 节点 key，用于 keyed 渲染。
-   */
+export type SchemxViewGroupSchema<TValues extends Values = Values> = DistributiveOmit<
+  SchemxResolvedGroupField<TValues>,
+  "key" | "children"
+> & {
   readonly key: string
-
-  /**
-   * 节点类型。
-   */
-  readonly type: "group" | "fragment"
-
-  /**
-   * 计算后的字段属性（只读快照，group/fragment 为空对象）。
-   */
-  readonly props: Readonly<FieldViewProps>
-
-  /**
-   * 子节点。
-   */
-  readonly children: readonly ViewNode[]
-
-  /**
-   * 调试元数据（仅在开发环境且启用调试模式时存在）。
-   */
-  readonly debug?: Readonly<{
-    readonly fiberKind: string
-    readonly hasFieldModel: boolean
-    readonly hasDependencySlot: boolean
-  }>
+  readonly children: readonly SchemxViewSchema<TValues>[]
+  readonly debug?: Readonly<SchemxViewDebugMeta>
 }
 
 /**
- * Adapter 视图节点（discriminated union）。
- *
- * ViewNode 是 Adapter 唯一消费的数据结构。
- * - 不暴露 Fiber
- * - 不暴露 DependencyEffectSlot
- * - 不暴露 schema 原始对象
- * - 不暴露 mutable Store
+ * 渲染层消费的 schema 联合类型。
  */
-export type ViewNode = FieldViewNode | ContainerViewNode
+export type SchemxViewSchema<TValues extends Values = Values> =
+  | SchemxViewFieldSchema<TValues>
+  | SchemxViewGroupSchema<TValues>

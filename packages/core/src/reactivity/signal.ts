@@ -72,6 +72,10 @@ export function createSignal<T = undefined>(
 
 /**
  * `createSignal` overload 的运行时实现。
+ *
+ * @param value - 可选初始值。
+ * @param options - signals-core 原生 signal 配置。
+ * @returns 可写 reactive signal。
  */
 export function createSignal<T>(
   value?: T,

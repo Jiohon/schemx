@@ -18,25 +18,20 @@ export {
   type DependencyFiber,
   type DescribedFiber,
   type Fiber,
-  type FiberKind,
+  type FiberType,
   type FieldFiber,
   type GroupFiber,
   type RootFiber,
 } from "./fiber"
 
-export { createReconciler, RuntimeReconciler, type Reconciler } from "./reconciler"
+export { createReconciler, type Reconciler } from "./reconciler"
 
-export {
-  createFiberManager,
-  RuntimeFiberManager,
-  type CreateFiberManagerOptions,
-  type FiberManager,
-} from "./fiberManager"
+export { createFiberManager, type FiberManager } from "./fiberManager"
 
 export {
   createScope,
   reportRuntimeCleanupError,
   type DisposeFn,
   type DisposeHandle,
-  type RuntimeScope,
+  type Scope,
 } from "./scope"

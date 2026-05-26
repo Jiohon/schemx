@@ -66,7 +66,9 @@ export function isDependencySchema<T extends Values = Values>(
  * @returns 匹配的基础字段配置，未找到时返回 undefined
  *
  * @example
+ * ```ts
  * const schema = findSchema(schemas, 'email')
+ * ```
  */
 export function findSchema<T extends Values = Values>(
   schemas: SchemxField<T>[],
@@ -115,6 +117,9 @@ export function isGroupResolvedSchema<T extends Values = Values>(
 
 /**
  * 类型守卫：判断是否为 dependency resolved schema。
+ *
+ * @param schema - 解析后的字段配置。
+ * @returns componentType 为 dependency 时返回 true。
  */
 export function isDependencyResolvedSchema<T extends Values = Values>(
   schema: SchemxResolvedField<T>

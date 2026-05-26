@@ -113,6 +113,9 @@ export function collectObjectPathsByLeaf<
 /**
  * 规范化字段路径，保证字符串路径和数组路径落到同一个索引键。
  *
+ * @param path - 字段路径。
+ * @returns 规范化后的点号路径字符串。
+ *
  * @example
  * ```typescript
  * normalizeNamePath(['user', 'name']) // => 'user.name'

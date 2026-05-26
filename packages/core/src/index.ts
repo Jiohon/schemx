@@ -7,8 +7,8 @@
  */
 
 export {
-  Validator,
   createValidator,
+  type Validator,
   type ValidateResult,
   type ValidateError,
   type FieldError,
@@ -34,11 +34,10 @@ export {
 } from "./lifecycle"
 
 export type {
-  ViewNode,
-  FieldViewNode,
-  ContainerViewNode,
-  FieldViewProps,
-  FieldViewState,
+  SchemxViewDebugMeta,
+  SchemxViewFieldSchema,
+  SchemxViewGroupSchema,
+  SchemxViewSchema,
 } from "./view"
 
 export { createField, type SchemxFieldInstance } from "./createField"
@@ -87,6 +86,7 @@ export type {
   Values,
   Dynamic,
   NamePath,
+  PathValue,
   DeepReadonly,
   CSSProperties,
   ValidationTrigger,

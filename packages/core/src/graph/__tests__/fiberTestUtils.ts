@@ -13,19 +13,19 @@ import type {
   GroupFiber,
   RootFiber,
 } from "../fiber"
-import type { RuntimeScope } from "../scope"
+import type { Scope } from "../scope"
 
 export function createTestRootFiber(
   options: {
     id?: number
     key?: string
-    scope?: RuntimeScope
+    scope?: Scope
   } = {}
 ): RootFiber {
   return {
     id: options.id ?? 0,
     key: options.key ?? "root",
-    kind: "root",
+    type: "root",
     parent: null,
     scope: options.scope ?? createScope(),
     disposed: createSignal(false),
@@ -39,12 +39,12 @@ export function createTestFieldFiber(options: {
   key: string
   parent: ContainerFiber
   descriptor: FieldDescriptor
-  scope?: RuntimeScope
+  scope?: Scope
 }): FieldFiber {
   return {
     id: options.id ?? 1,
     key: options.key,
-    kind: "field",
+    type: "field",
     parent: options.parent,
     scope: options.scope ?? options.parent.scope.child(),
     disposed: createSignal(false),
@@ -61,12 +61,12 @@ export function createTestGroupFiber(options: {
   key: string
   parent: ContainerFiber
   descriptor: GroupDescriptor
-  scope?: RuntimeScope
+  scope?: Scope
 }): GroupFiber {
   return {
     id: options.id ?? 1,
     key: options.key,
-    kind: "group",
+    type: "group",
     parent: options.parent,
     scope: options.scope ?? options.parent.scope.child(),
     disposed: createSignal(false),
@@ -81,12 +81,12 @@ export function createTestDependencyFiber(options: {
   key: string
   parent: ContainerFiber
   descriptor: DependencyDescriptor
-  scope?: RuntimeScope
+  scope?: Scope
 }): DependencyFiber {
   return {
     id: options.id ?? 1,
     key: options.key,
-    kind: "dependency",
+    type: "dependency",
     parent: options.parent,
     scope: options.scope ?? options.parent.scope.child(),
     disposed: createSignal(false),

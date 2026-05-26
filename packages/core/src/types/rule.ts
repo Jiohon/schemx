@@ -7,6 +7,8 @@
  * @module types/rule
  */
 
+/* eslint-disable @typescript-eslint/no-empty-object-type */
+
 import type { StandardSchemaV1 } from "./standardSchema"
 
 /**
@@ -38,7 +40,6 @@ export type SchemxRuleBuiltinKey = "required" | "selectRequired" | "uploadRequir
  * 扩展后，`SchemxRuleDefinitionKey` 会自动推导出所有已注册的规则名称字符串，
  * `SchemxRules` 类型也会随之包含这些名称。
  */
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface SchemxRuleDefinition {}
 
 /**
@@ -67,6 +68,8 @@ export type SchemxRules = [keyof SchemxRuleDefinition] extends [never]
   : StandardSchemaV1 | SchemxRuleBuiltinKey | SchemxRuleDefinitionKey
 
 /**
+ * Rule registry 内部使用的规则名称约束。
  *
+ * 未声明自定义规则时会退化为内置快捷规则名称。
  */
 export type SchemxRuleKey = SchemxRuleBuiltinKey & SchemxRuleDefinitionKey

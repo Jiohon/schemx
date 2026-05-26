@@ -16,9 +16,9 @@
   import FormItem from "./components/FormItem"
   import { createContext } from "./hooks/useContext"
   import { useForm } from "./hooks/useForm"
-  import { useViewTree } from "./hooks/useViewTree"
+  import { useViewSchemas } from "./hooks/useViewSchemas"
 
-  import type { Values, ViewNode } from "@schemx/core"
+  import type { SchemxViewSchema, Values } from "@schemx/core"
 
   import "./styles/index.css"
 
@@ -104,7 +104,7 @@
         },
       })
 
-  const viewTree = useViewTree(form)
+  const viewSchemas = useViewSchemas(form)
 
   /**
    * 表单容器样式
@@ -121,9 +121,9 @@
 <template>
   <div :class="['schemx', props.class]" :style="formStyle">
     <FormItem
-      v-for="node in viewTree"
-      :key="node.key"
-      :node="node as ViewNode"
+      v-for="schema in viewSchemas"
+      :key="schema.key"
+      :schema="schema as SchemxViewSchema"
     >
       <template v-for="(_, slotName) in $slots" #[slotName]="slotProps">
         <slot :name="slotName" v-bind="slotProps ?? {}" />

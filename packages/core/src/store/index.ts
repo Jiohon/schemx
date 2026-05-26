@@ -5,8 +5,8 @@
  */
 
 export {
-  Store,
   createStore,
+  type Store,
   type StoreState,
   type StoreOptions,
   type StorePending,

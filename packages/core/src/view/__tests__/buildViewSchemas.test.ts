@@ -1,10 +1,10 @@
 /**
- * projectViewTree 投影算法单元测试。
+ * buildViewSchemas 构建算法单元测试。
  *
- * @module core/view/__tests__/projectViewTree.test
+ * @module core/view/__tests__/buildViewSchemas.test
  */
 
-import { describe, expect, it, vi } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import { createFieldModel } from "../../field/model"
 import {
@@ -13,11 +13,10 @@ import {
   createTestGroupFiber,
   createTestRootFiber,
 } from "../../graph/__tests__/fiberTestUtils"
-import { projectViewTree } from "../projectViewTree"
+import { buildViewSchemas } from "../buildViewSchemas"
 
 import type { FieldDescriptor } from "../../descriptor/descriptor"
 import type { ContainerFiber, FieldFiber } from "../../graph/fiber"
-import type { SchemxFormApi } from "../../types"
 
 const createDescriptor = (
   key: string,
@@ -54,32 +53,24 @@ const createFieldFiber = (
   return fiber
 }
 
-const createFormApi = (): SchemxFormApi =>
-  ({
-    getValue: vi.fn(() => "value"),
-    isTouched: vi.fn(() => true),
-    isPending: vi.fn(() => false),
-    getError: vi.fn(() => ["error"]),
-  }) as any
-
-describe("projectViewTree", () => {
+describe("buildViewSchemas", () => {
   it("应该在 root 为空时返回空数组", () => {
-    expect(projectViewTree(null)).toEqual([])
-    expect(projectViewTree(undefined)).toEqual([])
+    expect(buildViewSchemas(null)).toEqual([])
+    expect(buildViewSchemas(undefined)).toEqual([])
   })
 
   it("root Fiber 应该透明展开", () => {
     const root = createTestRootFiber()
     root.childFibers = [createFieldFiber(root, "field", ["field"])]
 
-    const tree = projectViewTree(root)
+    const schemas = buildViewSchemas(root)
 
-    expect(tree).toHaveLength(1)
-    expect(tree[0].key).toBe("field")
-    expect(tree[0].type).toBe("field")
+    expect(schemas).toHaveLength(1)
+    expect(schemas[0].key).toBe("field")
+    expect(schemas[0].componentType).toBe("input")
   })
 
-  it("字段静态信息来自 descriptor，动态呈现态来自 FieldModel", () => {
+  it("字段 schema 保持扁平格式，动态呈现态合并为静态值", () => {
     const root = createTestRootFiber()
     const field = createFieldFiber(root, "email", ["email"], {
       required: false,
@@ -91,18 +82,14 @@ describe("projectViewTree", () => {
     field.fieldModel!.componentProps.value = { clearable: true }
     root.childFibers = [field]
 
-    const [node] = projectViewTree(root, createFormApi())
+    const [schema] = buildViewSchemas(root)
 
-    expect(node.type).toBe("field")
-    expect(node.name).toEqual(["email"])
-    expect(node.renderer).toBe("input")
-    expect(node.schema).toBe(field.descriptor!.schema)
-    expect(node.props.required).toBe(true)
-    expect(node.props.placeholder).toBe("dynamic")
-    expect(node.props.componentProps).toEqual({ clearable: true })
-    expect(node.state.value).toBe("value")
-    expect(node.state.touched).toBe(true)
-    expect(node.state.errors).toEqual(["error"])
+    expect(schema.name).toEqual(["email"])
+    expect(schema.componentType).toBe("input")
+    expect(schema.required).toBe(true)
+    expect(schema.placeholder).toBe("dynamic")
+    expect(schema.componentProps).toEqual({ clearable: true })
+    expect("state" in schema).toBe(false)
   })
 
   it("group 应该投影 children", () => {
@@ -120,11 +107,11 @@ describe("projectViewTree", () => {
     group.childFibers = [createFieldFiber(group, "child", ["child"])]
     root.childFibers = [group]
 
-    const tree = projectViewTree(root)
+    const schemas = buildViewSchemas(root)
 
-    expect(tree[0].type).toBe("group")
-    expect(tree[0].children).toHaveLength(1)
-    expect(tree[0].children[0].key).toBe("child")
+    expect(schemas[0].componentType).toBe("group")
+    expect(schemas[0].children).toHaveLength(1)
+    expect(schemas[0].children[0].key).toBe("child")
   })
 
   it("dependency fiber 应该透明展开 subChildren", () => {
@@ -143,10 +130,10 @@ describe("projectViewTree", () => {
     dependency.subChildren = [createFieldFiber(dependency, "inner", ["inner"])]
     root.childFibers = [dependency]
 
-    const tree = projectViewTree(root)
+    const schemas = buildViewSchemas(root)
 
-    expect(tree).toHaveLength(1)
-    expect(tree[0].key).toBe("inner")
+    expect(schemas).toHaveLength(1)
+    expect(schemas[0].key).toBe("inner")
   })
 
   it("disposed fiber 应该被跳过", () => {
@@ -156,6 +143,6 @@ describe("projectViewTree", () => {
 
     field.disposed.value = true
 
-    expect(projectViewTree(root)).toEqual([])
+    expect(buildViewSchemas(root)).toEqual([])
   })
 })

@@ -34,7 +34,7 @@
 <script setup lang="ts">
   import { ref } from "vue"
 
-  import Schemx from "@schemx/vant"
+  import Schemx, { defineSchemas } from "@schemx/vant"
   import { z } from "zod"
 
   import type { DependencyFormValues } from "../types"
@@ -115,7 +115,7 @@
    * - 动态 group children：dependency renderer 返回 group + children
    * - 卸载清理：发票必填字段卸载后不应继续阻塞 submit
    */
-  const schemas: SchemxField<DependencyFormValues>[] = [
+  const schemas = defineSchemas<DependencyFormValues>([
     /** 控制字段：订单类型（selector 选择 standard / express / custom 切换分支） */
     {
       name: "orderType",
@@ -505,7 +505,7 @@
       renderer: (values) => {
         const services = values.additionalServices || []
 
-        const dynamicServices: SchemxField[] = []
+        const dynamicServices: SchemxField<DependencyFormValues>[] = []
 
         if (services.includes("invoice")) {
           dynamicServices.push({
@@ -610,7 +610,7 @@
         return dynamicServices
       },
     },
-  ]
+  ])
 
   const handleAsyncRace = async () => {
     formRef.value?.setFieldValue("orderType", "express")

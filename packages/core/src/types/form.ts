@@ -6,6 +6,8 @@
  * @module types/form
  */
 
+/* eslint-disable @typescript-eslint/no-empty-object-type */
+
 import { DeepNamePath, PathValue } from "./namePathType"
 import { SchemxRendererKey } from "./renderer"
 import { SchemxRules } from "./rule"
@@ -14,12 +16,20 @@ import type { StorePending } from "../store"
 import type { SchemxField } from "./schema"
 import type { RendererRegistry, RuleEntry, RulesRegistry } from "../registry"
 import type { ValidateError, ValidateResult } from "../validator"
-import type { ViewNode } from "../view"
+import type { SchemxViewSchema } from "../view"
 
-/** 字段值类型 */
+/**
+ * 单个字段值类型。
+ *
+ * core 不限制具体值形态，校验和渲染器负责解释该值。
+ */
 export type Value = unknown
 
-/** 表单值类型，键值对结构 */
+/**
+ * 表单值对象类型。
+ *
+ * 顶层以字符串 key 索引，嵌套结构由 `NamePath` 和路径工具进一步约束。
+ */
 export type Values = Record<string, any>
 
 /**
@@ -51,7 +61,12 @@ export type ValidationTrigger =
   | "change"
   | "submit"
 
-export type SchemxDefaultContext = {
+/**
+ * 表单级默认配置。
+ *
+ * 这些配置会作为 schema 编译和字段呈现态的默认值，字段自身配置优先级更高。
+ */
+export type SchemxDefaultProps = {
   /**
    * 校验触发时机
    */
@@ -183,7 +198,7 @@ export interface SchemxInstance<
    * form.setFieldValue('user.address.city', 'Beijing')
    * ```
    */
-  setFieldValue: (name: TName, value: TValue) => void
+  setFieldValue: (name: TName, value: TValue | undefined) => void
 
   /**
    * 批量设置字段值并通知订阅者
@@ -239,7 +254,7 @@ export interface SchemxInstance<
    *
    * 不传参返回全量初始值的深拷贝，传入路径返回指定字段的初始值。
    *
-   * @param path - 字段路径
+   * @param name - 字段路径
    * @returns 全量初始值或指定字段的初始值
    *
    * @example
@@ -254,7 +269,7 @@ export interface SchemxInstance<
    *
    * 不传参返回全量初始值的深拷贝，传入路径返回指定字段的初始值。
    *
-   * @param path - 可选，字段路径
+   * @param paths - 可选的字段路径数组
    * @returns 全量初始值或指定字段的初始值
    *
    * @example
@@ -403,14 +418,13 @@ export interface SchemxInstance<
    * @example
    * ```typescript
    * const result = await form.validateField('email', formValues)
-   * const result = await form.validateField(['name', 'email'], formValues)
    *
    * if (!result.ok) {
    *   console.log(result.error.errors)
    * }
    * ```
    */
-  validateField: (names: TName | TName[]) => Promise<ValidateResult<TValues>>
+  validateField: (names: TName) => Promise<ValidateResult<TValues>>
 
   /**
    * 校验所有已注册字段
@@ -460,6 +474,8 @@ export interface SchemxInstance<
    * 先校验所有字段，通过后调用 onFinish，失败调用 onFinishFailed。
    * 内置防重复提交锁，提交进行中重复调用返回同一个 Promise。
    *
+   * @returns 提交流程完成后 resolve 的 Promise。
+   *
    * @example
    * ```typescript
    * await form.submit()
@@ -504,17 +520,26 @@ export interface SchemxInstance<
   batch: (fn: () => void) => void
 
   /**
-   * 获取当前 ViewTree。
+   * 获取当前 ViewSchemas。
+   *
+   * @returns 当前可渲染的静态 schema 列表。
    */
-  getViewTree: () => readonly ViewNode[]
+  getViewSchemas: () => readonly SchemxViewSchema<TValues>[]
 
   /**
-   * 订阅 ViewTree 结构变化。
+   * 订阅 ViewSchemas 变化。
+   *
+   * @param callback - ViewSchemas 变化后的回调。
+   * @returns 取消订阅函数。
    */
-  subscribeViewTree: (callback: (tree: readonly ViewNode[]) => void) => () => void
+  subscribeViewSchemas: (
+    callback: (schemas: readonly SchemxViewSchema<TValues>[]) => void
+  ) => () => void
 
   /**
-   * 获取 ViewTree 结构版本。
+   * 获取 ViewSchemas 结构版本。
+   *
+   * @returns 当前视图结构版本号。
    */
   getViewRevision: () => number
 
@@ -671,11 +696,10 @@ export interface SchemxInstance<
 }
 
 /**
- * 全局状态配置
+ * 全局状态配置。
  *
  * 从 SchemxProps 中提取的全局只读/禁用/触发时机配置。
  */
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface SchemxGlobalContext extends Pick<
   SchemxProps,
   "readonly" | "disabled" | "validationTrigger"
@@ -712,20 +736,23 @@ export interface SchemxFormApi<
    * 获取字段值。
    *
    * @param name - 字段路径
+   * @returns 字段当前值；字段不存在时返回 undefined。
    */
   getValue(name: TName): TValue | undefined
 
   /**
    * 获取多个字段值。
    *
-   * @param name - 字段路径
+   * @param name - 可选的字段路径数组；不传时返回全部字段值。
+   * @returns 字段值快照对象。
    */
   getValues(name?: TName[]): Partial<TValues>
 
   /**
    * 获取当前表单值的快照
    *
-   * @param names - 字段路径
+   * @param names - 可选的字段路径数组；不传时返回全部字段快照。
+   * @returns 当前字段值快照对象。
    */
   getSnapshots(names?: TName[]): Partial<TValues>
 
