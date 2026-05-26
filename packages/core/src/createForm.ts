@@ -328,7 +328,7 @@ class CreateForm<
     if (this.callbacks?.onValuesChange || this.callbacks?.onFieldsChange) {
       let prevSnapshot = this.store.getFieldsSnapshot()
 
-      createSignalEffect(() => {
+      const valuesChangeDisposer = createSignalEffect(() => {
         const latestValues = this.store.getFieldsValue()
         const latestSnapshot = this.store.getFieldsSnapshot()
 
@@ -347,6 +347,8 @@ class CreateForm<
 
         prevSnapshot = latestSnapshot
       })
+
+      this.disposers.add(valuesChangeDisposer)
     }
   }
 
@@ -579,8 +581,11 @@ class CreateForm<
     parent: ContainerFiber<TValues>,
     descriptors: FormDescriptor<TValues>[]
   ): void => {
-    this.reconciler.reconcileChildren(parent, descriptors)
-    this.viewRevision.bump()
+    const changed = this.reconciler.reconcileChildren(parent, descriptors)
+
+    if (changed) {
+      this.viewRevision.bump()
+    }
   }
 
   /**

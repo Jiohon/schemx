@@ -166,7 +166,7 @@ export interface SchemxBase<
   placeholder?: string
 
   /**
-   * 是否必填（静态默认值）
+   * 是否展示必填的 * 号（静态默认值）
    *
    * 控制必填标记（红色星号）的显示。
    * 若未设置，会根据 `rules` 中的校验规则自动推断。

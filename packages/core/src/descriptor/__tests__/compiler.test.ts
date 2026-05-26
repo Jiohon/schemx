@@ -4,7 +4,7 @@
  * @module core/field/__tests__/compiler.test
  */
 
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import { compileToDescriptors, CompileError } from "../compiler"
 
@@ -24,9 +24,9 @@ describe("compileToDescriptors", () => {
     const descriptors = compileToDescriptors(schemas)
 
     expect(descriptors).toHaveLength(1)
-    expect(descriptors[0].kind).toBe("field")
-    if (descriptors[0].kind === "field") {
-      expect(descriptors[0].schema.name).toEqual(["username"])
+    expect(descriptors[0].type).toBe("field")
+    if (descriptors[0].type === "field") {
+      expect(descriptors[0].schema.name).toBe("username")
       expect(descriptors[0].schema.componentType).toBe("input")
       expect(descriptors[0].schema.placeholder).toBe("请输入用户名")
     }
@@ -47,11 +47,11 @@ describe("compileToDescriptors", () => {
     const descriptors = compileToDescriptors(schemas)
 
     expect(descriptors).toHaveLength(1)
-    expect(descriptors[0].kind).toBe("group")
-    if (descriptors[0].kind === "group") {
+    expect(descriptors[0].type).toBe("group")
+    if (descriptors[0].type === "group") {
       expect(descriptors[0].children).toHaveLength(2)
-      expect(descriptors[0].children[0].kind).toBe("field")
-      expect(descriptors[0].children[1].kind).toBe("field")
+      expect(descriptors[0].children[0].type).toBe("field")
+      expect(descriptors[0].children[1].type).toBe("field")
     }
   })
 
@@ -69,8 +69,8 @@ describe("compileToDescriptors", () => {
     const descriptors = compileToDescriptors(schemas)
 
     expect(descriptors).toHaveLength(1)
-    expect(descriptors[0].kind).toBe("dependency")
-    if (descriptors[0].kind === "dependency") {
+    expect(descriptors[0].type).toBe("dependency")
+    if (descriptors[0].type === "dependency") {
       expect(descriptors[0].trigger).toEqual([["user", "type"]])
     }
   })
@@ -87,7 +87,7 @@ describe("compileToDescriptors", () => {
 
     const descriptors = compileToDescriptors(schemas)
 
-    if (descriptors[0].kind === "field") {
+    if (descriptors[0].type === "field") {
       expect(descriptors[0].schema.required).toBe(true)
       expect(descriptors[0].validation.rules).toEqual("required")
     }
@@ -107,7 +107,7 @@ describe("compileToDescriptors", () => {
 
     const descriptors = compileToDescriptors(schemas)
 
-    if (descriptors[0].kind === "field") {
+    if (descriptors[0].type === "field") {
       expect(descriptors[0].schema.visible).toBe(false)
       expect(descriptors[0].schema.readonly).toBe(true)
       expect(descriptors[0].schema.disabled).toBe(true)
@@ -131,7 +131,7 @@ describe("compileToDescriptors", () => {
 
     const descriptors = compileToDescriptors(schemas)
 
-    if (descriptors[0].kind === "field") {
+    if (descriptors[0].type === "field") {
       expect(descriptors[0].schema.componentType).toBe("input")
       expect(descriptors[0].schema.labelIcon).toBe("user")
       expect(descriptors[0].schema.labelAlign).toBe("left")
@@ -155,7 +155,7 @@ describe("compileToDescriptors", () => {
 
     const descriptors = compileToDescriptors(schemas)
 
-    if (descriptors[0].kind === "field") {
+    if (descriptors[0].type === "field") {
       expect(descriptors[0].schema.tooltip).toBe("公开显示的昵称")
       expect(descriptors[0].schema.layout).toEqual({ span: 12 })
       expect(Object.isFrozen(descriptors[0].schema.layout)).toBe(false)
@@ -175,7 +175,7 @@ describe("compileToDescriptors", () => {
 
     const descriptors = compileToDescriptors(schemas)
 
-    if (descriptors[0].kind === "group") {
+    if (descriptors[0].type === "group") {
       expect("meta" in descriptors[0]).toBe(false)
     }
   })
@@ -191,6 +191,22 @@ describe("compileToDescriptors", () => {
 
     expect(run1[0].key).toBe(run2[0].key)
     expect(run1[1].key).toBe(run2[1].key)
+  })
+
+  it("key 不会因 schema 插入/删除而改变", () => {
+    const before = compileToDescriptors([
+      { name: "a", label: "A", componentType: "input" },
+      { name: "c", label: "C", componentType: "input" },
+    ])
+
+    const after = compileToDescriptors([
+      { name: "a", label: "A", componentType: "input" },
+      { name: "b", label: "B", componentType: "input" },
+      { name: "c", label: "C", componentType: "input" },
+    ])
+
+    expect(before[0].key).toBe(after[0].key)
+    expect(before[1].key).toBe(after[2].key)
   })
 
   it("应该编译嵌套 group", () => {
@@ -212,11 +228,11 @@ describe("compileToDescriptors", () => {
 
     const descriptors = compileToDescriptors(schemas)
 
-    expect(descriptors[0].kind).toBe("group")
-    if (descriptors[0].kind === "group") {
-      expect(descriptors[0].children[0].kind).toBe("group")
-      if (descriptors[0].children[0].kind === "group") {
-        expect(descriptors[0].children[0].children[0].kind).toBe("field")
+    expect(descriptors[0].type).toBe("group")
+    if (descriptors[0].type === "group") {
+      expect(descriptors[0].children[0].type).toBe("group")
+      if (descriptors[0].children[0].type === "group") {
+        expect(descriptors[0].children[0].children[0].type).toBe("field")
       }
     }
   })
@@ -236,16 +252,18 @@ describe("compileToDescriptors", () => {
     const descriptors = compileToDescriptors(schemas)
 
     expect(descriptors).toHaveLength(2)
-    expect(descriptors[0].kind).toBe("field")
-    expect(descriptors[1].kind).toBe("group")
+    expect(descriptors[0].type).toBe("field")
+    expect(descriptors[1].type).toBe("group")
   })
 
-  it("应该在 name 为空时抛出 CompileError", () => {
+  it("应该在 name 为空时过滤该字段", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
     const schemas: SchemxField[] = [
       { name: "" as any, label: "Bad", componentType: "input" },
     ]
 
-    expect(() => compileToDescriptors(schemas)).toThrow(CompileError)
+    expect(compileToDescriptors(schemas)).toEqual([])
+    warnSpy.mockRestore()
   })
 
   it("应该在 dependency 无 trigger 时抛出 CompileError", () => {
@@ -270,7 +288,7 @@ describe("compileToDescriptors", () => {
       disabled: true,
     })
 
-    if (descriptors[0].kind === "field") {
+    if (descriptors[0].type === "field") {
       expect(descriptors[0].schema.readonly).toBe(true)
       expect(descriptors[0].schema.disabled).toBe(true)
     }

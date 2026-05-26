@@ -22,10 +22,10 @@ describe("dependency effect", () => {
     await flushRuntimeGraph(scheduler)
 
     const dependency = root.childFibers[0]
-    expect(dependency?.kind).toBe("dependency")
+    expect(dependency?.type).toBe("dependency")
     expect(dependency?.subChildren).toHaveLength(1)
     expect(dependency?.subChildren[0]?.key).toBe("child")
-    expect(dependency?.subChildren[0]?.kind).toBe("field")
+    expect(dependency?.subChildren[0]?.type).toBe("field")
     expect(viewRevision.revision.value).toBe(2)
   })
 
@@ -49,8 +49,8 @@ describe("dependency effect", () => {
     ])
     await flushRuntimeGraph(scheduler)
 
-    expect(root.childFibers[0]?.kind).toBe("dependency")
-    if (root.childFibers[0]?.kind !== "dependency") return
+    expect(root.childFibers[0]?.type).toBe("dependency")
+    if (root.childFibers[0]?.type !== "dependency") return
     expect(root.childFibers[0].subChildren).toHaveLength(1)
 
     formApi.setValue("mode" as any, "b")
@@ -82,8 +82,8 @@ describe("dependency effect", () => {
     formApi.setValue("mode" as any, "b")
     await flushRuntimeGraph(scheduler)
 
-    expect(root.childFibers[0]?.kind).toBe("dependency")
-    if (root.childFibers[0]?.kind !== "dependency") return
+    expect(root.childFibers[0]?.type).toBe("dependency")
+    if (root.childFibers[0]?.type !== "dependency") return
     expect(root.childFibers[0].subChildren.map((child) => child.key)).toEqual(["stable"])
   })
 })

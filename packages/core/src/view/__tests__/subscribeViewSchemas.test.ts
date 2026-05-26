@@ -19,7 +19,7 @@ import type { ContainerFiber } from "../../graph/fiber"
 
 const createFieldFiber = (parent: ContainerFiber, key: string, name: string[]) => {
   const descriptor: FieldDescriptor = {
-    kind: "field",
+    type: "field",
     key,
     schema: {
       name,

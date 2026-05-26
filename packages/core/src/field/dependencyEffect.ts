@@ -215,12 +215,17 @@ function setupTriggerSubscription<
   scope: { disposed: boolean; add: (cleanup: () => void) => void }
 ): void {
   let isFirstRun = true
+  let pendingRun = false
 
   const disposeEffect = createSignalEffect(() => {
     void formApi.getValues(triggers)
 
-    if (!isFirstRun) {
+    if (!isFirstRun && !pendingRun) {
+      pendingRun = true
+
       queueMicrotask(() => {
+        pendingRun = false
+
         if (scope.disposed) return
 
         run().catch((runError) => {

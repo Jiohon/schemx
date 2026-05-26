@@ -42,9 +42,9 @@ describe("runtime graph flow", () => {
     ])
 
     expect(root.childFibers[0]).not.toBe(first)
-    expect(root.childFibers[0]?.kind).toBe("group")
+    expect(root.childFibers[0]?.type).toBe("group")
     expect(
-      root.childFibers[0]?.kind === "group" && root.childFibers[0].childFibers[0]?.key
+      root.childFibers[0]?.type === "group" && root.childFibers[0].childFibers[0]?.key
     ).toBe("child")
     expect(first?.disposed.value).toBe(true)
   })
@@ -87,7 +87,7 @@ describe("runtime graph flow", () => {
     const { reconciler, root } = createRuntimeGraphHarness()
     const descriptors = compileToDescriptors([createRawFieldSchema("field", "field")])
 
-    expect(reconciler.reconcileChildren(root, descriptors)).toBeUndefined()
+    expect(reconciler.reconcileChildren(root, descriptors)).toBe(true)
     expect(root.childFibers[0]?.key).toBe("field")
   })
 })

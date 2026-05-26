@@ -42,6 +42,9 @@ export interface FieldModel<TValues extends Values = Values> {
   /** 是否必填 */
   required: Signal<boolean>
 
+  /** 字段标签，用于校验错误消息等场景 */
+  label: Signal<string>
+
   /** 校验规则 */
   rules: Signal<SchemxRules | SchemxRules[]>
 
@@ -68,6 +71,7 @@ export function createFieldModel<TValues extends Values = Values>(
     disabled: createSignal(schema.disabled ?? false),
     readonly: createSignal(schema.readonly ?? false),
     required: createSignal(schema.required ?? false),
+    label: createSignal(schema.label ?? ""),
     rules: createSignal(descriptor.validation.rules ?? []),
     placeholder: createSignal(schema.placeholder ?? ""),
     componentProps: createSignal(schema.componentProps ?? {}),
@@ -110,6 +114,7 @@ export function updateFieldModel<TValues extends Values = Values>(
   model.disabled.value = schema.disabled ?? false
   model.readonly.value = schema.readonly ?? false
   model.required.value = schema.required ?? false
+  model.label.value = schema.label ?? ""
   model.rules.value = descriptor.validation.rules ?? []
   model.placeholder.value = schema.placeholder ?? ""
   model.componentProps.value = schema.componentProps ?? {}

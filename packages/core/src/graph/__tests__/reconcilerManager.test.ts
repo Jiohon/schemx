@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest"
 import { compileToDescriptors } from "../../descriptor"
 import { createFieldRegistry } from "../../field"
 import { createLifecycleBus } from "../../lifecycle"
-import { createRuntimeScheduler } from "../../scheduler"
+import { createScheduler } from "../../scheduler"
 import { createViewRevision } from "../../view"
 import { createFiberManager } from "../fiberManager"
 import { createReconciler } from "../reconciler"
@@ -15,7 +15,7 @@ import type { Fiber, FieldFiber } from "../fiber"
 
 function createFieldDescriptor(key: string, name = key): FieldDescriptor {
   return {
-    kind: "field",
+    type: "field",
     key,
     schema: {
       name,
@@ -31,7 +31,7 @@ function createDependencyDescriptor(
   renderer = vi.fn().mockResolvedValue([])
 ): DependencyDescriptor {
   return {
-    kind: "dependency",
+    type: "dependency",
     key,
     trigger,
     renderer,
@@ -43,7 +43,7 @@ function createGraphRuntime(
 ) {
   const fieldRegistry = createFieldRegistry()
   const lifecycleBus = createLifecycleBus(listener)
-  const scheduler = createRuntimeScheduler()
+  const scheduler = createScheduler()
   const viewRevision = createViewRevision()
 
   const context = {
@@ -68,15 +68,16 @@ function createGraphRuntime(
     }),
   } as unknown as SchemxFormContext
 
-  const fiberManager = createFiberManager({
-    getContext: () => context,
-    fieldRegistry,
-    lifecycleBus,
-  })
+  Object.assign(context, { fieldRegistry })
+
+  const fiberManager = createFiberManager(context)
   const reconciler = createReconciler(fiberManager)
   const commitChildren = (parent: Fiber, descriptors: any[]) => {
-    reconciler.reconcileChildren(parent, descriptors)
-    viewRevision.bump()
+    const changed = reconciler.reconcileChildren(parent, descriptors)
+
+    if (changed) {
+      viewRevision.bump()
+    }
   }
   const root = fiberManager.createRoot()
 
@@ -177,7 +178,7 @@ describe("RuntimeReconciler + RuntimeFiberManager", () => {
 
     const dependency = root.childFibers[0]
 
-    if (dependency?.kind !== "dependency") {
+    if (dependency?.type !== "dependency") {
       throw new Error("expected dependency fiber")
     }
 
@@ -194,5 +195,28 @@ describe("RuntimeReconciler + RuntimeFiberManager", () => {
     ])
 
     expect(dependency.dependencySlot).not.toBe(firstSlot)
+  })
+
+  it("仅 descriptor props 变化时 commitChildren 不 bump viewRevision", () => {
+    const { commitChildren, root, viewRevision } = createGraphRuntime()
+
+    commitChildren(root, [createFieldDescriptor("f1", "f1")])
+    expect(viewRevision.revision.value).toBe(1)
+
+    commitChildren(root, [createFieldDescriptor("f1", "f1")])
+    expect(viewRevision.revision.value).toBe(1)
+  })
+
+  it("子节点新增时 commitChildren bump viewRevision", () => {
+    const { commitChildren, root, viewRevision } = createGraphRuntime()
+
+    commitChildren(root, [createFieldDescriptor("f1", "f1")])
+    expect(viewRevision.revision.value).toBe(1)
+
+    commitChildren(root, [
+      createFieldDescriptor("f1", "f1"),
+      createFieldDescriptor("f2", "f2"),
+    ])
+    expect(viewRevision.revision.value).toBe(2)
   })
 })

@@ -74,7 +74,7 @@ describe("CreateFormInstance 属性测试", () => {
  *
  * @module core/__tests__/createForm (renderer-registry)
  */
-import { RendererRegistry } from "../registry"
+import { createRendererRegistry } from "../registry"
 
 /**
  * 安全类型字符串生成器：过滤空字符串、含点号字符串和原型相关字符串
@@ -96,7 +96,7 @@ describe("渲染器注册中心下沉 属性测试", () => {
       fc.property(
         fc.uniqueArray(safeTypeStr, { minLength: 1, maxLength: 10 }),
         (types) => {
-          const registry = new RendererRegistry()
+          const registry = createRendererRegistry()
           const renderers: Record<string, object> = {}
 
           for (const type of types) {
@@ -126,7 +126,7 @@ describe("渲染器注册中心下沉 属性测试", () => {
         fc.uniqueArray(safeTypeStr, { minLength: 1, maxLength: 10 }),
         safeTypeStr,
         (registeredTypes, queryType) => {
-          const registry = new RendererRegistry()
+          const registry = createRendererRegistry()
 
           for (const type of registeredTypes) {
             registry.register(type, { __type: type })
@@ -150,7 +150,7 @@ describe("渲染器注册中心下沉 属性测试", () => {
   it("Property 3: registerRenderer 后 hasRenderer 返回 true 且 getRenderer 返回该渲染器", () => {
     fc.assert(
       fc.property(safeTypeStr, fc.object({ maxDepth: 1 }), (type, rendererObj) => {
-        const registry = new RendererRegistry()
+        const registry = createRendererRegistry()
         const form = createForm({ rendererRegistry: registry })
 
         form.getInternalHooks().registerRenderer(type, rendererObj)
@@ -171,8 +171,8 @@ describe("渲染器注册中心下沉 属性测试", () => {
       fc.property(
         fc.uniqueArray(safeTypeStr, { minLength: 1, maxLength: 5 }),
         (types) => {
-          const registryA = new RendererRegistry()
-          const registryB = new RendererRegistry()
+          const registryA = createRendererRegistry()
+          const registryB = createRendererRegistry()
 
           for (const type of types) {
             registryA.register(type, { source: "A", __type: type })
@@ -202,7 +202,7 @@ describe("渲染器注册中心下沉 属性测试", () => {
  *
  * @module core/__tests__/createForm (renderer-registry unit tests)
  */
-import { RendererRegistry, RulesRegistry } from "../registry"
+import { createRendererRegistry, createRulesRegistry } from "../registry"
 
 import type { StandardSchemaV1 } from "../types"
 
@@ -220,7 +220,7 @@ describe("渲染器注册中心下沉 单元测试", () => {
   // 8.3 验证外部传入 form 实例时渲染器正确关联
   // Validates: Requirements 5.1, 5.2
   it("外部传入自定义 rendererRegistry 时，form 使用该 registry 的渲染器", () => {
-    const customRegistry = new RendererRegistry()
+    const customRegistry = createRendererRegistry()
     const inputRenderer = { component: "CustomInput" }
     const selectRenderer = { component: "CustomSelect" }
 
@@ -258,11 +258,11 @@ describe("字段规则注册上下文 单元测试", () => {
     })
 
     expect(mount).toHaveBeenCalledTimes(1)
-    expect(mount.mock.calls[0][0].kind).toBe("field")
+    expect(mount.mock.calls[0][0].type).toBe("field")
     expect(mount.mock.calls[0][1]).toMatchObject({
-      kind: "field",
+      type: "field",
       schema: {
-        name: ["name"],
+        name: "name",
       },
     })
 
@@ -367,7 +367,7 @@ describe("字段规则注册上下文 单元测试", () => {
           children: [
             {
               componentType: "input",
-              name: ["user", "name"],
+              name: "user.name",
               label: "User Name",
             },
           ],
@@ -440,7 +440,7 @@ describe("RulesRegistry 快捷方法 属性测试", () => {
   it("Property 1: registerRule 后 hasRule 返回 true 且 getRule 返回该 rule", () => {
     fc.assert(
       fc.property(safeRuleName, fc.string({ minLength: 1 }), (name, schemaId) => {
-        const form = createForm({ rulesRegistry: new RulesRegistry() })
+        const form = createForm({ rulesRegistry: createRulesRegistry() })
         const rule = createMockStandardSchema(schemaId)
 
         form.getInternalHooks().registerRule(name, rule)
@@ -459,7 +459,7 @@ describe("RulesRegistry 快捷方法 属性测试", () => {
   it("Property 2: 后注册的 rule 覆盖先注册的同名 rule", () => {
     fc.assert(
       fc.property(safeRuleName, (name) => {
-        const form = createForm({ rulesRegistry: new RulesRegistry() })
+        const form = createForm({ rulesRegistry: createRulesRegistry() })
         const ruleA = createMockStandardSchema("A")
         const ruleB = createMockStandardSchema("B")
 
@@ -485,8 +485,8 @@ describe("RulesRegistry 快捷方法 属性测试", () => {
         fc.string({ minLength: 1 }),
         (ruleName, rendererType, schemaId) => {
           const form = createForm({
-            rendererRegistry: new RendererRegistry(),
-            rulesRegistry: new RulesRegistry(),
+            rendererRegistry: createRendererRegistry(),
+            rulesRegistry: createRulesRegistry(),
           })
           const rule = createMockStandardSchema(schemaId)
           const renderer = { __type: rendererType }
@@ -532,7 +532,7 @@ describe("RulesRegistry 快捷方法与 getInternals 单元测试", () => {
   // 6.1 验证 getForm() 返回对象包含 getRule、registerRule、hasRule、getInternals 四个方法
   // Validates: Requirements 1.1, 1.2, 1.3, 5.4
   it("getForm() 返回对象包含 getRule、registerRule、hasRule、getInternals 方法", () => {
-    const form = createForm({ rulesRegistry: new RulesRegistry() })
+    const form = createForm({ rulesRegistry: createRulesRegistry() })
 
     expect(typeof form.getInternalHooks().getRule).toBe("function")
     expect(typeof form.getInternalHooks().registerRule).toBe("function")
@@ -545,7 +545,7 @@ describe("RulesRegistry 快捷方法与 getInternals 单元测试", () => {
   // 6.2 验证 getInternals() 返回对象包含 rendererRegistry 和 rulesRegistry 属性
   // Validates: Requirements 5.1, 5.2, 5.3
   it("getInternalHooks() 返回对象包含 getRenderer、registerRenderer、getRule、registerRule、hasRule 方法", () => {
-    const form = createForm({ rulesRegistry: new RulesRegistry() })
+    const form = createForm({ rulesRegistry: createRulesRegistry() })
     const hooks = form.getInternalHooks()
 
     expect(hooks).toBeDefined()
@@ -562,7 +562,7 @@ describe("RulesRegistry 快捷方法与 getInternals 单元测试", () => {
   // 6.3 验证未注册的规则名称 getRule 返回 undefined 且 hasRule 返回 false
   // Validates: Requirements 2.3, 4.3
   it("未注册的规则名称 getRule 返回 undefined 且 hasRule 返回 false", () => {
-    const form = createForm({ rulesRegistry: new RulesRegistry() })
+    const form = createForm({ rulesRegistry: createRulesRegistry() })
 
     expect(form.getInternalHooks().getRule("__nonexistent_rule__")).toBeUndefined()
     expect(form.getInternalHooks().hasRule("__nonexistent_rule__")).toBe(false)
@@ -573,7 +573,7 @@ describe("RulesRegistry 快捷方法与 getInternals 单元测试", () => {
   // 6.4 验证传入自定义 rendererRegistry 后，getInternalHooks 使用该 registry 的渲染器
   // Validates: Requirements 5.2
   it("传入自定义 rendererRegistry 后，通过 getInternalHooks 能获取其中的渲染器", () => {
-    const customRegistry = new RendererRegistry()
+    const customRegistry = createRendererRegistry()
     const testRenderer = { component: "Test" }
     customRegistry.register("test-type", testRenderer)
 
@@ -582,5 +582,36 @@ describe("RulesRegistry 快捷方法与 getInternals 单元测试", () => {
     expect(form.getInternalHooks().getRenderer("test-type")).toBe(testRenderer)
 
     form.getInternalHooks().destroy()
+  })
+})
+
+describe("destroy 清理", () => {
+  it("destroy 后 onValuesChange 不再被触发", () => {
+    const onValuesChange = vi.fn()
+    const form = createForm({
+      initialValues: { name: "a" } as any,
+      onValuesChange,
+    })
+
+    form.setFieldValue("name", "b")
+
+    expect(onValuesChange).toHaveBeenCalledTimes(1)
+
+    form.getInternalHooks().destroy()
+    form.setFieldValue("name", "c")
+
+    expect(onValuesChange).toHaveBeenCalledTimes(1)
+  })
+
+  it("destroy 后 setFieldValue 仍可调用但不再触发回调", () => {
+    const form = createForm({
+      initialValues: { name: "a" } as any,
+    })
+
+    form.getInternalHooks().destroy()
+
+    expect(() => {
+      form.setFieldValue("name", "z")
+    }).not.toThrow()
   })
 })

@@ -7,7 +7,12 @@
  * @module core/descriptor/compiler
  */
 
-import { isDependencySchema, isGroupSchema, mergeTrigger } from "../utils"
+import {
+  isDependencySchema,
+  isGroupSchema,
+  mergeTrigger,
+  normalizeSchemas,
+} from "../utils"
 
 import type {
   DependencyDescriptor,
@@ -80,26 +85,30 @@ export const CompileError = CompileErrorImpl
  *
  * @param schemas - 原始 schema 列表
  * @param options - 编译器选项
+ * @param parentKey - 父容器 key，用于生成稳定的子节点 key
  * @returns FormDescriptor 列表
  * @throws CompileError - schema 无效时
  */
 export function compileToDescriptors<TValues extends Values>(
   schemas: SchemxField<TValues>[],
-  options: CompileOptions = {}
+  options: CompileOptions = {},
+  parentKey = ""
 ): FormDescriptor<TValues>[] {
   const descriptors: FormDescriptor<TValues>[] = []
 
-  for (let i = 0; i < schemas.length; i++) {
-    const schema = schemas[i]
+  const normalized = normalizeSchemas(schemas)
+
+  for (let i = 0; i < normalized.length; i++) {
+    const schema = normalized[i]
 
     let descriptor = undefined
 
     if (isGroupSchema(schema)) {
-      descriptor = compileGroup<TValues>(schema, i, options)
+      descriptor = compileGroup<TValues>(schema, i, options, parentKey)
     } else if (isDependencySchema(schema)) {
-      descriptor = compileDependencySlot<TValues>(schema, i)
+      descriptor = compileDependencySlot<TValues>(schema, i, parentKey)
     } else {
-      descriptor = compileField<TValues>(schema, i, options)
+      descriptor = compileField<TValues>(schema, i, options, parentKey)
     }
 
     descriptors.push(descriptor)
@@ -114,7 +123,8 @@ export function compileToDescriptors<TValues extends Values>(
 function compileField<TValues extends Values>(
   schema: SchemxBaseField<TValues>,
   index: number,
-  options: CompileOptions = {}
+  options: CompileOptions = {},
+  parentKey = ""
 ): FieldDescriptor<TValues> {
   if (
     schema.name === undefined ||
@@ -125,7 +135,9 @@ function compileField<TValues extends Values>(
     throw new CompileError("Field name must be non-empty", schema)
   }
 
-  const key = schema.key ?? `field:${index}:${schema.name}`
+  const key =
+    schema.key ??
+    (parentKey ? `field:${parentKey}/${schema.name}` : `field:${schema.name}`)
 
   // 构建规范化 schema
   const normalizedSchema = buildNormalizedFieldSchema<TValues>(schema, options)
@@ -146,12 +158,16 @@ function compileField<TValues extends Values>(
 function compileGroup<TValues extends Values>(
   schema: SchemxGroupField<TValues>,
   index: number,
-  options: CompileOptions = {}
+  options: CompileOptions = {},
+  parentKey = ""
 ): GroupDescriptor<TValues> {
-  const key = schema.key ?? `group:${index}:${schema.label}`
+  const key =
+    schema.key ??
+    (parentKey ? `group:${parentKey}/${index}` : `group:${index}`)
+
   const { children: rawChildren, ...schemaWithoutChildren } = schema
 
-  const children = compileToDescriptors<TValues>(rawChildren, options)
+  const children = compileToDescriptors<TValues>(rawChildren, options, key)
 
   return {
     type: "group",
@@ -167,14 +183,17 @@ function compileGroup<TValues extends Values>(
 /**
  * 编译 dependency schema 为 dependencySlot 描述符。
  *
- * 外部 schema 仍使用 `componentType: "dependency"` 表达“依赖字段生成子树”；
+ * 外部 schema 仍使用 `componentType: "dependency"` 表达"依赖字段生成子树"；
  * 表单内部用 dependencySlot 承载这段可替换子树。
  */
 function compileDependencySlot<TValues extends Values>(
   schema: SchemxDependencyField<TValues>,
-  index: number
+  index: number,
+  parentKey = ""
 ): DependencyDescriptor<TValues> {
-  const key = schema.key ?? `dependency:${index}`
+  const key =
+    schema.key ??
+    (parentKey ? `dependency:${parentKey}/${index}` : `dependency:${index}`)
 
   if (!schema.to || schema.to.length === 0) {
     throw new CompileError("Dependency schema must have non-empty trigger fields", schema)

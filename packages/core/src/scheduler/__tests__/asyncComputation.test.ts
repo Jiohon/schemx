@@ -6,14 +6,14 @@
 
 import { describe, expect, it, vi } from "vitest"
 
-import { createRuntimeScheduler } from "../scheduler"
+import { createScheduler } from "../scheduler"
 import { createRuntimeScope } from "../../graph/scope"
 import { createAsyncComputation } from "../asyncComputation"
 
 describe("createAsyncComputation", () => {
   it("应该创建 AsyncComputation", () => {
     const scope = createRuntimeScope()
-    const scheduler = createRuntimeScheduler()
+    const scheduler = createScheduler()
 
     const computation = createAsyncComputation({
       id: "test",
@@ -30,7 +30,7 @@ describe("createAsyncComputation", () => {
 
   it("应该支持同步计算", async () => {
     const scope = createRuntimeScope()
-    const scheduler = createRuntimeScheduler()
+    const scheduler = createScheduler()
 
     const computation = createAsyncComputation({
       id: "test",
@@ -48,7 +48,7 @@ describe("createAsyncComputation", () => {
 
   it("应该支持异步计算", async () => {
     const scope = createRuntimeScope()
-    const scheduler = createRuntimeScheduler()
+    const scheduler = createScheduler()
 
     const computation = createAsyncComputation({
       id: "test",
@@ -73,7 +73,7 @@ describe("createAsyncComputation", () => {
 describe("race condition", () => {
   it("应该在新的 run 时 abort 旧的 run", async () => {
     const scope = createRuntimeScope()
-    const scheduler = createRuntimeScheduler()
+    const scheduler = createScheduler()
 
     let abortedCount = 0
 
@@ -109,7 +109,7 @@ describe("race condition", () => {
 
   it("应该确保旧 result 不覆盖新 result", async () => {
     const scope = createRuntimeScope()
-    const scheduler = createRuntimeScheduler()
+    const scheduler = createScheduler()
 
     const results: number[] = []
 
@@ -147,7 +147,7 @@ describe("race condition", () => {
 describe("error handling", () => {
   it("应该捕获错误", async () => {
     const scope = createRuntimeScope()
-    const scheduler = createRuntimeScheduler()
+    const scheduler = createScheduler()
 
     const computation = createAsyncComputation({
       id: "test",
@@ -169,7 +169,7 @@ describe("error handling", () => {
 describe("dispose", () => {
   it("应该在 dispose 后不再更新", async () => {
     const scope = createRuntimeScope()
-    const scheduler = createRuntimeScheduler()
+    const scheduler = createScheduler()
 
     const computation = createAsyncComputation({
       id: "test",

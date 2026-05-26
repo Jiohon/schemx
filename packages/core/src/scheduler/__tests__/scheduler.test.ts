@@ -7,11 +7,11 @@
 import { describe, expect, it, vi } from "vitest"
 
 import { createRuntimeScope } from "../../graph/scope"
-import { createRuntimeScheduler } from "../scheduler"
+import { createScheduler } from "../scheduler"
 
 describe("schedule", () => {
   it("应该调度 sync/pre/normal/post 任务", async () => {
-    const scheduler = createRuntimeScheduler()
+    const scheduler = createScheduler()
 
     const order: string[] = []
 
@@ -45,7 +45,7 @@ describe("schedule", () => {
   })
 
   it("应该按优先级顺序执行任务", async () => {
-    const scheduler = createRuntimeScheduler()
+    const scheduler = createScheduler()
 
     const order: string[] = []
 
@@ -81,7 +81,7 @@ describe("schedule", () => {
 
 describe("flush", () => {
   it("应该等待所有同步任务完成", async () => {
-    const scheduler = createRuntimeScheduler()
+    const scheduler = createScheduler()
 
     let executed = false
 
@@ -101,7 +101,7 @@ describe("flush", () => {
   })
 
   it("应该等待所有异步任务完成", async () => {
-    const scheduler = createRuntimeScheduler()
+    const scheduler = createScheduler()
 
     let executed = false
 
@@ -124,7 +124,7 @@ describe("flush", () => {
 
 describe("whenIdle", () => {
   it("应该在空闲队列时立即返回 true", async () => {
-    const scheduler = createRuntimeScheduler()
+    const scheduler = createScheduler()
 
     const result = await scheduler.whenIdle()
 
@@ -132,7 +132,7 @@ describe("whenIdle", () => {
   })
 
   it("应该在有任务时等待完成", async () => {
-    const scheduler = createRuntimeScheduler()
+    const scheduler = createScheduler()
 
     let executed = false
 
@@ -152,7 +152,7 @@ describe("whenIdle", () => {
   })
 
   it("应该在超时时返回 false", async () => {
-    const scheduler = createRuntimeScheduler()
+    const scheduler = createScheduler()
 
     scheduler.schedule({
       id: "task-1",
@@ -171,7 +171,7 @@ describe("whenIdle", () => {
 
 describe("track", () => {
   it("应该在 track 后 whenIdle 等待该任务", async () => {
-    const scheduler = createRuntimeScheduler()
+    const scheduler = createScheduler()
 
     let executed = false
 
@@ -191,7 +191,7 @@ describe("track", () => {
   })
 
   it("应该支持链式调用", async () => {
-    const scheduler = createRuntimeScheduler()
+    const scheduler = createScheduler()
 
     const result = await scheduler.track(Promise.resolve(42))
 
@@ -201,7 +201,7 @@ describe("track", () => {
 
 describe("scope cancellation", () => {
   it("应该在 scope disposed 后不执行关联任务", async () => {
-    const scheduler = createRuntimeScheduler()
+    const scheduler = createScheduler()
     const scope = createRuntimeScope()
 
     const task = vi.fn()
@@ -222,7 +222,7 @@ describe("scope cancellation", () => {
   })
 
   it("应该在 scope disposed 后取消关联异步任务", async () => {
-    const scheduler = createRuntimeScheduler()
+    const scheduler = createScheduler()
     const scope = createRuntimeScope()
 
     const task = vi.fn()
@@ -249,7 +249,7 @@ describe("scope cancellation", () => {
 
 describe("error handling", () => {
   it("应该在任务抛错后继续执行其他任务", async () => {
-    const scheduler = createRuntimeScheduler()
+    const scheduler = createScheduler()
 
     const order: string[] = []
 
@@ -277,7 +277,7 @@ describe("error handling", () => {
   })
 
   it("应该调用 onError 回调", async () => {
-    const scheduler = createRuntimeScheduler()
+    const scheduler = createScheduler()
 
     const error = new Error("test error")
     const onError = vi.fn()
@@ -299,7 +299,7 @@ describe("error handling", () => {
 
 describe("dispose", () => {
   it("应该在 dispose 后不再执行任务", async () => {
-    const scheduler = createRuntimeScheduler()
+    const scheduler = createScheduler()
 
     scheduler.dispose()
 

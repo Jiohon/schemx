@@ -19,7 +19,7 @@ const createDescriptor = (
   name: string[],
   schema: Partial<FieldDescriptor["schema"]> = {}
 ): FieldDescriptor => ({
-  kind: "field",
+  type: "field",
   key: `field-${name.join("-")}`,
   schema: {
     name,

@@ -98,7 +98,15 @@ export function createRuntimeGraphHarness<TValues extends Values = Values>(
     setValue: writeValue,
     setValues: vi.fn(),
     getValue: readValue,
-    getValues: () => values as TValues,
+    getValues: (names?: unknown) => {
+      if (Array.isArray(names)) {
+        for (const name of names) {
+          readValue(name)
+        }
+      }
+
+      return values as TValues
+    },
     getSnapshots: () => values as TValues,
     setPending: vi.fn(),
     isPending: vi.fn(() => false),
@@ -142,8 +150,11 @@ export function createRuntimeGraphHarness<TValues extends Values = Values>(
     parent: ContainerFiber<TValues>,
     descriptors: FormDescriptor<TValues>[]
   ): void => {
-    reconciler.reconcileChildren(parent, descriptors)
-    viewRevision.bump()
+    const changed = reconciler.reconcileChildren(parent, descriptors)
+
+    if (changed) {
+      viewRevision.bump()
+    }
   }
 
   const commitSchemas = (

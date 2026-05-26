@@ -20,7 +20,7 @@ export interface FieldRegistryEntry<
   TName extends NamePath<TValues> = NamePath<TValues>,
 > {
   readonly name: TName
-  readonly fiber: Fiber
+  readonly fiber: Fiber<TValues>
   readonly descriptor: FieldDescriptor<TValues>
   readonly model: FieldModel<TValues>
 }
@@ -39,7 +39,7 @@ class RuntimeFieldRegistry<
     this.fields.set(key, entry)
   }
 
-  unregister(name: TName, fiber?: Fiber): void {
+  unregister(name: TName, fiber?: Fiber<TValues>): void {
     const key = name
     const current = this.fields.get(key)
 

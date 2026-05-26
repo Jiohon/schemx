@@ -168,7 +168,11 @@ class RuntimeFiberManager<TValues extends Values = Values> {
 
     if (isFieldFiber(fiber)) {
       fiber.descriptor = next as FieldDescriptor<TValues>
-      this.updateField(fiber as FieldFiber<TValues>, next as FieldDescriptor<TValues>)
+      this.updateField(
+        fiber as FieldFiber<TValues>,
+        next as FieldDescriptor<TValues>,
+        previous as FieldDescriptor<TValues> | undefined
+      )
     } else if (isGroupFiber(fiber)) {
       fiber.descriptor = next as GroupDescriptor<TValues>
       this.updateGroup(fiber as GroupFiber<TValues>, next as GroupDescriptor<TValues>)
@@ -326,12 +330,12 @@ class RuntimeFiberManager<TValues extends Values = Values> {
     fiber.fieldResourceScope = resourceScope
     this.fieldRegistry.register({
       name: descriptor.schema.name,
-      fiber: fiber as unknown as Fiber,
+      fiber: fiber,
       descriptor,
       model,
     })
     resourceScope.add(() => {
-      this.fieldRegistry.unregister(descriptor.schema.name, fiber as unknown as Fiber)
+      this.fieldRegistry.unregister(descriptor.schema.name, fiber)
 
       if (fiber.fieldResourceScope === resourceScope) {
         fiber.fieldResourceScope = null
@@ -370,18 +374,16 @@ class RuntimeFiberManager<TValues extends Values = Values> {
 
   private updateField(
     fiber: FieldFiber<TValues>,
-    descriptor: FieldDescriptor<TValues>
+    descriptor: FieldDescriptor<TValues>,
+    previous?: FieldDescriptor<TValues>
   ): void {
     const model = fiber.fieldModel
-    const previous = this.fieldRegistry
-      .list()
-      .find((entry) => entry.fiber.id === fiber.id)
 
-    if (model && previous && previous.name === descriptor.schema.name) {
+    if (model && previous && previous.schema.name === descriptor.schema.name) {
       updateFieldModel(model, descriptor)
       this.fieldRegistry.register({
         name: descriptor.schema.name,
-        fiber: fiber as unknown as Fiber,
+        fiber: fiber,
         descriptor,
         model,
       })
@@ -428,8 +430,7 @@ class RuntimeFiberManager<TValues extends Values = Values> {
     }
 
     createValidationEffect<TValues>({
-      props: createSignal(descriptor.schema),
-      descriptor,
+      name: descriptor.schema.name,
       fieldModel: model,
       context: this.context,
       scope,

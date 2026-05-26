@@ -34,6 +34,7 @@ class RuntimeReconciler<TValues extends Values> {
    *
    * @param parent - 承载子节点的 Fiber。
    * @param descriptors - 新一轮编译后的子节点描述符。
+   * @returns 子节点结构是否发生可观测变化（新增、移除、类型变更或子树变动）。
    *
    * @remarks
    * 同 key 且同 type 的 Fiber 会被复用；不同 type 即使 key 相同也会重建。
@@ -43,14 +44,14 @@ class RuntimeReconciler<TValues extends Values> {
   reconcileChildren(
     parent: ContainerFiber<TValues>,
     descriptors: FormDescriptor<TValues>[]
-  ): void {
-    this.reconcileChildrenTree(parent, descriptors)
+  ): boolean {
+    return this.reconcileChildrenTree(parent, descriptors)
   }
 
   private reconcileChildrenTree(
     parent: ContainerFiber<TValues>,
     descriptors: FormDescriptor<TValues>[]
-  ): void {
+  ): boolean {
     const previousByKey = new Map(
       getChildFibers(parent).map((fiber) => [fiber.key, fiber])
     )
@@ -59,6 +60,7 @@ class RuntimeReconciler<TValues extends Values> {
       fiber: GroupFiber<TValues>
       descriptor: FormDescriptor<TValues>
     }> = []
+    let changed = false
 
     for (const descriptor of descriptors) {
       const existing = previousByKey.get(descriptor.key)
@@ -79,6 +81,9 @@ class RuntimeReconciler<TValues extends Values> {
         continue
       }
 
+      // 新建或类型变更
+      changed = true
+
       const fiber = this.fiberManager.create(descriptor, parent)
 
       this.fiberManager.mount(fiber)
@@ -95,13 +100,21 @@ class RuntimeReconciler<TValues extends Values> {
 
     for (const { fiber, descriptor } of groups) {
       if (isGroupDescriptor(descriptor)) {
-        this.reconcileChildrenTree(fiber, descriptor.children)
+        if (this.reconcileChildrenTree(fiber, descriptor.children)) {
+          changed = true
+        }
       }
+    }
+
+    if (previousByKey.size > 0) {
+      changed = true
     }
 
     for (const removed of previousByKey.values()) {
       this.fiberManager.disposeTree(removed)
     }
+
+    return changed
   }
 }
 

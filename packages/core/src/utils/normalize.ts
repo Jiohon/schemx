@@ -21,9 +21,8 @@ import type {
  * @param schema
  * @returns boolean
  */
-const isLegalLabel = <T extends Values>(
-  schema: SchemxBaseField<T> | SchemxGroupField<T>
-) => Object.hasOwn(schema, "label") && typeof schema.label === "string"
+const isLegalName = <T extends Values>(schema: SchemxBaseField<T>) =>
+  Object.hasOwn(schema, "name") && [null, undefined, ""].every((i) => i !== schema.name)
 
 /**
  * 检查 componentType 是否合法
@@ -44,9 +43,7 @@ const isLegalComponentType = <T extends Values>(schema: SchemxField<T>) =>
 function getBaseFieldMissing<T extends Values>(schema: SchemxBaseField<T>): string[] {
   const missing: string[] = []
 
-  if (!schema.name && schema.name !== 0) missing.push("name")
-
-  if (!isLegalLabel(schema)) missing.push("label")
+  if (!isLegalName(schema)) missing.push("name")
 
   if (!isLegalComponentType(schema)) missing.push("componentType")
 
@@ -63,8 +60,6 @@ function getBaseFieldMissing<T extends Values>(schema: SchemxBaseField<T>): stri
  */
 function getGroupFieldMissing<T extends Values>(schema: SchemxGroupField<T>): string[] {
   const missing: string[] = []
-
-  if (!isLegalLabel(schema)) missing.push("label")
 
   if (!isLegalComponentType(schema)) missing.push("componentType")
 
@@ -110,10 +105,7 @@ function buildWarnMessage<T extends Values>(
   missing: string[]
 ): string {
   const identifier =
-    ("name" in schema && schema.name) ||
-    ("label" in schema && schema.label) ||
-    schema.componentType ||
-    "unknown"
+    ("name" in schema && schema.name) || schema.componentType || "unknown"
 
   return (
     `[schemx] schemas[${index}] (${String(identifier)}) ` +
@@ -135,8 +127,8 @@ function buildWarnMessage<T extends Values>(
  * @example
  * ```ts
  * const cleaned = normalizeSchemas([
- *   { name: 'username', label: '用户名', componentType: 'input' },
- *   { name: 'email', label: '', componentType: 'input' },  // label 为空，被过滤
+ *   { name: '', label: '用户名', componentType: 'input' },  // name 为空，被过滤
+ *   { name: 'email', label: '邮件', componentType: '' },  // componentType 为空，被过滤
  *   { componentType: 'group', label: '分组', children: [] },
  * ])
  * ```
@@ -185,7 +177,7 @@ export function normalizeSchemas<T extends Values = Values>(
     }
   }
 
-  console.warn(missings.join("\n"))
+  if (missings.length) console.warn(missings.join("\n"))
 
   return result
 }

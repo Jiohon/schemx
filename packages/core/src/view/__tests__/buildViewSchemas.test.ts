@@ -23,7 +23,7 @@ const createDescriptor = (
   name: string[],
   schema: Partial<FieldDescriptor["schema"]> = {}
 ): FieldDescriptor => ({
-  kind: "field",
+  type: "field",
   key,
   schema: {
     name,
@@ -95,7 +95,7 @@ describe("buildViewSchemas", () => {
   it("group 应该投影 children", () => {
     const root = createTestRootFiber()
     const descriptor = {
-      kind: "group",
+      type: "group",
       key: "group",
       schema: {
         label: "group",
@@ -120,7 +120,7 @@ describe("buildViewSchemas", () => {
       key: "dep",
       parent: root,
       descriptor: {
-        kind: "dependency",
+        type: "dependency",
         key: "dep",
         trigger: [],
         renderer: () => [],

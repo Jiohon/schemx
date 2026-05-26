@@ -7,9 +7,9 @@
 import { describe, expect, it, vi } from "vitest"
 
 import { createRuntimeScope } from "../../graph/scope"
-import { createReactiveEffect, createSignal } from "../../reactivity"
+import { createSignalEffect, createSignal } from "../../reactivity"
 import { createFieldModel } from "../model"
-import { createRuntimeScheduler } from "../../scheduler"
+import { createScheduler } from "../../scheduler"
 import { createValidationEffect } from "../validationEffect"
 
 import type { SchemxFormContext } from "../../createForm"
@@ -35,7 +35,7 @@ const createSchema = (
 })
 
 const createDescriptor = (schema = createSchema()): FieldDescriptor<TestValues> => ({
-  kind: "field",
+  type: "field",
   key: "field:0:field",
   schema,
   validation: {
@@ -48,7 +48,7 @@ const createContext = (
     validateResult?: ValidateResult<TestValues>
   } = {}
 ) => {
-  const scheduler = createRuntimeScheduler()
+  const scheduler = createScheduler()
   const validator = {
     registerRules: vi.fn(),
     unregisterRules: vi.fn(),
@@ -87,11 +87,12 @@ describe("createValidationEffect", () => {
   it("应该创建 ValidationEffect 并注册规则", async () => {
     const scope = createRuntimeScope()
     const descriptor = createDescriptor()
+    const fieldModel = createFieldModel(descriptor)
     const { context, validator, rulesRegistry, scheduler } = createContext()
 
     const validation = createValidationEffect({
-      props: createSignal(descriptor.schema),
-      descriptor,
+      name: "field",
+      fieldModel,
       scope,
       context,
     })
@@ -100,7 +101,10 @@ describe("createValidationEffect", () => {
 
     expect(validation.registered.value).toBe(true)
     expect(validation.validating.value).toBe(false)
-    expect(rulesRegistry.resolveRuleBySchema).toHaveBeenCalledWith(descriptor.schema)
+    expect(rulesRegistry.resolveRuleBySchema).toHaveBeenCalledWith({
+      rules: descriptor.validation.rules,
+      label: "字段",
+    })
     expect(validator.registerRules).toHaveBeenCalledWith(
       "field",
       ["resolved-rule"],
@@ -113,11 +117,12 @@ describe("rule management", () => {
   it("应该在 visible=false 时从 Validator 注销规则并清空错误", async () => {
     const scope = createRuntimeScope()
     const descriptor = createDescriptor(createSchema({ visible: false }))
+    const fieldModel = createFieldModel(descriptor)
     const { context, validator, scheduler } = createContext()
 
     createValidationEffect({
-      props: createSignal(descriptor.schema),
-      descriptor,
+      name: "field",
+      fieldModel,
       scope,
       context,
     })
@@ -131,11 +136,12 @@ describe("rule management", () => {
   it("应该在 readonly=true 时从 Validator 注销规则并清空错误", async () => {
     const scope = createRuntimeScope()
     const descriptor = createDescriptor(createSchema({ readonly: true }))
+    const fieldModel = createFieldModel(descriptor)
     const { context, validator, scheduler } = createContext()
 
     createValidationEffect({
-      props: createSignal(descriptor.schema),
-      descriptor,
+      name: "field",
+      fieldModel,
       scope,
       context,
     })
@@ -149,11 +155,12 @@ describe("rule management", () => {
   it("应该在 disabled=true 时从 Validator 注销规则并清空错误", async () => {
     const scope = createRuntimeScope()
     const descriptor = createDescriptor(createSchema({ disabled: true }))
+    const fieldModel = createFieldModel(descriptor)
     const { context, validator, scheduler } = createContext()
 
     createValidationEffect({
-      props: createSignal(descriptor.schema),
-      descriptor,
+      name: "field",
+      fieldModel,
       scope,
       context,
     })
@@ -172,14 +179,13 @@ describe("rule management", () => {
     const { context, validator, scheduler } = createContext()
 
     createValidationEffect({
-      props: createSignal(descriptor.schema),
-      descriptor,
+      name: "field",
       fieldModel,
       scope,
       context,
     })
 
-    const dispose = createReactiveEffect(() => {
+    const dispose = createSignalEffect(() => {
       if (trigger.value > 0) {
         fieldModel.visible.value = false
       }
@@ -201,11 +207,12 @@ describe("validate method", () => {
   it("应该通过 Validator 校验 Store 快照", async () => {
     const scope = createRuntimeScope()
     const descriptor = createDescriptor()
+    const fieldModel = createFieldModel(descriptor)
     const { context, validator, store } = createContext()
 
     const validation = createValidationEffect({
-      props: createSignal(descriptor.schema),
-      descriptor,
+      name: "field",
+      fieldModel,
       scope,
       context,
     })
