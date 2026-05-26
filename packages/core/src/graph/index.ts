@@ -31,7 +31,7 @@ export { createFiberManager, type FiberManager } from "./fiberManager"
 export {
   createScope,
   reportRuntimeCleanupError,
-  type DisposeFn,
-  type DisposeHandle,
+  type ScopeCleanup,
+  type ScopeCleanupHandle,
   type Scope,
 } from "./scope"

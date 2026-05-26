@@ -176,7 +176,7 @@ export interface LifecycleBus<TNode, TDescriptor> {
  * 观察字段、分组和 dependency 节点的 mount/update/unmount。
  */
 export type SchemxLifecycleHooks<TValues extends Values = Values> = LifecycleListener<
-  Fiber,
+  Fiber<TValues>,
   FormDescriptor<TValues>
 >
 

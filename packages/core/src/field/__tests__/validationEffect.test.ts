@@ -38,9 +38,6 @@ const createDescriptor = (schema = createSchema()): FieldDescriptor<TestValues> 
   type: "field",
   key: "field:0:field",
   schema,
-  validation: {
-    rules: schema.rules,
-  },
 })
 
 const createContext = (
@@ -102,7 +99,7 @@ describe("createValidationEffect", () => {
     expect(validation.registered.value).toBe(true)
     expect(validation.validating.value).toBe(false)
     expect(rulesRegistry.resolveRuleBySchema).toHaveBeenCalledWith({
-      rules: descriptor.validation.rules,
+      rules: descriptor.schema.rules,
       label: "字段",
     })
     expect(validator.registerRules).toHaveBeenCalledWith(

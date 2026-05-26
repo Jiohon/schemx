@@ -59,13 +59,15 @@ export function createRawFieldSchema<TValues extends Values = Values>(
 }
 
 export function createRuntimeGraphHarness<TValues extends Values = Values>(
-  listener: LifecycleListener<Fiber, FormDescriptor<TValues>> = {},
+  listener: LifecycleListener<Fiber<TValues>, FormDescriptor<TValues>> = {},
   initialValues: Record<string, unknown> = {}
 ): RuntimeGraphTestHarness<TValues> {
   const signals = new Map<string, ReturnType<typeof createSignal<unknown>>>()
   const values = { ...initialValues }
   const fieldRegistry = createFieldRegistry<TValues>()
-  const lifecycleBus = createLifecycleBus<Fiber, FormDescriptor<TValues>>(listener)
+  const lifecycleBus = createLifecycleBus<Fiber<TValues>, FormDescriptor<TValues>>(
+    listener
+  )
   const scheduler = createScheduler()
   const viewRevision = createViewRevision()
 

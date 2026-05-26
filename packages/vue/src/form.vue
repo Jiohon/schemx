@@ -7,7 +7,7 @@
 -->
 
 <script lang="ts" setup generic="T extends Values = Values">
-  import { computed, type CSSProperties, useAttrs } from "vue"
+  import { computed, type CSSProperties, useAttrs, watch } from "vue"
 
   import { omit } from "es-toolkit"
 
@@ -103,6 +103,14 @@
           props.onFieldsChange?.(changedPaths, allPaths)
         },
       })
+
+  watch(
+    () => props.schemas,
+    (schemas) => {
+      form.setSchemas(schemas)
+    },
+    { deep: false, immediate: !!props.form }
+  )
 
   const viewSchemas = useViewSchemas(form)
 

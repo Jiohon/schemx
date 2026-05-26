@@ -31,7 +31,6 @@ const createFieldFiber = (parent: ContainerFiber, key: string, name: string[]) =
       placeholder: "",
       componentProps: {},
     },
-    validation: {},
   }
 
   const fiber = createTestFieldFiber({ key, parent, descriptor })

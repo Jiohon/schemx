@@ -70,6 +70,6 @@ export type SchemxRules = [keyof SchemxRuleDefinition] extends [never]
 /**
  * Rule registry 内部使用的规则名称约束。
  *
- * 未声明自定义规则时会退化为内置快捷规则名称。
+ * 未声明自定义规则时会退化为任意字符串，声明后收窄为内置规则与声明规则的并集。
  */
-export type SchemxRuleKey = SchemxRuleBuiltinKey & SchemxRuleDefinitionKey
+export type SchemxRuleKey = SchemxRuleBuiltinKey | SchemxRuleDefinitionKey

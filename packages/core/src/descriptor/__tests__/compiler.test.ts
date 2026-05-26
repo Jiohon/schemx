@@ -89,7 +89,8 @@ describe("compileToDescriptors", () => {
 
     if (descriptors[0].type === "field") {
       expect(descriptors[0].schema.required).toBe(true)
-      expect(descriptors[0].validation.rules).toEqual("required")
+      expect(descriptors[0].schema.rules).toEqual("required")
+      expect("validation" in descriptors[0]).toBe(false)
     }
   })
 

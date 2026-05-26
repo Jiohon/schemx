@@ -14,7 +14,12 @@
 /**
  * Scope 执行的清理函数。
  */
-export type DisposeFn = () => void
+export type ScopeCleanup = () => void
+
+interface ScopeCleanupRecord {
+  cleanup: ScopeCleanup
+  disposed: boolean
+}
 
 /**
  * cleanup 注册后的释放句柄。
@@ -22,7 +27,7 @@ export type DisposeFn = () => void
  * @remarks
  * 调用 `dispose()` 会立即执行对应 cleanup，并阻止它在 scope dispose 时再次执行。
  */
-export interface DisposeHandle {
+export interface ScopeCleanupHandle {
   /** cleanup 是否已经执行或取消。 */
   readonly disposed: boolean
 
@@ -46,10 +51,10 @@ export interface Scope {
    *
    * 如果 scope 已 disposed，立即执行 cleanup 并返回已释放 handle。
    *
-   * @param dispose - 释放函数
+   * @param cleanup - 释放函数
    * @returns 可取消的释放句柄
    */
-  add(dispose: DisposeFn): DisposeHandle
+  add(cleanup: ScopeCleanup): ScopeCleanupHandle
 
   /**
    * 创建子 scope。
@@ -79,44 +84,50 @@ export interface Scope {
  */
 export function createScope(): Scope {
   let disposed = false
-  const cleanups = new Set<DisposeFn>()
-  const children = new Set<Scope>()
+  const cleanupRecords: ScopeCleanupRecord[] = []
+  const childScopes: Scope[] = []
 
-  const addCleanup = (dispose: DisposeFn): DisposeHandle => {
+  const add = (cleanup: ScopeCleanup): ScopeCleanupHandle => {
     if (disposed) {
-      runCleanup(dispose)
+      // 已释放的 scope 不再持有新资源，直接执行 cleanup 保持调用方语义稳定。
+      runCleanup(cleanup)
 
       return createDisposedHandle()
     }
 
-    let handleDisposed = false
-    cleanups.add(dispose)
+    // 每次 add 都创建独立记录；同一个 cleanup 函数重复注册也应独立释放。
+    const record: ScopeCleanupRecord = {
+      cleanup,
+      disposed: false,
+    }
+    cleanupRecords.push(record)
 
-    const disposeHandle = (): void => {
-      if (handleDisposed) {
+    const disposeCleanup = (): void => {
+      if (record.disposed) {
         return
       }
 
-      handleDisposed = true
-      cleanups.delete(dispose)
-      runCleanup(dispose)
+      record.disposed = true
+      removeItem(cleanupRecords, record)
+      runCleanup(record.cleanup)
     }
 
     return {
       get disposed() {
-        return handleDisposed
+        return record.disposed
       },
-      dispose: disposeHandle,
+      dispose: disposeCleanup,
     }
   }
 
-  const createChildScope = (): Scope => {
+  const child = (): Scope => {
     const childScope = createScope()
-    children.add(childScope)
+    childScopes.push(childScope)
 
-    addCleanup(() => {
-      children.delete(childScope)
-      childScope.dispose()
+    // 子 scope 可能被调用方提前释放；提前释放后从父 scope 中摘除，
+    // 避免父 scope 后续 dispose 时继续保留无效引用。
+    childScope.add(() => {
+      removeItem(childScopes, childScope)
     })
 
     return childScope
@@ -129,25 +140,30 @@ export function createScope(): Scope {
 
     disposed = true
 
-    for (const childScope of Array.from(children).reverse()) {
+    // 先释放子 scope，确保叶子资源早于父级资源清理。
+    for (const childScope of childScopes.slice().reverse()) {
       childScope.dispose()
     }
 
-    children.clear()
+    childScopes.length = 0
 
-    for (const cleanup of Array.from(cleanups).reverse()) {
-      runCleanup(cleanup)
+    // 再按 LIFO 顺序释放当前 scope 自己注册的 cleanup。
+    for (const record of cleanupRecords.slice().reverse()) {
+      if (!record.disposed) {
+        record.disposed = true
+        runCleanup(record.cleanup)
+      }
     }
 
-    cleanups.clear()
+    cleanupRecords.length = 0
   }
 
   return {
     get disposed() {
       return disposed
     },
-    add: addCleanup,
-    child: createChildScope,
+    add,
+    child,
     dispose: disposeScope,
   }
 }
@@ -157,7 +173,7 @@ export function createScope(): Scope {
  */
 export const createRuntimeScope = createScope
 
-const createDisposedHandle = (): DisposeHandle => {
+const createDisposedHandle = (): ScopeCleanupHandle => {
   return {
     disposed: true,
     dispose: noop,
@@ -166,7 +182,14 @@ const createDisposedHandle = (): DisposeHandle => {
 
 const noop = (): void => {}
 
-const runCleanup = (cleanup: DisposeFn): void => {
+const removeItem = <T>(items: T[], item: T): void => {
+  const index = items.indexOf(item)
+  if (index >= 0) {
+    items.splice(index, 1)
+  }
+}
+
+const runCleanup = (cleanup: ScopeCleanup): void => {
   try {
     cleanup()
   } catch (error) {

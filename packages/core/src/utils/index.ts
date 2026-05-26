@@ -25,6 +25,15 @@ export { diff } from "./diff"
 export { createStrictSingleton } from "./single"
 
 export {
+  resolveDynamicProp,
+  resolveDynamicProps,
+  resolveDynamicPropBatch,
+  type DynamicProp,
+  type DynamicPropEntry,
+  type DynamicPropEntries,
+} from "./dynamic"
+
+export {
   type TriggerConfig,
   type NormalizedTrigger,
   shouldValidateOn,

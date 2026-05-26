@@ -59,7 +59,7 @@
       name: "username",
       label: "用户名",
       componentType: "text",
-      required: true,
+      required: false,
       validationTrigger: "onChange",
       rules: z
         .string()

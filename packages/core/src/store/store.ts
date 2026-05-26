@@ -24,7 +24,7 @@ import { cloneDeep, isEqual } from "es-toolkit"
 import { batchUpdates, createFieldSignal, createFieldSignalMap } from "../reactivity"
 import { collectObjectPathsByLeaf, getByPath, setByPath } from "../utils"
 
-import type { NamePath, PathValue, Value, Values } from "../types"
+import type { NamePath, PathValue, Values } from "../types"
 
 /**
  * Store 配置选项。
@@ -235,7 +235,7 @@ class StoreImpl<
    * const name = store.getFieldSnapshot('name') // => 'John'（深拷贝）
    * ```
    */
-  getFieldSnapshot(path: TName): Value {
+  getFieldSnapshot(path: TName): TValue | undefined {
     return this.fieldSignals.peek(path)?.value.peek()
   }
 
@@ -280,7 +280,7 @@ class StoreImpl<
    * store.getInitialValue('name') // => 'John'
    * ```
    */
-  getInitialValue(path: TName): Value {
+  getInitialValue(path: TName): TValue | undefined {
     const signal = this.fieldSignals.peek(path)
 
     if (signal) {
@@ -331,7 +331,7 @@ class StoreImpl<
    * store.setInitialValue('name', 'Bob')
    * ```
    */
-  setInitialValue(path: TName, value: Value): void {
+  setInitialValue(path: TName, value: TValue): void {
     setByPath(this.initialValues, path, value)
     const signal = this.getOrCreateFieldSignal(path)
 
@@ -616,22 +616,39 @@ class StoreImpl<
    * ```
    */
   reset(values?: Partial<TValues>): void {
-    const resetValues = values ?? this.initialValues
+    const resetValues = cloneDeep(values ?? this.initialValues)
 
-    const paths = collectObjectPathsByLeaf<TValues, TName>(resetValues)
+    const nextPaths = collectObjectPathsByLeaf<TValues, TName>(resetValues)
+    const nextPathSet = new Set(nextPaths)
 
-    for (const [path, signal] of [...this.fieldSignals.entries()]) {
-      const next = getByPath<TValues, TName, TValue>(resetValues, path)
-
-      setByPath(this.initialValues, path, next)
-
-      if (!paths.some((nextPath) => isEqual(nextPath, path))) {
-        this.fieldSignals.delete(path)
-      } else {
-        signal.setInitialValue(next)
-        signal.reset(next)
+    batchUpdates(() => {
+      for (const path of this.fieldSignals.keys()) {
+        if (!nextPathSet.has(path)) {
+          this.fieldSignals.delete(path)
+        }
       }
-    }
+
+      for (const path of nextPaths) {
+        const next = getByPath<TValues, TName, TValue>(resetValues, path)
+
+        setByPath(this.initialValues, path, next)
+
+        const signal = this.fieldSignals.peek(path)
+
+        if (signal) {
+          signal.setInitialValue(next)
+          signal.reset(next)
+        } else {
+          this.fieldSignals.set(
+            path,
+            createFieldSignal<TValue>({
+              value: next,
+              initialValue: next,
+            })
+          )
+        }
+      }
+    })
   }
 
   /**

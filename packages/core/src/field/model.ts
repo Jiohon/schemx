@@ -10,7 +10,7 @@
 import { createSignal } from "../reactivity"
 
 import type { FieldDescriptor } from "../descriptor"
-import type { FieldFiber, Scope } from "../graph"
+import type { FieldFiber } from "../graph"
 import type { Signal } from "../reactivity"
 import type { SchemxComponentProps, SchemxRules, Values } from "../types"
 
@@ -72,30 +72,10 @@ export function createFieldModel<TValues extends Values = Values>(
     readonly: createSignal(schema.readonly ?? false),
     required: createSignal(schema.required ?? false),
     label: createSignal(schema.label ?? ""),
-    rules: createSignal(descriptor.validation.rules ?? []),
+    rules: createSignal(schema.rules ?? []),
     placeholder: createSignal(schema.placeholder ?? ""),
     componentProps: createSignal(schema.componentProps ?? {}),
   }
-}
-
-/**
- * 挂载字段呈现态到 Fiber。
- *
- * @param fiber - 字段 runtime 节点。
- * @param descriptor - 字段 descriptor，提供呈现态初始值。
- * @param _scope - 预留资源作用域参数，保持挂载签名一致。
- * @returns 已挂载到 fiber 的 FieldModel。
- */
-export function mountFieldModel<TValues extends Values = Values>(
-  fiber: FieldFiber<TValues>,
-  descriptor: FieldDescriptor<TValues>,
-  _scope: Scope = fiber.scope
-): FieldModel<TValues> {
-  const model = createFieldModel(descriptor)
-
-  fiber.fieldModel = model
-
-  return model
 }
 
 /**
@@ -115,7 +95,7 @@ export function updateFieldModel<TValues extends Values = Values>(
   model.readonly.value = schema.readonly ?? false
   model.required.value = schema.required ?? false
   model.label.value = schema.label ?? ""
-  model.rules.value = descriptor.validation.rules ?? []
+  model.rules.value = schema.rules ?? []
   model.placeholder.value = schema.placeholder ?? ""
   model.componentProps.value = schema.componentProps ?? {}
 }

@@ -9,12 +9,11 @@
 
 import { createSignalEffect } from "../reactivity"
 
-import type { FieldDescriptor, ValidationDescriptor } from "../descriptor"
+import type { FieldDescriptor } from "../descriptor"
 import type { FieldModel } from "./model"
 import type { SchemxFormContext } from "../createForm"
 import type { Scope } from "../graph"
 import type {
-  SchemxBaseField,
   SchemxConditionFn,
   SchemxDependencies,
   SchemxFormApi,
@@ -38,8 +37,9 @@ export const FIELD_DEPENDENCY_PROP_KEYS = [
 type DependencyPropKey = (typeof FIELD_DEPENDENCY_PROP_KEYS)[number]
 
 type DependencyResolvedProps<TValues extends Values> = Partial<
-  Pick<SchemxResolvedBaseField<TValues>, Exclude<DependencyPropKey, "rules">> &
-    Pick<ValidationDescriptor, "rules">
+  Pick<SchemxResolvedBaseField<TValues>, Exclude<DependencyPropKey, "rules">> & {
+    rules?: SchemxResolvedBaseField<TValues>["rules"]
+  }
 >
 
 /**
@@ -90,15 +90,13 @@ export function createDependenciesEffect<TValues extends Values = Values>(
     }
 
     void context.scheduler.track(
-      resolveDependencies(dependencies, base, descriptor.validation, formApi).then(
-        (resolvedProps) => {
-          if (scope.disposed || currentVersion !== version) {
-            return
-          }
-
-          patchFieldModel(fieldModel, base, descriptor.validation, resolvedProps)
+      resolveDependencies(dependencies, base, formApi).then((resolvedProps) => {
+        if (scope.disposed || currentVersion !== version) {
+          return
         }
-      )
+
+        patchFieldModel(fieldModel, base, resolvedProps)
+      })
     )
   })
 
@@ -114,13 +112,12 @@ export function createDependenciesEffect<TValues extends Values = Values>(
 async function resolveDependencies<TValues extends Values>(
   dependencies: SchemxDependencies<TValues>,
   base: Readonly<SchemxResolvedBaseField<TValues>>,
-  validation: Readonly<ValidationDescriptor>,
   formApi: SchemxFormApi<TValues>
 ): Promise<DependencyResolvedProps<TValues>> {
   const values = formApi.getValues() as TValues
 
   const [resolvedProps] = await Promise.all([
-    resolveDependencyProps(dependencies, base, validation, values, formApi),
+    resolveDependencyProps(dependencies, base, values, formApi),
     runDependencyTrigger(dependencies, values, formApi),
   ])
 
@@ -152,56 +149,97 @@ async function runDependencyTrigger<TValues extends Values>(
 async function resolveDependencyProps<TValues extends Values>(
   dependencies: SchemxDependencies<TValues>,
   base: Readonly<SchemxResolvedBaseField<TValues>>,
-  validation: Readonly<ValidationDescriptor>,
   values: TValues,
   formApi: SchemxFormApi<TValues>
 ): Promise<DependencyResolvedProps<TValues>> {
-  const entries = await Promise.all(
-    getConfiguredPropKeys(dependencies).map(async (key) => [
-      key,
-      await resolveCondition(
-        formApi,
-        dependencies[key] as SchemxConditionFn<
-          TValues,
-          SchemxBaseField<TValues>[typeof key]
-        >,
+  const [componentProps, placeholder, required, readonly, disabled, visible, rules] =
+    await Promise.all([
+      resolveDependencyProp({
+        condition: dependencies.componentProps,
         values,
-        getDefaultDependencyValue(key, base, validation),
-        key === "rules"
-      ),
+        formApi,
+        defaultValue: base.componentProps,
+      }),
+      resolveDependencyProp({
+        condition: dependencies.placeholder,
+        values,
+        formApi,
+        defaultValue: base.placeholder,
+      }),
+      resolveDependencyProp({
+        condition: dependencies.required,
+        values,
+        formApi,
+        defaultValue: base.required,
+      }),
+      resolveDependencyProp({
+        condition: dependencies.readonly,
+        values,
+        formApi,
+        defaultValue: base.readonly,
+      }),
+      resolveDependencyProp({
+        condition: dependencies.disabled,
+        values,
+        formApi,
+        defaultValue: base.disabled,
+      }),
+      resolveDependencyProp({
+        condition: dependencies.visible,
+        values,
+        formApi,
+        defaultValue: base.visible,
+      }),
+      resolveDependencyProp({
+        condition: dependencies.rules,
+        values,
+        formApi,
+        defaultValue: base.rules,
+      }),
     ])
-  )
 
-  return Object.fromEntries(entries) as DependencyResolvedProps<TValues>
+  return {
+    componentProps,
+    placeholder,
+    required,
+    readonly,
+    disabled,
+    visible,
+    rules,
+  }
 }
 
 /**
- * 获取 dependencies 中已配置条件函数的属性键。
+ * 解析单个动态属性；未配置时返回静态默认值。
  */
-function getConfiguredPropKeys<TValues extends Values>(
-  dependencies: SchemxDependencies<TValues>
-): DependencyPropKey[] {
-  return FIELD_DEPENDENCY_PROP_KEYS.filter((key) => dependencies[key] != null)
+async function resolveDependencyProp<TValues extends Values, TValue>(options: {
+  condition?: SchemxConditionFn<TValues, TValue>
+  values: TValues
+  formApi: SchemxFormApi<TValues>
+  defaultValue: TValue | undefined
+}): Promise<TValue | undefined> {
+  const { condition, values, formApi, defaultValue } = options
+
+  if (condition == null) {
+    return defaultValue
+  }
+
+  return resolveCondition(formApi, condition, values, defaultValue)
 }
 
 /**
  * 执行单个动态属性条件函数。
  */
-async function resolveCondition<T extends Values, R>(
-  formApi: SchemxFormApi<T>,
-  condition: SchemxConditionFn<T, R>,
-  formValues: T,
-  defaultValue: R,
-  preserveEmptyResult = false
-): Promise<R> {
+async function resolveCondition<TValues extends Values, TValue>(
+  formApi: SchemxFormApi<TValues>,
+  condition: SchemxConditionFn<TValues, TValue>,
+  formValues: TValues,
+  defaultValue: TValue | undefined
+): Promise<TValue | undefined> {
   try {
     const result = await condition(formValues, formApi)
 
-    if (result == null && !preserveEmptyResult) {
-      return defaultValue
-    }
-
-    return result as R
+    return result ?? defaultValue
   } catch (error) {
     console.error("[schemx] 解析动态属性时发生错误:", error)
 
@@ -215,26 +253,13 @@ async function resolveCondition<T extends Values, R>(
 function patchFieldModel<TValues extends Values>(
   model: FieldModel<TValues>,
   base: Readonly<SchemxResolvedBaseField<TValues>>,
-  validation: Readonly<ValidationDescriptor>,
   resolved: DependencyResolvedProps<TValues>
 ): void {
   model.visible.value = resolved.visible ?? base.visible ?? true
   model.disabled.value = resolved.disabled ?? base.disabled ?? false
   model.readonly.value = resolved.readonly ?? base.readonly ?? false
   model.required.value = resolved.required ?? base.required ?? false
-  model.rules.value = resolved.rules ?? validation.rules ?? []
+  model.rules.value = resolved.rules ?? base.rules ?? []
   model.placeholder.value = resolved.placeholder ?? base.placeholder ?? ""
   model.componentProps.value = resolved.componentProps ?? base.componentProps ?? {}
-}
-
-function getDefaultDependencyValue<TValues extends Values>(
-  key: DependencyPropKey,
-  base: Readonly<SchemxResolvedBaseField<TValues>>,
-  validation: Readonly<ValidationDescriptor>
-): SchemxBaseField<TValues>[DependencyPropKey] {
-  if (key === "rules") {
-    return validation.rules
-  }
-
-  return base[key]
 }

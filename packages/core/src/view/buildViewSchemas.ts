@@ -48,15 +48,16 @@ function buildFieldViewSchema<TValues extends Values = Values>(
     ...schema,
     key: fiber.key,
     visible: model.visible.value,
+    label: model.label.value,
     readonly: model.readonly.value,
     disabled: model.disabled.value,
     required: model.required.value,
     placeholder: sanitizePlaceholder(String(model.placeholder.value ?? "")),
     componentProps: sanitizeComponentProps(
-      (model.componentProps.value ?? {}) as Record<string, unknown>
+      model.componentProps.value ?? {}
     ) as SchemxComponentProps<TValues>,
     rules: model.rules.value,
-    validationTrigger: descriptor.validation.trigger,
+    validationTrigger: schema.validationTrigger,
     debug: buildDebugMeta(fiber),
   } as SchemxViewFieldSchema<TValues>
 }
@@ -172,8 +173,8 @@ function sanitizePlaceholder(value: string): string {
  * - 限制嵌套深度
  * - 浅拷贝防止内部引用泄漏
  */
-function sanitizeComponentProps(
-  props: Record<string, unknown>,
+function sanitizeComponentProps<TValues extends Values = Values>(
+  props: SchemxComponentProps<TValues>,
   depth: number = 0
 ): Readonly<Record<string, unknown>> {
   if (depth > 10) {
@@ -187,10 +188,10 @@ function sanitizeComponentProps(
       continue
     }
 
-    const value = props[key]
+    const value = (props as Record<string, unknown>)[key]
 
     if (value !== null && typeof value === "object" && !Array.isArray(value)) {
-      result[key] = sanitizeComponentProps(value as Record<string, unknown>, depth + 1)
+      result[key] = sanitizeComponentProps(value, depth + 1)
     } else {
       result[key] = value
     }

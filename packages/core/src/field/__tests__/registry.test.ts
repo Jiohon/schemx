@@ -22,7 +22,6 @@ const createDescriptor = (name: string): FieldDescriptor => ({
     name,
     componentType: "input",
   },
-  validation: {},
 })
 
 const createEntry = (name: string) => {

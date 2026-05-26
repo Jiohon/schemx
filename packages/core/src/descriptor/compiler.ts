@@ -7,12 +7,7 @@
  * @module core/descriptor/compiler
  */
 
-import {
-  isDependencySchema,
-  isGroupSchema,
-  mergeTrigger,
-  normalizeSchemas,
-} from "../utils"
+import { isDependencySchema, isGroupSchema, normalizeSchemas } from "../utils"
 
 import type {
   DependencyDescriptor,
@@ -20,7 +15,6 @@ import type {
   FieldDescriptor,
   FormDescriptor,
   GroupDescriptor,
-  ValidationDescriptor,
 } from "./descriptor"
 import type {
   NamePath,
@@ -126,28 +120,17 @@ function compileField<TValues extends Values>(
   options: CompileOptions = {},
   parentKey = ""
 ): FieldDescriptor<TValues> {
-  if (
-    schema.name === undefined ||
-    schema.name === null ||
-    (typeof schema.name === "string" && schema.name.trim() === "") ||
-    (Array.isArray(schema.name) && schema.name.length === 0)
-  ) {
-    throw new CompileError("Field name must be non-empty", schema)
-  }
-
   const key =
     schema.key ??
     (parentKey ? `field:${parentKey}/${schema.name}` : `field:${schema.name}`)
 
   // 构建规范化 schema
   const normalizedSchema = buildNormalizedFieldSchema<TValues>(schema, options)
-  const validation = buildValidation<TValues>(schema, options)
 
   return {
     type: "field",
     key,
     schema: normalizedSchema,
-    validation,
     dependencies: schema.dependencies,
   }
 }
@@ -161,9 +144,7 @@ function compileGroup<TValues extends Values>(
   options: CompileOptions = {},
   parentKey = ""
 ): GroupDescriptor<TValues> {
-  const key =
-    schema.key ??
-    (parentKey ? `group:${parentKey}/${index}` : `group:${index}`)
+  const key = schema.key ?? (parentKey ? `group:${parentKey}/${index}` : `group:${index}`)
 
   const { children: rawChildren, ...schemaWithoutChildren } = schema
 
@@ -192,19 +173,18 @@ function compileDependencySlot<TValues extends Values>(
   parentKey = ""
 ): DependencyDescriptor<TValues> {
   const key =
-    schema.key ??
-    (parentKey ? `dependency:${parentKey}/${index}` : `dependency:${index}`)
+    schema.key ?? (parentKey ? `dependency:${parentKey}/${index}` : `dependency:${index}`)
 
   if (!schema.to || schema.to.length === 0) {
     throw new CompileError("Dependency schema must have non-empty trigger fields", schema)
   }
 
-  const trigger = [...schema.to] as NamePath<TValues>[]
+  const trigger = [...schema.to]
 
   const renderer: DependencyRenderer<TValues> = (formApi, abortSignal) => {
     const values = formApi.getValues()
 
-    return schema.renderer(values as Parameters<typeof schema.renderer>[0], formApi, {
+    return schema.renderer(values, formApi, {
       abortSignal,
     })
   }
@@ -240,8 +220,9 @@ function buildNormalizedFieldSchema<TValues extends Values>(
   const mergedVisible = cp?.visible ?? visible ?? true
   const mergedReadonly = cp?.readonly ?? readonly ?? options.readonly ?? false
   const mergedDisabled = cp?.disabled ?? disabled ?? options.disabled ?? false
-  const mergedRequired = cp?.required ?? hasRequiredRule(rules)
+  const mergedRequired = Object.hasOwn(cp ?? {}, "required") || hasRequiredRule(rules)
   const mergedPlaceholder = cp?.placeholder ?? placeholder ?? ""
+  const mergedRules = mergeRules(mergedRequired, rules)
 
   const componentProps: SchemxBaseField<TValues>["componentProps"] = {
     ...cp,
@@ -272,29 +253,8 @@ function buildNormalizedFieldSchema<TValues extends Values>(
     contentAlign: rest.contentAlign,
     colon: rest.colon,
 
-    rules,
+    rules: mergedRules,
     validationTrigger,
-  }
-}
-
-/**
- * 从 raw schema 构建字段校验描述符。
- */
-function buildValidation<TValues extends Values>(
-  schema: SchemxBaseField<TValues>,
-  options: CompileOptions = {}
-): ValidationDescriptor {
-  const mergedTrigger = mergeTrigger(
-    schema.validationTrigger,
-    options.validationTrigger,
-    "blur"
-  )
-  const required =
-    schema.componentProps?.required ?? schema.required ?? hasRequiredRule(schema.rules)
-
-  return {
-    rules: mergeRules(required, schema.rules),
-    trigger: mergedTrigger,
   }
 }
 
@@ -305,10 +265,10 @@ function hasRequiredRule(rules?: SchemxRules | SchemxRules[]): boolean {
   if (!rules) return false
 
   if (Array.isArray(rules)) {
-    return rules.some((r) => r === "required")
+    return rules.length > 0
   }
 
-  return rules === "required"
+  return true
 }
 
 /**

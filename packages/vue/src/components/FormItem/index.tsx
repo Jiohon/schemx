@@ -85,14 +85,14 @@ const FormItem = defineComponent(
     /** 值变化处理，设置值后根据触发时机决定是否校验 */
     const handleChange = (v: unknown) => {
       field.setValue(v)
-      if (shouldValidateOn("change", trigger.value)) {
+      if (canVerified.value && shouldValidateOn("change", trigger.value)) {
         field.validate()
       }
     }
 
     /** 失焦处理，根据触发时机决定是否校验 */
     const handleBlur = () => {
-      if (shouldValidateOn("blur", trigger.value)) {
+      if (canVerified.value && shouldValidateOn("blur", trigger.value)) {
         field.validate()
       }
     }

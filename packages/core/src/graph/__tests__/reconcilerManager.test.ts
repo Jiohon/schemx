@@ -21,7 +21,6 @@ function createFieldDescriptor(key: string, name = key): FieldDescriptor {
       name,
       componentType: "text",
     },
-    validation: {},
   }
 }
 

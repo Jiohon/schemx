@@ -157,9 +157,9 @@ export type ContainerFiber<TValues extends Values = Values> =
  * @param fiber - 待判断的 runtime 节点。
  * @returns 非 root 节点时返回 true，并收窄为带 descriptor 的 Fiber。
  */
-export function hasDescriptor(
-  fiber: Fiber<any>
-): fiber is FieldFiber<any> | GroupFiber<any> | DependencyFiber<any> {
+export function hasDescriptor<TValues extends Values = Values>(
+  fiber: Fiber<TValues>
+): fiber is DescribedFiber<TValues> {
   return fiber.type !== "root"
 }
 

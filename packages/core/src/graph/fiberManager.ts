@@ -8,6 +8,15 @@
  */
 
 import {
+  type DependencyDescriptor,
+  type FieldDescriptor,
+  type FormDescriptor,
+  type GroupDescriptor,
+  isDependencyDescriptor,
+  isFieldDescriptor,
+  isGroupDescriptor,
+} from "../descriptor"
+import {
   createDependenciesEffect,
   createDependencyEffect,
   createFieldModel,
@@ -17,29 +26,17 @@ import {
 } from "../field"
 import { createSignal } from "../reactivity"
 
-import {
-  getChildFibers,
-  isContainerFiber,
-  isDependencyFiber,
-  isFieldFiber,
-  isGroupFiber,
-  setChildFibers,
-} from "./fiber"
+import { getChildFibers, hasDescriptor, isContainerFiber, setChildFibers } from "./fiber"
 import { createScope } from "./scope"
 
 import type { SchemxFormContext } from "../createForm"
-import type {
-  DependencyDescriptor,
-  FieldDescriptor,
-  FormDescriptor,
-  GroupDescriptor,
-} from "../descriptor"
 import type { FieldRegistry } from "../field"
 import type { LifecycleBus } from "../lifecycle"
 import type { NamePath, Values } from "../types"
 import type {
   ContainerFiber,
   DependencyFiber,
+  DescribedFiber,
   Fiber,
   FieldFiber,
   GroupFiber,
@@ -59,7 +56,7 @@ class RuntimeFiberManager<TValues extends Values = Values> {
   /** 字段运行时索引，用于按字段路径查找 model 与 Fiber。 */
   private readonly fieldRegistry: FieldRegistry<TValues>
   /** Fiber 生命周期事件总线。 */
-  private readonly lifecycleBus: LifecycleBus<Fiber, FormDescriptor<TValues>>
+  private readonly lifecycleBus: LifecycleBus<Fiber<TValues>, FormDescriptor<TValues>>
 
   constructor(context: SchemxFormContext<TValues>) {
     this.context = context
@@ -121,28 +118,26 @@ class RuntimeFiberManager<TValues extends Values = Values> {
    * 创建各自的模型、effect 与资源 scope。
    */
   mount(fiber: Fiber<TValues>): void {
-    if (fiber.type === "root" || !fiber.descriptor) {
+    if (!hasDescriptor(fiber)) {
       return
     }
 
-    this.lifecycleBus.emitBeforeMount(fiber as unknown as Fiber)
+    this.lifecycleBus.emitBeforeMount(fiber)
 
-    if (isFieldFiber(fiber)) {
-      this.mountField(
-        fiber as FieldFiber<TValues>,
-        fiber.descriptor as FieldDescriptor<TValues>
-      )
-    } else if (isGroupFiber(fiber)) {
-      this.mountGroup(fiber as GroupFiber<TValues>)
-    } else if (isDependencyFiber(fiber)) {
-      this.mountDependency(fiber as DependencyFiber<TValues>)
+    switch (fiber.type) {
+      case "field":
+        this.mountField(fiber, fiber.descriptor)
+        break
+      case "group":
+        this.mountGroup(fiber)
+        break
+      case "dependency":
+        this.mountDependency(fiber)
+        break
     }
 
     fiber.mounted.value = true
-    this.lifecycleBus.emitMount(
-      fiber as unknown as Fiber,
-      fiber.descriptor as FormDescriptor<TValues>
-    )
+    this.lifecycleBus.emitMount(fiber, fiber.descriptor)
   }
 
   /**
@@ -156,38 +151,55 @@ class RuntimeFiberManager<TValues extends Values = Values> {
    * 结构层面的 children reconcile 不在这里处理。
    */
   update(fiber: Fiber<TValues>, next: FormDescriptor<TValues>): void {
-    if (fiber.type === "root") {
+    if (!hasDescriptor(fiber)) {
       return
     }
 
-    const previous = fiber.descriptor as FormDescriptor<TValues> | undefined
+    switch (fiber.type) {
+      case "field": {
+        if (!isFieldDescriptor(next)) {
+          throwUnexpectedDescriptor(fiber, next)
+        }
 
-    if (previous) {
-      this.lifecycleBus.emitBeforeUpdate(fiber as unknown as Fiber, previous)
-    }
+        const previous = fiber.descriptor
 
-    if (isFieldFiber(fiber)) {
-      fiber.descriptor = next as FieldDescriptor<TValues>
-      this.updateField(
-        fiber as FieldFiber<TValues>,
-        next as FieldDescriptor<TValues>,
-        previous as FieldDescriptor<TValues> | undefined
-      )
-    } else if (isGroupFiber(fiber)) {
-      fiber.descriptor = next as GroupDescriptor<TValues>
-      this.updateGroup(fiber as GroupFiber<TValues>, next as GroupDescriptor<TValues>)
-    } else if (isDependencyFiber(fiber)) {
-      fiber.descriptor = next as DependencyDescriptor<TValues>
-      this.updateDependency(
-        fiber as DependencyFiber<TValues>,
-        next as DependencyDescriptor<TValues>,
-        previous as DependencyDescriptor<TValues> | undefined
-      )
-    }
+        this.lifecycleBus.emitBeforeUpdate(fiber, previous)
+        fiber.descriptor = next
+        this.updateField(fiber, next, previous)
+        this.lifecycleBus.emitUpdate(fiber, next)
+        this.lifecycleBus.emitUpdated(fiber, previous)
+        break
+      }
 
-    if (previous) {
-      this.lifecycleBus.emitUpdate(fiber as unknown as Fiber, next)
-      this.lifecycleBus.emitUpdated(fiber as unknown as Fiber, previous)
+      case "group": {
+        if (!isGroupDescriptor(next)) {
+          throwUnexpectedDescriptor(fiber, next)
+        }
+
+        const previous = fiber.descriptor
+
+        this.lifecycleBus.emitBeforeUpdate(fiber, previous)
+        fiber.descriptor = next
+        this.updateGroup(fiber, next)
+        this.lifecycleBus.emitUpdate(fiber, next)
+        this.lifecycleBus.emitUpdated(fiber, previous)
+        break
+      }
+
+      case "dependency": {
+        if (!isDependencyDescriptor(next)) {
+          throwUnexpectedDescriptor(fiber, next)
+        }
+
+        const previous = fiber.descriptor
+
+        this.lifecycleBus.emitBeforeUpdate(fiber, previous)
+        fiber.descriptor = next
+        this.updateDependency(fiber, next, previous)
+        this.lifecycleBus.emitUpdate(fiber, next)
+        this.lifecycleBus.emitUpdated(fiber, previous)
+        break
+      }
     }
   }
 
@@ -200,16 +212,20 @@ class RuntimeFiberManager<TValues extends Values = Values> {
    * 这个方法不递归销毁子节点；需要销毁整棵子树时使用 `disposeTree`。
    */
   unmount(fiber: Fiber<TValues>): void {
-    if (fiber.type === "root") {
+    if (!hasDescriptor(fiber)) {
       return
     }
 
-    if (isFieldFiber(fiber)) {
-      this.unmountField(fiber as FieldFiber<TValues>)
-    } else if (isGroupFiber(fiber)) {
-      this.unmountGroup(fiber as GroupFiber<TValues>)
-    } else if (isDependencyFiber(fiber)) {
-      this.unmountDependency(fiber as DependencyFiber<TValues>)
+    switch (fiber.type) {
+      case "field":
+        this.unmountField(fiber)
+        break
+      case "group":
+        this.unmountGroup(fiber)
+        break
+      case "dependency":
+        this.unmountDependency(fiber)
+        break
     }
 
     fiber.mounted.value = false
@@ -230,7 +246,7 @@ class RuntimeFiberManager<TValues extends Values = Values> {
     }
 
     if (fiber.type !== "root") {
-      this.lifecycleBus.emitBeforeUnmount(fiber as unknown as Fiber)
+      this.lifecycleBus.emitBeforeUnmount(fiber)
     }
 
     fiber.disposed.value = true
@@ -249,7 +265,7 @@ class RuntimeFiberManager<TValues extends Values = Values> {
     fiber.parent = null
 
     if (fiber.type !== "root") {
-      this.lifecycleBus.emitUnmount(fiber as unknown as Fiber)
+      this.lifecycleBus.emitUnmount(fiber)
     }
   }
 
@@ -513,4 +529,13 @@ function isSameNamePathList(a: NamePath[], b: NamePath[]): boolean {
 
 function throwUnknownDescriptor(descriptor: never): never {
   throw new Error(`unknown type: ${(descriptor as { type?: string }).type ?? "unknown"}`)
+}
+
+function throwUnexpectedDescriptor<TValues extends Values>(
+  fiber: DescribedFiber<TValues>,
+  descriptor: FormDescriptor<TValues>
+): never {
+  throw new Error(
+    `unexpected descriptor type: fiber ${fiber.type} cannot update with ${descriptor.type}`
+  )
 }

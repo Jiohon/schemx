@@ -23,7 +23,6 @@ export {
 export {
   createFieldModel,
   getFieldModelResource,
-  mountFieldModel,
   updateFieldModel,
   type FieldModel,
 } from "./model"

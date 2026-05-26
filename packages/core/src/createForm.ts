@@ -11,10 +11,12 @@ import { createFieldRegistry, type FieldRegistry } from "./field"
 import {
   type ContainerFiber,
   createReconciler,
+  createScope,
   type Fiber,
   type FiberManager,
   type Reconciler,
   type RootFiber,
+  type Scope,
 } from "./graph"
 import { createFiberManager } from "./graph/fiberManager"
 import {
@@ -105,7 +107,7 @@ export interface SchemxFormContext<
   /**
    * graph 生命周期事件总线，连接 reconciler 与字段资源挂载流程
    */
-  readonly lifecycleBus: LifecycleBus<Fiber, FormDescriptor<TValues>>
+  readonly lifecycleBus: LifecycleBus<Fiber<TValues>, FormDescriptor<TValues>>
   /**
    * 字段 Fiber 到字段模型的注册表，供表单 API 和视图投影读取
    */
@@ -229,14 +231,17 @@ class CreateForm<
   /** 字段 Fiber 到字段模型的注册表，供表单 API 和视图投影读取 */
   readonly fieldRegistry: FieldRegistry<TValues>
 
-  /** 表单销毁时需要统一释放的副作用 */
-  readonly disposers = new Set<() => void>()
+  /** 表单级资源作用域，统一管理回调 effect 等非 Fiber 资源 */
+  private readonly scope: Scope = createScope()
+
+  /** 当前 root schemas，供 updateSchemas 基于上一版派生下一版 */
+  private currentSchemas: SchemxField<TValues>[] = []
 
   /** 标记表单实例是否已销毁，保证 dispose 幂等 */
   private disposed = false
 
   /** graph 生命周期事件总线，连接 reconciler 与字段资源挂载流程 */
-  private lifecycleBus: LifecycleBus<Fiber, FormDescriptor<TValues>>
+  private lifecycleBus: LifecycleBus<Fiber<TValues>, FormDescriptor<TValues>>
 
   constructor(options: CreateFormOptions<TValues> = {}) {
     const {
@@ -281,7 +286,7 @@ class CreateForm<
     })
 
     // 生命周期总线连接 graph 结构变化与字段模型、依赖资源的挂载和更新流程。
-    this.lifecycleBus = createLifecycleBus<Fiber, FormDescriptor<TValues>>()
+    this.lifecycleBus = createLifecycleBus<Fiber<TValues>, FormDescriptor<TValues>>()
 
     // 初始化运行时 graph 所需的核心基础设施。
     this.scheduler = createScheduler()
@@ -315,12 +320,10 @@ class CreateForm<
       this.lifecycleBus.on(options.lifecycleHooks)
     }
 
+    this.currentSchemas = schemas
+
     // 将外部 schema 编译成内部 descriptor tree，再交给 reconciler 建立 runtime graph。
-    const descriptors = compileToDescriptors(schemas, {
-      readonly,
-      disabled,
-      validationTrigger,
-    })
+    const descriptors = compileToDescriptors(schemas, this.context.defaultProps)
 
     this.commitChildren(this.root as ContainerFiber<TValues>, descriptors)
 
@@ -348,7 +351,7 @@ class CreateForm<
         prevSnapshot = latestSnapshot
       })
 
-      this.disposers.add(valuesChangeDisposer)
+      this.scope.add(valuesChangeDisposer)
     }
   }
 
@@ -359,7 +362,7 @@ class CreateForm<
    * SchemxInstance 类实现此接口，提供完整的表单操作能力。
    */
   getFormInstance = (): SchemxInstance<TValues> => {
-    const instance = {
+    return {
       setFieldValue: this.store.setFieldValue.bind(this.store),
       setFieldsValue: this.store.setFieldsValue.bind(this.store),
       getFieldValue: this.store.getFieldValue.bind(this.store),
@@ -387,6 +390,8 @@ class CreateForm<
       effect: this.effect.bind(this),
       batch: this.batch.bind(this),
 
+      setSchemas: this.setSchemas.bind(this),
+      updateSchemas: this.updateSchemas.bind(this),
       getViewRevision: () => this.viewRevision.revision.value,
       getViewSchemas: this.getViewSchemas.bind(this),
       subscribeViewSchemas: this.subscribeViewSchemas.bind(this),
@@ -403,11 +408,7 @@ class CreateForm<
       unregisterRules: this.validator.unregisterRules.bind(this.validator),
 
       destroy: this.destroy.bind(this),
-    } as SchemxInstance<TValues> & { getInternalHooks: () => SchemxInstance<TValues> }
-
-    instance.getInternalHooks = () => instance
-
-    return instance
+    }
   }
 
   /**
@@ -553,11 +554,10 @@ class CreateForm<
    */
   private effect(fn: () => void): () => void {
     const dispose = createSignalEffect(fn)
-    this.disposers.add(dispose)
+    const handle = this.scope.add(dispose)
 
     return () => {
-      dispose()
-      this.disposers.delete(dispose)
+      handle.dispose()
     }
   }
 
@@ -569,6 +569,35 @@ class CreateForm<
    */
   private batch(fn: () => void): void {
     batchUpdates(fn)
+  }
+
+  /**
+   * 替换 root schemas。
+   */
+  private setSchemas(schemas: SchemxField<TValues>[]): void {
+    if (this.disposed) {
+      return
+    }
+
+    this.currentSchemas = schemas
+
+    const previousRevision = this.viewRevision.revision.value
+    const descriptors = compileToDescriptors(schemas, this.context.defaultProps)
+
+    this.commitChildren(this.root as ContainerFiber<TValues>, descriptors)
+
+    if (this.viewRevision.revision.value === previousRevision) {
+      this.viewRevision.bump()
+    }
+  }
+
+  /**
+   * 基于当前 root schemas 派生下一版 schemas。
+   */
+  private updateSchemas(
+    updater: (schemas: readonly SchemxField<TValues>[]) => SchemxField<TValues>[]
+  ): void {
+    this.setSchemas(updater(this.currentSchemas))
   }
 
   /**
@@ -600,12 +629,7 @@ class CreateForm<
 
     this.disposed = true
 
-    for (const dispose of this.disposers) {
-      dispose()
-    }
-
-    this.disposers.clear()
-
+    this.scope.dispose()
     this.fiberManager.disposeTree(this.root)
     this.scheduler.dispose()
     this.store.destroy()

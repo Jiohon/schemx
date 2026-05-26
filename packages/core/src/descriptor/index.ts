@@ -17,5 +17,4 @@ export {
   type FieldDescriptor,
   type FormDescriptor,
   type GroupDescriptor,
-  type ValidationDescriptor,
 } from "./descriptor"

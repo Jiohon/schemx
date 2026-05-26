@@ -32,9 +32,6 @@ const createDescriptor = (
     componentProps: {},
     ...schema,
   },
-  validation: {
-    rules: [],
-  },
 })
 
 describe("mountFieldModel", () => {
@@ -102,10 +99,8 @@ describe("updateFieldModel", () => {
         required: true,
         placeholder: "updated",
         componentProps: { size: "large" },
-      }),
-      validation: {
         rules: ["required"],
-      },
+      }),
     })
 
     expect(model.visible.value).toBe(false)

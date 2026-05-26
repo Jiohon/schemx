@@ -14,8 +14,6 @@ import type {
   SchemxFormApi,
   SchemxResolvedBaseField,
   SchemxResolvedGroupField,
-  SchemxRules,
-  ValidationTrigger,
   Values,
 } from "../types"
 
@@ -38,14 +36,12 @@ export type FormDescriptor<
  * 包含：
  * - 身份：key 用于协调
  * - Schema：schema 是规范化后的静态字段 schema
- * - Validation：validation 是字段静态校验描述
  * - Dependencies：dependencies 是字段动态派生规则
  */
 export interface FieldDescriptor<TValues extends Values = Values> {
   readonly type: "field"
   readonly key: string
   readonly schema: SchemxResolvedBaseField<TValues>
-  readonly validation: ValidationDescriptor
   readonly dependencies?: SchemxDependencies<TValues>
 }
 
@@ -99,26 +95,6 @@ export type DependencyRenderer<TValues extends Values = Values> = (
    */
   abortSignal: AbortSignal
 ) => Promise<SchemxField<TValues>[]> | SchemxField<TValues>[]
-
-/**
- * 校验描述符，定义字段的校验配置。
- */
-export interface ValidationDescriptor {
-  /**
-   * 字段静态校验规则。
-   */
-  readonly rules?: SchemxRules | SchemxRules[]
-
-  /**
-   * 校验触发时机。
-   */
-  readonly trigger?: ValidationTrigger | ValidationTrigger[]
-
-  /**
-   * 防抖延迟（毫秒）。
-   */
-  readonly debounce?: number
-}
 
 /**
  * 判断是否为字段描述符。

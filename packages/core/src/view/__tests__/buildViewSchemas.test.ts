@@ -37,7 +37,6 @@ const createDescriptor = (
     componentProps: {},
     ...schema,
   },
-  validation: {},
 })
 
 const createFieldFiber = (
@@ -90,6 +89,21 @@ describe("buildViewSchemas", () => {
     expect(schema.placeholder).toBe("dynamic")
     expect(schema.componentProps).toEqual({ clearable: true })
     expect("state" in schema).toBe(false)
+  })
+
+  it("应该从 schema 和 FieldModel 输出 rules 与 validationTrigger", () => {
+    const root = createTestRootFiber()
+    const field = createFieldFiber(root, "email", ["email"], {
+      rules: "required",
+      validationTrigger: "onBlur" as any,
+    })
+    field.fieldModel!.rules.value = ["email"]
+    root.childFibers = [field]
+
+    const [schema] = buildViewSchemas(root)
+
+    expect(schema.rules).toEqual(["email"])
+    expect(schema.validationTrigger).toBe("onBlur")
   })
 
   it("group 应该投影 children", () => {

@@ -14,7 +14,12 @@ import { SchemxRules } from "./rule"
 
 import type { StorePending } from "../store"
 import type { SchemxField } from "./schema"
-import type { RendererRegistry, RuleEntry, RulesRegistry } from "../registry"
+import type {
+  RendererRegistry,
+  RuleEntry,
+  RuleRegistryOptions,
+  RulesRegistry,
+} from "../registry"
 import type { ValidateError, ValidateResult } from "../validator"
 import type { SchemxViewSchema } from "../view"
 
@@ -520,6 +525,25 @@ export interface SchemxInstance<
   batch: (fn: () => void) => void
 
   /**
+   * 替换当前表单的 root schemas。
+   *
+   * 字段值、错误和 touched 状态由 store/validator 按字段路径保留；
+   * 被移除字段的运行时资源会随 Fiber 卸载释放。
+   *
+   * @param schemas - 下一版 root schema 列表
+   */
+  setSchemas: (schemas: SchemxField<TValues>[]) => void
+
+  /**
+   * 基于当前 root schemas 派生下一版 schemas。
+   *
+   * @param updater - 接收当前 schemas 并返回下一版 schemas 的函数
+   */
+  updateSchemas: (
+    updater: (schemas: readonly SchemxField<TValues>[]) => SchemxField<TValues>[]
+  ) => void
+
+  /**
    * 获取当前 ViewSchemas。
    *
    * @returns 当前可渲染的静态 schema 列表。
@@ -562,7 +586,7 @@ export interface SchemxInstance<
    *
    * @example
    * ```typescript
-   * const renderer = form.getInternalHooks().getRenderer('input')
+   * const renderer = form.getRenderer('input')
    * if (renderer) {
    *   // 使用渲染器组件
    * }
@@ -581,7 +605,7 @@ export interface SchemxInstance<
    *
    * @example
    * ```typescript
-   * form.getInternalHooks().registerRenderer('input', InputComponent)
+   * form.registerRenderer('input', InputComponent)
    * ```
    */
   registerRenderer: (type: SchemxRendererKey, renderer: unknown) => void
@@ -594,7 +618,7 @@ export interface SchemxInstance<
    *
    * @example
    * ```typescript
-   * if (form.getInternalHooks().hasRenderer('input')) {
+   * if (form.hasRenderer('input')) {
    *   // 渲染器已注册
    * }
    * ```
@@ -612,7 +636,7 @@ export interface SchemxInstance<
    *
    * @example
    * ```typescript
-   * const entry = form.getInternalHooks().getRule('phone')
+   * const entry = form.getRule('phone')
    * ```
    */
   getRule: (name: string) => RuleEntry<TValues> | undefined
@@ -628,10 +652,14 @@ export interface SchemxInstance<
    *
    * @example
    * ```typescript
-   * form.getInternalHooks().registerRule('phone', phoneRule)
+   * form.registerRule('phone', phoneRule)
    * ```
    */
-  registerRule: (name: string, rule: RuleEntry<TValues>) => void
+  registerRule: (
+    name: string,
+    rule: RuleEntry<TValues>,
+    options?: RuleRegistryOptions
+  ) => void
 
   /**
    * 检查指定名称的校验规则是否已注册
@@ -643,7 +671,7 @@ export interface SchemxInstance<
    *
    * @example
    * ```typescript
-   * form.getInternalHooks().hasRule('phone') // => true
+   * form.hasRule('phone') // => true
    * ```
    */
   hasRule: (name: string) => boolean
@@ -746,6 +774,7 @@ export interface SchemxFormApi<
    * @param name - 可选的字段路径数组；不传时返回全部字段值。
    * @returns 字段值快照对象。
    */
+  getValues(): TValues
   getValues(name?: TName[]): Partial<TValues>
 
   /**

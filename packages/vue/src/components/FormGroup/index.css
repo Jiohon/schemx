@@ -10,7 +10,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--schemx-padding-sm) var(--schemx-padding-md);
+  padding: var(--schemx-padding-sm) var(--schemx-padding-base);
   user-select: none;
 }
 
