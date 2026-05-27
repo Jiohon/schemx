@@ -6,6 +6,12 @@
  * @module core/createForm
  */
 
+import {
+  createSchemas,
+  isSchemxSchemas,
+  type SchemxSchemas,
+  type SchemxSchemasInput,
+} from "./createSchemas"
 import { compileToDescriptors } from "./descriptor"
 import { createFieldRegistry, type FieldRegistry } from "./field"
 import {
@@ -142,9 +148,9 @@ export interface CreateFormOptions<
   TName extends NamePath<TValues> = NamePath<TValues>,
 > extends SchemxDefaultProps {
   /**
-   * 初始 schema 列表。dependency schema 会在运行时透明展开。
+   * schema 列表或可响应式更新的 schema source。dependency schema 会在运行时透明展开。
    */
-  schemas?: SchemxField<TValues>[]
+  schemas?: SchemxSchemasInput<TValues>
   /**
    * 表单初始值，作为 reset 的还原基准。
    */
@@ -234,8 +240,8 @@ class CreateForm<
   /** 表单级资源作用域，统一管理回调 effect 等非 Fiber 资源 */
   private readonly scope: Scope = createScope()
 
-  /** 当前 root schemas，供 updateSchemas 基于上一版派生下一版 */
-  private currentSchemas: SchemxField<TValues>[] = []
+  /** root schema 的统一数据源 */
+  private schemas: SchemxSchemas<TValues>
 
   /** 标记表单实例是否已销毁，保证 dispose 幂等 */
   private disposed = false
@@ -245,7 +251,7 @@ class CreateForm<
 
   constructor(options: CreateFormOptions<TValues> = {}) {
     const {
-      schemas = [] as SchemxField<TValues>[],
+      schemas: schemasInput,
       initialValues = {} as TValues,
       modelValue,
       rendererRegistry,
@@ -320,12 +326,20 @@ class CreateForm<
       this.lifecycleBus.on(options.lifecycleHooks)
     }
 
-    this.currentSchemas = schemas
+    // 无论调用方传入静态数组还是 createSchemas 返回的 source，
+    // 内部都统一成 schema source，避免初始化与后续 set/update 走两套状态。
+    this.schemas = isSchemxSchemas(schemasInput)
+      ? schemasInput
+      : createSchemas<TValues>(schemasInput ?? [])
 
     // 将外部 schema 编译成内部 descriptor tree，再交给 reconciler 建立 runtime graph。
-    const descriptors = compileToDescriptors(schemas, this.context.defaultProps)
+    this.applySchemas(this.schemas.peek())
 
-    this.commitChildren(this.root as ContainerFiber<TValues>, descriptors)
+    const schemasDisposer = this.schemas.subscribe((nextSchemas) => {
+      this.applySchemas(nextSchemas)
+    })
+
+    this.scope.add(schemasDisposer)
 
     // 注册值变化回调（通过 store.effect 自动追踪依赖）
     if (this.callbacks?.onValuesChange || this.callbacks?.onFieldsChange) {
@@ -416,23 +430,25 @@ class CreateForm<
    *
    * 传递给动态渲染器，允许程序化操作表单。
    */
-  private getFormApi = (): SchemxFormApi<TValues> => ({
-    setValue: this.store.setFieldValue.bind(this.store),
-    setValues: this.store.setFieldsValue.bind(this.store),
-    getValue: this.store.getFieldValue.bind(this.store),
-    getValues: this.store.getFieldsValue.bind(this.store),
-    getSnapshots: this.store.getFieldsSnapshot.bind(this.store),
-    setPending: this.store.setFieldPending.bind(this.store),
-    isPending: this.store.isFieldPending.bind(this.store),
-    setTouched: this.store.setFieldTouched.bind(this.store),
-    isTouched: this.store.isFieldTouched.bind(this.store),
-    getError: this.validator.getFieldError.bind(this.validator),
-    setError: this.validator.setFieldError.bind(this.validator),
-    resetFields: this.store.resetFields.bind(this.store),
-    reset: this.reset.bind(this),
-    validateField: this.validateField.bind(this),
-    validate: this.validate.bind(this),
-  })
+  private getFormApi = (): SchemxFormApi<TValues> => {
+    return {
+      setValue: this.store.setFieldValue.bind(this.store),
+      setValues: this.store.setFieldsValue.bind(this.store),
+      getValue: this.store.getFieldValue.bind(this.store),
+      getValues: this.store.getFieldsValue.bind(this.store),
+      getSnapshots: this.store.getFieldsSnapshot.bind(this.store),
+      setPending: this.store.setFieldPending.bind(this.store),
+      isPending: this.store.isFieldPending.bind(this.store),
+      setTouched: this.store.setFieldTouched.bind(this.store),
+      isTouched: this.store.isFieldTouched.bind(this.store),
+      getError: this.validator.getFieldError.bind(this.validator),
+      setError: this.validator.setFieldError.bind(this.validator),
+      resetFields: this.store.resetFields.bind(this.store),
+      reset: this.reset.bind(this),
+      validateField: this.validateField.bind(this),
+      validate: this.validate.bind(this),
+    }
+  }
 
   /**
    * 注册字段校验规则
@@ -574,30 +590,43 @@ class CreateForm<
   /**
    * 替换 root schemas。
    */
-  private setSchemas(schemas: SchemxField<TValues>[]): void {
+  private setSchemas(schemas: readonly SchemxField<TValues>[]): void {
     if (this.disposed) {
       return
     }
 
-    this.currentSchemas = schemas
-
-    const previousRevision = this.viewRevision.revision.value
-    const descriptors = compileToDescriptors(schemas, this.context.defaultProps)
-
-    this.commitChildren(this.root as ContainerFiber<TValues>, descriptors)
-
-    if (this.viewRevision.revision.value === previousRevision) {
-      this.viewRevision.bump()
-    }
+    this.schemas.set(schemas)
   }
 
   /**
    * 基于当前 root schemas 派生下一版 schemas。
    */
   private updateSchemas(
-    updater: (schemas: readonly SchemxField<TValues>[]) => SchemxField<TValues>[]
+    updater: (schemas: readonly SchemxField<TValues>[]) => readonly SchemxField<TValues>[]
   ): void {
-    this.setSchemas(updater(this.currentSchemas))
+    if (this.disposed) {
+      return
+    }
+
+    this.schemas.update(updater)
+  }
+
+  /**
+   * 将 schema source 的当前值提交到 runtime graph。
+   */
+  private applySchemas(schemas: readonly SchemxField<TValues>[]): void {
+    if (this.disposed) {
+      return
+    }
+
+    const previousRevision = this.viewRevision.revision.value
+    const descriptors = compileToDescriptors([...schemas], this.context.defaultProps)
+
+    this.commitChildren(this.root as ContainerFiber<TValues>, descriptors)
+
+    if (this.viewRevision.revision.value === previousRevision) {
+      this.viewRevision.bump()
+    }
   }
 
   /**

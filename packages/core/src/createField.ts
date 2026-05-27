@@ -206,40 +206,73 @@ export function createField<
   form: SchemxInstance<TValues, TName, TValue>,
   name: TName
 ): SchemxFieldInstance<TValues, TName, TValue> {
+  /**
+   * 从表单实例读取当前字段值。
+   */
   const getValue = (): TValue | undefined => form.getFieldValue(name)
 
+  /**
+   * 将当前字段值写回表单实例。
+   */
   const setValue = (value: TValue): void => {
     form.setFieldValue(name, value)
   }
 
+  /**
+   * 读取当前字段的初始值 baseline。
+   */
   const getInitialValue = (): TValue | undefined => {
     return form.getInitialValue(name)
   }
 
+  /**
+   * 以字段路径构造局部 initialValues 并交给表单合并。
+   */
   const setInitialValue = (value: TValue): void => {
     const result = {}
     setByPath(result, name, value)
     form.setInitialValues(result)
   }
 
+  /**
+   * 读取表单当前响应式值。
+   */
   const getValues = (): Readonly<TValues> => form.getFieldsValue()
 
+  /**
+   * 读取表单当前无追踪快照。
+   */
   const getSnapshot = (): TValues => form.getFieldsSnapshot()
 
+  /**
+   * 触发当前字段校验。
+   */
   const validate = (): Promise<ValidateResult<TValues>> => {
     return form.validateField(name)
   }
 
+  /**
+   * 读取当前字段错误信息。
+   */
   const getError = (): string[] | undefined => form.getFieldError(name)
 
+  /**
+   * 写入当前字段错误信息。
+   */
   const setError = (errors: string[]): void => {
     form.setFieldError(name, errors)
   }
 
+  /**
+   * 清空当前字段错误信息。
+   */
   const clearError = (): void => {
     form.setFieldError(name, [])
   }
 
+  /**
+   * 为当前字段注册校验规则。
+   */
   const registerRules = (
     rules: SchemxRules | SchemxRules[],
     defaultMessage?: string
@@ -247,22 +280,40 @@ export function createField<
     form.registerRules(name, rules, defaultMessage)
   }
 
+  /**
+   * 注销当前字段的校验规则。
+   */
   const unregisterRules = (): void => {
     form.unregisterRules(name)
   }
 
+  /**
+   * 判断当前字段是否被触碰或修改。
+   */
   const isTouched = (): boolean => form.isFieldTouched(name) ?? false
 
+  /**
+   * 将当前字段重置到初始值。
+   */
   const reset = (): void => {
     form.resetFields([name])
   }
 
+  /**
+   * 设置当前字段 pending 状态。
+   */
   const setPending = (pending: boolean, _message?: string): void => {
     form.setFieldPending(name, pending)
   }
 
+  /**
+   * 判断当前字段是否处于 pending 状态。
+   */
   const isPending = (): boolean => form.isFieldPending(name) ?? false
 
+  /**
+   * 创建依赖当前字段读取的响应式副作用。
+   */
   const effect = (fn: () => void): (() => void) => {
     return form.effect(fn)
   }

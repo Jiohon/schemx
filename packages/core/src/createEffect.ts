@@ -75,6 +75,9 @@ export function createEffect(callback: EffectCallback): CreateEffectReturn {
   let cleanup: CleanupFn | undefined
   let disposed = false
 
+  /**
+   * 执行 effect 回调，并在重新执行前释放上一轮 cleanup。
+   */
   const dispose = createSignalEffect(() => {
     cleanup?.()
     cleanup = undefined
@@ -85,11 +88,16 @@ export function createEffect(callback: EffectCallback): CreateEffectReturn {
     }
   })
 
-  return () => {
+  /**
+   * 释放 effect 与最后一次 cleanup；多次调用只执行一次。
+   */
+  const api = (): void => {
     if (disposed) return
     disposed = true
     dispose()
     cleanup?.()
     cleanup = undefined
   }
+
+  return api
 }

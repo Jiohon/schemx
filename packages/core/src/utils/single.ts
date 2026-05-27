@@ -31,35 +31,44 @@ export function createStrictSingleton<T, Args extends any[] = []>(
   let instance: T | undefined
   let initialized = false
 
+  /**
+   * 返回当前单例；首次调用时执行外部 factory。
+   */
+  const getInstance = (...args: Args): T => {
+    if (!initialized) {
+      instance = factory(...args)
+
+      if (instance == null) {
+        throw new Error("[Singleton] factory 不能返回 null 或 undefined")
+      }
+
+      initialized = true
+    }
+
+    return instance as T
+  }
+
+  /**
+   * 重置单例状态；生产环境只告警并跳过。
+   */
+  const reset = (): void => {
+    try {
+      // @ts-expect-error Ignore
+      if (typeof process !== "undefined" && process.env?.NODE_ENV === "production") {
+        console.warn("[Singleton] reset() 不应在生产环境调用")
+
+        return
+      }
+    } catch {
+      /* 环境不支持时优雅降级 */
+    }
+
+    instance = undefined
+    initialized = false
+  }
+
   return Object.freeze({
-    getInstance(...args: Args): T {
-      if (!initialized) {
-        instance = factory(...args)
-
-        if (instance == null) {
-          throw new Error("[Singleton] factory 不能返回 null 或 undefined")
-        }
-
-        initialized = true
-      }
-
-      return instance as T
-    },
-
-    /** 重置单例，仅测试环境可用 */
-    reset() {
-      try {
-        if (typeof process !== "undefined" && process.env?.NODE_ENV === "production") {
-          console.warn("[Singleton] reset() 不应在生产环境调用")
-
-          return
-        }
-      } catch {
-        /* 环境不支持时优雅降级 */
-      }
-
-      instance = undefined
-      initialized = false
-    },
+    getInstance,
+    reset,
   })
 }

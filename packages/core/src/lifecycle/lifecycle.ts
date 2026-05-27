@@ -198,6 +198,9 @@ export function createLifecycleBus<TNode, TDescriptor>(
     listeners.add(initialListener)
   }
 
+  /**
+   * 按监听器快照分发生命周期事件。
+   */
   const emit = <TArgs extends unknown[]>(
     run: (listener: LifecycleListener<TNode, TDescriptor>, ...args: TArgs) => void,
     ...args: TArgs

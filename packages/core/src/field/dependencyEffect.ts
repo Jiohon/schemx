@@ -74,16 +74,24 @@ export function createDependencyEffect<TValues extends Values = Values>(
   const version = createSignal(0)
   const abortController = createSignal<AbortController | null>(null)
 
-  const slot: DependencyEffectSlot = {
+  /**
+   * 挂载前的空 run，占位以保持 slot 接口稳定。
+   */
+  const run = async (): Promise<void> => undefined
+
+  /**
+   * 挂载前的空 dispose，占位以保持 slot 接口稳定。
+   */
+  const dispose = (): void => undefined
+
+  return {
     loading,
     error,
     version,
     abortController,
-    run: async () => undefined,
-    dispose: () => undefined,
+    run,
+    dispose,
   }
-
-  return slot
 }
 
 /**

@@ -10,6 +10,7 @@
 import fc from "fast-check"
 import { describe, expect, it, vi } from "vitest"
 
+import { createSchemas } from "../createSchemas"
 import { createForm } from "../createForm"
 
 describe("CreateFormInstance 属性测试", () => {
@@ -678,5 +679,41 @@ describe("动态 schemas", () => {
 
     unsubscribe()
     form.destroy()
+  })
+
+  it("接收 createSchemas 返回的 schema source 并响应外部更新", () => {
+    const schemas = createSchemas([
+      { name: "name", label: "姓名", componentType: "input" },
+    ])
+    const form = createForm({
+      schemas,
+    })
+
+    schemas.update((current) => [
+      ...current,
+      { name: "email", label: "邮箱", componentType: "input" },
+    ])
+
+    expect(form.getViewSchemas()).toHaveLength(2)
+    expect(form.getViewSchemas()[1]).toMatchObject({
+      name: "email",
+      label: "邮箱",
+    })
+
+    form.destroy()
+  })
+
+  it("destroy 后取消 schema source 订阅", () => {
+    const schemas = createSchemas([
+      { name: "name", label: "姓名", componentType: "input" },
+    ])
+    const form = createForm({
+      schemas,
+    })
+
+    form.destroy()
+    schemas.set([{ name: "email", label: "邮箱", componentType: "input" }])
+
+    expect(form.getViewSchemas()).toEqual([])
   })
 })

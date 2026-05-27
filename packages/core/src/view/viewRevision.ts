@@ -34,6 +34,9 @@ export interface ViewRevision {
 export function createViewRevision(): ViewRevision {
   const revision = createSignal(0)
 
+  /**
+   * 推进视图结构版本，触发依赖 revision 的视图订阅重新计算。
+   */
   const bump = (): void => {
     revision.value += 1
   }

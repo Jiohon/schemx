@@ -23,7 +23,13 @@ export {
 
 export { createForm, type CreateFormOptions } from "./createForm"
 export { createForm as createFormInstance } from "./createForm"
-export { defineSchemas, type DefineSchemasApi } from "./defineSchemas"
+export {
+  createSchemas,
+  isSchemxSchemas,
+  type SchemxSchemas,
+  type SchemxSchemasInput,
+  type SchemxSchemasListener,
+} from "./createSchemas"
 
 export {
   createLifecycle,

@@ -95,7 +95,10 @@ export function createValidationEffect<TValues extends Values = Values>(
   const validating = createSignal(false)
   let registrationVersion = 0
 
-  function readValidationProps(): ValidationRegistrationSnapshot {
+  /**
+   * 读取参与规则注册决策的响应式字段呈现态。
+   */
+  const readValidationProps = (): ValidationRegistrationSnapshot => {
     return {
       visible: fieldModel.visible.value,
       readonly: fieldModel.readonly.value,
@@ -105,6 +108,9 @@ export function createValidationEffect<TValues extends Values = Values>(
     }
   }
 
+  /**
+   * 根据当前字段呈现态注册或注销校验规则。
+   */
   const applyRegistration = (snapshot: ValidationRegistrationSnapshot): void => {
     const { visible, readonly, disabled, label, rules } = snapshot
 
@@ -127,6 +133,9 @@ export function createValidationEffect<TValues extends Values = Values>(
     registered.value = true
   }
 
+  /**
+   * 将规则注册延后到 post 队列，避免与字段呈现态更新竞争。
+   */
   const scheduleRegistration = (snapshot: ValidationRegistrationSnapshot): void => {
     const currentVersion = ++registrationVersion
 
@@ -158,7 +167,10 @@ export function createValidationEffect<TValues extends Values = Values>(
 
   scope.add(disposeEffect)
 
-  const validate = async () => {
+  /**
+   * 执行当前字段校验并维护 validating 状态。
+   */
+  const validate = async (): Promise<ValidateResult<TValues>> => {
     validating.value = true
 
     try {
@@ -173,6 +185,9 @@ export function createValidationEffect<TValues extends Values = Values>(
     }
   }
 
+  /**
+   * 释放校验 effect 持有的资源作用域。
+   */
   const dispose = (): void => {
     scope.dispose()
   }

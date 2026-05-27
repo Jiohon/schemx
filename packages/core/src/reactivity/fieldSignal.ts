@@ -185,29 +185,47 @@ export function createFieldSignal<TValue>(
   const touchedSignal = createSignal(touched ?? false)
   const pendingSignal = createSignal(pending ?? false)
 
-  const setValue = (next: TValue | undefined) => {
+  /**
+   * 写入字段当前值 signal。
+   */
+  const setValue = (next: TValue | undefined): void => {
     valueSignal.value = next
   }
 
-  const setInitialValue = (next: TValue | undefined) => {
+  /**
+   * 写入字段初始值 baseline signal。
+   */
+  const setInitialValue = (next: TValue | undefined): void => {
     initialSignal.value = next
   }
 
-  const setTouched = (next: boolean) => {
+  /**
+   * 写入字段 touched signal。
+   */
+  const setTouched = (next: boolean): void => {
     touchedSignal.value = next
   }
 
-  const setPending = (next: boolean) => {
+  /**
+   * 写入字段 pending signal。
+   */
+  const setPending = (next: boolean): void => {
     pendingSignal.value = next
   }
 
-  const reset = (next = initialSignal.peek()) => {
+  /**
+   * 将字段状态重置到指定值或当前 baseline。
+   */
+  const reset = (next = initialSignal.peek()): void => {
     valueSignal.value = cloneDeep(next)
     touchedSignal.value = false
     pendingSignal.value = false
   }
 
-  const peek = () => {
+  /**
+   * 读取字段状态的无追踪快照。
+   */
+  const peek = (): FieldSignalSnapshot<TValue> => {
     return {
       value: valueSignal.peek(),
       initialValue: initialSignal.peek(),

@@ -87,6 +87,9 @@ export function createScope(): Scope {
   const cleanupRecords: ScopeCleanupRecord[] = []
   const childScopes: Scope[] = []
 
+  /**
+   * 注册释放函数。
+   */
   const add = (cleanup: ScopeCleanup): ScopeCleanupHandle => {
     if (disposed) {
       // 已释放的 scope 不再持有新资源，直接执行 cleanup 保持调用方语义稳定。
@@ -102,6 +105,9 @@ export function createScope(): Scope {
     }
     cleanupRecords.push(record)
 
+    /**
+     * 立即释放当前 cleanup 记录并从 scope 中移除。
+     */
     const disposeCleanup = (): void => {
       if (record.disposed) {
         return
@@ -120,6 +126,9 @@ export function createScope(): Scope {
     }
   }
 
+  /**
+   * 创建子 scope。
+   */
   const child = (): Scope => {
     const childScope = createScope()
     childScopes.push(childScope)
@@ -133,6 +142,9 @@ export function createScope(): Scope {
     return childScope
   }
 
+  /**
+   * 释放当前 scope 及所有子 scope。
+   */
   const disposeScope = (): void => {
     if (disposed) {
       return

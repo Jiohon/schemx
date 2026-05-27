@@ -60,6 +60,7 @@ class RuntimeReconciler<TValues extends Values> {
       fiber: GroupFiber<TValues>
       descriptor: FormDescriptor<TValues>
     }> = []
+
     let changed = false
 
     for (const descriptor of descriptors) {

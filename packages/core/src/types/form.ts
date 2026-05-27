@@ -532,7 +532,7 @@ export interface SchemxInstance<
    *
    * @param schemas - 下一版 root schema 列表
    */
-  setSchemas: (schemas: SchemxField<TValues>[]) => void
+  setSchemas: (schemas: readonly SchemxField<TValues>[]) => void
 
   /**
    * 基于当前 root schemas 派生下一版 schemas。
@@ -540,7 +540,7 @@ export interface SchemxInstance<
    * @param updater - 接收当前 schemas 并返回下一版 schemas 的函数
    */
   updateSchemas: (
-    updater: (schemas: readonly SchemxField<TValues>[]) => SchemxField<TValues>[]
+    updater: (schemas: readonly SchemxField<TValues>[]) => readonly SchemxField<TValues>[]
   ) => void
 
   /**

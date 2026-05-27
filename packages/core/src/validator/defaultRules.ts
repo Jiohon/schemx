@@ -31,21 +31,20 @@ import type { SchemxBaseField, StandardSchemaV1, Values } from "../types"
 export function createRequiredRule<TValues extends Values = Values>(
   schema?: SchemxBaseField<TValues>
 ): StandardSchemaV1<unknown, unknown> {
-  return {
-    "~standard": {
-      version: 1,
-      vendor: "schemx",
-      validate(value: unknown): StandardSchemaV1.Result<unknown> {
-        if (value === undefined || value === null || value === "") {
-          const label = schema?.label ?? ""
+  /**
+   * 校验空值并返回 Standard Schema v1 结果。
+   */
+  const validate = (value: unknown): StandardSchemaV1.Result<unknown> => {
+    if (value === undefined || value === null || value === "") {
+      const label = schema?.label ?? ""
 
-          return { issues: [{ message: label ? `请输入${label}` : "此项为必填项" }] }
-        }
+      return standardIssueResult(label ? `请输入${label}` : "此项为必填项")
+    }
 
-        return { value }
-      },
-    },
+    return standardValueResult(value)
   }
+
+  return buildStandardSchema(validate)
 }
 
 /**
@@ -73,26 +72,25 @@ export function createRequiredRule<TValues extends Values = Values>(
 export function createSelectRequiredRule<TValues extends Values = Values>(
   schema?: SchemxBaseField<TValues>
 ): StandardSchemaV1 {
-  return {
-    "~standard": {
-      version: 1,
-      vendor: "schemx",
-      validate(value: unknown): StandardSchemaV1.Result<unknown> {
-        if (
-          value === undefined ||
-          value === null ||
-          value === "" ||
-          (Array.isArray(value) && value.length === 0)
-        ) {
-          const label = schema?.label ?? ""
+  /**
+   * 校验选择类空值并返回 Standard Schema v1 结果。
+   */
+  const validate = (value: unknown): StandardSchemaV1.Result<unknown> => {
+    if (
+      value === undefined ||
+      value === null ||
+      value === "" ||
+      (Array.isArray(value) && value.length === 0)
+    ) {
+      const label = schema?.label ?? ""
 
-          return { issues: [{ message: label ? `请选择${label}` : "此项为必选项" }] }
-        }
+      return standardIssueResult(label ? `请选择${label}` : "此项为必选项")
+    }
 
-        return { value }
-      },
-    },
+    return standardValueResult(value)
   }
+
+  return buildStandardSchema(validate)
 }
 
 /**
@@ -118,23 +116,44 @@ export function createSelectRequiredRule<TValues extends Values = Values>(
 export function createUploadRequiredRule<TValues extends Values = Values>(
   schema?: SchemxBaseField<TValues>
 ): StandardSchemaV1<unknown, unknown> {
+  /**
+   * 校验上传类空值并返回 Standard Schema v1 结果。
+   */
+  const validate = (value: unknown): StandardSchemaV1.Result<unknown> => {
+    if (
+      value === undefined ||
+      value === null ||
+      (Array.isArray(value) && value.length === 0)
+    ) {
+      const label = schema?.label ?? ""
+
+      return standardIssueResult(label ? `请上传${label}` : "此项为必传项")
+    }
+
+    return standardValueResult(value)
+  }
+
+  return buildStandardSchema(validate)
+}
+
+const buildStandardSchema = (
+  validate: StandardSchemaV1.Props["validate"]
+): StandardSchemaV1<unknown, unknown> => {
   return {
     "~standard": {
       version: 1,
       vendor: "schemx",
-      validate(value: unknown): StandardSchemaV1.Result<unknown> {
-        if (
-          value === undefined ||
-          value === null ||
-          (Array.isArray(value) && value.length === 0)
-        ) {
-          const label = schema?.label ?? ""
-
-          return { issues: [{ message: label ? `请上传${label}` : "此项为必传项" }] }
-        }
-
-        return { value }
-      },
+      validate,
     },
   }
+}
+
+const standardIssueResult = (message: string): StandardSchemaV1.Result<unknown> => {
+  return {
+    issues: [{ message }],
+  }
+}
+
+const standardValueResult = (value: unknown): StandardSchemaV1.Result<unknown> => {
+  return { value }
 }
