@@ -88,11 +88,11 @@ export {
 } from "./utils"
 
 export type {
-  Value,
+  FieldValue,
   Values,
   Dynamic,
   NamePath,
-  PathValue,
+  FieldValue,
   DeepReadonly,
   CSSProperties,
   ValidationTrigger,

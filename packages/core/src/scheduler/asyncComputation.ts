@@ -10,7 +10,7 @@ import { createSignal } from "../reactivity"
 
 import type { Scope } from "../graph"
 import type { Signal } from "../reactivity"
-import type { NamePath, PathValue, Values } from "../types"
+import type { NamePath, FieldValue, Values } from "../types"
 import type { Scheduler } from "./scheduler"
 
 /**
@@ -57,12 +57,12 @@ export interface AsyncComputation<TValue> {
  *
  * @typeParam TValues - 表单值类型
  * @typeParam TName - 字段 name path
- * @typeParam TValue - 计算结果类型（默认由 PathValue 推导）
+ * @typeParam TValue - 计算结果类型（默认由 FieldValue 推导）
  */
 export interface AsyncComputationOptions<
   TValues extends Values = Values,
   TName extends NamePath<TValues> = NamePath<TValues>,
-  TValue = PathValue<TValues, TName>,
+  TValue = FieldValue<TValues, TName>,
 > {
   /**
    * 计算标识。
@@ -98,7 +98,7 @@ export interface AsyncComputationOptions<
  *
  * @typeParam TValues - 表单值类型
  * @typeParam TName - 字段 name path
- * @typeParam TValue - 计算结果类型（默认由 PathValue 推导）
+ * @typeParam TValue - 计算结果类型（默认由 FieldValue 推导）
  * @param options - 配置选项
  * @returns 新创建的 AsyncComputation
  *
@@ -122,7 +122,7 @@ export interface AsyncComputationOptions<
 export function createAsyncComputation<
   TValues extends Values = Values,
   TName extends NamePath<TValues> = NamePath<TValues>,
-  TValue = PathValue<TValues, TName>,
+  TValue = FieldValue<TValues, TName>,
 >(options: AsyncComputationOptions<TValues, TName, TValue>): AsyncComputation<TValue> {
   const value = createSignal<TValue>(options.initialValue)
   const loading = createSignal(false)

@@ -23,7 +23,7 @@
 
 import { get, set } from "es-toolkit/compat"
 
-import type { NamePath, PathValue, Values } from "../types"
+import type { NamePath, FieldValue, Values } from "../types"
 
 type RuntimePath = string | number | readonly (string | number)[]
 
@@ -37,7 +37,7 @@ type RuntimePath = string | number | readonly (string | number)[]
 export function getByPath<
   TValues extends Values = Values,
   TName extends NamePath<TValues> = NamePath<TValues>,
-  TValue = PathValue<TValues, TName>,
+  TValue = FieldValue<TValues, TName>,
 >(obj: Partial<TValues>, path: TName): TValue | undefined {
   if (path === "" || (Array.isArray(path) && path.length === 0)) {
     return obj as unknown as TValue
@@ -56,7 +56,7 @@ export function getByPath<
 export function setByPath<
   TValues extends Values = Values,
   TName extends NamePath<TValues> = NamePath<TValues>,
-  TValue = PathValue<TValues, TName>,
+  TValue = FieldValue<TValues, TName>,
 >(obj: Partial<TValues>, path: TName, value: TValue): void {
   if (obj == null) return
 

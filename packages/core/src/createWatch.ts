@@ -48,14 +48,17 @@ import { isEqual } from "es-toolkit/compat"
 
 import { collectObjectPathsByLeaf, diff } from "./utils"
 
-import type { NamePath, SchemxInstance, Value, Values } from "./types"
+import type { NamePath, FieldValue, SchemxInstance, Values } from "./types"
 
 /** 单字段订阅回调的载荷 */
-type FieldPayload = {
+type FieldPayload<
+  TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+> = {
   /** 变更后的字段值 */
-  value: Value
+  value: FieldValue<TValues, TName> | undefined
   /** 变更前的字段值 */
-  prevValue: Value
+  prevValue: FieldValue<TValues, TName> | undefined
 }
 
 /** 多字段订阅回调的载荷 */
@@ -96,7 +99,10 @@ type BaseSubscribeCallback<TValues, P> = (payload: P, latestSnapshot: TValues) =
  *
  * payload 包含目标字段的新旧值，第二个参数是最新表单快照。
  */
-export type WatchFieldCallback<TValues> = BaseSubscribeCallback<TValues, FieldPayload>
+export type WatchFieldCallback<
+  TValues extends Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+> = BaseSubscribeCallback<TValues, FieldPayload<TValues, TName>>
 
 /**
  * 多字段订阅回调类型。
@@ -173,10 +179,11 @@ export const createWatchField = <
 >(
   form: SchemxInstance<TValues>,
   name: TName,
-  callback: WatchFieldCallback<TValues>,
+  callback: WatchFieldCallback<TValues, TName>,
   options: CreateWatchOptions
 ): CreateWatchReturn => {
-  let prev: Value = form.getFieldSnapshot(name)
+  let prev = form.getFieldSnapshot(name)
+
   let isFirst = true
 
   const dispose = form.effect(() => {
@@ -363,7 +370,7 @@ export function createWatch<
 >(
   form: SchemxInstance<TValues>,
   name: TName,
-  callback: WatchFieldCallback<TValues>,
+  callback: WatchFieldCallback<TValues, TName>,
   options?: CreateWatchOptions
 ): CreateWatchReturn
 /**
@@ -414,7 +421,7 @@ export function createWatch<
     return createWatchField<TValues, TName>(
       form,
       nameOrNamesOrCallback as TName,
-      callbackOrOptions as WatchFieldCallback<TValues>,
+      callbackOrOptions as WatchFieldCallback<TValues, TName>,
       maybeOptions || {}
     )
   }

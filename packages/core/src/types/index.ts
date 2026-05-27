@@ -5,7 +5,7 @@
  */
 
 export type {
-  Value,
+  FieldValue,
   Values,
   Dynamic,
   NamePath,
@@ -52,7 +52,7 @@ export type {
 
 export type {
   DeepNamePath,
-  PathValue,
+  FieldValue,
   PathValueByArray,
   PathValueByString,
 } from "./namePathType"

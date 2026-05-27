@@ -24,11 +24,14 @@ import type { ValidateError, ValidateResult } from "../validator"
 import type { SchemxViewSchema } from "../view"
 
 /**
- * 单个字段值类型。
+ * 字段值类型。
  *
  * core 不限制具体值形态，校验和渲染器负责解释该值。
  */
-export type Value = unknown
+export type FieldValue<
+  TValues extends Values,
+  TName extends NamePath<TValues>,
+> = PathValue<TValues, TName>
 
 /**
  * 表单值对象类型。
@@ -148,11 +151,7 @@ export interface SchemxProps<T extends Values = Values> {
  *
  * @typeParam T - 表单值类型，默认为 Values
  */
-export interface SchemxInstance<
-  TValues extends Values = Values,
-  TName extends NamePath<TValues> = NamePath<TValues>,
-  TValue = PathValue<TValues, TName>,
-> {
+export interface SchemxInstance<TValues extends Values = Values> {
   /**
    * 获取单个字段的当前值
    *
@@ -167,7 +166,9 @@ export interface SchemxInstance<
    * const city = form.getFieldValue('user.address.city')
    * ```
    */
-  getFieldValue: (name: TName) => TValue | undefined
+  getFieldValue<TName extends NamePath<TValues>>(
+    name: TName
+  ): FieldValue<TValues, TName> | undefined
 
   /**
    * 获取多个字段值
@@ -185,8 +186,8 @@ export interface SchemxInstance<
    */
   getFieldsValue: {
     (): TValues
-    (names: TName[]): TValues
-    (names?: TName[]): Partial<TValues>
+    <TName extends NamePath<TValues>>(names: TName[]): Partial<TValues>
+    <TName extends NamePath<TValues>>(names?: TName[]): Partial<TValues>
   }
 
   /**
@@ -203,7 +204,10 @@ export interface SchemxInstance<
    * form.setFieldValue('user.address.city', 'Beijing')
    * ```
    */
-  setFieldValue: (name: TName, value: TValue | undefined) => void
+  setFieldValue<TName extends NamePath<TValues>>(
+    name: TName,
+    value: FieldValue<TValues, TName> | undefined
+  ): void
 
   /**
    * 批量设置字段值并通知订阅者
@@ -232,7 +236,9 @@ export interface SchemxInstance<
    * const name = form.getFieldSnapshot('name') // => 'John'（深拷贝）
    * ```
    */
-  getFieldSnapshot: (name: TName) => TValue | undefined
+  getFieldSnapshot<TName extends NamePath<TValues>>(
+    name: TName
+  ): FieldValue<TValues, TName> | undefined
 
   /**
    * 获取当前表单值的快照
@@ -250,8 +256,8 @@ export interface SchemxInstance<
    */
   getFieldsSnapshot: {
     (): TValues
-    (paths: TName[]): TValues
-    (paths?: TName[]): Partial<TValues>
+    <TName extends NamePath<TValues>>(paths: TName[]): Partial<TValues>
+    <TName extends NamePath<TValues>>(paths?: TName[]): Partial<TValues>
   }
 
   /**
@@ -267,7 +273,9 @@ export interface SchemxInstance<
    * form.getInitialValue('name') // => 'John'
    * ```
    */
-  getInitialValue: (name: TName) => TValue | undefined
+  getInitialValue<TName extends NamePath<TValues>>(
+    name: TName
+  ): FieldValue<TValues, TName> | undefined
 
   /**
    * 获取表单初始值。
@@ -285,8 +293,8 @@ export interface SchemxInstance<
    */
   getInitialValues: {
     (): Partial<TValues>
-    (paths: TName[]): Partial<TValues>
-    (paths?: TName[]): Partial<TValues>
+    <TName extends NamePath<TValues>>(paths: TName[]): Partial<TValues>
+    <TName extends NamePath<TValues>>(paths?: TName[]): Partial<TValues>
   }
 
   /**
@@ -314,7 +322,7 @@ export interface SchemxInstance<
    * form.isFieldTouched('name') // => true
    * ```
    */
-  isFieldTouched: (name: TName) => boolean
+  isFieldTouched<TName extends NamePath<TValues>>(name: TName): boolean
 
   /**
    * 设置个字段被修改
@@ -329,7 +337,7 @@ export interface SchemxInstance<
    * form.setFieldTouched('name', false)
    * ```
    */
-  setFieldTouched: (name: TName, value: boolean) => void
+  setFieldTouched<TName extends NamePath<TValues>>(name: TName, value: boolean): void
 
   /**
    * 获取所有被修改的字段路径
@@ -342,7 +350,7 @@ export interface SchemxInstance<
    * // => ['name', 'user.address.city']
    * ```
    */
-  getTouchedFields: () => TName[]
+  getTouchedFields: () => NamePath<TValues>[]
 
   /**
    * 设置字段的操作中状态
@@ -358,7 +366,7 @@ export interface SchemxInstance<
    * form.setFieldPending('avatar', false)  // 上传结束
    * ```
    */
-  setFieldPending: (name: TName, pending: boolean) => void
+  setFieldPending<TName extends NamePath<TValues>>(name: TName, pending: boolean): void
 
   /**
    * 检查单个字段是否处于操作中
@@ -373,7 +381,7 @@ export interface SchemxInstance<
    * form.isFieldPending('avatar') // => true
    * ```
    */
-  isFieldPending: (name: TName) => boolean
+  isFieldPending<TName extends NamePath<TValues>>(name: TName): boolean
 
   /**
    * 获取所有处于操作中的字段信息
@@ -388,7 +396,7 @@ export interface SchemxInstance<
    * // => [{ field: 'avatar' }, { field: 'attachment' }]
    * ```
    */
-  getPendingFields: () => StorePending<TValues, TName>[]
+  getPendingFields: () => StorePending<TValues, NamePath<TValues>>[]
 
   /**
    * 重置指定字段到初始值
@@ -400,7 +408,7 @@ export interface SchemxInstance<
    * form.resetFields(['name', 'email'])
    * ```
    */
-  resetFields: (names: TName[]) => void
+  resetFields<TName extends NamePath<TValues>>(names: TName[]): void
 
   /**
    * 重置整个表单到初始值
@@ -429,7 +437,9 @@ export interface SchemxInstance<
    * }
    * ```
    */
-  validateField: (names: TName) => Promise<ValidateResult<TValues>>
+  validateField<TName extends NamePath<TValues>>(
+    names: TName
+  ): Promise<ValidateResult<TValues>>
 
   /**
    * 校验所有已注册字段
@@ -458,7 +468,7 @@ export interface SchemxInstance<
    * // => ['邮箱格式错误'] 或 undefined
    * ```
    */
-  getFieldError: (name: TName) => string[] | undefined
+  getFieldError<TName extends NamePath<TValues>>(name: TName): string[] | undefined
 
   /**
    * 手动设置字段的错误信息
@@ -471,7 +481,7 @@ export interface SchemxInstance<
    * form.setFieldError('username', ['用户名已存在'])
    * ```
    */
-  setFieldError: (name: TName, errors: string[]) => void
+  setFieldError<TName extends NamePath<TValues>>(name: TName, errors: string[]): void
 
   /**
    * 提交表单
@@ -690,7 +700,7 @@ export interface SchemxInstance<
    * form.registerRules('name', nameSchema, '请输入姓名')
    * ```
    */
-  registerRules: (
+  registerRules: <TName extends NamePath<TValues>>(
     name: TName,
     rules: SchemxRules | SchemxRules[],
     defaultMessage?: string
@@ -708,7 +718,7 @@ export interface SchemxInstance<
    * form.unregisterRules('email')
    * ```
    */
-  unregisterRules: (name: TName) => void
+  unregisterRules: <TName extends NamePath<TValues>>(name: TName) => void
 
   /**
    * 销毁表单实例
@@ -740,18 +750,17 @@ export interface SchemxGlobalContext extends Pick<
  *
  * @typeParam TValues - 表单值类型
  */
-export interface SchemxFormApi<
-  TValues extends Values = Values,
-  TName extends NamePath<TValues> = NamePath<TValues>,
-  TValue = PathValue<TValues, TName>,
-> {
+export interface SchemxFormApi<TValues extends Values = Values> {
   /**
    * 设置字段值。
    *
    * @param name - 字段路径
    * @param value - 新值
    */
-  setValue(name: TName, value: unknown): void
+  setValue<TName extends NamePath<TValues>>(
+    name: TName,
+    value: FieldValue<TValues, TName> | undefined
+  ): void
 
   /**
    * 设置多个字段值。
@@ -766,7 +775,9 @@ export interface SchemxFormApi<
    * @param name - 字段路径
    * @returns 字段当前值；字段不存在时返回 undefined。
    */
-  getValue(name: TName): TValue | undefined
+  getValue<TName extends NamePath<TValues>>(
+    name: TName
+  ): FieldValue<TValues, TName> | undefined
 
   /**
    * 获取多个字段值。
@@ -775,7 +786,7 @@ export interface SchemxFormApi<
    * @returns 字段值快照对象。
    */
   getValues(): TValues
-  getValues(name?: TName[]): Partial<TValues>
+  getValues<TName extends NamePath<TValues>>(name?: TName[]): Partial<TValues>
 
   /**
    * 获取当前表单值的快照
@@ -783,7 +794,7 @@ export interface SchemxFormApi<
    * @param names - 可选的字段路径数组；不传时返回全部字段快照。
    * @returns 当前字段值快照对象。
    */
-  getSnapshots(names?: TName[]): Partial<TValues>
+  getSnapshots<TName extends NamePath<TValues>>(names?: TName[]): Partial<TValues>
 
   /**
    * 重置指定字段到初始值
@@ -795,7 +806,7 @@ export interface SchemxFormApi<
    * form.resetFields(['name', 'email'])
    * ```
    */
-  resetFields: (names: TName[]) => void
+  resetFields<TName extends NamePath<TValues>>(names: TName[]): void
 
   /**
    * 重置整个表单到初始值
@@ -813,7 +824,7 @@ export interface SchemxFormApi<
    * @param name - 字段路径
    * @param pending - 是否处于操作中
    */
-  setPending: (name: TName, pending: boolean) => void
+  setPending<TName extends NamePath<TValues>>(name: TName, pending: boolean): void
 
   /**
    * 检查单个字段是否处于操作中
@@ -824,7 +835,7 @@ export interface SchemxFormApi<
    * @returns 是否处于操作中
    *
    */
-  isPending: (name: TName) => boolean
+  isPending<TName extends NamePath<TValues>>(name: TName): boolean
 
   /**
    * 设置字段是否已被触摸。
@@ -832,7 +843,7 @@ export interface SchemxFormApi<
    * @param name - 字段路径
    * @param value - 值
    */
-  setTouched(name: TName, value: boolean): void
+  setTouched<TName extends NamePath<TValues>>(name: TName, value: boolean): void
 
   /**
    * 检查字段是否已被触摸。
@@ -840,7 +851,7 @@ export interface SchemxFormApi<
    * @param name - 字段路径
    * @returns 是否已被触摸
    */
-  isTouched(name: TName): boolean
+  isTouched<TName extends NamePath<TValues>>(name: TName): boolean
 
   /**
    * 校验单个字段。
@@ -848,7 +859,9 @@ export interface SchemxFormApi<
    * @param name - 字段路径
    * @returns 校验结果
    */
-  validateField(name: TName): Promise<ValidateResult<TValues>>
+  validateField<TName extends NamePath<TValues>>(
+    name: TName
+  ): Promise<ValidateResult<TValues>>
 
   /**
    * 校验所有字段。
@@ -863,7 +876,7 @@ export interface SchemxFormApi<
    * @param name - 字段路径
    * @param errors - 错误信息数组
    */
-  setError(name: TName, errors: string[]): void
+  setError<TName extends NamePath<TValues>>(name: TName, errors: string[]): void
 
   /**
    * 获取字段错误列表。
@@ -871,5 +884,5 @@ export interface SchemxFormApi<
    * @param name - 字段路径
    * @returns 错误消息数组
    */
-  getError(name: TName): string[] | undefined
+  getError<TName extends NamePath<TValues>>(name: TName): string[] | undefined
 }

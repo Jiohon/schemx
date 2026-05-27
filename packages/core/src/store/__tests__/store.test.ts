@@ -1,10 +1,10 @@
 /**
- * FormStore 单元测试
+ * Store 单元测试
  *
- * 覆盖 FormStore 的所有公开 API：
+ * 覆盖 Store 的所有公开 API：
  * 构造、getFieldValue、setFieldValue、getFieldsValue、setFieldsValue、
- * getFieldsSnapshot、getInitialValues、setInitialValues、
- * isFieldTouched、isFieldsTouched、getTouchedFields、reset、resetField。
+ * getFieldSnapshot、getFieldsSnapshot、getInitialValue、getInitialValues、
+ * setInitialValue、setInitialValues、touched/pending 状态、reset、destroy。
  *
  * @module core/store/__tests__/store
  */
@@ -14,7 +14,7 @@ import { isReactive } from "vue"
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import { createFormStore, FormStore } from "../formStore"
+import { createStore } from "../store"
 
 interface TestForm {
   name: string
@@ -33,15 +33,15 @@ interface NestedForm {
   tags: string[]
 }
 
-describe("FormStore", () => {
+describe("Store", () => {
   describe("构造", () => {
     it("无参构造创建空 store", () => {
-      const store = new FormStore()
+      const store = createStore()
       expect(store.getFieldsSnapshot()).toEqual({})
     })
 
     it("使用 initialValues 构造", () => {
-      const store = new FormStore<TestForm>({
+      const store = createStore<TestForm>({
         initialValues: { name: "John", age: 25, email: "j@t.com" },
       })
       expect(store.getFieldValue("name")).toBe("John")
@@ -50,13 +50,13 @@ describe("FormStore", () => {
 
     it("initialValues 深拷贝，外部修改不影响 store", () => {
       const init = { name: "John", age: 25, email: "j@t.com" }
-      const store = new FormStore<TestForm>({ initialValues: init })
+      const store = createStore<TestForm>({ initialValues: init })
       init.name = "Modified"
       expect(store.getFieldValue("name")).toBe("John")
     })
 
-    it("createFormStore 工厂函数", () => {
-      const store = createFormStore<TestForm>({
+    it("createStore 工厂函数", () => {
+      const store = createStore<TestForm>({
         initialValues: { name: "A", age: 1, email: "a@b.com" },
       })
       expect(store.getFieldValue("name")).toBe("A")
@@ -65,7 +65,7 @@ describe("FormStore", () => {
 
   describe("getFieldValue / setFieldValue", () => {
     it("获取和设置基本字段", () => {
-      const store = new FormStore<TestForm>({
+      const store = createStore<TestForm>({
         initialValues: { name: "John", age: 25, email: "j@t.com" },
       })
       store.setFieldValue("name", "Jane")
@@ -73,7 +73,7 @@ describe("FormStore", () => {
     })
 
     it("获取和设置嵌套字段", () => {
-      const store = new FormStore<NestedForm>({
+      const store = createStore<NestedForm>({
         initialValues: {
           user: { name: "John", address: { city: "Beijing", zip: "100000" } },
           tags: ["a"],
@@ -84,7 +84,7 @@ describe("FormStore", () => {
     })
 
     it("获取不存在的字段返回 undefined", () => {
-      const store = new FormStore<TestForm>({
+      const store = createStore<TestForm>({
         initialValues: { name: "John", age: 25, email: "j@t.com" },
       })
       expect(store.getFieldValue("nonexistent" as any)).toBeUndefined()
@@ -93,7 +93,7 @@ describe("FormStore", () => {
 
   describe("getFieldsValue / setFieldsValue", () => {
     it("无参返回全量值", () => {
-      const store = new FormStore<TestForm>({
+      const store = createStore<TestForm>({
         initialValues: { name: "John", age: 25, email: "j@t.com" },
       })
       const values = store.getFieldsValue()
@@ -101,7 +101,7 @@ describe("FormStore", () => {
     })
 
     it("传入路径数组返回指定字段", () => {
-      const store = new FormStore<TestForm>({
+      const store = createStore<TestForm>({
         initialValues: { name: "John", age: 25, email: "j@t.com" },
       })
       const partial = store.getFieldsValue(["name", "age"])
@@ -109,7 +109,7 @@ describe("FormStore", () => {
     })
 
     it("批量设置多个字段", () => {
-      const store = new FormStore<TestForm>({
+      const store = createStore<TestForm>({
         initialValues: { name: "John", age: 25, email: "j@t.com" },
       })
       store.setFieldsValue({ name: "Jane", age: 30 })
@@ -120,8 +120,16 @@ describe("FormStore", () => {
   })
 
   describe("getFieldsSnapshot", () => {
+    it("返回指定字段快照", () => {
+      const store = createStore<TestForm>({
+        initialValues: { name: "John", age: 25, email: "j@t.com" },
+      })
+      store.setFieldValue("name", "Jane")
+      expect(store.getFieldSnapshot("name")).toBe("Jane")
+    })
+
     it("返回原始对象的深拷贝", () => {
-      const store = new FormStore<TestForm>({
+      const store = createStore<TestForm>({
         initialValues: { name: "John", age: 25, email: "j@t.com" },
       })
       const snap1 = store.getFieldsSnapshot()
@@ -131,7 +139,7 @@ describe("FormStore", () => {
     })
 
     it("快照不受后续修改影响", () => {
-      const store = new FormStore<TestForm>({
+      const store = createStore<TestForm>({
         initialValues: { name: "John", age: 25, email: "j@t.com" },
       })
       const snap = store.getFieldsSnapshot()
@@ -140,7 +148,7 @@ describe("FormStore", () => {
     })
 
     it("快照不是 reactive 对象", () => {
-      const store = new FormStore<TestForm>({
+      const store = createStore<TestForm>({
         initialValues: { name: "John", age: 25, email: "j@t.com" },
       })
       const snap = store.getFieldsSnapshot()
@@ -148,9 +156,17 @@ describe("FormStore", () => {
     })
   })
 
-  describe("getInitialValues / setInitialValues", () => {
+  describe("getInitialValue / getInitialValues / setInitialValue / setInitialValues", () => {
+    it("获取指定字段初始值", () => {
+      const store = createStore<TestForm>({
+        initialValues: { name: "John", age: 25, email: "j@t.com" },
+      })
+      expect(store.getInitialValue("name")).toBe("John")
+      expect(store.getInitialValue("missing" as any)).toBeUndefined()
+    })
+
     it("无参返回全量初始值深拷贝", () => {
-      const store = new FormStore<TestForm>({
+      const store = createStore<TestForm>({
         initialValues: { name: "John", age: 25, email: "j@t.com" },
       })
       const init = store.getInitialValues()
@@ -161,15 +177,26 @@ describe("FormStore", () => {
     })
 
     it("传入路径数组返回指定字段初始值", () => {
-      const store = new FormStore<TestForm>({
+      const store = createStore<TestForm>({
         initialValues: { name: "John", age: 25, email: "j@t.com" },
       })
       const partial = store.getInitialValues(["name", "email"])
       expect(partial).toEqual({ name: "John", email: "j@t.com" })
     })
 
+    it("setInitialValue 只更新初始值并重新计算 touched", () => {
+      const store = createStore<TestForm>({
+        initialValues: { name: "John", age: 25, email: "j@t.com" },
+      })
+      store.setFieldValue("name", "Jane")
+      store.setInitialValue("name", "Jane")
+      expect(store.getFieldValue("name")).toBe("Jane")
+      expect(store.getInitialValue("name")).toBe("Jane")
+      expect(store.isFieldTouched("name")).toBe(false)
+    })
+
     it("setInitialValues 批量更新初始值", () => {
-      const store = new FormStore<TestForm>({
+      const store = createStore<TestForm>({
         initialValues: { name: "John", age: 25, email: "j@t.com" },
       })
       store.setInitialValues({ name: "NewDefault", age: 99 })
@@ -180,7 +207,7 @@ describe("FormStore", () => {
     })
 
     it("setInitialValues 空对象不报错", () => {
-      const store = new FormStore<TestForm>({
+      const store = createStore<TestForm>({
         initialValues: { name: "John", age: 25, email: "j@t.com" },
       })
       store.setInitialValues({})
@@ -194,14 +221,14 @@ describe("FormStore", () => {
 
   describe("isFieldTouched / isFieldsTouched / getTouchedFields", () => {
     it("未修改字段返回 false", () => {
-      const store = new FormStore<TestForm>({
+      const store = createStore<TestForm>({
         initialValues: { name: "John", age: 25, email: "j@t.com" },
       })
       expect(store.isFieldTouched("name")).toBe(false)
     })
 
     it("修改后返回 true", () => {
-      const store = new FormStore<TestForm>({
+      const store = createStore<TestForm>({
         initialValues: { name: "John", age: 25, email: "j@t.com" },
       })
       store.setFieldValue("name", "Jane")
@@ -209,7 +236,7 @@ describe("FormStore", () => {
     })
 
     it("设回初始值后返回 false", () => {
-      const store = new FormStore<TestForm>({
+      const store = createStore<TestForm>({
         initialValues: { name: "John", age: 25, email: "j@t.com" },
       })
       store.setFieldValue("name", "Jane")
@@ -218,7 +245,7 @@ describe("FormStore", () => {
     })
 
     it("isFieldsTouched 无参检查任一字段", () => {
-      const store = new FormStore<TestForm>({
+      const store = createStore<TestForm>({
         initialValues: { name: "John", age: 25, email: "j@t.com" },
       })
       expect(store.isFieldsTouched()).toBe(false)
@@ -227,7 +254,7 @@ describe("FormStore", () => {
     })
 
     it("isFieldsTouched 传入路径数组检查所有字段", () => {
-      const store = new FormStore<TestForm>({
+      const store = createStore<TestForm>({
         initialValues: { name: "John", age: 25, email: "j@t.com" },
       })
       store.setFieldValue("name", "Jane")
@@ -238,7 +265,7 @@ describe("FormStore", () => {
     })
 
     it("getTouchedFields 返回所有被修改的路径", () => {
-      const store = new FormStore<TestForm>({
+      const store = createStore<TestForm>({
         initialValues: { name: "John", age: 25, email: "j@t.com" },
       })
       store.setFieldValue("name", "Jane")
@@ -248,11 +275,52 @@ describe("FormStore", () => {
       expect(touched).toContain("email")
       expect(touched).not.toContain("age")
     })
+
+    it("支持显式设置单个和多个字段 touched 状态", () => {
+      const store = createStore<TestForm>({
+        initialValues: { name: "John", age: 25, email: "j@t.com" },
+      })
+      store.setFieldTouched("name", true)
+      store.setFieldsTouched(["age", "email"], true)
+      expect(store.getTouchedFields()).toEqual(["name", "age", "email"])
+
+      store.setFieldsTouched(["name", "email"], false)
+      expect(store.isFieldTouched("name")).toBe(false)
+      expect(store.isFieldTouched("age")).toBe(true)
+      expect(store.isFieldTouched("email")).toBe(false)
+    })
   })
 
-  describe("reset / resetField", () => {
+  describe("pending 状态", () => {
+    it("支持设置和获取单字段 pending 状态", () => {
+      const store = createStore<TestForm>({
+        initialValues: { name: "John", age: 25, email: "j@t.com" },
+      })
+      store.setFieldPending("email", true)
+      expect(store.isFieldPending("email")).toBe(true)
+      expect(store.getPendingFields()).toEqual([{ field: "email" }])
+
+      store.setFieldPending("email", false)
+      expect(store.isFieldPending("email")).toBe(false)
+      expect(store.getPendingFields()).toEqual([])
+    })
+
+    it("isFieldsPending 对传入路径和全量字段使用全字段 pending 判断", () => {
+      const store = createStore<TestForm>({
+        initialValues: { name: "John", age: 25, email: "j@t.com" },
+      })
+      store.setFieldsPending(["name", "age"], true)
+      expect(store.isFieldsPending(["name", "age"])).toBe(true)
+      expect(store.isFieldsPending()).toBe(false)
+
+      store.setFieldPending("email", true)
+      expect(store.isFieldsPending()).toBe(true)
+    })
+  })
+
+  describe("reset / resetField / resetFields / destroy", () => {
     it("reset 恢复到初始值", () => {
-      const store = new FormStore<TestForm>({
+      const store = createStore<TestForm>({
         initialValues: { name: "John", age: 25, email: "j@t.com" },
       })
       store.setFieldValue("name", "Changed")
@@ -266,7 +334,7 @@ describe("FormStore", () => {
     })
 
     it("reset 传入新值同时更新初始值", () => {
-      const store = new FormStore<TestForm>({
+      const store = createStore<TestForm>({
         initialValues: { name: "John", age: 25, email: "j@t.com" },
       })
       store.reset({ name: "New", age: 0, email: "new@t.com" })
@@ -282,8 +350,19 @@ describe("FormStore", () => {
       })
     })
 
+    it("reset 传入新值时删除新值中不存在的字段 signal", () => {
+      const store = createStore<TestForm>({
+        initialValues: { name: "John", age: 25, email: "j@t.com" },
+      })
+      store.reset({ name: "Only" })
+      expect(store.getFieldValue("name")).toBe("Only")
+      expect(store.getFieldValue("age")).toBeUndefined()
+      expect(store.getFieldValue("email")).toBeUndefined()
+      expect(store.getFieldsSnapshot()).toEqual({ name: "Only" })
+    })
+
     it("resetField 恢复单个字段", () => {
-      const store = new FormStore<TestForm>({
+      const store = createStore<TestForm>({
         initialValues: { name: "John", age: 25, email: "j@t.com" },
       })
       store.setFieldValue("name", "Changed")
@@ -292,11 +371,40 @@ describe("FormStore", () => {
       expect(store.getFieldValue("name")).toBe("John")
       expect(store.getFieldValue("age")).toBe(99) // age 不受影响
     })
+
+    it("resetFields 恢复指定字段并清理 touched 和 pending", () => {
+      const store = createStore<TestForm>({
+        initialValues: { name: "John", age: 25, email: "j@t.com" },
+      })
+      store.setFieldsValue({ name: "Changed", age: 99 })
+      store.setFieldPending("name", true)
+
+      store.resetFields(["name"])
+
+      expect(store.getFieldValue("name")).toBe("John")
+      expect(store.getFieldValue("age")).toBe(99)
+      expect(store.isFieldTouched("name")).toBe(false)
+      expect(store.isFieldPending("name")).toBe(false)
+    })
+
+    it("destroy 清空所有字段 signal", () => {
+      const store = createStore<TestForm>({
+        initialValues: { name: "John", age: 25, email: "j@t.com" },
+      })
+      store.setFieldTouched("name", true)
+      store.setFieldPending("email", true)
+
+      store.destroy()
+
+      expect(store.getFieldsSnapshot()).toEqual({})
+      expect(store.getTouchedFields()).toEqual([])
+      expect(store.getPendingFields()).toEqual([])
+    })
   })
 })
 
-describe("FormStore 属性测试", () => {
-  // Feature: pure-signal-core-refactor, Property 2: FormStore setFieldValue/setFieldsValue 往返一致性
+describe("Store 属性测试", () => {
+  // Feature: pure-signal-core-refactor, Property 2: Store setFieldValue/setFieldsValue 往返一致性
   // **Validates: Requirements 3.1, 3.4**
   it("Property 2: 对任意字段路径和值，setFieldValue 后 getFieldValue 应返回相同的值；setFieldsValue 同理", () => {
     // 使用原始类型值，避免 collectObjectPathsByLeaf 将对象展开为嵌套路径
@@ -321,13 +429,13 @@ describe("FormStore 属性测试", () => {
         primitiveArb,
         (path, value) => {
           // 测试 setFieldValue 往返一致性
-          const store = new FormStore()
+          const store = createStore()
           store.setFieldValue(path as any, value)
           expect(store.getFieldValue(path as any)).toEqual(value)
           store.destroy()
 
           // 测试 setFieldsValue 往返一致性
-          const store2 = new FormStore()
+          const store2 = createStore()
           const obj: Record<string, unknown> = {}
           obj[path] = value
           store2.setFieldsValue(obj)
@@ -355,7 +463,7 @@ describe("FormStore 属性测试", () => {
         fc.record({ a: primitiveArb, b: primitiveArb }),
         fc.record({ a: primitiveArb, b: primitiveArb }),
         (initialValues, targetValues) => {
-          const store = new FormStore({ initialValues })
+          const store = createStore({ initialValues })
 
           store.reset(targetValues)
 

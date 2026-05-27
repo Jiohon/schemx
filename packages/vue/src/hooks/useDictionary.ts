@@ -13,7 +13,7 @@ import { onMounted, Ref, ref } from "vue"
 import { useFormInstance } from "./useForm"
 import { useWatchFields } from "./useWatch"
 
-import type { NamePath, PathValue, SchemxDictionary, Values } from "@schemx/core"
+import type { NamePath, FieldValue, SchemxDictionary, Values } from "@schemx/core"
 
 export type { SchemxDictionary, SchemxWithDictionary } from "@schemx/core"
 
@@ -82,7 +82,7 @@ export function normalizeError(err: unknown): Error {
 export const useDictionary = <
   TValues extends Values = Values,
   TName extends NamePath<TValues> = NamePath<TValues>,
-  TValue = PathValue<TValues, TName>,
+  TValue = FieldValue<TValues, TName>,
 >(
   options: SchemxDictionary<TValues>,
   fieldName?: TName

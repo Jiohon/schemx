@@ -24,7 +24,7 @@ import { FieldInstance } from "@/types/field"
 
 import { useFormInstance } from "./useForm"
 
-import type { NamePath, SchemxInstance, Value, Values } from "@schemx/core"
+import type { NamePath, SchemxInstance, Values } from "@schemx/core"
 
 /**
  * useField 针对 (form, name) 的缓存条目
@@ -32,13 +32,13 @@ import type { NamePath, SchemxInstance, Value, Values } from "@schemx/core"
  * 通过引用计数确保同一 (form, name) 的多次 useField 调用
  * 共享同一份 shallowRef 和 effect 桥接，避免重复订阅。
  *
- * @typeParam T - 表单值类型
+ * @typeParam TValues - 表单值类型
  */
-interface FieldHookCacheEntry<T extends Values = Values> {
+interface FieldHookCacheEntry<TValues extends Values = Values> {
   /** 当前活跃的引用计数，归零时释放 dispose 并从缓存中移除 */
   refCount: number
   /** 共享的字段控制器实例（含 Vue Ref 包装） */
-  result: FieldInstance<T>
+  result: FieldInstance<TValues>
   /** 取消 Signal effect 订阅并清理资源 */
   dispose: () => void
 }
@@ -48,27 +48,20 @@ interface FieldHookCacheEntry<T extends Values = Values> {
 const fieldHookCache = new WeakMap<any, Map<string, FieldHookCacheEntry>>()
 
 /**
- * 序列化字段名为缓存 key
- */
-function serializeName(name: NamePath): string {
-  return Array.isArray(name) ? name.join(".") : String(name)
-}
-
-/**
  * 创建字段 hook 的响应式状态
  *
  * 从 createField 生成 FieldInstance，创建 shallowRef 容器
  * 并通过 field.effect 将 Signal 变化桥接到 Vue 响应式系统。
  */
-function createFieldHook<T extends Values = Values>(
-  form: SchemxInstance<T>,
-  name: NamePath<T>
+function createFieldHook<TValues extends Values = Values>(
+  form: SchemxInstance<TValues>,
+  name: NamePath<TValues>
 ) {
-  const field = createField(form, name)
+  const field = createField<TValues>(form, name)
 
-  const fieldValue = shallowRef<Value>(field.getValue())
-  const fieldError = shallowRef<string[] | undefined>(field.getError())
-  const fieldPending = shallowRef<boolean>(field.isPending())
+  const fieldValue = shallowRef(field.getValue())
+  const fieldError = shallowRef(field.getError())
+  const fieldPending = shallowRef(field.isPending())
 
   const dispose = field.effect(() => {
     fieldValue.value = field.getValue()
@@ -131,10 +124,12 @@ function createFieldHook<T extends Values = Values>(
  * const result = await field.validate()
  * ```
  */
-export const useField = <T extends Values = Values>(name: NamePath<T>) => {
-  const form = useFormInstance<T>()
+export const useField = <TValues extends Values = Values>(
+  name: NamePath<TValues>
+): FieldInstance<TValues> => {
+  const form = useFormInstance<TValues>()
 
-  const key = serializeName(name)
+  const key = name
 
   let formCache = fieldHookCache.get(form)
 
@@ -143,30 +138,33 @@ export const useField = <T extends Values = Values>(name: NamePath<T>) => {
     fieldHookCache.set(form, formCache)
   }
 
-  let entry = formCache.get(key)
+  const cachedEntry = formCache.get(key) as FieldHookCacheEntry<TValues> | undefined
 
-  if (entry) {
-    entry.refCount++
+  let activeEntry: FieldHookCacheEntry<TValues>
+
+  if (cachedEntry) {
+    cachedEntry.refCount++
+    activeEntry = cachedEntry
   } else {
-    const { result, dispose } = createFieldHook<T>(form, name)
+    const { result, dispose } = createFieldHook<TValues>(form, name)
 
-    entry = {
+    activeEntry = {
       refCount: 1,
       result,
       dispose,
     }
 
-    formCache.set(key, entry)
+    formCache.set(key, activeEntry as any)
   }
 
   onUnmounted(() => {
-    if (--entry.refCount <= 0) {
-      entry.dispose()
+    if (--activeEntry.refCount <= 0) {
+      activeEntry.dispose()
       formCache.delete(key)
     }
   })
 
-  return entry.result
+  return activeEntry.result
 }
 
 export default useField

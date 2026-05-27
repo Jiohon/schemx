@@ -25,6 +25,8 @@ import type { TriggerConfig } from "@/utils"
 import FormGroup from "../FormGroup"
 
 import type {
+  FieldValue,
+  NamePath,
   SchemxComponentProps,
   SchemxFormItemProps,
   SchemxViewFieldSchema,
@@ -83,7 +85,7 @@ const FormItem = defineComponent(
     })
 
     /** 值变化处理，设置值后根据触发时机决定是否校验 */
-    const handleChange = (v: unknown) => {
+    const handleChange = (v: FieldValue<T, NamePath<T>>) => {
       field.setValue(v)
       if (canVerified.value && shouldValidateOn("change", trigger.value)) {
         field.validate()

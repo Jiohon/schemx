@@ -28,7 +28,7 @@
 
 import { setByPath } from "./utils"
 
-import type { NamePath, PathValue, SchemxInstance, SchemxRules, Values } from "./types"
+import type { FieldValue, NamePath, SchemxInstance, SchemxRules, Values } from "./types"
 import type { ValidateResult } from "./validator"
 
 /**
@@ -39,40 +39,38 @@ import type { ValidateResult } from "./validator"
  *
  * @typeParam TValues - 表单值类型
  * @typeParam TName - 当前字段路径类型
- * @typeParam TValue - 当前字段值类型
  */
 export interface SchemxFieldInstance<
   TValues extends Values = Values,
   TName extends NamePath<TValues> = NamePath<TValues>,
-  TValue = PathValue<TValues, TName>,
 > {
   /**
    * 获取当前字段值。
    *
    * @returns 当前字段值；字段不存在时返回 undefined。
    */
-  getValue: () => TValue | undefined
+  getValue: () => FieldValue<TValues, TName> | undefined
 
   /**
    * 设置当前字段值。
    *
    * @param value - 新字段值。
    */
-  setValue: (value: TValue) => void
+  setValue: (value: FieldValue<TValues, TName> | undefined) => void
 
   /**
    * 获取字段初始值。
    *
    * @returns 当前字段的初始值；未设置时返回 undefined。
    */
-  getInitialValue: () => TValue | undefined
+  getInitialValue: () => FieldValue<TValues, TName> | undefined
 
   /**
    * 设置字段初始值。
    *
    * @param value - 新初始值。
    */
-  setInitialValue: (value: TValue) => void
+  setInitialValue: (value: FieldValue<TValues, TName>) => void
 
   /**
    * 获取表单全量响应式值。
@@ -199,38 +197,34 @@ export interface SchemxFieldInstance<
  * ```
  */
 export function createField<
-  TValues extends Values = Values,
+  TValues extends Values,
   TName extends NamePath<TValues> = NamePath<TValues>,
-  TValue = PathValue<TValues, TName>,
->(
-  form: SchemxInstance<TValues, TName, TValue>,
-  name: TName
-): SchemxFieldInstance<TValues, TName, TValue> {
+>(form: SchemxInstance<TValues>, name: TName): SchemxFieldInstance<TValues, TName> {
   /**
    * 从表单实例读取当前字段值。
    */
-  const getValue = (): TValue | undefined => form.getFieldValue(name)
+  const getValue = (): FieldValue<TValues, TName> | undefined => form.getFieldValue(name)
 
   /**
    * 将当前字段值写回表单实例。
    */
-  const setValue = (value: TValue): void => {
+  const setValue = (value: FieldValue<TValues, TName> | undefined): void => {
     form.setFieldValue(name, value)
   }
 
   /**
    * 读取当前字段的初始值 baseline。
    */
-  const getInitialValue = (): TValue | undefined => {
+  const getInitialValue = (): FieldValue<TValues, TName> | undefined => {
     return form.getInitialValue(name)
   }
 
   /**
    * 以字段路径构造局部 initialValues 并交给表单合并。
    */
-  const setInitialValue = (value: TValue): void => {
-    const result = {}
-    setByPath(result, name, value)
+  const setInitialValue = (value: FieldValue<TValues, TName>): void => {
+    const result = {} as Partial<TValues>
+    setByPath<TValues, TName, FieldValue<TValues, TName>>(result, name, value)
     form.setInitialValues(result)
   }
 

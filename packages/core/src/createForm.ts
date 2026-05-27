@@ -141,7 +141,6 @@ export interface SchemxFormContext<
  *
  * @typeParam TValues - 表单值类型
  * @typeParam TName - 字段路径类型
- * @typeParam TValue - 字段值类型
  */
 export interface CreateFormOptions<
   TValues extends Values = Values,
@@ -694,7 +693,7 @@ class CreateForm<
  * @param options - 表单配置项
  * @returns 表单实例
  */
-export function createForm<TValues extends Values = Values>(
+export function createForm<TValues extends Values>(
   options: CreateFormOptions<TValues> = {}
 ): SchemxInstance<TValues> {
   return new CreateForm<TValues>(options).getFormInstance()

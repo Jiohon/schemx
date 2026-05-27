@@ -21,11 +21,14 @@
 
 import { inject, type InjectionKey, provide } from "vue"
 
+import { Values } from "@schemx/core"
+
+import { FieldInstance } from "@/types/field"
+
 import type { useField } from "./useField"
 
 /** 字段上下文注入 key */
-const FIELD_CONTEXT_KEY: InjectionKey<ReturnType<typeof useField>> =
-  Symbol("schemx:field")
+const FIELD_CONTEXT_KEY: InjectionKey<FieldInstance> = Symbol("schemx:field")
 
 /**
  * 向子组件树注入当前字段上下文。
@@ -34,8 +37,10 @@ const FIELD_CONTEXT_KEY: InjectionKey<ReturnType<typeof useField>> =
  *
  * @param field - useField 返回的字段实例
  */
-export function provideFieldContext(field: ReturnType<typeof useField>): void {
-  provide(FIELD_CONTEXT_KEY, field)
+export function provideFieldContext<TValues extends Values = Values>(
+  field: FieldInstance<TValues>
+): void {
+  provide(FIELD_CONTEXT_KEY, field as FieldInstance)
 }
 
 /**

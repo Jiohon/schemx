@@ -28,7 +28,7 @@ import { createForm } from "@schemx/core"
 import { rendererRegistry as globalRendererRegistry } from "@/utils/rendererProvider"
 import { rulesRegistry as globalRulesRegistry } from "@/utils/rulesProvider"
 
-import type { CreateFormOptions, SchemxInstance, Values } from "@schemx/core"
+import type { CreateFormOptions, NamePath, SchemxInstance, Values } from "@schemx/core"
 
 /** SchemxInstance 在 Vue provide/inject 中的注入 key */
 export const SCHEMX_INSTANCE_KEY = Symbol("SCHEMX_INSTANCE")
@@ -40,9 +40,12 @@ export const FORM_INSTANCE_KEY = SCHEMX_INSTANCE_KEY
  *
  * 扩展 core 层的 CreateFormOptions，增加 Vue 层特有的 request 配置。
  *
- * @typeParam T - 表单值类型
+ * @typeParam TValues - 表单值类型
  */
-export interface UseFormOptions<T extends Values> extends CreateFormOptions<T> {}
+export interface UseFormOptions<TValues extends Values> extends CreateFormOptions<
+  TValues,
+  NamePath<TValues>
+> {}
 
 /**
  * 表单组合式函数
@@ -50,7 +53,7 @@ export interface UseFormOptions<T extends Values> extends CreateFormOptions<T> {
  * 创建 SchemxInstance 并通过 Vue provide 注入到子组件树中，
  * 组件卸载时自动销毁实例。
  *
- * @typeParam T - 表单值类型
+ * @typeParam TValues - 表单值类型
  *
  * @param options - 表单配置选项
  * @returns 表单实例（SchemxInstance 接口）
@@ -68,18 +71,20 @@ export interface UseFormOptions<T extends Values> extends CreateFormOptions<T> {
  * form.setFieldValue('name', 'John')
  * ```
  */
-export function useForm<T extends Values>(options: UseFormOptions<T>): SchemxInstance<T> {
+export function useForm<TValues extends Values = Values>(
+  options: UseFormOptions<TValues>
+): SchemxInstance<TValues> {
   const { ...formOptions } = options
 
-  const mergedOptions: CreateFormOptions<T> = {
+  const mergedOptions: CreateFormOptions<TValues> = {
     ...formOptions,
     rendererRegistry: formOptions.rendererRegistry ?? globalRendererRegistry,
     rulesRegistry: formOptions.rulesRegistry ?? globalRulesRegistry,
   }
 
-  const instance = computed(() => createForm<T>(mergedOptions))
+  const instance = computed(() => createForm<TValues>(mergedOptions))
 
-  provide<SchemxInstance<T>>(SCHEMX_INSTANCE_KEY, instance.value)
+  provide<SchemxInstance<TValues>>(SCHEMX_INSTANCE_KEY, instance.value)
 
   onUnmounted(() => {
     instance.value.destroy()
@@ -94,7 +99,7 @@ export function useForm<T extends Values>(options: UseFormOptions<T>): SchemxIns
  * 在子组件中获取 useForm 创建的 SchemxInstance，
  * 可用于读写字段值、校验、订阅等操作。
  *
- * @typeParam T - 表单值类型
+ * @typeParam TValues - 表单值类型
  * @returns 表单实例
  *
  * @throws Error 如果不在 schemx 提供的上下文中调用
@@ -105,8 +110,10 @@ export function useForm<T extends Values>(options: UseFormOptions<T>): SchemxIns
  * form.setFieldValue('name', 'hello')
  * ```
  */
-export function useFormInstance<T extends Values = Values>(): SchemxInstance<T> {
-  const instance = inject<SchemxInstance<T>>(SCHEMX_INSTANCE_KEY)
+export function useFormInstance<
+  TValues extends Values = Values,
+>(): SchemxInstance<TValues> {
+  const instance = inject<SchemxInstance<TValues>>(SCHEMX_INSTANCE_KEY)
 
   if (!instance) {
     throw new Error("useFormInstance must be used within a Form")

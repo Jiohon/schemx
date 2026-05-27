@@ -9,13 +9,14 @@
 
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 
+import { FieldValue } from "./namePathType"
+
 import type { SchemxDependencies } from "./dependencies"
 import type {
   NamePath,
   SchemxFormApi,
   SchemxInstance,
   ValidationTrigger,
-  Value,
   Values,
 } from "./form"
 import type { SchemxRendererDefinition } from "./renderer"
@@ -47,7 +48,11 @@ export interface SchemxDependencyRendererContext {
  * 与 {@link SchemxRendererDefinition} 中各组件的专属 Props 交叉后，
  * 作为 `componentProps` 的最终类型。
  */
-export interface SchemxBaseComponentProps<TValues extends Values = Values> {
+export interface SchemxBaseComponentProps<
+  TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+  TValue = FieldValue<TValues, TName>,
+> {
   /** 是否必填 */
   required?: boolean
   /** 是否只读 */
@@ -61,11 +66,11 @@ export interface SchemxBaseComponentProps<TValues extends Values = Values> {
   /** FormItem 组件 Props */
   formItemProps?: SchemxFormItemProps<TValues>
   /** 字段值 */
-  value?: Value
+  value?: TValue
   /** 值变化处理 */
-  onChange?: (value: Value, form: SchemxInstance<TValues>) => void
+  onChange?: (value: TValue, form: SchemxInstance<TValues>) => void
   /** 失焦处理 */
-  onBlur?: (value: Value, form: SchemxInstance<TValues>) => void
+  onBlur?: (value: TValue, form: SchemxInstance<TValues>) => void
 }
 
 /**
@@ -199,7 +204,7 @@ export interface SchemxBase<
    *
    * 组件挂载时写入表单状态，同时作为 `reset()` 的还原目标。
    */
-  initialValue?: Value
+  initialValue?: FieldValue<TValues, NamePath<TValues>>
 
   /**
    * 校验规则

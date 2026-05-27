@@ -24,7 +24,8 @@ import { cloneDeep, isEqual } from "es-toolkit"
 import { batchUpdates, createFieldSignal, createFieldSignalMap } from "../reactivity"
 import { collectObjectPathsByLeaf, getByPath, setByPath } from "../utils"
 
-import type { NamePath, PathValue, Values } from "../types"
+import type { NamePath, FieldValue, Values } from "../types"
+import type { FieldSignal } from "../reactivity"
 
 /**
  * Store 配置选项。
@@ -67,22 +68,15 @@ export interface StorePending<
  * effect 自动感知，无需手动订阅。
  *
  * @typeParam TValues - 表单值类型，默认为 Values
- * @typeParam TName - 字段路径类型
- * @typeParam TValue - 字段值类型
- *
  * @example
  * ```typescript
  * const store = new Store({ initialValues: { name: 'John' } })
  * store.getFieldValue('name') // => 'John'
  * ```
  */
-class StoreImpl<
-  TValues extends Values = Values,
-  TName extends NamePath<TValues> = NamePath<TValues>,
-  TValue = PathValue<TValues, TName>,
-> {
+class StoreImpl<TValues extends Values = Values> {
   /** 每个字段路径对应一个 FieldSignal */
-  private fieldSignals = createFieldSignalMap<TName, TValue>()
+  private fieldSignals = createFieldSignalMap<NamePath<TValues>, unknown>()
 
   /** 初始值 */
   private initialValues: Partial<TValues>
@@ -100,14 +94,14 @@ class StoreImpl<
     this.initialValues = cloneDeep(initialValues)
 
     // 为初始值的每个叶子路径创建 reactive value
-    const paths = collectObjectPathsByLeaf<TValues, TName>(initialValues)
+    const paths = collectObjectPathsByLeaf<TValues, NamePath<TValues>>(initialValues)
 
     for (const path of paths) {
-      const value = getByPath<TValues, TName, TValue>(initialValues, path)
+      const value = getByPath<TValues, typeof path>(initialValues, path)
 
       this.fieldSignals.set(
         path,
-        createFieldSignal<TValue>({
+        createFieldSignal<typeof value>({
           value: value,
           initialValue: value,
         })
@@ -115,13 +109,17 @@ class StoreImpl<
     }
   }
 
-  private getOrCreateFieldSignal(path: TName) {
-    const initialValue = getByPath<TValues, TName, TValue>(this.initialValues, path)
+  private getOrCreateFieldSignal<TName extends NamePath<TValues>>(
+    path: TName
+  ): FieldSignal<FieldValue<TValues, TName>> {
+    const initialValue = getByPath<TValues, TName>(this.initialValues, path)
 
-    let signal = this.fieldSignals.peek(path)
+    let signal = this.fieldSignals.peek(path) as
+      | FieldSignal<FieldValue<TValues, TName>>
+      | undefined
 
     if (!signal) {
-      signal = createFieldSignal<TValue>({
+      signal = createFieldSignal<FieldValue<TValues, TName>>({
         value: initialValue,
         initialValue: initialValue,
       })
@@ -145,8 +143,14 @@ class StoreImpl<
    * store.getFieldValue('user.address') // => { city: 'Beijing', zip: '100000' }
    * ```
    */
-  getFieldValue(path: TName): TValue | undefined {
-    return this.fieldSignals.get(path)?.value.value
+  getFieldValue<TName extends NamePath<TValues>>(
+    path: TName
+  ): FieldValue<TValues, TName> | undefined {
+    const signal = this.fieldSignals.get(path) as
+      | FieldSignal<FieldValue<TValues, TName>>
+      | undefined
+
+    return signal?.value.value
   }
 
   /**
@@ -163,7 +167,10 @@ class StoreImpl<
    * store.setFieldValue('user.age', 30)
    * ```
    */
-  setFieldValue(path: TName, value: TValue | undefined): void {
+  setFieldValue<TName extends NamePath<TValues>>(
+    path: TName,
+    value: FieldValue<TValues, TName> | undefined
+  ): void {
     const signal = this.getOrCreateFieldSignal(path)
 
     signal.setValue(value)
@@ -186,8 +193,8 @@ class StoreImpl<
    * ```
    */
   getFieldsValue(): TValues
-  getFieldsValue(paths: TName[]): TValues
-  getFieldsValue(paths?: TName[]): Partial<TValues> {
+  getFieldsValue<TName extends NamePath<TValues>>(paths: TName[]): Partial<TValues>
+  getFieldsValue<TName extends NamePath<TValues>>(paths?: TName[]): Partial<TValues> {
     const result = {} as Partial<TValues>
 
     const pathsArr = paths ?? this.fieldSignals.keys()
@@ -212,11 +219,11 @@ class StoreImpl<
    * ```
    */
   setFieldsValue(values: Partial<TValues>): void {
-    const paths = collectObjectPathsByLeaf<TValues, TName>(values)
+    const paths = collectObjectPathsByLeaf<TValues, NamePath<TValues>>(values)
 
     batchUpdates(() => {
       for (const path of paths) {
-        this.setFieldValue(path as TName, getByPath<TValues, TName, TValue>(values, path))
+        this.setFieldValue(path, getByPath<TValues, typeof path>(values, path))
       }
     })
   }
@@ -235,8 +242,14 @@ class StoreImpl<
    * const name = store.getFieldSnapshot('name') // => 'John'（深拷贝）
    * ```
    */
-  getFieldSnapshot(path: TName): TValue | undefined {
-    return this.fieldSignals.peek(path)?.value.peek()
+  getFieldSnapshot<TName extends NamePath<TValues>>(
+    path: TName
+  ): FieldValue<TValues, TName> | undefined {
+    const signal = this.fieldSignals.peek(path) as
+      | FieldSignal<FieldValue<TValues, TName>>
+      | undefined
+
+    return signal?.value.peek()
   }
 
   /**
@@ -256,8 +269,10 @@ class StoreImpl<
    * ```
    */
   getFieldsSnapshot(): TValues
-  getFieldsSnapshot(paths: TName[]): Partial<TValues>
-  getFieldsSnapshot(paths?: TName[]): TValues | Partial<TValues> {
+  getFieldsSnapshot<TName extends NamePath<TValues>>(paths: TName[]): Partial<TValues>
+  getFieldsSnapshot<TName extends NamePath<TValues>>(
+    paths?: TName[]
+  ): TValues | Partial<TValues> {
     const result = {} as Partial<TValues>
 
     const pathsArr = paths ?? this.fieldSignals.keys()
@@ -280,14 +295,18 @@ class StoreImpl<
    * store.getInitialValue('name') // => 'John'
    * ```
    */
-  getInitialValue(path: TName): TValue | undefined {
-    const signal = this.fieldSignals.peek(path)
+  getInitialValue<TName extends NamePath<TValues>>(
+    path: TName
+  ): FieldValue<TValues, TName> | undefined {
+    const signal = this.fieldSignals.peek(path) as
+      | FieldSignal<FieldValue<TValues, TName>>
+      | undefined
 
     if (signal) {
       return signal.initialValue.peek()
     }
 
-    return getByPath<TValues, TName, TValue>(this.initialValues, path)
+    return getByPath<TValues, TName>(this.initialValues, path)
   }
 
   /**
@@ -305,8 +324,8 @@ class StoreImpl<
    * ```
    */
   getInitialValues(): Partial<TValues>
-  getInitialValues(paths: TName[]): Partial<TValues>
-  getInitialValues(paths?: TName[]): Partial<TValues> {
+  getInitialValues<TName extends NamePath<TValues>>(paths: TName[]): Partial<TValues>
+  getInitialValues<TName extends NamePath<TValues>>(paths?: TName[]): Partial<TValues> {
     if (paths === undefined) {
       return cloneDeep(this.initialValues)
     }
@@ -314,7 +333,7 @@ class StoreImpl<
     const result = {} as Partial<TValues>
 
     for (const path of paths) {
-      setByPath(result, path, getByPath<TValues, TName, TValue>(this.initialValues, path))
+      setByPath(result, path, getByPath<TValues, TName>(this.initialValues, path))
     }
 
     return result
@@ -331,11 +350,14 @@ class StoreImpl<
    * store.setInitialValue('name', 'Bob')
    * ```
    */
-  setInitialValue(path: TName, value: TValue): void {
+  setInitialValue<TName extends NamePath<TValues>>(
+    path: TName,
+    value: FieldValue<TValues, TName>
+  ): void {
     setByPath(this.initialValues, path, value)
     const signal = this.getOrCreateFieldSignal(path)
 
-    signal.setInitialValue(value as TValue)
+    signal.setInitialValue(value)
     signal.setTouched(!isEqual(signal.value.peek(), signal.initialValue.peek()))
   }
 
@@ -350,12 +372,12 @@ class StoreImpl<
    * ```
    */
   setInitialValues(values: Partial<TValues>): void {
-    const paths = collectObjectPathsByLeaf<TValues, TName>(values)
+    const paths = collectObjectPathsByLeaf<TValues, NamePath<TValues>>(values)
     if (!paths.length) return
 
     batchUpdates(() => {
       for (const path of paths) {
-        const next = getByPath<TValues, TName, TValue>(values, path)
+        const next = getByPath<TValues, typeof path>(values, path)
         setByPath(this.initialValues, path, next)
 
         const signal = this.getOrCreateFieldSignal(path)
@@ -379,7 +401,7 @@ class StoreImpl<
    * store.isFieldTouched('name') // => true
    * ```
    */
-  isFieldTouched(path: TName): boolean {
+  isFieldTouched<TName extends NamePath<TValues>>(path: TName): boolean {
     return this.fieldSignals.get(path)?.touched.value ?? false
   }
 
@@ -398,8 +420,8 @@ class StoreImpl<
    * ```
    */
   isFieldsTouched(): boolean
-  isFieldsTouched(paths: TName[]): boolean
-  isFieldsTouched(paths?: TName[]): boolean {
+  isFieldsTouched<TName extends NamePath<TValues>>(paths: TName[]): boolean
+  isFieldsTouched<TName extends NamePath<TValues>>(paths?: TName[]): boolean {
     const pathsArr = paths ?? [...this.fieldSignals.keys()]
 
     return paths === undefined
@@ -419,8 +441,8 @@ class StoreImpl<
    * store.getTouchedFields() // => ['name', 'user.age']
    * ```
    */
-  getTouchedFields(): TName[] {
-    const touchedFields: TName[] = []
+  getTouchedFields(): NamePath<TValues>[] {
+    const touchedFields: NamePath<TValues>[] = []
 
     for (const [path, signal] of this.fieldSignals.entries()) {
       if (signal.touched.value) {
@@ -442,7 +464,7 @@ class StoreImpl<
    * store.setFieldTouched('name', true)
    * ```
    */
-  setFieldTouched(path: TName, touched: boolean): void {
+  setFieldTouched<TName extends NamePath<TValues>>(path: TName, touched: boolean): void {
     this.getOrCreateFieldSignal(path).setTouched(touched)
   }
 
@@ -457,7 +479,10 @@ class StoreImpl<
    * store.setFieldsTouched(['name', 'age'], true)
    * ```
    */
-  setFieldsTouched(paths: TName[], touched = true): void {
+  setFieldsTouched<TName extends NamePath<TValues>>(
+    paths: TName[],
+    touched = true
+  ): void {
     batchUpdates(() => {
       for (const path of paths) {
         this.setFieldTouched(path, touched)
@@ -478,7 +503,7 @@ class StoreImpl<
    * store.isFieldPending('avatar') // => true
    * ```
    */
-  isFieldPending(path: TName): boolean {
+  isFieldPending<TName extends NamePath<TValues>>(path: TName): boolean {
     return this.fieldSignals.get(path)?.pending.value ?? false
   }
 
@@ -497,8 +522,8 @@ class StoreImpl<
    * ```
    */
   isFieldsPending(): boolean
-  isFieldsPending(paths: TName[]): boolean
-  isFieldsPending(paths?: TName[]): boolean {
+  isFieldsPending<TName extends NamePath<TValues>>(paths: TName[]): boolean
+  isFieldsPending<TName extends NamePath<TValues>>(paths?: TName[]): boolean {
     const pathsArr = paths ?? [...this.fieldSignals.keys()]
 
     return pathsArr.every((path) => this.isFieldPending(path))
@@ -517,8 +542,8 @@ class StoreImpl<
    * store.getPendingFields() // => ['avatar', 'attachment']
    * ```
    */
-  getPendingFields(): StorePending<TValues, TName>[] {
-    const fields: StorePending<TValues, TName>[] = []
+  getPendingFields(): StorePending<TValues, NamePath<TValues>>[] {
+    const fields: StorePending<TValues, NamePath<TValues>>[] = []
 
     for (const [field, signal] of this.fieldSignals.entries()) {
       if (signal.pending.value) {
@@ -545,7 +570,7 @@ class StoreImpl<
    * store.setFieldPending('avatar', false)  // 上传结束
    * ```
    */
-  setFieldPending(path: TName, pending: boolean): void {
+  setFieldPending<TName extends NamePath<TValues>>(path: TName, pending: boolean): void {
     this.getOrCreateFieldSignal(path).setPending(pending)
   }
 
@@ -560,7 +585,10 @@ class StoreImpl<
    * store.setFieldsPending(['name', 'age'], true)
    * ```
    */
-  setFieldsPending(paths: TName[], pending = true): void {
+  setFieldsPending<TName extends NamePath<TValues>>(
+    paths: TName[],
+    pending = true
+  ): void {
     batchUpdates(() => {
       for (const path of paths) {
         this.setFieldPending(path, pending)
@@ -578,7 +606,7 @@ class StoreImpl<
    * store.resetField('name')
    * ```
    */
-  resetField(path: TName): void {
+  resetField<TName extends NamePath<TValues>>(path: TName): void {
     this.getOrCreateFieldSignal(path).reset()
   }
 
@@ -592,7 +620,7 @@ class StoreImpl<
    * store.resetFields(['name', 'age'])
    * ```
    */
-  resetFields(paths: TName[]): void {
+  resetFields<TName extends NamePath<TValues>>(paths: TName[]): void {
     batchUpdates(() => {
       for (const path of paths) {
         this.getOrCreateFieldSignal(path).reset()
@@ -618,7 +646,7 @@ class StoreImpl<
   reset(values?: Partial<TValues>): void {
     const resetValues = cloneDeep(values ?? this.initialValues)
 
-    const nextPaths = collectObjectPathsByLeaf<TValues, TName>(resetValues)
+    const nextPaths = collectObjectPathsByLeaf<TValues, NamePath<TValues>>(resetValues)
     const nextPathSet = new Set(nextPaths)
 
     batchUpdates(() => {
@@ -629,7 +657,7 @@ class StoreImpl<
       }
 
       for (const path of nextPaths) {
-        const next = getByPath<TValues, TName, TValue>(resetValues, path)
+        const next = getByPath<TValues, typeof path>(resetValues, path)
 
         setByPath(this.initialValues, path, next)
 
@@ -641,7 +669,7 @@ class StoreImpl<
         } else {
           this.fieldSignals.set(
             path,
-            createFieldSignal<TValue>({
+            createFieldSignal<typeof next>({
               value: next,
               initialValue: next,
             })
@@ -669,11 +697,9 @@ class StoreImpl<
 /**
  * Store 的实例类型。
  */
-export type Store<
-  TValues extends Values = Values,
-  TName extends NamePath<TValues> = NamePath<TValues>,
-  TValue = PathValue<TValues, TName>,
-> = InstanceType<typeof StoreImpl<TValues, TName, TValue>>
+export type Store<TValues extends Values = Values> = InstanceType<
+  typeof StoreImpl<TValues>
+>
 
 /**
  * 创建 Store 实例的工厂函数。
@@ -688,10 +714,8 @@ export type Store<
  * const store = createStore({ initialValues: { name: 'John' } })
  * ```
  */
-export function createStore<
-  TValues extends Values = Values,
-  TName extends NamePath<TValues> = NamePath<TValues>,
-  TValue = PathValue<TValues, TName>,
->(options: StoreOptions<TValues> = {}): Store<TValues, TName, TValue> {
-  return new StoreImpl<TValues, TName, TValue>(options)
+export function createStore<TValues extends Values = Values>(
+  options: StoreOptions<TValues> = {}
+): Store<TValues> {
+  return new StoreImpl<TValues>(options)
 }

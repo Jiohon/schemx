@@ -27,7 +27,7 @@
 import { batchUpdates, createReactiveMap } from "../reactivity"
 import { getByPath } from "../utils"
 
-import type { NamePath, StandardSchemaV1, Value, Values } from "../types"
+import type { NamePath, StandardSchemaV1, Values } from "../types"
 
 /**
  * 单个字段的校验错误。
@@ -359,7 +359,7 @@ class ValidatorImpl<
       return { ok: true, values: latestValues }
     }
 
-    const value: Value = getByPath(latestValues, path)
+    const value = getByPath(latestValues, path)
 
     const allMessages: string[] = []
 
