@@ -60,13 +60,24 @@ export type FieldSignalOptions<TValue> = {
  * 它不会建立响应式依赖，也不暴露底层 signal。
  */
 export interface FieldSignalSnapshot<TValue> {
-  /** 字段当前值 */
+  /**
+   * 字段当前值
+   */
   readonly value: TValue | undefined
-  /** 字段初始值 baseline */
+
+  /**
+   * 字段初始值 baseline
+   */
   readonly initialValue: TValue | undefined
-  /** 字段是否被触碰/修改 */
+
+  /**
+   * 字段是否被触碰/修改
+   */
   readonly touched: boolean
-  /** 字段是否 pending */
+
+  /**
+   * 字段是否 pending
+   */
   readonly pending: boolean
 }
 

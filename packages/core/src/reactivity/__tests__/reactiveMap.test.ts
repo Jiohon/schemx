@@ -2,14 +2,14 @@ import { describe, expect, it } from "vitest"
 
 import {
   batchUpdates,
-  createReactiveEffect,
+  createSignalEffect,
   createSignal,
-  ReactiveMap,
+  createReactiveMap,
 } from "../index"
 
 describe("ReactiveMap", () => {
   it("reads and writes keyed values", () => {
-    const map = new ReactiveMap<string, unknown>()
+    const map = createReactiveMap<string, unknown>()
 
     map.set("name", "Alice")
 
@@ -19,7 +19,7 @@ describe("ReactiveMap", () => {
   })
 
   it("supports fluent set chaining", () => {
-    const map = new ReactiveMap<string, number>()
+    const map = createReactiveMap<string, number>()
 
     const returned = map.set("count", 1).set("count", 2)
 
@@ -28,7 +28,7 @@ describe("ReactiveMap", () => {
   })
 
   it("deletes and clears values", () => {
-    const map = new ReactiveMap<string, number>()
+    const map = createReactiveMap<string, number>()
 
     map.set("a", 1)
     map.set("b", 2)
@@ -45,7 +45,7 @@ describe("ReactiveMap", () => {
   })
 
   it("iterates keys, values, and entries like Map", () => {
-    const map = new ReactiveMap<string, number>()
+    const map = createReactiveMap<string, number>()
 
     map.set("a", 1)
     map.set("b", 2)
@@ -59,11 +59,11 @@ describe("ReactiveMap", () => {
   })
 
   it("tracks keys that are created after an effect reads them", () => {
-    const map = new ReactiveMap<string, unknown>()
+    const map = createReactiveMap<string, unknown>()
     let runs = 0
     let latest: unknown
 
-    const dispose = createReactiveEffect(() => {
+    const dispose = createSignalEffect(() => {
       latest = map.get("late")
       runs++
     })
@@ -80,13 +80,13 @@ describe("ReactiveMap", () => {
   })
 
   it("batches multiple reactive writes", () => {
-    const map = new ReactiveMap<string, number>()
+    const map = createReactiveMap<string, number>()
     map.set("count", 0)
 
     let runs = 0
     let isFirst = true
 
-    const dispose = createReactiveEffect(() => {
+    const dispose = createSignalEffect(() => {
       map.get("count")
       if (isFirst) {
         isFirst = false
@@ -108,13 +108,13 @@ describe("ReactiveMap", () => {
   })
 
   it("notifies subscribers when a key is deleted", () => {
-    const map = new ReactiveMap<string, number>()
+    const map = createReactiveMap<string, number>()
     map.set("count", 0)
 
     let runs = 0
     let latest: number | undefined
 
-    const dispose = createReactiveEffect(() => {
+    const dispose = createSignalEffect(() => {
       latest = map.get("count")
       runs++
     })
@@ -136,9 +136,9 @@ describe("reactivity runtime", () => {
     const count = createSignal(0)
     const seen: number[] = []
 
-    const map = new ReactiveMap<string, number>()
+    const map = createReactiveMap<string, number>()
     map.set("count", count.value)
-    const dispose = createReactiveEffect(() => {
+    const dispose = createSignalEffect(() => {
       seen.push(map.get("count") ?? 0)
     })
 

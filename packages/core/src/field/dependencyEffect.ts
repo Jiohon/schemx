@@ -1,10 +1,10 @@
 /**
- * DependencyEffectSlot - dependency renderer 执行态容器。
+ * DependencyEffect - dependency renderer 执行态容器。
  *
  * Slot 只记录异步执行状态。renderer 返回的结构由 reconciler 写入
  * DependencyFiber.subChildren。
  *
- * @module core/field/dependencySlot
+ * @module core/field/dependencyEffect
  */
 
 import { compileToDescriptors } from "../descriptor"
@@ -61,60 +61,57 @@ export interface DependencyEffectSlot {
 }
 
 /**
- * 创建 DependencyEffectSlot（无副作用）。
+ * 创建 DependencyEffect 的配置选项。
  *
- * @param _fiber - 预留的 dependency runtime 节点参数，保持工厂签名与挂载流程一致。
- * @returns 初始状态的 DependencyEffectSlot。
+ * @typeParam TValues - 表单值类型
  */
-export function createDependencyEffect<TValues extends Values = Values>(
-  _fiber: DependencyFiber<TValues>
-): DependencyEffectSlot {
-  const loading = createSignal(false)
-  const error = createSignal<Error | null>(null)
-  const version = createSignal(0)
-  const abortController = createSignal<AbortController | null>(null)
+export interface CreateDependencyEffectOptions<TValues extends Values = Values> {
+  /**
+   * dependency runtime 节点。
+   */
+  fiber: DependencyFiber<TValues>
 
   /**
-   * 挂载前的空 run，占位以保持 slot 接口稳定。
+   * dependency descriptor，提供静态 trigger、renderer 配置。
    */
-  const run = async (): Promise<void> => undefined
+  descriptor: DependencyDescriptor<TValues>
 
   /**
-   * 挂载前的空 dispose，占位以保持 slot 接口稳定。
+   * 关联的 scope，默认创建 fiber 的子 scope。
    */
-  const dispose = (): void => undefined
+  scope?: Scope
 
-  return {
-    loading,
-    error,
-    version,
-    abortController,
-    run,
-    dispose,
-  }
+  /**
+   * 表单内部上下文。
+   */
+  context: SchemxFormContext<TValues>
 }
 
 /**
- * 挂载 DependencyEffectSlot 到 Fiber。
+ * 创建并挂载 DependencyEffectSlot 到 Fiber。
  *
- * 会替换 slot 的 run/dispose 逻辑，并把 renderer 结果经由统一 commit 边界写入
+ * 会创建 slot 的 run/dispose 逻辑，并把 renderer 结果经由统一 commit 边界写入
  * dependency 子树。
  *
- * @param fiber - dependency runtime 节点。
- * @param descriptor - 当前 dependency descriptor。
- * @param context - form 内部运行时上下文。
- * @param slot - 可复用的 slot，默认使用 fiber 上已有 slot 或创建新 slot。
- * @param scope - 可选资源作用域，默认创建 fiber 的子 scope。
+ * @param options - 创建 dependency effect 的配置。
+ * @returns 已挂载到 fiber 的 DependencyEffectSlot。
  */
-export function mountDependencyEffect<TValues extends Values = Values>(
-  fiber: DependencyFiber<TValues>,
-  descriptor: DependencyDescriptor<TValues>,
-  context: SchemxFormContext<TValues>,
-  slot = fiber.dependencySlot ?? createDependencyEffect(fiber),
-  scope?: Scope
-): void {
-  slot.dispose()
-  const resourceScope = scope ?? fiber.scope.child()
+export function createDependencyEffect<TValues extends Values = Values>(
+  options: CreateDependencyEffectOptions<TValues>
+): DependencyEffectSlot {
+  const { fiber, descriptor, context } = options
+  const resourceScope = options.scope ?? fiber.scope.child()
+
+  fiber.dependencySlot?.dispose()
+
+  const slot: DependencyEffectSlot = {
+    loading: createSignal(false),
+    error: createSignal<Error | null>(null),
+    version: createSignal(0),
+    abortController: createSignal<AbortController | null>(null),
+    run: async (): Promise<void> => undefined,
+    dispose: (): void => undefined,
+  }
 
   fiber.dependencyResourceScope = resourceScope
 
@@ -208,6 +205,8 @@ export function mountDependencyEffect<TValues extends Values = Values>(
   void slot.run().catch((runError) => {
     console.error("DependencyEffectSlot initial run error:", runError)
   })
+
+  return slot
 }
 
 /**

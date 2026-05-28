@@ -26,7 +26,7 @@ import { computed, inject, onUnmounted, provide } from "vue"
 import { createForm } from "@schemx/core"
 
 import { rendererRegistry as globalRendererRegistry } from "@/utils/rendererProvider"
-import { rulesRegistry as globalRulesRegistry } from "@/utils/rulesProvider"
+import { validatorRegistry as globalRulesRegistry } from "@/utils/rulesProvider"
 
 import type { CreateFormOptions, NamePath, SchemxInstance, Values } from "@schemx/core"
 
@@ -79,7 +79,7 @@ export function useForm<TValues extends Values = Values>(
   const mergedOptions: CreateFormOptions<TValues> = {
     ...formOptions,
     rendererRegistry: formOptions.rendererRegistry ?? globalRendererRegistry,
-    rulesRegistry: formOptions.rulesRegistry ?? globalRulesRegistry,
+    validatorRegistry: formOptions.validatorRegistry ?? globalRulesRegistry,
   }
 
   const instance = computed(() => createForm<TValues>(mergedOptions))

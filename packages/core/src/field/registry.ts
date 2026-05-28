@@ -7,9 +7,8 @@
  * @module core/field/registry
  */
 
-import type { FieldDescriptor } from "../descriptor"
 import type { FieldModel } from "./model"
-import type { Fiber } from "../graph"
+import type { FieldFiber } from "../graph"
 import type { NamePath, Values } from "../types/form"
 
 /**
@@ -19,9 +18,21 @@ export interface FieldRegistryEntry<
   TValues extends Values = Values,
   TName extends NamePath<TValues> = NamePath<TValues>,
 > {
+  /**
+   * 字段在表单值对象中的名称路径。
+   */
   readonly name: TName
-  readonly fiber: Fiber<TValues>
-  readonly descriptor: FieldDescriptor<TValues>
+
+  /**
+   * 字段 Fiber，持有字段描述符、字段模型和字段相关资源作用域。
+   *
+   * @typeParam TValues - 表单值类型。
+   */
+  readonly fiber: FieldFiber<TValues>
+
+  /**
+   * 字段运行时模型；卸载字段主体资源后会被清空或重建。
+   */
   readonly model: FieldModel<TValues>
 }
 
@@ -39,7 +50,7 @@ class RuntimeFieldRegistry<
     this.fields.set(key, entry)
   }
 
-  unregister(name: TName, fiber?: Fiber<TValues>): void {
+  unregister(name: TName, fiber?: FieldFiber<TValues>): void {
     const key = name
     const current = this.fields.get(key)
 

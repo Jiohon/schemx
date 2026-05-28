@@ -9,10 +9,9 @@
 
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 
-import { FieldValue } from "./namePathType"
-
 import type { SchemxDependencies } from "./dependencies"
 import type {
+  FieldValue,
   NamePath,
   SchemxFormApi,
   SchemxInstance,

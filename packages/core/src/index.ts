@@ -1,7 +1,7 @@
 /**
  * core 模块统一导出
  *
- * 聚合 Validator、RendererRegistry、RulesRegistry 等核心模块的公开 API。
+ * 聚合 Validator、RendererRegistry、ValidatorsRegistry 等核心模块的公开 API。
  *
  * @module core
  */
@@ -68,12 +68,12 @@ export {
 } from "./createWatch"
 
 export {
-  createRulesRegistry,
-  type RulesRegistry,
-  type RuleRegistryOptions,
-  type RuleFactory,
-  type RuleEntry,
-  type RuleEntryMap,
+  createValidatorsRegistry,
+  type ValidatorsRegistry,
+  type ValidatorsRegistryOptions,
+  type ValidatorsFactory,
+  type ValidatorsEntry,
+  type ValidatorsEntryMap,
 } from "./registry"
 
 export {
@@ -88,7 +88,6 @@ export {
 } from "./utils"
 
 export type {
-  FieldValue,
   Values,
   Dynamic,
   NamePath,

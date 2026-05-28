@@ -60,7 +60,7 @@ describe("createWatch 属性测试", () => {
           expect(receivedPayload.value).toEqual(newValue)
           expect(receivedPayload.prevValue).toEqual(initialValue)
 
-          form.getInternalHooks().destroy()
+          form.destroy()
         }
       ),
       { numRuns: 100 }
@@ -111,7 +111,7 @@ describe("createWatch 属性测试", () => {
           expect(receivedPayload.prevValues[targetField]).toEqual(initialValue)
           expect(receivedSnapshot[targetField]).toEqual(newValue)
 
-          form.getInternalHooks().destroy()
+          form.destroy()
         }
       ),
       { numRuns: 100 }
@@ -147,7 +147,7 @@ describe("createWatch 属性测试", () => {
           expect(receivedPayload.value).toEqual(initialValue)
           expect(receivedPayload.prevValue).toBeUndefined()
 
-          form.getInternalHooks().destroy()
+          form.destroy()
         }),
         { numRuns: 100 }
       )
@@ -187,7 +187,7 @@ describe("createWatch 属性测试", () => {
               expect(receivedPayload.changedValues[name]).toEqual(initialValue)
             }
 
-            form.getInternalHooks().destroy()
+            form.destroy()
           }
         ),
         { numRuns: 100 }
@@ -217,7 +217,7 @@ describe("createWatch 属性测试", () => {
           expect(receivedSnapshot).toBeDefined()
           expect(receivedSnapshot[fieldName]).toEqual(initialValue)
 
-          form.getInternalHooks().destroy()
+          form.destroy()
         }),
         { numRuns: 100 }
       )
@@ -245,7 +245,7 @@ describe("createWatch 属性测试", () => {
           form.setFieldValue(fieldName, JSON.parse(JSON.stringify(value)))
           expect(callCount).toBe(0)
 
-          form.getInternalHooks().destroy()
+          form.destroy()
         }),
         { numRuns: 100 }
       )
@@ -271,7 +271,7 @@ describe("createWatch 属性测试", () => {
           form.setFieldValue(fieldName, JSON.parse(JSON.stringify(value)))
           expect(callCount).toBe(0)
 
-          form.getInternalHooks().destroy()
+          form.destroy()
         }),
         { numRuns: 100 }
       )
@@ -296,7 +296,7 @@ describe("createWatch 属性测试", () => {
           form.setFieldValue(fieldName, JSON.parse(JSON.stringify(value)))
           expect(callCount).toBe(0)
 
-          form.getInternalHooks().destroy()
+          form.destroy()
         }),
         { numRuns: 100 }
       )
@@ -333,7 +333,7 @@ describe("createWatch 属性测试", () => {
             form.setFieldValue(fieldName, newValue)
             expect(callCount).toBe(0)
 
-            form.getInternalHooks().destroy()
+            form.destroy()
           }
         ),
         { numRuns: 100 }
@@ -369,7 +369,7 @@ describe("createWatch 属性测试", () => {
             form.setFieldValue(fieldName, newValue)
             expect(callCount).toBe(0)
 
-            form.getInternalHooks().destroy()
+            form.destroy()
           }
         ),
         { numRuns: 100 }
@@ -404,7 +404,7 @@ describe("createWatch 属性测试", () => {
             form.setFieldValue(fieldName, newValue)
             expect(callCount).toBe(0)
 
-            form.getInternalHooks().destroy()
+            form.destroy()
           }
         ),
         { numRuns: 100 }

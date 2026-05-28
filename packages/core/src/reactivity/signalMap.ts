@@ -101,8 +101,10 @@ class ReactiveMapImpl<K, V> {
 
     this.signals.delete(key)
 
-    s.value = undefined as unknown as V
-    this.version.value++
+    batchUpdates(() => {
+      s.value = undefined as unknown as V
+      this.version.value++
+    })
 
     return true
   }

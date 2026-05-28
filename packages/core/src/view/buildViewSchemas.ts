@@ -33,8 +33,8 @@ const MAX_DEPTH = 100
  * 将 FieldModel 构建为字段 ViewSchema。
  */
 function buildFieldViewSchema<TValues extends Values = Values>(
-  fiber: FieldFiber,
-  model: FieldModel
+  fiber: FieldFiber<TValues>,
+  model: FieldModel<TValues>
 ): SchemxViewFieldSchema<TValues> | null {
   const descriptor = fiber.descriptor
 
@@ -66,7 +66,7 @@ function buildFieldViewSchema<TValues extends Values = Values>(
  * 将 group Fiber 构建为分组 ViewSchema。
  */
 function buildGroupViewSchema<TValues extends Values = Values>(
-  fiber: GroupFiber,
+  fiber: GroupFiber<TValues>,
   depth: number
 ): SchemxViewGroupSchema<TValues> {
   const children = buildFiberChildren<TValues>(getChildFibers(fiber), depth + 1)
@@ -84,7 +84,7 @@ function buildGroupViewSchema<TValues extends Values = Values>(
  * 递归构建 Fiber 子节点。
  */
 function buildFiberChildren<TValues extends Values = Values>(
-  fibers: readonly Fiber[],
+  fibers: Fiber<TValues>[],
   depth: number
 ): readonly SchemxViewSchema<TValues>[] {
   if (depth > MAX_DEPTH) {
@@ -120,7 +120,7 @@ function buildFiberChildren<TValues extends Values = Values>(
  * 构建单个 Fiber 对应的 ViewSchema。
  */
 function buildFiberSchema<TValues extends Values = Values>(
-  fiber: Fiber,
+  fiber: Fiber<TValues>,
   depth: number
 ): SchemxViewSchema<TValues> | readonly SchemxViewSchema<TValues>[] | null {
   if (fiber.disposed.value) {
@@ -153,7 +153,7 @@ function buildFiberSchema<TValues extends Values = Values>(
 }
 
 function buildDependencyFiber<TValues extends Values = Values>(
-  fiber: DependencyFiber,
+  fiber: DependencyFiber<TValues>,
   depth: number
 ): readonly SchemxViewSchema<TValues>[] {
   return buildFiberChildren<TValues>(getChildFibers(fiber), depth + 1)
@@ -218,7 +218,9 @@ function isValidPropKey(key: string): boolean {
 /**
  * 构建调试元数据。
  */
-function buildDebugMeta(fiber: Fiber): Readonly<SchemxViewDebugMeta> {
+function buildDebugMeta<TValues extends Values = Values>(
+  fiber: Fiber<TValues>
+): Readonly<SchemxViewDebugMeta> {
   return {
     fiberId: fiber.id,
     fiberType: fiber.type,
@@ -236,7 +238,7 @@ function buildDebugMeta(fiber: Fiber): Readonly<SchemxViewDebugMeta> {
  * @returns 可供渲染层消费的 ViewSchemas。
  */
 export function buildViewSchemas<TValues extends Values = Values>(
-  root: RootFiber | null | undefined
+  root: RootFiber<TValues> | null | undefined
 ): readonly SchemxViewSchema<TValues>[] {
   if (!root) {
     return []

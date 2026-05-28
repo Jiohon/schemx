@@ -11,7 +11,7 @@ import { isGroupDescriptor } from "../descriptor"
 
 import { getChildFibers, setChildFibers } from "./fiber"
 
-import type { ContainerFiber, Fiber, GroupFiber } from "./fiber"
+import type { ContainerFiber, DescribedFiber, GroupFiber } from "./fiber"
 import type { FormDescriptor } from "../descriptor"
 import type { Values } from "../types"
 import type { FiberManager } from "./fiberManager"
@@ -32,7 +32,7 @@ class RuntimeReconciler<TValues extends Values> {
   /**
    * 将容器 Fiber 的子节点更新为目标 descriptor 列表。
    *
-   * @param parent - 承载子节点的 Fiber。
+   * @param parentFiber - 承载子节点的 Fiber。
    * @param descriptors - 新一轮编译后的子节点描述符。
    * @returns 子节点结构是否发生可观测变化（新增、移除、类型变更或子树变动）。
    *
@@ -42,20 +42,22 @@ class RuntimeReconciler<TValues extends Values> {
    * 期间仍读取到过期结构。`viewRevision` 由外层 commit boundary 统一推进。
    */
   reconcileChildren(
-    parent: ContainerFiber<TValues>,
+    parentFiber: ContainerFiber<TValues>,
     descriptors: FormDescriptor<TValues>[]
   ): boolean {
-    return this.reconcileChildrenTree(parent, descriptors)
+    return this.reconcileChildrenTree(parentFiber, descriptors)
   }
 
   private reconcileChildrenTree(
-    parent: ContainerFiber<TValues>,
+    parentFiber: ContainerFiber<TValues>,
     descriptors: FormDescriptor<TValues>[]
   ): boolean {
     const previousByKey = new Map(
-      getChildFibers(parent).map((fiber) => [fiber.key, fiber])
+      getChildFibers(parentFiber).map((fiber) => [fiber.key, fiber])
     )
-    const next: Fiber<TValues>[] = []
+
+    const next: DescribedFiber<TValues>[] = []
+
     const groups: Array<{
       fiber: GroupFiber<TValues>
       descriptor: FormDescriptor<TValues>
@@ -69,7 +71,7 @@ class RuntimeReconciler<TValues extends Values> {
       if (existing && existing.type === descriptor.type) {
         previousByKey.delete(descriptor.key)
 
-        existing.parent = parent
+        existing.parent = parentFiber
 
         this.fiberManager.update(existing, descriptor)
 
@@ -85,7 +87,7 @@ class RuntimeReconciler<TValues extends Values> {
       // 新建或类型变更
       changed = true
 
-      const fiber = this.fiberManager.create(descriptor, parent)
+      const fiber = this.fiberManager.create(descriptor, parentFiber)
 
       this.fiberManager.mount(fiber)
 
@@ -97,7 +99,7 @@ class RuntimeReconciler<TValues extends Values> {
     }
 
     // 先提交新结构，避免 cleanup 或投影期间仍遍历旧子树。
-    setChildFibers(parent, next)
+    setChildFibers(parentFiber, next)
 
     for (const { fiber, descriptor } of groups) {
       if (isGroupDescriptor(descriptor)) {

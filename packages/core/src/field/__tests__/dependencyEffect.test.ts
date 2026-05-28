@@ -5,8 +5,14 @@ import {
   createRuntimeGraphHarness,
   flushRuntimeGraph,
 } from "./dependencyRuntimeTestUtils"
+import * as fieldModule from "../index"
 
 describe("dependency effect", () => {
+  it("只导出 createDependencyEffect 作为 dependency effect 创建入口", () => {
+    expect(fieldModule).toHaveProperty("createDependencyEffect")
+    expect(fieldModule).not.toHaveProperty("mountDependencyEffect")
+  })
+
   it("renderer 返回的子 schema 会编译后通过 commit boundary 写入 dependency.subChildren", async () => {
     const renderer = vi.fn().mockResolvedValue([createRawFieldSchema("child", "child")])
     const { commitSchemas, root, scheduler, viewRevision } = createRuntimeGraphHarness()

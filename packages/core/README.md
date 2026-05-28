@@ -54,8 +54,8 @@ const form = createForm<LoginValues>({
   },
 })
 
-form.registerRules("email", z.string().email("请输入正确的邮箱"))
-form.registerRules("password", z.string().min(6, "密码至少 6 位"))
+form.register("email", z.string().email("请输入正确的邮箱"))
+form.register("password", z.string().min(6, "密码至少 6 位"))
 
 form.setFieldValue("email", "hello@example.com")
 form.setFieldValue("password", "123456")
@@ -246,8 +246,8 @@ const form = createForm({
   },
 })
 
-form.registerRules("email", z.string().email("邮箱格式错误"))
-form.registerRules("age", z.number().min(18, "必须年满 18 岁"))
+form.register("email", z.string().email("邮箱格式错误"))
+form.register("age", z.number().min(18, "必须年满 18 岁"))
 
 const result = await form.validate()
 
@@ -258,18 +258,18 @@ if (!result.ok) {
 
 ### 规则注册表
 
-当 schema 中希望复用字符串规则时，可以注入 `RulesRegistry`。
+当 schema 中希望复用字符串规则时，可以注入 `ValidatorsRegistry`。
 
 ```ts
-import { createForm, createRulesRegistry } from "@schemx/core"
+import { createForm, createValidatorsRegistry } from "@schemx/core"
 import { z } from "zod"
 
-const rulesRegistry = createRulesRegistry()
+const validatorRegistry = createValidatorsRegistry()
 
-rulesRegistry.register("phone", z.string().regex(/^1[3-9]\d{9}$/, "手机号格式错误"))
+validatorRegistry.register("phone", z.string().regex(/^1[3-9]\d{9}$/, "手机号格式错误"))
 
 const form = createForm({
-  rulesRegistry,
+  validatorRegistry,
   schemas: [
     {
       name: "phone",
@@ -352,7 +352,7 @@ const form = createForm({
 const nameField = createField(form, "name")
 
 nameField.setValue("Jane")
-nameField.registerRules("required")
+nameField.register("required")
 
 const result = await nameField.validate()
 
@@ -441,7 +441,7 @@ schemas.update((current) => [
 | `modelValue`          | 外部受控值，用于创建实例时与初始快照合并                |
 | `rendererRegistry`    | 渲染器注册表                                            |
 | `defaultRendererType` | 字段未指定或查找不到 renderer 时使用的默认类型          |
-| `rulesRegistry`       | 字符串规则注册表                                        |
+| `validatorRegistry`   | 字符串规则注册表                                        |
 | `validationTrigger`   | 默认校验触发时机，支持 `change` / `blur` / `submit`     |
 | `readonly`            | 全局只读默认值                                          |
 | `disabled`            | 全局禁用默认值                                          |
@@ -453,21 +453,21 @@ schemas.update((current) => [
 
 ### SchemxInstance
 
-| 分类       | 方法                                                                                              |
-| ---------- | ------------------------------------------------------------------------------------------------- |
-| 值         | `getFieldValue`、`getFieldsValue`、`setFieldValue`、`setFieldsValue`                              |
-| 快照       | `getFieldSnapshot`、`getFieldsSnapshot`                                                           |
-| 初始值     | `getInitialValue`、`getInitialValues`、`setInitialValues`                                         |
-| touched    | `isFieldTouched`、`setFieldTouched`、`getTouchedFields`                                           |
-| pending    | `setFieldPending`、`isFieldPending`、`getPendingFields`                                           |
-| 校验       | `registerRules`、`unregisterRules`、`validateField`、`validate`、`getFieldError`、`setFieldError` |
-| 提交与重置 | `submit`、`reset`、`resetFields`                                                                  |
-| 响应式     | `effect`、`batch`                                                                                 |
-| schema     | `setSchemas`、`updateSchemas`                                                                     |
-| view       | `getViewSchemas`、`subscribeViewSchemas`、`getViewRevision`、`waitForDependencies`                |
-| renderer   | `getRenderer`、`registerRenderer`、`hasRenderer`                                                  |
-| rule       | `getRule`、`registerRule`、`hasRule`                                                              |
-| 生命周期   | `destroy`                                                                                         |
+| 分类       | 方法                                                                                    |
+| ---------- | --------------------------------------------------------------------------------------- |
+| 值         | `getFieldValue`、`getFieldsValue`、`setFieldValue`、`setFieldsValue`                    |
+| 快照       | `getFieldSnapshot`、`getFieldsSnapshot`                                                 |
+| 初始值     | `getInitialValue`、`getInitialValues`、`setInitialValues`                               |
+| touched    | `isFieldTouched`、`setFieldTouched`、`getTouchedFields`                                 |
+| pending    | `setFieldPending`、`isFieldPending`、`getPendingFields`                                 |
+| 校验       | `register`、`unregister`、`validateField`、`validate`、`getFieldError`、`setFieldError` |
+| 提交与重置 | `submit`、`reset`、`resetFields`                                                        |
+| 响应式     | `effect`、`batch`                                                                       |
+| schema     | `setSchemas`、`updateSchemas`                                                           |
+| view       | `getViewSchemas`、`subscribeViewSchemas`、`getViewRevision`、`waitForDependencies`      |
+| renderer   | `getRenderer`、`registerRenderer`、`hasRenderer`                                        |
+| validator  | `getValidator`、`registerValidator`、`hasValidator`                                     |
+| 生命周期   | `destroy`                                                                               |
 
 ## 核心概念
 

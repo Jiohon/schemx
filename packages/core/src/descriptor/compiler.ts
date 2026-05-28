@@ -130,6 +130,8 @@ function compileField<TValues extends Values>(
   return {
     type: "field",
     key,
+    name: schema.name,
+    rendererType: schema.componentType,
     schema: normalizedSchema,
     dependencies: schema.dependencies,
   }

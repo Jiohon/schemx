@@ -15,7 +15,7 @@ export type { SchemxInstallOptions } from "./form"
 export { rendererRegistry } from "./utils/rendererProvider"
 
 /** 全局校验规则注册实例 */
-export { rulesRegistry } from "./utils/rulesProvider"
+export { validatorRegistry } from "./utils/rulesProvider"
 
 /** Hooks */
 export {

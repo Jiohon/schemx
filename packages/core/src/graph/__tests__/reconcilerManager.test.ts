@@ -8,8 +8,8 @@ import { createViewRevision } from "../../view"
 import { createFiberManager } from "../fiberManager"
 import { createReconciler } from "../reconciler"
 
-import type { DependencyDescriptor, FieldDescriptor } from "../../descriptor"
 import type { SchemxFormContext } from "../../createForm"
+import type { DependencyDescriptor, FieldDescriptor } from "../../descriptor"
 import type { LifecycleListener } from "../../lifecycle"
 import type { Fiber, FieldFiber } from "../fiber"
 
@@ -17,11 +17,13 @@ function createFieldDescriptor(key: string, name = key): FieldDescriptor {
   return {
     type: "field",
     key,
+    name,
+    rendererType: "text",
     schema: {
       name,
       componentType: "text",
     },
-  }
+  } as FieldDescriptor
 }
 
 function createDependencyDescriptor(
@@ -37,9 +39,7 @@ function createDependencyDescriptor(
   }
 }
 
-function createGraphRuntime(
-  listener: LifecycleListener<Fiber, FieldDescriptor | DependencyDescriptor> = {}
-) {
+function createGraphRuntime(listener: LifecycleListener<Fiber> = {}) {
   const fieldRegistry = createFieldRegistry()
   const lifecycleBus = createLifecycleBus(listener)
   const scheduler = createScheduler()
@@ -54,12 +54,12 @@ function createGraphRuntime(
     validator: {
       getFieldError: vi.fn(() => []),
       setFieldError: vi.fn(),
-      registerRules: vi.fn(),
-      unregisterRules: vi.fn(),
+      register: vi.fn(),
+      unregister: vi.fn(),
       validateField: vi.fn().mockResolvedValue({ ok: true, values: {} }),
     },
-    rulesRegistry: {
-      resolve: vi.fn(() => []),
+    validatorRegistry: {
+      resolveValidatorsBySchema: vi.fn(() => []),
     },
     getFormApi: () => ({
       getValue: vi.fn(),
@@ -78,6 +78,7 @@ function createGraphRuntime(
       viewRevision.bump()
     }
   }
+
   const root = fiberManager.createRoot()
 
   Object.assign(context, { reconciler, commitChildren, compileOptions: {} })

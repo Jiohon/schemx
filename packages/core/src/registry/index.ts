@@ -15,10 +15,10 @@ export {
 } from "./rendererRegistry"
 
 export {
-  createRulesRegistry,
-  type RulesRegistry,
-  type RuleRegistryOptions,
-  type RuleFactory,
-  type RuleEntry,
-  type RuleEntryMap,
-} from "./rulesRegistry"
+  createValidatorsRegistry,
+  type ValidatorsRegistry,
+  type ValidatorsRegistryOptions,
+  type ValidatorsFactory,
+  type ValidatorsEntry,
+  type ValidatorsEntryMap,
+} from "./validatorRegistry"

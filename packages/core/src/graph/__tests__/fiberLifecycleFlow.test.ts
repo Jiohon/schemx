@@ -34,6 +34,45 @@ describe("fiber lifecycle flow", () => {
     expect(hooks.unmounted).toHaveBeenCalledTimes(1)
   })
 
+  it("生命周期回调只接收 fiber，update 回调接收 previousFiber", () => {
+    const hooks = {
+      beforeMount: vi.fn(),
+      mount: vi.fn(),
+      mounted: vi.fn(),
+      beforeUpdate: vi.fn(),
+      update: vi.fn(),
+      updated: vi.fn(),
+    }
+    const { commitSchemas, root } = createRuntimeGraphHarness(hooks)
+
+    commitSchemas(root, [createRawFieldSchema("name", "name")])
+    const fiber = root.childFibers[0] as FieldFiber
+    const previousDescriptor = fiber.descriptor
+
+    commitSchemas(root, [createRawFieldSchema("name", "nickname")])
+
+    expect(hooks.beforeMount).toHaveBeenCalledWith(fiber)
+    expect(hooks.mount).toHaveBeenCalledWith(fiber)
+    expect(hooks.mounted).toHaveBeenCalledWith(fiber)
+
+    const [beforeUpdateFiber, beforeUpdatePreviousFiber] =
+      hooks.beforeUpdate.mock.calls[0] ?? []
+    const [updateFiber, updatePreviousFiber] = hooks.update.mock.calls[0] ?? []
+    const [updatedFiber, updatedPreviousFiber] = hooks.updated.mock.calls[0] ?? []
+
+    expect(beforeUpdateFiber).toBe(fiber)
+    expect(updateFiber).toBe(fiber)
+    expect(updatedFiber).toBe(fiber)
+    expect(beforeUpdatePreviousFiber).toMatchObject({
+      type: "field",
+      key: "name",
+      descriptor: previousDescriptor,
+    })
+    expect(updatePreviousFiber).toBe(beforeUpdatePreviousFiber)
+    expect(updatedPreviousFiber).toBe(beforeUpdatePreviousFiber)
+    expect(beforeUpdatePreviousFiber).not.toBe(previousDescriptor)
+  })
+
   it("disposed field 保留 descriptor 和 model 快照但释放资源 scope", () => {
     const { commitSchemas, root } = createRuntimeGraphHarness()
 

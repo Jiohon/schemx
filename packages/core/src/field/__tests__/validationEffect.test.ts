@@ -47,8 +47,8 @@ const createContext = (
 ) => {
   const scheduler = createScheduler()
   const validator = {
-    registerRules: vi.fn(),
-    unregisterRules: vi.fn(),
+    register: vi.fn(),
+    unregister: vi.fn(),
     setFieldError: vi.fn(),
     validateField: vi.fn().mockResolvedValue(
       options.validateResult ?? {
@@ -58,8 +58,8 @@ const createContext = (
     ),
   }
 
-  const rulesRegistry = {
-    resolveRuleBySchema: vi.fn(() => ["resolved-rule"]),
+  const validatorRegistry = {
+    resolveValidatorsBySchema: vi.fn(() => ["resolved-rule"]),
   }
 
   const store = {
@@ -69,12 +69,12 @@ const createContext = (
   return {
     context: {
       validator,
-      rulesRegistry,
+      validatorRegistry,
       store,
       scheduler,
     } as unknown as SchemxFormContext<TestValues>,
     validator,
-    rulesRegistry,
+    validatorRegistry,
     store,
     scheduler,
   }
@@ -85,7 +85,7 @@ describe("createValidationEffect", () => {
     const scope = createRuntimeScope()
     const descriptor = createDescriptor()
     const fieldModel = createFieldModel(descriptor)
-    const { context, validator, rulesRegistry, scheduler } = createContext()
+    const { context, validator, validatorRegistry, scheduler } = createContext()
 
     const validation = createValidationEffect({
       name: "field",
@@ -98,11 +98,11 @@ describe("createValidationEffect", () => {
 
     expect(validation.registered.value).toBe(true)
     expect(validation.validating.value).toBe(false)
-    expect(rulesRegistry.resolveRuleBySchema).toHaveBeenCalledWith({
+    expect(validatorRegistry.resolveValidatorsBySchema).toHaveBeenCalledWith({
       rules: descriptor.schema.rules,
       label: "字段",
     })
-    expect(validator.registerRules).toHaveBeenCalledWith(
+    expect(validator.register).toHaveBeenCalledWith(
       "field",
       ["resolved-rule"],
       "字段为必填项"
@@ -126,7 +126,7 @@ describe("rule management", () => {
 
     await scheduler.flush()
 
-    expect(validator.unregisterRules).toHaveBeenCalledWith("field")
+    expect(validator.unregister).toHaveBeenCalledWith("field")
     expect(validator.setFieldError).toHaveBeenCalledWith("field", [])
   })
 
@@ -145,7 +145,7 @@ describe("rule management", () => {
 
     await scheduler.flush()
 
-    expect(validator.unregisterRules).toHaveBeenCalledWith("field")
+    expect(validator.unregister).toHaveBeenCalledWith("field")
     expect(validator.setFieldError).toHaveBeenCalledWith("field", [])
   })
 
@@ -164,7 +164,7 @@ describe("rule management", () => {
 
     await scheduler.flush()
 
-    expect(validator.unregisterRules).toHaveBeenCalledWith("field")
+    expect(validator.unregister).toHaveBeenCalledWith("field")
     expect(validator.setFieldError).toHaveBeenCalledWith("field", [])
   })
 
@@ -194,7 +194,7 @@ describe("rule management", () => {
 
     await scheduler.flush()
 
-    expect(validator.unregisterRules).toHaveBeenCalledWith("field")
+    expect(validator.unregister).toHaveBeenCalledWith("field")
 
     dispose()
   })

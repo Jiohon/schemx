@@ -24,7 +24,7 @@ import type { ViewRevision } from "./viewRevision"
  * @returns 取消订阅函数。
  */
 export function subscribeViewSchemas<TValues extends Values = Values>(
-  root: RootFiber,
+  root: RootFiber<TValues>,
   revision: ViewRevision,
   onChange: (schemas: readonly SchemxViewSchema<TValues>[]) => void
 ): () => void {

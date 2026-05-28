@@ -21,6 +21,7 @@
       <button class="btn" @click="handleValidateAll">全量校验</button>
       <button class="btn" @click="handleValidateUsername">校验用户名</button>
       <button class="btn" @click="handleValidatePhone">校验手机号</button>
+      <button class="btn" @click="handleRegisterMailRules">注册邮箱rules</button>
       <button class="btn" @click="formRef?.reset()">重置</button>
     </div>
 
@@ -79,7 +80,7 @@
       name: "email",
       label: "邮箱",
       componentType: "text",
-      rules: "required",
+      // rules: "required",
       componentProps: {
         placeholder: "请输入邮箱地址",
       },
@@ -237,6 +238,11 @@
   const handleValidateAll = async () => {
     const result = await formRef.value?.validate()
     console.log("全量校验结果:", result)
+  }
+
+  const handleRegisterMailRules = () => {
+    formRef.value?.register("email", "required")
+    // do something
   }
 </script>
 

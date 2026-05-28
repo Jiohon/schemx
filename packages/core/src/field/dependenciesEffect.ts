@@ -48,13 +48,21 @@ type DependencyResolvedProps<TValues extends Values> = Partial<
  * @typeParam TValues - 表单值类型。
  */
 export interface CreateDependenciesEffectOptions<TValues extends Values = Values> {
-  /** 字段 descriptor，提供静态 schema、validation 和 dependencies 配置。 */
+  /**
+   * 字段 descriptor，提供静态 schema、validation 和 dependencies 配置。
+   */
   descriptor: Readonly<FieldDescriptor<TValues>>
-  /** 被 dependencies 动态写入的字段呈现态模型。 */
+  /**
+   * 被 dependencies 动态写入的字段呈现态模型。
+   */
   fieldModel: FieldModel<TValues>
-  /** form 内部运行时上下文。 */
+  /**
+   * form 内部运行时上下文。
+   */
   context: SchemxFormContext<TValues>
-  /** 当前 effect 所属的资源作用域。 */
+  /**
+   * 当前 effect 所属的资源作用域。
+   */
   scope: Scope
 }
 

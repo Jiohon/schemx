@@ -12,6 +12,7 @@ import type {
   SchemxDependencies,
   SchemxField,
   SchemxFormApi,
+  SchemxRendererKey,
   SchemxResolvedBaseField,
   SchemxResolvedGroupField,
   Values,
@@ -21,6 +22,9 @@ import type {
  * 表单描述符，所有描述符类型的联合类型。
  *
  * 描述符树表示 schema 编译后的表单结构，在 graph 实例化之前。
+ *
+ * @typeParam TValues - 表单值类型。
+ * @typeParam TName - 字段名路径类型。
  */
 export type FormDescriptor<
   TValues extends Values = Values,
@@ -37,11 +41,38 @@ export type FormDescriptor<
  * - 身份：key 用于协调
  * - Schema：schema 是规范化后的静态字段 schema
  * - Dependencies：dependencies 是字段动态派生规则
+ *
+ * @typeParam TValues - 表单值类型。
  */
 export interface FieldDescriptor<TValues extends Values = Values> {
+  /**
+   * 描述符类型标识，用于区分字段、分组和 dependency。
+   */
   readonly type: "field"
+
+  /**
+   * 用于 runtime graph reconcile 的稳定 key。
+   */
   readonly key: string
+
+  /**
+   * 字段在表单值对象中的名称路径。
+   */
+  readonly name: NamePath<TValues>
+
+  /**
+   * 字段渲染器类型，用于匹配渲染层注册的 renderer。
+   */
+  readonly rendererType: SchemxRendererKey
+
+  /**
+   * 编译后、已补默认值的字段 schema。
+   */
   readonly schema: SchemxResolvedBaseField<TValues>
+
+  /**
+   * 字段的动态派生规则；不存在时字段使用静态 schema。
+   */
   readonly dependencies?: SchemxDependencies<TValues>
 }
 
@@ -50,14 +81,32 @@ export interface FieldDescriptor<TValues extends Values = Values> {
  *
  * 分组是结构性容器，没有字段状态。
  * 用于布局和组织目的。
+ *
+ * @typeParam TValues - 表单值类型。
+ * @typeParam TName - 字段名路径类型。
  */
 export interface GroupDescriptor<
   TValues extends Values = Values,
   TName extends NamePath<TValues> = NamePath<TValues>,
 > {
+  /**
+   * 描述符类型标识，用于区分字段、分组和 dependency。
+   */
   readonly type: "group"
+
+  /**
+   * 用于 runtime graph reconcile 的稳定 key。
+   */
   readonly key: string
+
+  /**
+   * 编译后、已补默认值的分组 schema。
+   */
   readonly schema: SchemxResolvedGroupField<TValues>
+
+  /**
+   * 分组内的子描述符树。
+   */
   readonly children: FormDescriptor<TValues, TName>[]
 }
 
@@ -66,14 +115,32 @@ export interface GroupDescriptor<
  *
  * 外部 `componentType: "dependency"` schema 会被编译为该描述符。
  * 当 trigger 字段变化时，render 函数被调用，返回新的 schema，再由 commit 边界前编译。
+ *
+ * @typeParam TValues - 表单值类型。
+ * @typeParam TName - 字段名路径类型。
  */
 export interface DependencyDescriptor<
   TValues extends Values = Values,
   TName extends NamePath<TValues> = NamePath<TValues>,
 > {
+  /**
+   * 描述符类型标识，用于区分字段、分组和 dependency。
+   */
   readonly type: "dependency"
+
+  /**
+   * 用于 runtime graph reconcile 的稳定 key。
+   */
   readonly key: string
+
+  /**
+   * 触发 dependency renderer 重新执行的字段名路径列表。
+   */
   readonly trigger: TName[]
+
+  /**
+   * 根据当前表单状态动态生成子 schema 的渲染函数。
+   */
   readonly renderer: DependencyRenderer<TValues>
 }
 

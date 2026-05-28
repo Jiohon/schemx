@@ -16,9 +16,9 @@ import type { StorePending } from "../store"
 import type { SchemxField } from "./schema"
 import type {
   RendererRegistry,
-  RuleEntry,
-  RuleRegistryOptions,
-  RulesRegistry,
+  ValidatorsEntry,
+  ValidatorsRegistry,
+  ValidatorsRegistryOptions,
 } from "../registry"
 import type { ValidateError, ValidateResult } from "../validator"
 import type { SchemxViewSchema } from "../view"
@@ -109,7 +109,7 @@ export interface SchemxProps<T extends Values = Values> {
   /** 默认渲染器类型，当字段未指定 renderer 时使用 */
   defaultRendererType?: SchemxRendererKey
   /** 规则注册实例 */
-  rulesRegistry?: RulesRegistry
+  validatorRegistry?: ValidatorsRegistry
 
   /** 验证触发时机 */
   validationTrigger?: ValidationTrigger | ValidationTrigger[]
@@ -638,37 +638,37 @@ export interface SchemxInstance<TValues extends Values = Values> {
   /**
    * 获取指定名称的校验规则条目
    *
-   * 从内部 RulesRegistry 查找，支持父级链式查找。
+   * 从内部 ValidatorsRegistry 查找，支持父级链式查找。
    * 返回原始注册条目（StandardSchemaV1 实例或工厂函数），不做解析。
    *
    * @param name - 规则名称
-   * @returns 对应的 RuleEntry，未找到时返回 undefined
+   * @returns 对应的 ValidatorsEntry，未找到时返回 undefined
    *
    * @example
    * ```typescript
-   * const entry = form.getRule('phone')
+   * const entry = form.getValidator('phone')
    * ```
    */
-  getRule: (name: string) => RuleEntry<TValues> | undefined
+  getValidator: (name: string) => ValidatorsEntry<TValues> | undefined
 
   /**
    * 注册校验规则
    *
-   * 将校验规则注册到内部的 RulesRegistry，
-   * 后续可通过 getRule / hasRule 查询。
+   * 将校验规则注册到内部的 ValidatorsRegistry，
+   * 后续可通过 getValidator / hasValidator 查询。
    *
    * @param name - 规则名称
    * @param rule - StandardSchemaV1 实例或工厂函数
    *
    * @example
    * ```typescript
-   * form.registerRule('phone', phoneRule)
+   * form.registerValidator('phone', phoneRule)
    * ```
    */
-  registerRule: (
+  registerValidator: (
     name: string,
-    rule: RuleEntry<TValues>,
-    options?: RuleRegistryOptions
+    rule: ValidatorsEntry<TValues>,
+    options?: ValidatorsRegistryOptions
   ) => void
 
   /**
@@ -681,10 +681,10 @@ export interface SchemxInstance<TValues extends Values = Values> {
    *
    * @example
    * ```typescript
-   * form.hasRule('phone') // => true
+   * form.hasValidator('phone') // => true
    * ```
    */
-  hasRule: (name: string) => boolean
+  hasValidator: (name: string) => boolean
 
   /**
    * 注册字段校验规则

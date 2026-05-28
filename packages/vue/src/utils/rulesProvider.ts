@@ -8,7 +8,7 @@
  * @module utils/rulesProvider
  */
 
-import { createRulesRegistry } from "@schemx/core"
+import { createValidatorsRegistry } from "@schemx/core"
 
 /**
  * 全局校验规则注册实例
@@ -16,11 +16,11 @@ import { createRulesRegistry } from "@schemx/core"
  * @example
  * ```ts
  * // 注册自定义规则
- * import { rulesRegistry } from '@schemx/vue'
- * rulesRegistry.register('phone', phoneRule)
+ * import { validatorRegistry } from '@schemx/vue'
+ * validatorRegistry.register('phone', phoneRule)
  *
  * // useForm 内部自动使用
- * // props 传入的 rulesRegistry 优先级更高
+ * // props 传入的 validatorRegistry 优先级更高
  * ```
  */
-export const rulesRegistry = createRulesRegistry()
+export const validatorRegistry = createValidatorsRegistry()

@@ -7,10 +7,12 @@
  */
 
 export {
+  getFiber,
   getChildFibers,
   hasDescriptor,
   isContainerFiber,
   isDependencyFiber,
+  isRootFiber,
   isFieldFiber,
   isGroupFiber,
   setChildFibers,

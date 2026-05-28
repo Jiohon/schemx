@@ -115,7 +115,7 @@ export function createValidationEffect<TValues extends Values = Values>(
     const { visible, readonly, disabled, label, rules } = snapshot
 
     if (!visible || readonly || disabled || !rules) {
-      context.validator.unregisterRules(name)
+      context.validator.unregister(name)
       context.validator.setFieldError(name, [])
 
       registered.value = false
@@ -123,12 +123,12 @@ export function createValidationEffect<TValues extends Values = Values>(
       return
     }
 
-    const resolvedRules = context.rulesRegistry.resolveRuleBySchema({
+    const resolvedRules = context.validatorRegistry.resolveValidatorsBySchema({
       rules,
       label,
     } as SchemxBaseField<TValues>)
 
-    context.validator.registerRules(name, resolvedRules, `${label}为必填项`)
+    context.validator.register(name, resolvedRules, `${label}为必填项`)
 
     registered.value = true
   }
@@ -155,7 +155,7 @@ export function createValidationEffect<TValues extends Values = Values>(
 
   scope.add(() => {
     registrationVersion += 1
-    context.validator.unregisterRules(name)
+    context.validator.unregister(name)
     context.validator.setFieldError(name, [])
 
     registered.value = false

@@ -43,7 +43,7 @@
     onValuesChange: undefined,
     onFieldsChange: undefined,
     rendererRegistry: undefined,
-    rulesRegistry: undefined,
+    validatorRegistry: undefined,
   })
 
   const emit = defineEmits<{
@@ -63,7 +63,7 @@
       "modelValue",
       "rendererRegistry",
       "defaultRendererType",
-      "rulesRegistry",
+      "validatorRegistry",
       "onFinish",
       "onFinishFailed",
       "onValuesChange",
@@ -84,7 +84,7 @@
         initialValues: props.initialValues,
         rendererRegistry: props.rendererRegistry,
         defaultRendererType: props.defaultRendererType,
-        rulesRegistry: props.rulesRegistry,
+        validatorRegistry: props.validatorRegistry,
 
         readonly: props.readonly,
         disabled: props.disabled,

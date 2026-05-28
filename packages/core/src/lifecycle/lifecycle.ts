@@ -7,29 +7,27 @@
  * @module core/lifecycle
  */
 
-import type { FormDescriptor } from "../descriptor"
 import type { Fiber } from "../graph"
 import type { Values } from "../types"
 
 /**
  * 兼容旧命名的完整生命周期 hooks。
  */
-export interface LifecycleHooks<TNode, TDescriptor> {
+export interface LifecycleHooks<TNode> {
   /**
    * 挂载新节点。
    *
    * @param node - 被挂载的节点。
-   * @param descriptor - 节点对应的描述符。
    */
-  mount(node: TNode, descriptor: TDescriptor): void
+  mount(node: TNode): void
 
   /**
    * 更新已有节点。
    *
    * @param node - 被更新的节点。
-   * @param descriptor - 节点更新后的描述符。
+   * @param previousNode - 更新前的节点快照。
    */
-  update(node: TNode, descriptor: TDescriptor): void
+  update(node: TNode, previousNode: TNode): void
 
   /**
    * 卸载节点。
@@ -42,7 +40,7 @@ export interface LifecycleHooks<TNode, TDescriptor> {
 /**
  * Fiber 生命周期 hooks。
  */
-export interface FiberLifecycleHooks<TNode, TDescriptor> {
+export interface FiberLifecycleHooks<TNode> {
   /**
    * Fiber 挂载前。
    *
@@ -61,17 +59,17 @@ export interface FiberLifecycleHooks<TNode, TDescriptor> {
    * Fiber 更新前。
    *
    * @param node - 即将更新的 Fiber 节点。
-   * @param previous - 更新前的描述符。
+   * @param previousNode - 更新前的 Fiber 快照。
    */
-  beforeUpdate(node: TNode, previous: TDescriptor): void
+  beforeUpdate(node: TNode, previousNode: TNode): void
 
   /**
    * Fiber 更新后。
    *
    * @param node - 已更新的 Fiber 节点。
-   * @param previous - 更新前的描述符。
+   * @param previousNode - 更新前的 Fiber 快照。
    */
-  updated(node: TNode, previous: TDescriptor): void
+  updated(node: TNode, previousNode: TNode): void
 
   /**
    * Fiber 卸载前。
@@ -94,29 +92,28 @@ export interface FiberLifecycleHooks<TNode, TDescriptor> {
  * 监听器允许只实现关心的事件。mount/update/unmount 是兼容旧命名的观察入口，
  * mounted/updated/unmounted 是新的 Fiber 生命周期入口。
  */
-export type LifecycleListener<TNode, TDescriptor> = Partial<
-  LifecycleHooks<TNode, TDescriptor> & FiberLifecycleHooks<TNode, TDescriptor>
+export type LifecycleListener<TNode> = Partial<
+  LifecycleHooks<TNode> & FiberLifecycleHooks<TNode>
 >
 
 /**
  * 生命周期事件总线。
  */
-export interface LifecycleBus<TNode, TDescriptor> {
+export interface LifecycleBus<TNode> {
   /**
    * 订阅生命周期事件。
    *
    * @param listener - 生命周期事件监听器。
    * @returns 取消订阅函数
    */
-  on(listener: LifecycleListener<TNode, TDescriptor>): () => void
+  on(listener: LifecycleListener<TNode>): () => void
 
   /**
    * 发布 mount 事件。
    *
    * @param node - 被挂载的节点。
-   * @param descriptor - 节点对应的描述符。
    */
-  emitMount(node: TNode, descriptor: TDescriptor): void
+  emitMount(node: TNode): void
 
   /**
    * 发布 beforeMount 事件。
@@ -129,25 +126,25 @@ export interface LifecycleBus<TNode, TDescriptor> {
    * 发布 update 事件。
    *
    * @param node - 被更新的节点。
-   * @param descriptor - 节点更新后的描述符。
+   * @param previousNode - 更新前的节点快照。
    */
-  emitUpdate(node: TNode, descriptor: TDescriptor): void
+  emitUpdate(node: TNode, previousNode: TNode): void
 
   /**
    * 发布 beforeUpdate 事件。
    *
    * @param node - 即将更新的节点。
-   * @param previous - 更新前的描述符。
+   * @param previousNode - 更新前的节点快照。
    */
-  emitBeforeUpdate(node: TNode, previous: TDescriptor): void
+  emitBeforeUpdate(node: TNode, previousNode: TNode): void
 
   /**
    * 发布 updated 事件。
    *
    * @param node - 已更新的节点。
-   * @param previous - 更新前的描述符。
+   * @param previousNode - 更新前的节点快照。
    */
-  emitUpdated(node: TNode, previous: TDescriptor): void
+  emitUpdated(node: TNode, previousNode: TNode): void
 
   /**
    * 发布 beforeUnmount 事件。
@@ -175,10 +172,8 @@ export interface LifecycleBus<TNode, TDescriptor> {
  * 这些 hook 由 createForm 传入，用于在表单内部资源装配后
  * 观察字段、分组和 dependency 节点的 mount/update/unmount。
  */
-export type SchemxLifecycleHooks<TValues extends Values = Values> = LifecycleListener<
-  Fiber<TValues>,
-  FormDescriptor<TValues>
->
+export type SchemxLifecycleHooks<TValues extends Values = Values> =
+  LifecycleListener<Fiber<TValues>>
 
 /**
  * 创建生命周期事件总线。
@@ -189,10 +184,10 @@ export type SchemxLifecycleHooks<TValues extends Values = Values> = LifecycleLis
  * @param initialListener - 可选的初始监听器。
  * @returns 新的生命周期事件总线。
  */
-export function createLifecycleBus<TNode, TDescriptor>(
-  initialListener?: LifecycleListener<TNode, TDescriptor>
-): LifecycleBus<TNode, TDescriptor> {
-  const listeners = new Set<LifecycleListener<TNode, TDescriptor>>()
+export function createLifecycleBus<TNode>(
+  initialListener?: LifecycleListener<TNode>
+): LifecycleBus<TNode> {
+  const listeners = new Set<LifecycleListener<TNode>>()
 
   if (initialListener) {
     listeners.add(initialListener)
@@ -202,7 +197,7 @@ export function createLifecycleBus<TNode, TDescriptor>(
    * 按监听器快照分发生命周期事件。
    */
   const emit = <TArgs extends unknown[]>(
-    run: (listener: LifecycleListener<TNode, TDescriptor>, ...args: TArgs) => void,
+    run: (listener: LifecycleListener<TNode>, ...args: TArgs) => void,
     ...args: TArgs
   ): void => {
     for (const listener of Array.from(listeners)) {
@@ -213,7 +208,7 @@ export function createLifecycleBus<TNode, TDescriptor>(
   /**
    * 订阅生命周期事件。
    */
-  const on = (listener: LifecycleListener<TNode, TDescriptor>) => {
+  const on = (listener: LifecycleListener<TNode>) => {
     listeners.add(listener)
 
     return () => {
@@ -224,15 +219,11 @@ export function createLifecycleBus<TNode, TDescriptor>(
   /**
    * 发布 mount 事件。
    */
-  const emitMount = (node: TNode, descriptor: TDescriptor) => {
-    emit(
-      (listener, currentNode, currentDescriptor) => {
-        listener.mount?.(currentNode, currentDescriptor)
-        listener.mounted?.(currentNode)
-      },
-      node,
-      descriptor
-    )
+  const emitMount = (node: TNode) => {
+    emit((listener, currentNode) => {
+      listener.mount?.(currentNode)
+      listener.mounted?.(currentNode)
+    }, node)
   }
 
   /**
@@ -247,39 +238,39 @@ export function createLifecycleBus<TNode, TDescriptor>(
   /**
    * 发布 update 事件。
    */
-  const emitUpdate = (node: TNode, descriptor: TDescriptor) => {
+  const emitUpdate = (node: TNode, previousNode: TNode) => {
     emit(
-      (listener, currentNode, currentDescriptor) => {
-        listener.update?.(currentNode, currentDescriptor)
+      (listener, currentNode, currentPreviousNode) => {
+        listener.update?.(currentNode, currentPreviousNode)
       },
       node,
-      descriptor
+      previousNode
     )
   }
 
   /**
    * 发布 beforeUpdate 事件。
    */
-  const emitBeforeUpdate = (node: TNode, previous: TDescriptor) => {
+  const emitBeforeUpdate = (node: TNode, previousNode: TNode) => {
     emit(
-      (listener, currentNode, previousDescriptor) => {
-        listener.beforeUpdate?.(currentNode, previousDescriptor)
+      (listener, currentNode, currentPreviousNode) => {
+        listener.beforeUpdate?.(currentNode, currentPreviousNode)
       },
       node,
-      previous
+      previousNode
     )
   }
 
   /**
    * 发布 updated 事件。
    */
-  const emitUpdated = (node: TNode, previous: TDescriptor) => {
+  const emitUpdated = (node: TNode, previousNode: TNode) => {
     emit(
-      (listener, currentNode, previousDescriptor) => {
-        listener.updated?.(currentNode, previousDescriptor)
+      (listener, currentNode, currentPreviousNode) => {
+        listener.updated?.(currentNode, currentPreviousNode)
       },
       node,
-      previous
+      previousNode
     )
   }
 

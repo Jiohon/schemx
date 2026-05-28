@@ -50,12 +50,7 @@ export type {
   DisposeSubscription,
 } from "./dispose"
 
-export type {
-  DeepNamePath,
-  FieldValue,
-  PathValueByArray,
-  PathValueByString,
-} from "./namePathType"
+export type { DeepNamePath, PathValueByArray, PathValueByString } from "./namePathType"
 
 export type { DeepReadonly, Exact, CSSProperties } from "./utils"
 

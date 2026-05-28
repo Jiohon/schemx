@@ -14,10 +14,10 @@
  * const validator = createValidator()
  *
  * // 注册校验规则
- * validator.registerRules('email', emailSchema)
+ * validator.register('email', emailSchema)
  *
  * // 注册校验规则并指定空值提示
- * validator.registerRules('address', addressSchema, '请输入收货地址')
+ * validator.register('address', addressSchema, '请输入收货地址')
  *
  * // 校验单个字段
  * const result = await validator.validateField('email', latestValues)
@@ -90,8 +90,8 @@ export interface ValidateEntry<_TValues extends Values = Values> {
  * @example
  * ```typescript
  * const validator = new Validator<Values>()
- * validator.registerRules('email', emailSchema)
- * validator.registerRules('address', addressSchema, '请输入收货地址')
+ * validator.register('email', emailSchema)
+ * validator.register('address', addressSchema, '请输入收货地址')
  * const result = await validator.validateField('email', formValues)
  * ```
  *
@@ -120,11 +120,11 @@ class ValidatorImpl<
    *
    * @example
    * ```typescript
-   * validator.registerRules('email', emailSchema)
-   * validator.registerRules('name', [minLenSchema, maxLenSchema], '请输入姓名')
+   * validator.register('email', emailSchema)
+   * validator.register('name', [minLenSchema, maxLenSchema], '请输入姓名')
    * ```
    */
-  public registerRules(
+  public register(
     path: TName,
     rules: StandardSchemaV1 | StandardSchemaV1[],
     defaultMessage?: string
@@ -150,10 +150,10 @@ class ValidatorImpl<
    *
    * @example
    * ```typescript
-   * validator.unregisterRules('email')
+   * validator.unregister('email')
    * ```
    */
-  public unregisterRules(path: TName): void {
+  public unregister(path: TName): void {
     this.rules.delete(path)
     this.errors.delete(path)
   }

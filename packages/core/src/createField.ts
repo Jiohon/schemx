@@ -298,6 +298,7 @@ export function createField<
    */
   const setPending = (pending: boolean, _message?: string): void => {
     form.setFieldPending(name, pending)
+    if (_message) form.setFieldError(name, [_message])
   }
 
   /**

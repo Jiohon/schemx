@@ -59,15 +59,13 @@ export function createRawFieldSchema<TValues extends Values = Values>(
 }
 
 export function createRuntimeGraphHarness<TValues extends Values = Values>(
-  listener: LifecycleListener<Fiber<TValues>, FormDescriptor<TValues>> = {},
+  listener: LifecycleListener<Fiber<TValues>> = {},
   initialValues: Record<string, unknown> = {}
 ): RuntimeGraphTestHarness<TValues> {
   const signals = new Map<string, ReturnType<typeof createSignal<unknown>>>()
   const values = { ...initialValues }
   const fieldRegistry = createFieldRegistry<TValues>()
-  const lifecycleBus = createLifecycleBus<Fiber<TValues>, FormDescriptor<TValues>>(
-    listener
-  )
+  const lifecycleBus = createLifecycleBus<Fiber<TValues>>(listener)
   const scheduler = createScheduler()
   const viewRevision = createViewRevision()
 
@@ -133,13 +131,13 @@ export function createRuntimeGraphHarness<TValues extends Values = Values>(
     validator: {
       getFieldError: vi.fn(() => []),
       setFieldError: vi.fn(),
-      registerRules: vi.fn(),
-      unregisterRules: vi.fn(),
+      register: vi.fn(),
+      unregister: vi.fn(),
       validateField: vi.fn().mockResolvedValue({ ok: true, values }),
       validate: vi.fn().mockResolvedValue({ ok: true, values }),
     },
-    rulesRegistry: {
-      resolve: vi.fn(() => []),
+    validatorRegistry: {
+      resolveValidatorsBySchema: vi.fn(() => []),
     },
     defaultProps: {},
     getFormApi: () => formApi,

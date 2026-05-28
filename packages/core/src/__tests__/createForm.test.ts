@@ -203,7 +203,7 @@ describe("渲染器注册中心下沉 属性测试", () => {
  *
  * @module core/__tests__/createForm (renderer-registry unit tests)
  */
-import { createRendererRegistry, createRulesRegistry } from "../registry"
+import { createRendererRegistry, createValidatorsRegistry } from "../registry"
 
 import type { StandardSchemaV1 } from "../types"
 
@@ -259,11 +259,13 @@ describe("字段规则注册上下文 单元测试", () => {
     })
 
     expect(mount).toHaveBeenCalledTimes(1)
-    expect(mount.mock.calls[0][0].type).toBe("field")
-    expect(mount.mock.calls[0][1]).toMatchObject({
+    expect(mount.mock.calls[0][0]).toMatchObject({
       type: "field",
-      schema: {
-        name: "name",
+      descriptor: {
+        type: "field",
+        schema: {
+          name: "name",
+        },
       },
     })
 
@@ -376,7 +378,7 @@ describe("字段规则注册上下文 单元测试", () => {
       ] as any,
     })
 
-    form.registerRule("contextual", (schema) => ({
+    form.registerValidator("contextual", (schema) => ({
       "~standard": {
         version: 1,
         vendor: "test",
@@ -441,13 +443,13 @@ describe("RulesRegistry 快捷方法 属性测试", () => {
   it("Property 1: registerRule 后 hasRule 返回 true 且 getRule 返回该 rule", () => {
     fc.assert(
       fc.property(safeRuleName, fc.string({ minLength: 1 }), (name, schemaId) => {
-        const form = createForm({ rulesRegistry: createRulesRegistry() })
+        const form = createForm({ validatorRegistry: createValidatorsRegistry() })
         const rule = createMockStandardSchema(schemaId)
 
-        form.registerRule(name, rule)
+        form.registerValidator(name, rule)
 
-        expect(form.hasRule(name)).toBe(true)
-        expect(form.getRule(name)).toBe(rule)
+        expect(form.hasValidator(name)).toBe(true)
+        expect(form.getValidator(name)).toBe(rule)
 
         form.destroy()
       }),
@@ -460,15 +462,15 @@ describe("RulesRegistry 快捷方法 属性测试", () => {
   it("Property 2: 后注册的 rule 覆盖先注册的同名 rule", () => {
     fc.assert(
       fc.property(safeRuleName, (name) => {
-        const form = createForm({ rulesRegistry: createRulesRegistry() })
+        const form = createForm({ validatorRegistry: createValidatorsRegistry() })
         const ruleA = createMockStandardSchema("A")
         const ruleB = createMockStandardSchema("B")
 
-        form.registerRule(name, ruleA)
-        form.registerRule(name, ruleB)
+        form.registerValidator(name, ruleA)
+        form.registerValidator(name, ruleB)
 
-        expect(form.getRule(name)).toBe(ruleB)
-        expect(form.getRule(name)).not.toBe(ruleA)
+        expect(form.getValidator(name)).toBe(ruleB)
+        expect(form.getValidator(name)).not.toBe(ruleA)
 
         form.destroy()
       }),
@@ -487,19 +489,19 @@ describe("RulesRegistry 快捷方法 属性测试", () => {
         (ruleName, rendererType, schemaId) => {
           const form = createForm({
             rendererRegistry: createRendererRegistry(),
-            rulesRegistry: createRulesRegistry(),
+            validatorRegistry: createValidatorsRegistry(),
           })
           const rule = createMockStandardSchema(schemaId)
           const renderer = { __type: rendererType }
 
           // 路径 A: 通过 form 注册规则并查询
-          form.registerRule(ruleName, rule)
-          expect(form.getRule(ruleName)).toBe(rule)
+          form.registerValidator(ruleName, rule)
+          expect(form.getValidator(ruleName)).toBe(rule)
 
           // 路径 B: 注册另一个规则并查询
           const rule2 = createMockStandardSchema(schemaId + "_2")
-          form.registerRule(ruleName + "_via_internals", rule2)
-          expect(form.getRule(ruleName + "_via_internals")).toBe(rule2)
+          form.registerValidator(ruleName + "_via_internals", rule2)
+          expect(form.getValidator(ruleName + "_via_internals")).toBe(rule2)
 
           // 路径 C: 通过 form 注册渲染器并查询
           form.registerRenderer(rendererType, renderer)
@@ -531,11 +533,11 @@ describe("RulesRegistry 快捷方法单元测试", () => {
   // 6.1 验证 createForm 返回对象包含 getRule、registerRule、hasRule 方法
   // Validates: Requirements 1.1, 1.2, 1.3, 5.4
   it("createForm 返回对象包含 getRule、registerRule、hasRule 方法", () => {
-    const form = createForm({ rulesRegistry: createRulesRegistry() })
+    const form = createForm({ validatorRegistry: createValidatorsRegistry() })
 
-    expect(typeof form.getRule).toBe("function")
-    expect(typeof form.registerRule).toBe("function")
-    expect(typeof form.hasRule).toBe("function")
+    expect(typeof form.getValidator).toBe("function")
+    expect(typeof form.registerValidator).toBe("function")
+    expect(typeof form.hasValidator).toBe("function")
 
     form.destroy()
   })
@@ -543,16 +545,16 @@ describe("RulesRegistry 快捷方法单元测试", () => {
   // 6.2 验证 createForm 返回对象包含 rendererRegistry 和 rulesRegistry 快捷方法
   // Validates: Requirements 5.1, 5.2, 5.3
   it("form 返回对象包含 getRenderer、registerRenderer、getRule、registerRule、hasRule 方法", () => {
-    const form = createForm({ rulesRegistry: createRulesRegistry() })
+    const form = createForm({ validatorRegistry: createValidatorsRegistry() })
     const hooks = form
 
     expect(hooks).toBeDefined()
     expect(typeof hooks.getRenderer).toBe("function")
     expect(typeof hooks.registerRenderer).toBe("function")
     expect(typeof hooks.hasRenderer).toBe("function")
-    expect(typeof hooks.getRule).toBe("function")
-    expect(typeof hooks.registerRule).toBe("function")
-    expect(typeof hooks.hasRule).toBe("function")
+    expect(typeof hooks.getValidator).toBe("function")
+    expect(typeof hooks.registerValidator).toBe("function")
+    expect(typeof hooks.hasValidator).toBe("function")
 
     form.destroy()
   })
@@ -560,10 +562,10 @@ describe("RulesRegistry 快捷方法单元测试", () => {
   // 6.3 验证未注册的规则名称 getRule 返回 undefined 且 hasRule 返回 false
   // Validates: Requirements 2.3, 4.3
   it("未注册的规则名称 getRule 返回 undefined 且 hasRule 返回 false", () => {
-    const form = createForm({ rulesRegistry: createRulesRegistry() })
+    const form = createForm({ validatorRegistry: createValidatorsRegistry() })
 
-    expect(form.getRule("__nonexistent_rule__")).toBeUndefined()
-    expect(form.hasRule("__nonexistent_rule__")).toBe(false)
+    expect(form.getValidator("__nonexistent_rule__")).toBeUndefined()
+    expect(form.hasValidator("__nonexistent_rule__")).toBe(false)
 
     form.destroy()
   })

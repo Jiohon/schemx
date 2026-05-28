@@ -21,7 +21,6 @@ import {
   createDependencyEffect,
   createFieldModel,
   createValidationEffect,
-  mountDependencyEffect,
   updateFieldModel,
 } from "../field"
 import { createSignal } from "../reactivity"
@@ -49,14 +48,22 @@ import type {
  * @typeParam TValues - 表单值类型。
  */
 class RuntimeFiberManager<TValues extends Values = Values> {
-  /** 下一个非 root Fiber 的自增 id；root 固定使用 0。 */
+  /**
+   * 下一个非 root Fiber 的自增 id；root 固定使用 0。
+   */
   private nextId = 1
-  /** 当前表单运行时上下文的延迟访问器。 */
+  /**
+   * 当前表单运行时上下文的延迟访问器。
+   */
   private readonly context: SchemxFormContext<TValues>
-  /** 字段运行时索引，用于按字段路径查找 model 与 Fiber。 */
+  /**
+   * 字段运行时索引，用于按字段路径查找 model 与 Fiber。
+   */
   private readonly fieldRegistry: FieldRegistry<TValues>
-  /** Fiber 生命周期事件总线。 */
-  private readonly lifecycleBus: LifecycleBus<Fiber<TValues>, FormDescriptor<TValues>>
+  /**
+   * Fiber 生命周期事件总线。
+   */
+  private readonly lifecycleBus: LifecycleBus<Fiber<TValues>>
 
   constructor(context: SchemxFormContext<TValues>) {
     this.context = context
@@ -70,7 +77,7 @@ class RuntimeFiberManager<TValues extends Values = Values> {
    *
    * @returns root Fiber，不对应任何表单 descriptor。
    */
-  createRoot(): RootFiber {
+  createRoot(): RootFiber<TValues> {
     return {
       id: 0,
       key: "schemx:root",
@@ -92,7 +99,7 @@ class RuntimeFiberManager<TValues extends Values = Values> {
   create(
     descriptor: FormDescriptor<TValues>,
     parent: ContainerFiber<TValues>
-  ): Fiber<TValues> {
+  ): DescribedFiber<TValues> {
     if (descriptor.type === "field") {
       return this.createField(descriptor, parent)
     }
@@ -126,7 +133,7 @@ class RuntimeFiberManager<TValues extends Values = Values> {
 
     switch (fiber.type) {
       case "field":
-        this.mountField(fiber, fiber.descriptor)
+        this.mountField(fiber)
         break
       case "group":
         this.mountGroup(fiber)
@@ -137,7 +144,7 @@ class RuntimeFiberManager<TValues extends Values = Values> {
     }
 
     fiber.mounted.value = true
-    this.lifecycleBus.emitMount(fiber, fiber.descriptor)
+    this.lifecycleBus.emitMount(fiber)
   }
 
   /**
@@ -161,13 +168,13 @@ class RuntimeFiberManager<TValues extends Values = Values> {
           throwUnexpectedDescriptor(fiber, next)
         }
 
-        const previous = fiber.descriptor
+        const previousFiber = createPreviousFiberSnapshot(fiber)
 
-        this.lifecycleBus.emitBeforeUpdate(fiber, previous)
+        this.lifecycleBus.emitBeforeUpdate(fiber, previousFiber)
         fiber.descriptor = next
-        this.updateField(fiber, next, previous)
-        this.lifecycleBus.emitUpdate(fiber, next)
-        this.lifecycleBus.emitUpdated(fiber, previous)
+        this.updateField(fiber, previousFiber)
+        this.lifecycleBus.emitUpdate(fiber, previousFiber)
+        this.lifecycleBus.emitUpdated(fiber, previousFiber)
         break
       }
 
@@ -176,13 +183,13 @@ class RuntimeFiberManager<TValues extends Values = Values> {
           throwUnexpectedDescriptor(fiber, next)
         }
 
-        const previous = fiber.descriptor
+        const previousFiber = createPreviousFiberSnapshot(fiber)
 
-        this.lifecycleBus.emitBeforeUpdate(fiber, previous)
+        this.lifecycleBus.emitBeforeUpdate(fiber, previousFiber)
         fiber.descriptor = next
         this.updateGroup(fiber, next)
-        this.lifecycleBus.emitUpdate(fiber, next)
-        this.lifecycleBus.emitUpdated(fiber, previous)
+        this.lifecycleBus.emitUpdate(fiber, previousFiber)
+        this.lifecycleBus.emitUpdated(fiber, previousFiber)
         break
       }
 
@@ -191,13 +198,13 @@ class RuntimeFiberManager<TValues extends Values = Values> {
           throwUnexpectedDescriptor(fiber, next)
         }
 
-        const previous = fiber.descriptor
+        const previousFiber = createPreviousFiberSnapshot(fiber)
 
-        this.lifecycleBus.emitBeforeUpdate(fiber, previous)
+        this.lifecycleBus.emitBeforeUpdate(fiber, previousFiber)
         fiber.descriptor = next
-        this.updateDependency(fiber, next, previous)
-        this.lifecycleBus.emitUpdate(fiber, next)
-        this.lifecycleBus.emitUpdated(fiber, previous)
+        this.updateDependency(fiber, previousFiber)
+        this.lifecycleBus.emitUpdate(fiber, previousFiber)
+        this.lifecycleBus.emitUpdated(fiber, previousFiber)
         break
       }
     }
@@ -332,10 +339,7 @@ class RuntimeFiberManager<TValues extends Values = Values> {
     return fiber
   }
 
-  private mountField(
-    fiber: FieldFiber<TValues>,
-    descriptor: FieldDescriptor<TValues>
-  ): void {
+  private mountField(fiber: FieldFiber<TValues>): void {
     const resourceScope = fiber.scope.child()
 
     const model = fiber.fieldModel
@@ -345,21 +349,21 @@ class RuntimeFiberManager<TValues extends Values = Values> {
 
     fiber.fieldResourceScope = resourceScope
     this.fieldRegistry.register({
-      name: descriptor.schema.name,
+      name: fiber.descriptor.name,
       fiber: fiber,
-      descriptor,
       model,
     })
+
     resourceScope.add(() => {
-      this.fieldRegistry.unregister(descriptor.schema.name, fiber)
+      this.fieldRegistry.unregister(fiber.descriptor.name, fiber)
 
       if (fiber.fieldResourceScope === resourceScope) {
         fiber.fieldResourceScope = null
       }
     })
 
-    this.mountFieldValidation(fiber, descriptor, model, resourceScope)
-    this.mountOrRestartFieldDependencies(fiber, descriptor, model)
+    this.mountFieldValidation(fiber, model, resourceScope)
+    this.mountOrRestartFieldDependencies(fiber, model)
   }
 
   private mountGroup(_fiber: GroupFiber<TValues>): void {
@@ -367,49 +371,37 @@ class RuntimeFiberManager<TValues extends Values = Values> {
   }
 
   private mountDependency(fiber: DependencyFiber<TValues>): void {
-    const resourceScope = fiber.scope.child()
-    const slot = createDependencyEffect(fiber)
-
-    fiber.dependencyResourceScope = resourceScope
-    fiber.dependencySlot = slot
-
-    resourceScope.add(() => {
-      if (fiber.dependencyResourceScope === resourceScope) {
-        fiber.dependencyResourceScope = null
-      }
-    })
-
-    mountDependencyEffect<TValues>(
+    createDependencyEffect<TValues>({
       fiber,
-      fiber.descriptor,
-      this.context,
-      slot,
-      resourceScope
-    )
+      descriptor: fiber.descriptor,
+      context: this.context,
+    })
   }
 
   private updateField(
     fiber: FieldFiber<TValues>,
-    descriptor: FieldDescriptor<TValues>,
-    previous?: FieldDescriptor<TValues>
+    previousFiber?: FieldFiber<TValues>
   ): void {
     const model = fiber.fieldModel
 
-    if (model && previous && previous.schema.name === descriptor.schema.name) {
-      updateFieldModel(model, descriptor)
+    if (
+      model &&
+      previousFiber &&
+      previousFiber.descriptor.name === fiber.descriptor.name
+    ) {
+      updateFieldModel(model, fiber.descriptor)
       this.fieldRegistry.register({
-        name: descriptor.schema.name,
+        name: fiber.descriptor.name,
         fiber: fiber,
-        descriptor,
         model,
       })
-      this.mountOrRestartFieldDependencies(fiber, descriptor, model)
+      this.mountOrRestartFieldDependencies(fiber, model)
 
       return
     }
 
     this.unmountField(fiber)
-    this.mountField(fiber, descriptor)
+    this.mountField(fiber)
   }
 
   private updateGroup(
@@ -421,14 +413,13 @@ class RuntimeFiberManager<TValues extends Values = Values> {
 
   private updateDependency(
     fiber: DependencyFiber<TValues>,
-    descriptor: DependencyDescriptor<TValues>,
-    previous?: DependencyDescriptor<TValues>
+    previousFiber: DependencyFiber<TValues>
   ): void {
     // trigger 订阅属于 dependencyResourceScope；trigger 列表变化时必须重启 effect。
     if (
       !fiber.dependencySlot ||
-      !previous ||
-      !isSameNamePathList(previous.trigger, descriptor.trigger)
+      !previousFiber ||
+      !isSameNamePathList(fiber.descriptor.trigger, previousFiber?.descriptor.trigger)
     ) {
       this.unmountDependency(fiber)
       this.mountDependency(fiber)
@@ -437,7 +428,6 @@ class RuntimeFiberManager<TValues extends Values = Values> {
 
   private mountFieldValidation(
     fiber: FieldFiber<TValues>,
-    descriptor: FieldDescriptor<TValues>,
     model = fiber.fieldModel,
     scope = fiber.fieldResourceScope
   ): void {
@@ -446,7 +436,7 @@ class RuntimeFiberManager<TValues extends Values = Values> {
     }
 
     createValidationEffect<TValues>({
-      name: descriptor.schema.name,
+      name: fiber.descriptor.name,
       fieldModel: model,
       context: this.context,
       scope,
@@ -455,12 +445,11 @@ class RuntimeFiberManager<TValues extends Values = Values> {
 
   private mountOrRestartFieldDependencies(
     fiber: FieldFiber<TValues>,
-    descriptor: FieldDescriptor<TValues>,
     model = fiber.fieldModel
   ): void {
     fiber.fieldDependenciesScope?.dispose()
 
-    if (!model || !descriptor.dependencies) {
+    if (!model || !fiber.descriptor.dependencies) {
       fiber.fieldDependenciesScope = null
 
       return
@@ -475,7 +464,7 @@ class RuntimeFiberManager<TValues extends Values = Values> {
     })
 
     createDependenciesEffect<TValues>({
-      descriptor,
+      descriptor: fiber.descriptor,
       fieldModel: model,
       context: this.context,
       scope: dependenciesScope,
@@ -525,6 +514,12 @@ function isSameNamePathList(a: NamePath[], b: NamePath[]): boolean {
   }
 
   return a.every((name, index) => name === b[index])
+}
+
+function createPreviousFiberSnapshot<TFiber extends DescribedFiber<any>>(
+  fiber: TFiber
+): TFiber {
+  return { ...fiber }
 }
 
 function throwUnknownDescriptor(descriptor: never): never {

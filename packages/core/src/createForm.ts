@@ -18,8 +18,8 @@ import {
   type ContainerFiber,
   createReconciler,
   createScope,
-  type Fiber,
   type FiberManager,
+  FieldFiber,
   type Reconciler,
   type RootFiber,
   type Scope,
@@ -33,9 +33,9 @@ import {
 import { batchUpdates, createSignalEffect } from "./reactivity"
 import {
   createRendererRegistry,
-  createRulesRegistry,
+  createValidatorsRegistry,
   type RendererRegistry,
-  type RulesRegistry,
+  type ValidatorsRegistry,
 } from "./registry"
 import { createScheduler, type Scheduler } from "./scheduler"
 import { createStore, type Store } from "./store"
@@ -97,7 +97,7 @@ export interface SchemxFormContext<
   /**
    * 校验规则注册表，解析字符串规则名称到 StandardSchema 或规则工厂
    */
-  readonly rulesRegistry: RulesRegistry<TValues>
+  readonly validatorRegistry: ValidatorsRegistry<TValues>
   /**
    * 表单状态存储，管理字段值、初始值和订阅
    */
@@ -113,7 +113,7 @@ export interface SchemxFormContext<
   /**
    * graph 生命周期事件总线，连接 reconciler 与字段资源挂载流程
    */
-  readonly lifecycleBus: LifecycleBus<Fiber<TValues>, FormDescriptor<TValues>>
+  readonly lifecycleBus: LifecycleBus<FieldFiber<TValues>>
   /**
    * 字段 Fiber 到字段模型的注册表，供表单 API 和视图投影读取
    */
@@ -169,7 +169,7 @@ export interface CreateFormOptions<
   /**
    * 当前 form 实例使用的规则注册表。
    */
-  rulesRegistry?: RulesRegistry
+  validatorRegistry?: ValidatorsRegistry
 
   /**
    * submit 校验通过后的回调。
@@ -213,13 +213,13 @@ class CreateForm<
   readonly rendererRegistry: RendererRegistry
 
   /** 校验规则注册表，解析字符串规则名称到 StandardSchema 或规则工厂 */
-  readonly rulesRegistry: RulesRegistry<TValues>
+  readonly validatorRegistry: ValidatorsRegistry<TValues>
 
   /** 字段校验器，维护规则、错误状态和校验执行流程 */
   readonly validator: Validator<TValues>
 
   /** Runtime graph 的透明根节点，承载所有编译后的表单描述符节点 */
-  readonly root: RootFiber
+  readonly root: RootFiber<TValues>
 
   /** 运行时异步调度器，用于追踪 dependency renderer 和字段动态依赖 */
   readonly scheduler: Scheduler
@@ -246,7 +246,7 @@ class CreateForm<
   private disposed = false
 
   /** graph 生命周期事件总线，连接 reconciler 与字段资源挂载流程 */
-  private lifecycleBus: LifecycleBus<Fiber<TValues>, FormDescriptor<TValues>>
+  private lifecycleBus: LifecycleBus<FieldFiber<TValues>>
 
   constructor(options: CreateFormOptions<TValues> = {}) {
     const {
@@ -255,7 +255,7 @@ class CreateForm<
       modelValue,
       rendererRegistry,
       defaultRendererType,
-      rulesRegistry,
+      validatorRegistry,
       validationTrigger,
       readonly,
       disabled,
@@ -273,8 +273,8 @@ class CreateForm<
     this.rendererRegistry =
       rendererRegistry ?? createRendererRegistry(defaultRendererType)
 
-    this.rulesRegistry = (rulesRegistry ??
-      createRulesRegistry<TValues>()) as RulesRegistry<TValues>
+    this.validatorRegistry = (validatorRegistry ??
+      createValidatorsRegistry<TValues>()) as ValidatorsRegistry<TValues>
 
     this.validator = createValidator<TValues, TName>()
 
@@ -284,14 +284,14 @@ class CreateForm<
     })
 
     // 内置必填类规则默认注册到当前表单，用户仍可通过规则注册表覆盖。
-    this.rulesRegistry.registerAll({
+    this.validatorRegistry.registerAll({
       required: createRequiredRule,
       selectRequired: createSelectRequiredRule,
       uploadRequired: createUploadRequiredRule,
     })
 
     // 生命周期总线连接 graph 结构变化与字段模型、依赖资源的挂载和更新流程。
-    this.lifecycleBus = createLifecycleBus<Fiber<TValues>, FormDescriptor<TValues>>()
+    this.lifecycleBus = createLifecycleBus<FieldFiber<TValues>>()
 
     // 初始化运行时 graph 所需的核心基础设施。
     this.scheduler = createScheduler()
@@ -306,7 +306,7 @@ class CreateForm<
         validationTrigger,
       },
       store: this.store,
-      rulesRegistry: this.rulesRegistry,
+      validatorRegistry: this.validatorRegistry,
       validator: this.validator,
       scheduler: this.scheduler,
       lifecycleBus: this.lifecycleBus,
@@ -400,6 +400,9 @@ class CreateForm<
       setFieldError: this.validator.setFieldError.bind(this.validator),
       submit: this.submit.bind(this),
 
+      registerRules: this.register.bind(this),
+      unregisterRules: this.validator.unregister.bind(this.validator),
+
       effect: this.effect.bind(this),
       batch: this.batch.bind(this),
 
@@ -413,12 +416,10 @@ class CreateForm<
       getRenderer: this.rendererRegistry.getRenderer.bind(this.rendererRegistry),
       registerRenderer: this.rendererRegistry.register.bind(this.rendererRegistry),
       hasRenderer: this.rendererRegistry.hasRenderer.bind(this.rendererRegistry),
-      getRule: this.rulesRegistry.getRule.bind(this.rulesRegistry),
-      registerRule: this.rulesRegistry.register.bind(this.rulesRegistry),
-      hasRule: this.rulesRegistry.hasRule.bind(this.rulesRegistry),
 
-      registerRules: this.registerRules.bind(this),
-      unregisterRules: this.validator.unregisterRules.bind(this.validator),
+      getValidator: this.validatorRegistry.get.bind(this.validatorRegistry),
+      registerValidator: this.validatorRegistry.register.bind(this.validatorRegistry),
+      hasValidator: this.validatorRegistry.has.bind(this.validatorRegistry),
 
       destroy: this.destroy.bind(this),
     }
@@ -452,15 +453,16 @@ class CreateForm<
   /**
    * 注册字段校验规则
    */
-  private registerRules(
+  private register(
     path: NamePath<TValues>,
     rules: SchemxRules | SchemxRules[],
     defaultMessage?: string
   ): void {
     const resolvedRules: StandardSchemaV1[] = []
-    const schema = this.fieldRegistry.get(path)?.descriptor.schema
 
-    this.validator.unregisterRules(path)
+    const schema = this.fieldRegistry.get(path)?.fiber.descriptor.schema
+
+    this.validator.unregister(path)
 
     if (schema) {
       const schemaWithRules = {
@@ -468,13 +470,15 @@ class CreateForm<
         rules,
       } as SchemxBaseField<TValues>
 
-      resolvedRules.push(...this.rulesRegistry.resolveRuleBySchema(schemaWithRules))
+      resolvedRules.push(
+        ...this.validatorRegistry.resolveValidatorsBySchema(schemaWithRules)
+      )
     } else {
       const ruleList = Array.isArray(rules) ? rules : [rules]
 
       for (const rule of ruleList) {
         if (typeof rule === "string") {
-          const entry = this.rulesRegistry.getRule(rule as never)
+          const entry = this.validatorRegistry.get(rule as never)
           const resolved = typeof entry === "function" ? entry(undefined) : entry
 
           if (resolved) resolvedRules.push(resolved)
@@ -485,7 +489,7 @@ class CreateForm<
     }
 
     if (resolvedRules.length > 0) {
-      this.validator.registerRules(path, resolvedRules, defaultMessage)
+      this.validator.register(path, resolvedRules, defaultMessage)
     }
   }
 
@@ -635,10 +639,10 @@ class CreateForm<
    * Reconciler 只负责 graph 结构；public commit 完成后由这里推进一次 viewRevision。
    */
   private commitChildren = (
-    parent: ContainerFiber<TValues>,
+    parentFiber: ContainerFiber<TValues>,
     descriptors: FormDescriptor<TValues>[]
   ): void => {
-    const changed = this.reconciler.reconcileChildren(parent, descriptors)
+    const changed = this.reconciler.reconcileChildren(parentFiber, descriptors)
 
     if (changed) {
       this.viewRevision.bump()

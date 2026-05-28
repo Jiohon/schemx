@@ -24,7 +24,7 @@ export {
   useFieldContext,
   WithRemoteOptions,
   rendererRegistry,
-  rulesRegistry,
+  validatorRegistry,
 } from "@schemx/vue"
 
 /** 重新导出 @schemx/core 的类型 */

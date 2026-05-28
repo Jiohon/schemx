@@ -16,7 +16,7 @@ export {
   getDependencySlot,
   hasDependencySlot,
   createDependencyEffect,
-  mountDependencyEffect,
+  type CreateDependencyEffectOptions,
   type DependencyEffectSlot,
 } from "./dependencyEffect"
 

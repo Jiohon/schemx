@@ -152,7 +152,7 @@
     const isPending = uploadingFiles.value.some((i) => i.status === "uploading")
 
     if (!isPending) {
-      field.setPending(false)
+      // field.setPending(false)
     }
   }
 

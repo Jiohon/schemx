@@ -11,7 +11,7 @@ import {
   createTestFieldFiber,
   createTestRootFiber,
 } from "../../graph/__tests__/fiberTestUtils"
-import { mountFieldModel, updateFieldModel } from "../model"
+import { createFieldModel, updateFieldModel } from "../model"
 
 import type { FieldDescriptor } from "../../descriptor/descriptor"
 
@@ -48,7 +48,8 @@ describe("mountFieldModel", () => {
     const root = createTestRootFiber()
     const fiber = createTestFieldFiber({ key: "field", parent: root, descriptor, scope })
 
-    const model = mountFieldModel(fiber, descriptor)
+    const model = createFieldModel(descriptor)
+    fiber.fieldModel = model
 
     expect(fiber.fieldModel).toBe(model)
     expect(model.visible.value).toBe(false)
@@ -74,7 +75,8 @@ describe("mountFieldModel", () => {
       descriptor,
       scope: fiberScope,
     })
-    const model = mountFieldModel(fiber, descriptor, resourceScope)
+    const model = createFieldModel(descriptor)
+    fiber.fieldModel = model
 
     expect(fiber.fieldModel).toBe(model)
 
@@ -89,7 +91,8 @@ describe("updateFieldModel", () => {
     const descriptor = createDescriptor(["field"])
     const root = createTestRootFiber()
     const fiber = createTestFieldFiber({ key: "field", parent: root, descriptor })
-    const model = mountFieldModel(fiber, descriptor)
+    const model = createFieldModel(descriptor)
+    fiber.fieldModel = model
 
     updateFieldModel(model, {
       ...createDescriptor(["field"], {

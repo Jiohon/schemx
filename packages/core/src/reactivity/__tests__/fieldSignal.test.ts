@@ -6,9 +6,9 @@
 
 import { describe, expect, it, vi } from "vitest"
 
-import { createReactiveEffect } from "../effect"
+import { createSignalEffect } from "../effect"
 import { createFieldSignal } from "../fieldSignal"
-import { FieldSignalMap } from "../fieldSignalMap"
+import { createFieldSignalMap } from "../fieldSignalMap"
 import { createSignal } from "../signal"
 
 describe("createSignal", () => {
@@ -83,7 +83,7 @@ describe("createFieldSignal", () => {
 
 describe("FieldSignalMap", () => {
   it("应该按路径创建、查询和删除字段 signal", () => {
-    const map = new FieldSignalMap<string, number>()
+    const map = createFieldSignalMap<string, number>()
 
     const signal = createFieldSignal({ value: 18, initialValue: 18 })
 
@@ -99,10 +99,10 @@ describe("FieldSignalMap", () => {
   })
 
   it("读取缺失字段后，字段创建应该触发 effect 重新运行", () => {
-    const map = new FieldSignalMap<string, number>()
+    const map = createFieldSignalMap<string, number>()
     const seen: Array<number | undefined> = []
 
-    const dispose = createReactiveEffect(() => {
+    const dispose = createSignalEffect(() => {
       seen.push(map.get("age")?.value.value)
     })
 
@@ -114,7 +114,7 @@ describe("FieldSignalMap", () => {
   })
 
   it("应该支持数组路径默认标准化", () => {
-    const map = new FieldSignalMap<Array<string | number>, string>()
+    const map = createFieldSignalMap<Array<string | number>, string>()
 
     const signal = createFieldSignal({ value: "Ada", initialValue: "Ada" })
 
