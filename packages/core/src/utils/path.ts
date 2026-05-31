@@ -23,7 +23,7 @@
 
 import { get, set } from "es-toolkit/compat"
 
-import type { NamePath, FieldValue, Values } from "../types"
+import type { FieldValue, NamePath, Values } from "../types"
 
 type RuntimePath = string | number | readonly (string | number)[]
 

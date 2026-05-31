@@ -7,7 +7,7 @@
 -->
 
 <script lang="ts" setup generic="T extends Values = Values">
-  import { computed, type CSSProperties, useAttrs, watch } from "vue"
+  import { computed, type CSSProperties, useAttrs, watch, watchEffect } from "vue"
 
   import { omit } from "es-toolkit"
 
@@ -27,15 +27,8 @@
   const props = withDefaults(defineProps<SchemxFormProps<T>>(), {
     modelValue: () => ({}) as T,
     initialValues: () => ({}) as T,
-    validationTrigger: "onBlur",
     form: undefined,
     schemas: () => [],
-    readonly: false,
-    disabled: false,
-    labelWidth: "auto",
-    labelAlign: "right",
-    labelPosition: "left",
-    colon: true,
     class: "",
     style: () => ({}),
     onFinish: undefined,
@@ -107,12 +100,17 @@
   watch(
     () => props.schemas,
     (schemas) => {
+      console.log(schemas)
       form.setSchemas(schemas)
     },
     { deep: false, immediate: !!props.form }
   )
 
   const viewSchemas = useViewSchemas(form)
+
+  watchEffect(() => {
+    form.updateDefaultProps(props)
+  })
 
   /**
    * 表单容器样式

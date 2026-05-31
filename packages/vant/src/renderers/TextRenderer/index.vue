@@ -9,21 +9,21 @@
   >
     <InputRenderer
       ref="inputRef"
+      v-model:value="value"
       :type="inputType"
-      :value="props.value"
       :placeholder="props.placeholder"
       :readonly-placeholder="props.readonlyPlaceholder"
       :readonly="readonly"
       :disabled="disabled"
       :align="props.align"
       :form-item-props="props.formItemProps"
-      :maxlength="attrs.maxlength"
-      :min="attrs.min"
-      :max="attrs.max"
-      :formatter="attrs.formatter"
-      :format-trigger="attrs.formatTrigger"
-      :autocomplete="attrs.autocomplete"
-      :autofocus="attrs.autofocus"
+      :maxlength="props.maxlength"
+      :min="props.min"
+      :max="props.max"
+      :formatter="props.formatter"
+      :format-trigger="props.formatTrigger"
+      :autocomplete="props.autocomplete"
+      :autofocus="props.autofocus"
       :clearable="props.clearable"
       :clear-icon="props.clearIcon"
       :clear-trigger="props.clearTrigger"
@@ -85,7 +85,6 @@
 
   const props = withDefaults(defineProps<TextRendererProps>(), {
     className: "",
-    formItemProps: () => ({}),
     formInstance: null,
     placeholder: undefined,
     readonlyPlaceholder: "-",
@@ -93,8 +92,8 @@
     disabled: false,
     value: "",
     onChange: () => {},
-    onBlur: null,
-    onFocus: null,
+    onBlur: undefined,
+    onFocus: undefined,
     align: "right",
     clearable: false,
     clearIcon: "clear",
@@ -102,8 +101,9 @@
     leftIcon: "",
     rightIcon: "",
     showWordLimit: false,
-    error: undefined,
   })
+
+  const value = defineModel<string>("value")
 
   const attrs = useAttrs()
   const slots = useSlots()
@@ -139,7 +139,7 @@
   }
 
   defineExpose({
-    focus: () => (inputRef.value as any)?.focus?.(),
-    blur: () => (inputRef.value as any)?.blur?.(),
+    focus: () => inputRef.value?.focus?.(),
+    blur: () => inputRef.value?.blur?.(),
   })
 </script>

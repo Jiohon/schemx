@@ -46,7 +46,7 @@
   ]
 
   /** 当前激活的 tab id */
-  const currentExample = ref("validation")
+  const currentExample = ref("basic")
 
   /** 根据当前 tab id 查找对应的示例组件，默认回退到 BasicForm */
   const currentComponent = computed(() => {

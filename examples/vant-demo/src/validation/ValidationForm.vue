@@ -80,12 +80,20 @@
       name: "email",
       label: "邮箱",
       componentType: "text",
-      // rules: "required",
+      // 数组形式：
+      rules: [
+        "required",
+        z
+          .string()
+          .regex(
+            /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/,
+            "请输入正确的邮箱地址"
+          ),
+      ],
       componentProps: {
         placeholder: "请输入邮箱地址",
       },
     },
-    // rules 数组形式：["required", z.string().regex(...)]
     {
       name: "phone",
       label: "手机号",
@@ -241,7 +249,7 @@
   }
 
   const handleRegisterMailRules = () => {
-    formRef.value?.register("email", "required")
+    formRef.value?.registerRules("email", "required")
     // do something
   }
 </script>

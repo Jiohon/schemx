@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@schemx/vant",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "基于 Vant 组件库的 schemx 渲染器适配包",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -23,12 +23,15 @@
     "README.md"
   ],
   "peerDependencies": {
-    "vue": "^3.0.0",
-    "vant": "^4.0.0"
+    "vant": "^4.0.0",
+    "vue": "^3.0.0"
   },
   "dependencies": {
     "@schemx/core": "workspace:*",
-    "@schemx/vue": "workspace:*"
+    "@schemx/vue": "workspace:*",
+    "classnames": "^2.5.1",
+    "dayjs": "^1.11.19",
+    "es-toolkit": "^1.47.0"
   },
   "scripts": {
     "build": "vite build",

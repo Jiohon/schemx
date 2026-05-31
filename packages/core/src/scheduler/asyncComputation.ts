@@ -10,7 +10,7 @@ import { createSignal } from "../reactivity"
 
 import type { Scope } from "../graph"
 import type { Signal } from "../reactivity"
-import type { NamePath, FieldValue, Values } from "../types"
+import type { FieldValue, NamePath, Values } from "../types"
 import type { Scheduler } from "./scheduler"
 
 /**

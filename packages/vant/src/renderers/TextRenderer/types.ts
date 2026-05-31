@@ -4,18 +4,16 @@
  * @module renderers/TextRenderer/types
  */
 
+import { SchemxBaseComponentProps } from "@schemx/vue"
+
 /**
  * 文本输入渲染器 Props
  *
  * 定义文本输入组件的所有可配置属性。
  */
-export interface TextRendererProps {
+export interface TextRendererProps extends Omit<SchemxBaseComponentProps, 'onChange' | 'onBlur'> {
   /** 自定义 CSS 类名 */
   className?: string
-  /** FormItem 组件 Props */
-  formItemProps?: Record<string, any>
-  /** 表单实例 */
-  formInstance?: Record<string, any> | null
   /** 占位提示文本 */
   placeholder?: string
   /** 只读时的占位文本 */
@@ -48,6 +46,18 @@ export interface TextRendererProps {
   showWordLimit?: boolean
   /** 最大输入长度 */
   maxlength?: number | string
-  /** 错误信息 */
-  error?: string[]
+  /** 最小值（数字类型） */
+  min?: number
+  /** 最大值（数字类型） */
+  max?: number
+  /** 自定义格式化函数 */
+  formatter?: (value: string) => string
+  /** 格式化触发时机 */
+  formatTrigger?: "onChange" | "onBlur"
+  /** 自动完成属性 */
+  autocomplete?: string
+  /** 自动大写属性 */
+  autocapitalize?: string
+  /** 是否自动聚焦 */
+  autofocus?: boolean
 }

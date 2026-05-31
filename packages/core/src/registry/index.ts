@@ -9,14 +9,14 @@
 
 export {
   createRendererRegistry,
-  type RendererRegistry,
+  type RendererRegistryType,
   type RegistryOptions,
   type RendererMap,
 } from "./rendererRegistry"
 
 export {
   createValidatorsRegistry,
-  type ValidatorsRegistry,
+  type ValidatorsRegistryType,
   type ValidatorsRegistryOptions,
   type ValidatorsFactory,
   type ValidatorsEntry,

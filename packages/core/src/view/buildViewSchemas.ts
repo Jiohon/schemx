@@ -11,7 +11,6 @@
  * @module core/view/buildViewSchemas
  */
 
-import { getFieldModelResource } from "../field"
 import { getChildFibers, isDependencyFiber, isFieldFiber, isGroupFiber } from "../graph"
 
 import type {
@@ -30,54 +29,21 @@ import type { SchemxComponentProps, SchemxResolvedBaseField, Values } from "../t
 const MAX_DEPTH = 100
 
 /**
- * 将 FieldModel 构建为字段 ViewSchema。
+ * 从 Root Fiber 构建 ViewSchemas。
+ *
+ * root Fiber 是透明的，返回 root.childFibers 的构建结果，而非 root 自身。
+ *
+ * @param root - root runtime 节点；为空时返回空数组。
+ * @returns 可供渲染层消费的 ViewSchemas。
  */
-function buildFieldViewSchema<TValues extends Values = Values>(
-  fiber: FieldFiber<TValues>,
-  model: FieldModel<TValues>
-): SchemxViewFieldSchema<TValues> | null {
-  const descriptor = fiber.descriptor
-
-  if (descriptor?.type !== "field") {
-    return null
+export function buildViewSchemas<TValues extends Values = Values>(
+  root: RootFiber<TValues> | null | undefined
+): readonly SchemxViewSchema<TValues>[] {
+  if (!root) {
+    return []
   }
 
-  const schema = descriptor.schema as SchemxResolvedBaseField<TValues>
-
-  return {
-    ...schema,
-    key: fiber.key,
-    visible: model.visible.value,
-    label: model.label.value,
-    readonly: model.readonly.value,
-    disabled: model.disabled.value,
-    required: model.required.value,
-    placeholder: sanitizePlaceholder(String(model.placeholder.value ?? "")),
-    componentProps: sanitizeComponentProps(
-      model.componentProps.value ?? {}
-    ) as SchemxComponentProps<TValues>,
-    rules: model.rules.value,
-    validationTrigger: schema.validationTrigger,
-    debug: buildDebugMeta(fiber),
-  } as SchemxViewFieldSchema<TValues>
-}
-
-/**
- * 将 group Fiber 构建为分组 ViewSchema。
- */
-function buildGroupViewSchema<TValues extends Values = Values>(
-  fiber: GroupFiber<TValues>,
-  depth: number
-): SchemxViewGroupSchema<TValues> {
-  const children = buildFiberChildren<TValues>(getChildFibers(fiber), depth + 1)
-  const descriptor = fiber.descriptor
-
-  return {
-    ...descriptor.schema,
-    key: fiber.key,
-    children,
-    debug: buildDebugMeta(fiber),
-  } as SchemxViewGroupSchema<TValues>
+  return buildFiberChildren<TValues>(getChildFibers(root), 1)
 }
 
 /**
@@ -136,10 +102,8 @@ function buildFiberSchema<TValues extends Values = Values>(
   }
 
   if (isFieldFiber(fiber)) {
-    const fieldModel = getFieldModelResource(fiber)
-
-    if (fieldModel) {
-      return buildFieldViewSchema<TValues>(fiber, fieldModel)
+    if (fiber.fieldModel) {
+      return buildFieldViewSchema<TValues>(fiber, fiber.fieldModel)
     }
 
     console.warn(
@@ -150,6 +114,55 @@ function buildFiberSchema<TValues extends Values = Values>(
   }
 
   return null
+}
+
+/**
+ * 将 FieldModel 构建为字段 ViewSchema。
+ */
+function buildFieldViewSchema<TValues extends Values = Values>(
+  fiber: FieldFiber<TValues>,
+  model: FieldModel<TValues>
+): SchemxViewFieldSchema<TValues> | null {
+  const descriptor = fiber.descriptor
+
+  if (descriptor?.type !== "field") {
+    return null
+  }
+
+  const schema = descriptor.schema as SchemxResolvedBaseField<TValues>
+
+  return {
+    ...schema,
+    key: fiber.key,
+    visible: model.visible.peek(),
+    label: model.label.peek(),
+    readonly: model.readonly.peek(),
+    disabled: model.disabled.peek(),
+    required: model.required.peek(),
+    placeholder: sanitizePlaceholder(model.placeholder.peek()),
+    componentProps: sanitizeComponentProps(model.componentProps.peek() ?? {}),
+    rules: model.rules.peek(),
+    validationTrigger: schema.validationTrigger,
+    debug: buildDebugMeta(fiber),
+  }
+}
+
+/**
+ * 将 group Fiber 构建为分组 ViewSchema。
+ */
+function buildGroupViewSchema<TValues extends Values = Values>(
+  fiber: GroupFiber<TValues>,
+  depth: number
+): SchemxViewGroupSchema<TValues> {
+  const children = buildFiberChildren<TValues>(getChildFibers(fiber), depth + 1)
+  const descriptor = fiber.descriptor
+
+  return {
+    ...descriptor.schema,
+    key: fiber.key,
+    children,
+    debug: buildDebugMeta(fiber),
+  } as SchemxViewGroupSchema<TValues>
 }
 
 function buildDependencyFiber<TValues extends Values = Values>(
@@ -227,22 +240,4 @@ function buildDebugMeta<TValues extends Values = Values>(
     hasFieldModel: fiber.type === "field" && fiber.fieldModel !== undefined,
     hasDependencySlot: fiber.type === "dependency" && fiber.dependencySlot !== undefined,
   }
-}
-
-/**
- * 从 Root Fiber 构建 ViewSchemas。
- *
- * root Fiber 是透明的，返回 root.childFibers 的构建结果，而非 root 自身。
- *
- * @param root - root runtime 节点；为空时返回空数组。
- * @returns 可供渲染层消费的 ViewSchemas。
- */
-export function buildViewSchemas<TValues extends Values = Values>(
-  root: RootFiber<TValues> | null | undefined
-): readonly SchemxViewSchema<TValues>[] {
-  if (!root) {
-    return []
-  }
-
-  return buildFiberChildren<TValues>(getChildFibers(root), 1)
 }

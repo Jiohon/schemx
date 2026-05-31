@@ -35,7 +35,7 @@ import { Values } from "./form"
  * 扩展后，`SchemxRendererKey` 会自动推导出所有已注册的渲染器类型字符串，
  * `SchemxBase` 的 `componentProps` 也会根据 `componentType` 自动关联对应的 Props 类型。
  */
-export interface SchemxRendererDefinition<_T extends Values> {}
+export interface SchemxRendererDefinition<T extends Values> {}
 
 /**
  * 渲染器注册 key 类型

@@ -17,7 +17,7 @@
   >
     <Slider
       v-bind="attrs"
-      :model-value="value as number | [number, number]"
+      :model-value="value"
       :min="min"
       :max="max"
       :step="step"
@@ -40,7 +40,7 @@
 
   import { Slider } from "vant"
 
-  import type { SliderRendererProps } from "./types"
+  import type { SliderRendererProps, SliderValue } from "./types"
 
   import "./index.scss"
 
@@ -79,7 +79,7 @@
   /**
    * 处理值变化事件
    */
-  const handleChange = (value: number | number[]): void => {
+  const handleChange = (value: SliderValue): void => {
     if (finalDisabled.value || finalReadonly.value) return
     props.onChange?.(value)
   }
@@ -87,7 +87,7 @@
   /**
    * 格式化显示值
    */
-  const formatDisplayValue = (value: number | number[] | null | undefined): string => {
+  const formatDisplayValue = (value: SliderValue): string => {
     if (value === null || value === undefined) {
       return props.readonlyPlaceholder
     }

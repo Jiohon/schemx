@@ -17,9 +17,9 @@
       :disabled="disabled"
       :align="props.align"
       :form-item-props="props.formItemProps"
-      :min="props.min ?? attrs.min"
-      :max="props.max ?? attrs.max"
-      :maxlength="attrs.maxlength"
+      :min="props.min"
+      :max="props.max"
+      :maxlength="props.maxlength"
       :clearable="props.clearable"
       @change="handleChange"
       @blur="props.onBlur"
@@ -75,8 +75,8 @@
     disabled: false,
     value: "",
     onChange: () => {},
-    onBlur: null,
-    onFocus: null,
+    onBlur: undefined,
+    onFocus: undefined,
     align: "right",
     clearable: false,
     min: undefined,

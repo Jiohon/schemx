@@ -23,8 +23,8 @@ export {
   type FieldSignalMapOptions,
 } from "./fieldSignalMap"
 
-export { createSignalEffect, type ReactiveEffectDispose } from "./effect"
+export { createSignalEffect, type SignalEffectDispose } from "./effect"
 
 export { batchUpdates } from "./batch"
 
-export { createReactiveMap, type ReactiveMap } from "./signalMap"
+export { createSignalMap, type SignalMap } from "./signalMap"

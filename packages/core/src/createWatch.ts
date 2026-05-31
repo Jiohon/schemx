@@ -48,7 +48,7 @@ import { isEqual } from "es-toolkit/compat"
 
 import { collectObjectPathsByLeaf, diff } from "./utils"
 
-import type { NamePath, FieldValue, SchemxInstance, Values } from "./types"
+import type { FieldValue, NamePath, SchemxInstance, Values } from "./types"
 
 /** 单字段订阅回调的载荷 */
 type FieldPayload<

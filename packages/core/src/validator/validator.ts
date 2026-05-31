@@ -24,7 +24,7 @@
  * ```
  */
 
-import { batchUpdates, createReactiveMap } from "../reactivity"
+import { batchUpdates, createSignalMap } from "../reactivity"
 import { getByPath } from "../utils"
 
 import type { NamePath, StandardSchemaV1, Values } from "../types"
@@ -107,7 +107,7 @@ class ValidatorImpl<
   private rules = new Map<TName, ValidateEntry<TValues>>()
 
   /** 校验错误映射表：字段路径 → 错误信息数组（响应式） */
-  private errors = createReactiveMap<TName, string[]>()
+  private errors = createSignalMap<TName, string[]>()
 
   /**
    * 注册单个字段的校验规则。
@@ -373,6 +373,8 @@ class ValidatorImpl<
     for (const schema of entry.schemas) {
       try {
         const result = await schema["~standard"].validate(value)
+
+        console.log(result)
 
         if (result.issues) {
           allMessages.push(...result.issues.map((i: { message: any }) => i.message))

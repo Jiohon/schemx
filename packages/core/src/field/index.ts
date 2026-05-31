@@ -20,12 +20,7 @@ export {
   type DependencyEffectSlot,
 } from "./dependencyEffect"
 
-export {
-  createFieldModel,
-  getFieldModelResource,
-  updateFieldModel,
-  type FieldModel,
-} from "./model"
+export { createFieldModel, updateFieldModel, type FieldModel } from "./model"
 
 export {
   createFieldRegistry,

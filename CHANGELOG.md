@@ -1,4 +1,4 @@
-## Renderer 重构
+## RendererRegistry 重构
 
 ### TSX 转 SFC
 

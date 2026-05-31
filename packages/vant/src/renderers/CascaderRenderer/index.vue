@@ -11,7 +11,7 @@
       :placeholder="readonly ? props.readonlyPlaceholder : placeholder"
       :readonly="true"
       :disabled="disabled"
-      :model-value="fieldValue?.toString()"
+      :model-value="fieldValue"
       :right-icon="!readonly ? rightIcon : ''"
       :input-align="align"
       @click="handleClick"
@@ -20,10 +20,8 @@
     <Popup
       v-if="!readonly && !disabled"
       v-model:show="showCascader"
-      round
-      position="bottom"
       :class="classNames('schemx-cascader-popup-renderer', props.popupClassName)"
-      safe-area-inset-bottom
+      v-bind="popupProps"
     >
       <Cascader
         :model-value="cascaderValue"
@@ -43,13 +41,17 @@
   /**
    * 级联选择器渲染器组件
    *
+   * 使用 Vant Cascader + Popup + Field 组合实现。
+   * 通过 popupProps 透传 Popup 原生属性与事件，避免命名冲突。
+   *
    * @module renderers/CascaderRenderer
    */
-  import { computed, ref, useAttrs, watchEffect } from "vue"
+  import { computed, ref, useAttrs, watch } from "vue"
 
-  import { Cascader, Field, Popup } from "vant"
+  import { Cascader, Field, Popup, PopupProps } from "vant"
 
   import classNames from "classnames"
+  import { omitBy } from "es-toolkit"
 
   import { findTreeItem, getFieldProps } from "@/utils"
 
@@ -74,25 +76,30 @@
     readonlyPlaceholder: "-",
     readonly: false,
     disabled: false,
-    onChange: () => {},
+    onChange: undefined,
     options: () => [],
     title: undefined,
     formItemProps: () => ({}),
-    formInstance: null,
+    popupProps: () => ({}) as PopupProps,
     popupClassName: "",
-    error: undefined,
+    onClose: undefined,
   })
 
   const attrs = useAttrs()
 
   const showCascader = ref(false)
 
+  /** 跟踪是否由确认操作关闭，用于区分 onConfirm 与 onClose */
+  let confirmed = false
+
+  // ==================== 计算属性 ====================
+
   const placeholder = computed(
     () => props.placeholder || `请选择${props.formItemProps.label}`
   )
 
-  const readonly = computed(() => props.readonly || props.formItemProps?.readonly)
-  const disabled = computed(() => props.disabled || props.formItemProps?.disabled)
+  const readonly = computed(() => props.readonly)
+  const disabled = computed(() => props.disabled)
 
   const rightIcon = computed(() =>
     getFieldProps(attrs as Record<string, any>, "rightIcon", "arrow")
@@ -104,36 +111,61 @@
 
   const fieldNames = computed<CascaderFieldNames>(() => props.fieldNames)
 
-  /** 数据源 */
+  /** 数据源：优先使用 props.options，回退到 attrs.schemas */
   const schemas = computed(() => {
-    if (Array.isArray(props.options) && props.options?.length > 0) {
+    if (Array.isArray(props.options) && props.options.length > 0) {
       return props.options
     }
 
-    return (attrs as Record<string, any>)?.schemas
+    return (attrs as Record<string, any>)?.schemas ?? []
   })
 
-  /** 字段值 */
+  /**
+   * 级联选择器内部值
+   *
+   * Vant Cascader 仅接受叶子节点值，取路径最后一项。
+   */
+  const cascaderValue = computed(() => {
+    if (!Array.isArray(props.value) || props.value.length === 0) return undefined
+
+    return props.value[props.value.length - 1]
+  })
+
+  /**
+   * Field 展示文本
+   *
+   * 通过 findTreeItem 将 value 路径反向映射为 label 路径，
+   * 支持 showAllLevels 控制显示全部层级或仅末级。
+   */
   const fieldValue = computed(() => {
-    const value = Array.isArray(props.value)
+    const targetValue = Array.isArray(props.value)
       ? props.value[props.value.length - 1]
       : props.value
 
-    const result = findTreeItem(schemas.value, value, {
+    const result = findTreeItem(schemas.value, targetValue, {
       labelKey: fieldNames.value.text,
       valueKey: fieldNames.value.value,
       childrenKey: fieldNames.value.children,
     })
 
-    const label = props.showAllLevels ? result?.labels : result?.labels.slice(-1)
+    if (!result.labels.length) return ""
 
-    return label?.join(props.separator) || props.value
+    const labels = props.showAllLevels ? result.labels : result.labels.slice(-1)
+
+    return labels.join(props.separator)
   })
 
-  /** 级联选择器值 */
-  const cascaderValue = computed(() => {
-    return Array.isArray(props.value) ? props.value[props.value.length - 1] : props.value
+  const popupProps = computed((): Partial<Omit<PopupProps, "show">> => {
+    return {
+      round: true,
+      position: "bottom",
+      safeAreaInsetBottom: true,
+      teleport: "body",
+      ...omitBy(props.popupProps as PopupProps, (_, key) => key !== "show"),
+    }
   })
+
+  // ==================== 事件处理 ====================
 
   const handleClick = (): void => {
     if (readonly.value || disabled.value) return
@@ -145,9 +177,9 @@
 
     const valueKey = fieldNames.value.value || "value"
     const valuePath = data.selectedOptions.map((i) => i[valueKey])
-
     const value = props.emitPath ? valuePath : [data.value]
 
+    confirmed = true
     props.onConfirm?.(value)
     props.onChange?.(value)
     showCascader.value = false
@@ -155,14 +187,25 @@
 
   const handleClose = (): void => {
     showCascader.value = false
-    ;(attrs as Record<string, any>).onClose?.()
+    // onClose 由 watch(showCascader) 统一触发，避免重复
   }
 
-  /** 监听值变化, 设置表单值 */
-  watchEffect(
-    () => {
-      props.formInstance?.setFieldValue(`${props.formItemProps.name}`, fieldValue.value)
-    },
-    { flush: "post" }
-  )
+  // ==================== 副作用 ====================
+
+  /**
+   * 监听 Popup 关闭以触发 onClose 回调。
+   *
+   * 覆盖遮罩点击（closeOnClickOverlay=true 时自动关闭）、
+   * Cascader 关闭按钮两种场景。
+   * 确认操作通过 confirmed 标志排除，避免与 onConfirm 重复触发。
+   */
+  watch(showCascader, (val) => {
+    if (!val) {
+      if (!confirmed) {
+        props.onClose?.()
+      }
+
+      confirmed = false
+    }
+  })
 </script>

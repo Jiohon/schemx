@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@schemx/vue",
-  "version": "0.1.15",
+  "version": "0.1.16",
   "description": "基于 JSON Schema 配置的 Vue 3 动态表单引擎（UI 无关核心）",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -33,8 +33,9 @@
   "dependencies": {
     "@schemx/core": "workspace:*",
     "classnames": "^2.5.1",
+    "csstype": "^3.2.3",
     "dayjs": "^1.11.19",
-    "es-toolkit": "^1.44.0"
+    "es-toolkit": "^1.45.1"
   },
   "scripts": {
     "build": "vite build",

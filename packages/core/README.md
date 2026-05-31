@@ -258,7 +258,7 @@ if (!result.ok) {
 
 ### 规则注册表
 
-当 schema 中希望复用字符串规则时，可以注入 `ValidatorsRegistry`。
+当 schema 中希望复用字符串规则时，可以注入 `ValidatorsRegistryType`。
 
 ```ts
 import { createForm, createValidatorsRegistry } from "@schemx/core"

@@ -79,6 +79,11 @@ export interface FieldSignalSnapshot<TValue> {
    * 字段是否 pending
    */
   readonly pending: boolean
+
+  /**
+   * 字段 pending 信息。
+   */
+  readonly pendingMessage: string[]
 }
 
 /**
@@ -115,6 +120,11 @@ export interface FieldSignalState<TValue> {
    * 字段 pending 状态。
    */
   readonly pending: Signal<boolean>
+
+  /**
+   * 字段 pending 信息。
+   */
+  readonly pendingMessage: Signal<string[]>
 }
 
 /**
@@ -148,8 +158,9 @@ export interface FieldSignalAction<TValue> {
    * 设置字段 pending 状态。
    *
    * @param pending - 是否正在处理异步操作。
+   * @param message - 可选的操作中提示信息。
    */
-  setPending(pending: boolean): void
+  setPending(pending: boolean, message?: string | string[]): void
 
   /**
    * 将字段重置到指定值；未传入时重置到当前 initialValue。
@@ -195,6 +206,7 @@ export function createFieldSignal<TValue>(
   )
   const touchedSignal = createSignal(touched ?? false)
   const pendingSignal = createSignal(pending ?? false)
+  const pendingMessageSignal = createSignal<string[]>([])
 
   /**
    * 写入字段当前值 signal。
@@ -220,8 +232,16 @@ export function createFieldSignal<TValue>(
   /**
    * 写入字段 pending signal。
    */
-  const setPending = (next: boolean): void => {
+  const setPending = (next: boolean, message?: string | string[]): void => {
     pendingSignal.value = next
+
+    if (next) {
+      if (message) {
+        pendingMessageSignal.value = Array.isArray(message) ? message : [message]
+      }
+    } else {
+      pendingMessageSignal.value = []
+    }
   }
 
   /**
@@ -242,6 +262,7 @@ export function createFieldSignal<TValue>(
       initialValue: initialSignal.peek(),
       touched: touchedSignal.peek(),
       pending: pendingSignal.peek(),
+      pendingMessage: pendingMessageSignal.peek(),
     }
   }
 
@@ -250,6 +271,7 @@ export function createFieldSignal<TValue>(
     initialValue: initialSignal,
     touched: touchedSignal,
     pending: pendingSignal,
+    pendingMessage: pendingMessageSignal,
     setValue,
     setInitialValue,
     setTouched,

@@ -14,6 +14,7 @@
       label-width="80px"
       label-align="right"
       label-position="left"
+      :disabled="globalDisibled"
       :colon="true"
       @finish="handleSubmit"
       @values-change="handleValuesChange"
@@ -25,6 +26,12 @@
       <button class="btn" @click="formRef?.reset()">重置</button>
       <button class="btn" @click="handleSetValues">设置值</button>
       <button class="btn" @click="handleGetSnapshot">获取快照</button>
+      <button class="btn" @click="handleSetGlobalDisibled">
+        设置disabled:{{ globalDisibled }}
+      </button>
+      <button class="btn" @click="handleSetUsernameDisibled">
+        设置用户名disabled:{{ usernameDisibled }}
+      </button>
     </div>
 
     <div class="form-data-preview">
@@ -35,7 +42,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ref } from "vue"
+  import { computed, ref } from "vue"
 
   import Schemx from "@schemx/vant"
 
@@ -59,6 +66,19 @@
     notification: true,
   }
 
+  const globalDisibled = ref(false)
+  const usernameDisibled = ref(false)
+
+  const handleSetGlobalDisibled = () => {
+    globalDisibled.value = !globalDisibled.value
+    // do something
+  }
+
+  const handleSetUsernameDisibled = () => {
+    usernameDisibled.value = !usernameDisibled.value
+    // do something
+  }
+
   /**
    * 表单 Schema 配置
    *
@@ -66,7 +86,7 @@
    * text、input、textarea、number、switch、radio、checkbox、
    * date、calendar、picker、selector、rate、slider、stepper、upload、cascader
    */
-  const schemas: SchemxField<BasicFormValues>[] = [
+  const schemas = computed<SchemxField<BasicFormValues>[]>(() => [
     {
       label: "基本信息",
       componentType: "group",
@@ -76,6 +96,7 @@
           label: "用户名",
           componentType: "text",
           required: true,
+          disabled: usernameDisibled.value,
           componentProps: {
             placeholder: "请输入用户名",
             clearable: true,
@@ -273,7 +294,7 @@
         ],
       },
     },
-  ]
+  ])
 
   /**
    * 表单提交回调

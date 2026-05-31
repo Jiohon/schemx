@@ -19,7 +19,7 @@
       :form-item-props="props.formItemProps"
       :rows="computedRows"
       :autosize="computedAutosize"
-      :maxlength="attrs.maxlength"
+      :maxlength="props.maxlength"
       :show-word-limit="props.showWordLimit && !readonly && !disabled"
       @change="props.onChange"
       @blur="props.onBlur"
@@ -77,8 +77,8 @@
     disabled: false,
     value: "",
     onChange: () => {},
-    onBlur: null,
-    onFocus: null,
+    onBlur: undefined,
+    onFocus: undefined,
     align: "right",
     showWordLimit: false,
     error: undefined,
@@ -115,7 +115,7 @@
   })
 
   defineExpose({
-    focus: () => (inputRef.value as any)?.focus?.(),
-    blur: () => (inputRef.value as any)?.blur?.(),
+    focus: () => inputRef.value?.focus?.(),
+    blur: () => inputRef.value?.blur?.(),
   })
 </script>

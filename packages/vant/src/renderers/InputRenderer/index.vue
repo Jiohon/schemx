@@ -110,7 +110,7 @@
    * 纯净的输入组件
    *
    * 从 Vant Field 的 renderInput 逻辑中剥离出来，
-   * 只负责输入控件，不包含表单交互（label、rules、error 等由外层 Field 处理）。
+   * 只负责输入控件，不包含表单交互（label、rules 等由外层 Field 处理）。
    *
    * @module renderers/InputRenderer
    */
@@ -164,7 +164,6 @@
     className: "",
     readonlyPlaceholder: "-",
     formItemProps: () => ({}),
-    error: undefined,
   })
 
   const emit = defineEmits<{

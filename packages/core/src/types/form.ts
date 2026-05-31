@@ -13,15 +13,16 @@ import { SchemxRendererKey } from "./renderer"
 import { SchemxRules } from "./rule"
 
 import type { StorePending } from "../store"
-import type { SchemxField } from "./schema"
+import type { SchemxBaseField, SchemxField } from "./schema"
 import type {
-  RendererRegistry,
+  RendererRegistryType,
   ValidatorsEntry,
-  ValidatorsRegistry,
   ValidatorsRegistryOptions,
+  ValidatorsRegistryType,
 } from "../registry"
 import type { ValidateError, ValidateResult } from "../validator"
 import type { SchemxViewSchema } from "../view"
+import { DefaultConfigKey } from "@/defaultConfig"
 
 /**
  * 字段值类型。
@@ -30,7 +31,7 @@ import type { SchemxViewSchema } from "../view"
  */
 export type FieldValue<
   TValues extends Values,
-  TName extends NamePath<TValues>,
+  TName extends NamePath<TValues> = NamePath<TValues>,
 > = PathValue<TValues, TName>
 
 /**
@@ -74,27 +75,14 @@ export type ValidationTrigger =
  *
  * 这些配置会作为 schema 编译和字段呈现态的默认值，字段自身配置优先级更高。
  */
-export type SchemxDefaultProps = {
-  /**
-   * 校验触发时机
-   */
-  validationTrigger?: ValidationTrigger | ValidationTrigger[]
-  /**
-   * 全局 readonly 默认值。
-   */
-  readonly?: boolean
-  /**
-   * 全局 disabled 默认值。
-   */
-  disabled?: boolean
-}
+export type SchemxDefaultProps = Pick<SchemxBaseField, DefaultConfigKey>
 
 /**
  * schemx 组件 Props
  *
  * @typeParam T - 表单值类型
  */
-export interface SchemxProps<T extends Values = Values> {
+export interface SchemxProps<T extends Values = Values> extends SchemxDefaultProps {
   /** 表单数据（v-model） */
   modelValue?: T
   /** 初始值 */
@@ -105,30 +93,11 @@ export interface SchemxProps<T extends Values = Values> {
   form?: SchemxInstance<T>
 
   /** 渲染器注册实例 */
-  rendererRegistry?: RendererRegistry
+  rendererRegistry?: RendererRegistryType
   /** 默认渲染器类型，当字段未指定 renderer 时使用 */
   defaultRendererType?: SchemxRendererKey
   /** 规则注册实例 */
-  validatorRegistry?: ValidatorsRegistry
-
-  /** 验证触发时机 */
-  validationTrigger?: ValidationTrigger | ValidationTrigger[]
-  /** 标签图标 */
-  labelIcon?: string
-  /** 表单 label 排列方向 */
-  labelAlign?: "left" | "center" | "right"
-  /** 表单 label 位置 */
-  labelPosition?: "left" | "top" | "right"
-  /** 表单 label 宽度 */
-  labelWidth?: string
-  /** 表单内容排列方向 */
-  contentAlign?: "left" | "center" | "right"
-  /** 是否在 label 后面添加冒号 */
-  colon?: boolean
-  /** 是否只读 */
-  readonly?: boolean
-  /** 是否禁用 */
-  disabled?: boolean
+  validatorRegistry?: ValidatorsRegistryType
 
   /** 表单提交校验通过后的回调 */
   onFinish?: (values: Readonly<T>) => void | Promise<void>
@@ -360,13 +329,19 @@ export interface SchemxInstance<TValues extends Values = Values> {
    *
    * @param name - 字段路径
    * @param pending - 是否处于操作中
+   * @param message - 可选的操作中提示信息。
+   *
    * @example
    * ```typescript
    * form.setFieldPending('avatar', true)   // 上传开始
    * form.setFieldPending('avatar', false)  // 上传结束
    * ```
    */
-  setFieldPending<TName extends NamePath<TValues>>(name: TName, pending: boolean): void
+  setFieldPending<TName extends NamePath<TValues>>(
+    name: TName,
+    pending: boolean,
+    message?: string | string[]
+  ): void
 
   /**
    * 检查单个字段是否处于操作中
@@ -554,6 +529,21 @@ export interface SchemxInstance<TValues extends Values = Values> {
   ) => void
 
   /**
+   * 更新表单默认配置。
+   *
+   * 合并传入属性到当前 defaultProps，然后重新编译根 schemas 并 reconcile。
+   * 未设置的字段级属性会回退到这些默认值。
+   *
+   * @param partial - 要更新的默认配置（部分或全部）
+   *
+   * @example
+   * ```typescript
+   * form.updateDefaultProps({ visible: false, disabled: true })
+   * ```
+   */
+  updateDefaultProps: (partial: Partial<SchemxDefaultProps>) => void
+
+  /**
    * 获取当前 ViewSchemas。
    *
    * @returns 当前可渲染的静态 schema 列表。
@@ -588,7 +578,7 @@ export interface SchemxInstance<TValues extends Values = Values> {
   /**
    * 获取指定类型的渲染器组件
    *
-   * 根据类型标识从内部的 RendererRegistry 中查找对应的渲染器组件。
+   * 根据类型标识从内部的 RendererRegistryType 中查找对应的渲染器组件。
    * 未找到时回退到默认类型，均不存在则返回 undefined。
    *
    * @param type - 渲染器类型标识
@@ -638,7 +628,7 @@ export interface SchemxInstance<TValues extends Values = Values> {
   /**
    * 获取指定名称的校验规则条目
    *
-   * 从内部 ValidatorsRegistry 查找，支持父级链式查找。
+   * 从内部 ValidatorsRegistryType 查找，支持父级链式查找。
    * 返回原始注册条目（StandardSchemaV1 实例或工厂函数），不做解析。
    *
    * @param name - 规则名称
@@ -654,7 +644,7 @@ export interface SchemxInstance<TValues extends Values = Values> {
   /**
    * 注册校验规则
    *
-   * 将校验规则注册到内部的 ValidatorsRegistry，
+   * 将校验规则注册到内部的 ValidatorsRegistryType，
    * 后续可通过 getValidator / hasValidator 查询。
    *
    * @param name - 规则名称

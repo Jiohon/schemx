@@ -90,7 +90,7 @@
   /**
    * 格式化显示值
    */
-  const formatDisplayValue = (value: number | null | undefined): string => {
+  const formatDisplayValue = (value?: number): string => {
     if (
       value === null ||
       value === undefined ||

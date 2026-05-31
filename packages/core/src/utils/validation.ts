@@ -6,6 +6,7 @@
  * @module utils/validation
  */
 
+import { defaultConfig } from "@/defaultConfig"
 import type { ValidationTrigger } from "../types"
 
 /**
@@ -89,7 +90,7 @@ function normalizeTrigger(t: ValidationTrigger): NormalizedTrigger {
     submit: "submit",
   }
 
-  return map[t] ?? "submit"
+  return map[t] || defaultConfig.validationTrigger
 }
 
 /**

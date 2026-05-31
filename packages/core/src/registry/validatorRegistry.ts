@@ -73,11 +73,11 @@ export type ValidatorsEntryMap<TValues extends Values = Values> = Record<
  *
  * 将 validators 名称映射到 StandardSchemaV1 实例或工厂函数。
  * 工厂函数接收字段 schema，用于生成带字段上下文的校验 schema。
- * 与 {@link RendererRegistry}（渲染器注册中心）同构设计。
+ * 与 {@link RendererRegistryType}（渲染器注册中心）同构设计。
  *
  * @example
  * ```typescript
- * const validatorRegistry = new ValidatorsRegistry()
+ * const validatorRegistry = new ValidatorsRegistryType()
  *
  * // 注册固定 validators
  * validatorRegistry.register('phone', phoneValidators)
@@ -94,12 +94,12 @@ export type ValidatorsEntryMap<TValues extends Values = Values> = Record<
  * })
  * ```
  */
-class Validators<TValues extends Values = Values> {
+export class ValidatorsRegistry<TValues extends Values = Values> {
   /** Validators 存储 */
   private validators: Map<SchemxRuleKey, ValidatorsEntry<TValues>>
 
   /**
-   * 创建 ValidatorsRegistry 实例。
+   * 创建 ValidatorsRegistryType 实例。
    *
    * 创建空的规则注册中心。
    */
@@ -132,7 +132,7 @@ class Validators<TValues extends Values = Values> {
     options?: ValidatorsRegistryOptions
   ): void {
     if (this.validators.has(name) && options?.override === false) {
-      console.warn(`[ValidatorsRegistry] Validators "${name}" 已存在，跳过注册`)
+      console.warn(`[ValidatorsRegistryType] Validators "${name}" 已存在，跳过注册`)
 
       return
     }
@@ -307,10 +307,10 @@ class Validators<TValues extends Values = Values> {
 }
 
 /**
- * RendererRegistry 的实例类型
+ * RendererRegistryType 的实例类型
  */
-export type ValidatorsRegistry<TValues extends Values = Values> = InstanceType<
-  typeof Validators<TValues>
+export type ValidatorsRegistryType<TValues extends Values = Values> = InstanceType<
+  typeof ValidatorsRegistry<TValues>
 >
 
 /**
@@ -321,7 +321,7 @@ export type ValidatorsRegistry<TValues extends Values = Values> = InstanceType<
  *
  * @param parent - 父级注册中心，默认为全局单例
  *
- * @returns 带父级链的 ValidatorsRegistry 实例
+ * @returns 带父级链的 ValidatorsRegistryType 实例
  *
  * @remarks
  * 用于 useForm 内部创建表单级别的注册中心实例，
@@ -329,6 +329,6 @@ export type ValidatorsRegistry<TValues extends Values = Values> = InstanceType<
  */
 export function createValidatorsRegistry<
   TValues extends Values = Values,
->(): ValidatorsRegistry<TValues> {
-  return new Validators<TValues>()
+>(): ValidatorsRegistryType<TValues> {
+  return new ValidatorsRegistry<TValues>()
 }

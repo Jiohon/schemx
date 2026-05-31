@@ -13,18 +13,7 @@ import type { FieldDescriptor } from "../descriptor"
 import type { FieldFiber } from "../graph"
 import type { Signal } from "../reactivity"
 import type { SchemxComponentProps, SchemxRules, Values } from "../types"
-
-/**
- * 从 FieldFiber 资源中读取 FieldModel。
- *
- * @param fiber - 字段 runtime 节点。
- * @returns 当前字段模型；字段资源尚未挂载时返回 null。
- */
-export function getFieldModelResource<TValues extends Values = Values>(
-  fiber: FieldFiber<TValues>
-): FieldModel<TValues> | null {
-  return fiber.fieldModel
-}
+import { defaultConfig } from "@/defaultConfig"
 
 /**
  * 字段呈现态。
@@ -67,14 +56,16 @@ export function createFieldModel<TValues extends Values = Values>(
   const schema = descriptor.schema
 
   return {
-    visible: createSignal(schema.visible ?? true),
-    disabled: createSignal(schema.disabled ?? false),
-    readonly: createSignal(schema.readonly ?? false),
-    required: createSignal(schema.required ?? false),
-    label: createSignal(schema.label ?? ""),
-    rules: createSignal(schema.rules ?? []),
-    placeholder: createSignal(schema.placeholder ?? ""),
-    componentProps: createSignal(schema.componentProps ?? {}),
+    visible: createSignal(schema.visible || defaultConfig.visible),
+    disabled: createSignal(schema.disabled || defaultConfig.disabled),
+    readonly: createSignal(schema.readonly || defaultConfig.readonly),
+    required: createSignal(schema.required || defaultConfig.required),
+    label: createSignal(schema.label || ""),
+    rules: createSignal(schema.rules || []),
+    placeholder: createSignal(schema.placeholder || defaultConfig.placeholder),
+    componentProps: createSignal({
+      ...(schema.componentProps || {}),
+    }),
   }
 }
 
@@ -90,12 +81,12 @@ export function updateFieldModel<TValues extends Values = Values>(
 ): void {
   const schema = descriptor.schema
 
-  model.visible.value = schema.visible ?? true
-  model.disabled.value = schema.disabled ?? false
-  model.readonly.value = schema.readonly ?? false
-  model.required.value = schema.required ?? false
-  model.label.value = schema.label ?? ""
-  model.rules.value = schema.rules ?? []
-  model.placeholder.value = schema.placeholder ?? ""
-  model.componentProps.value = schema.componentProps ?? {}
+  model.visible.value = schema.visible || defaultConfig.visible
+  model.disabled.value = schema.disabled || defaultConfig.disabled
+  model.readonly.value = schema.readonly || defaultConfig.readonly
+  model.required.value = schema.required || defaultConfig.required
+  model.label.value = schema.label || ""
+  model.rules.value = schema.rules || []
+  model.placeholder.value = schema.placeholder || defaultConfig.placeholder
+  model.componentProps.value = schema.componentProps || {}
 }

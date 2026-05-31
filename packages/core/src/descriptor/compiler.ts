@@ -30,6 +30,7 @@ import type {
   SchemxField,
   SchemxGroupField,
 } from "../types/schema"
+import { defaultConfig } from "@/defaultConfig"
 
 /**
  * 编译器选项。
@@ -219,44 +220,49 @@ function buildNormalizedFieldSchema<TValues extends Values>(
     ...rest
   } = schema
 
-  const mergedVisible = cp?.visible ?? visible ?? true
-  const mergedReadonly = cp?.readonly ?? readonly ?? options.readonly ?? false
-  const mergedDisabled = cp?.disabled ?? disabled ?? options.disabled ?? false
-  const mergedRequired = Object.hasOwn(cp ?? {}, "required") || hasRequiredRule(rules)
-  const mergedPlaceholder = cp?.placeholder ?? placeholder ?? ""
-  const mergedRules = mergeRules(mergedRequired, rules)
+  const mergedVisible = visible || defaultConfig.visible
+
+  const mergedReadonly =
+    cp?.readonly || readonly || options.readonly || defaultConfig.readonly
+  const mergedDisabled =
+    cp?.disabled || disabled || options.disabled || defaultConfig.disabled
+
+  const mergedPlaceholder = cp?.placeholder || placeholder || defaultConfig.placeholder
 
   const componentProps: SchemxBaseField<TValues>["componentProps"] = {
     ...cp,
     readonly: mergedReadonly,
     disabled: mergedDisabled,
-    required: mergedRequired,
     placeholder: mergedPlaceholder,
   }
+
+  const mergedRequired = required || hasRequiredRule(rules)
+  const mergedRules = mergeRules(mergedRequired, rules)
 
   return {
     ...(rest ?? {}),
     key: rest.key,
     name: rest.name,
     label: rest.label,
+    initialValue: rest.initialValue,
     componentType: rest.componentType,
+
     visible: mergedVisible,
     readonly: mergedReadonly,
     disabled: mergedDisabled,
     required: mergedRequired,
     placeholder: mergedPlaceholder,
     componentProps: componentProps,
-    initialValue: rest.initialValue,
 
-    labelIcon: rest.labelIcon,
-    labelAlign: rest.labelAlign,
-    labelPosition: rest.labelPosition,
-    labelWidth: rest.labelWidth,
-    contentAlign: rest.contentAlign,
-    colon: rest.colon,
+    labelIcon: rest.labelIcon || defaultConfig.labelIcon,
+    labelAlign: rest.labelAlign || defaultConfig.labelAlign,
+    labelPosition: rest.labelPosition || defaultConfig.labelPosition,
+    labelWidth: rest.labelWidth || defaultConfig.labelWidth,
+    contentAlign: rest.contentAlign || defaultConfig.contentAlign,
+    colon: rest.colon || defaultConfig.colon,
 
     rules: mergedRules,
-    validationTrigger,
+    validationTrigger: validationTrigger || defaultConfig.validationTrigger,
   }
 }
 
@@ -270,7 +276,11 @@ function hasRequiredRule(rules?: SchemxRules | SchemxRules[]): boolean {
     return rules.length > 0
   }
 
-  return true
+  if (rules) {
+    return true
+  }
+
+  return defaultConfig.required
 }
 
 /**

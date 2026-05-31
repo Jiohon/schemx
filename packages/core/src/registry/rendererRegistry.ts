@@ -30,19 +30,22 @@ export type RendererMap<T extends SchemxRendererKey, R = unknown> = Record<T, R>
  *
  * @example
  * ```typescript
- * const registry = new RendererRegistry()
+ * const renderer = new RendererRegistryType()
  *
  * // 注册组件
- * registry.register('input', InputRenderer)
+ * renderer.register('input', InputRenderer)
  *
  * // 批量注册
- * registry.registerAll({ text: TextRenderer, number: NumberRenderer })
+ * renderer.registerAll({ text: TextRenderer, number: NumberRenderer })
  * ```
  *
  * @remarks
  * 当 getRenderer 找不到指定类型时，会自动回退到默认渲染器类型（默认为 'text'）。
  */
-class Renderer<T extends SchemxRendererKey = SchemxRendererKey, R = unknown> {
+export class RendererRegistry<
+  T extends SchemxRendererKey = SchemxRendererKey,
+  R = unknown,
+> {
   /** 渲染器存储 */
   private renderers: Map<T, R>
 
@@ -70,14 +73,14 @@ class Renderer<T extends SchemxRendererKey = SchemxRendererKey, R = unknown> {
    *
    * @example
    * ```typescript
-   * registry.register('text', TextRenderer)
-   * registry.register('text', NewTextRenderer, { override: true })
+   * renderer.register('text', TextRenderer)
+   * renderer.register('text', NewTextRenderer, { override: true })
    * ```
    */
   register(type: T, renderer: R, options?: RegistryOptions): void {
     if (this.renderers.has(type) && options?.override === false) {
       console.warn(
-        `[RendererRegistry] Renderer "${type}" already exists, skipping registration`
+        `[RendererRegistryType] RendererRegistry "${type}" already exists, skipping registration`
       )
 
       return
@@ -95,7 +98,7 @@ class Renderer<T extends SchemxRendererKey = SchemxRendererKey, R = unknown> {
    *
    * @example
    * ```typescript
-   * registry.registerAll({
+   * renderer.registerAll({
    *   text: TextRenderer,
    *   number: NumberRenderer,
    *   date: DateRenderer,
@@ -118,8 +121,8 @@ class Renderer<T extends SchemxRendererKey = SchemxRendererKey, R = unknown> {
    *
    * @example
    * ```typescript
-   * const renderer = registry.getRenderer('text')
-   * const fallback = registry.getRenderer('unknown') // => 默认渲染器
+   * const renderer = renderer.getRenderer('text')
+   * const fallback = renderer.getRenderer('unknown') // => 默认渲染器
    * ```
    */
   getRenderer(type: T): R | undefined {
@@ -127,7 +130,7 @@ class Renderer<T extends SchemxRendererKey = SchemxRendererKey, R = unknown> {
 
     if (!renderer) {
       console.warn(
-        `[RendererRegistry] Renderer "${type}" not found, falling back to default "${this.defaultType}"`
+        `[RendererRegistryType] RendererRegistry "${type}" not found, falling back to default "${this.defaultType}"`
       )
 
       if (this.defaultType) renderer = this.renderers.get(this.defaultType)
@@ -144,8 +147,8 @@ class Renderer<T extends SchemxRendererKey = SchemxRendererKey, R = unknown> {
    *
    * @example
    * ```typescript
-   * registry.hasRenderer('text')   // => true
-   * registry.hasRenderer('custom') // => false
+   * renderer.hasRenderer('text')   // => true
+   * renderer.hasRenderer('custom') // => false
    * ```
    */
   hasRenderer(type: T): boolean {
@@ -163,8 +166,8 @@ class Renderer<T extends SchemxRendererKey = SchemxRendererKey, R = unknown> {
    *
    * @example
    * ```typescript
-   * registry.unregister('date') // => true
-   * registry.unregister('nonexistent') // => false
+   * renderer.unregister('date') // => true
+   * renderer.unregister('nonexistent') // => false
    * ```
    */
   unregister(type: T): boolean {
@@ -176,7 +179,7 @@ class Renderer<T extends SchemxRendererKey = SchemxRendererKey, R = unknown> {
 
       if (firstKey) {
         console.warn(
-          `[RendererRegistry] Default renderer was removed, Please reset the default renderer.`
+          `[RendererRegistryType] Default renderer was removed, Please reset the default renderer.`
         )
 
         this.defaultType = firstKey
@@ -193,7 +196,7 @@ class Renderer<T extends SchemxRendererKey = SchemxRendererKey, R = unknown> {
    *
    * @example
    * ```typescript
-   * registry.getTypes() // => ['text', 'number', 'date']
+   * renderer.getTypes() // => ['text', 'number', 'date']
    * ```
    */
   getTypes(): T[] {
@@ -210,14 +213,14 @@ class Renderer<T extends SchemxRendererKey = SchemxRendererKey, R = unknown> {
    *
    * @example
    * ```typescript
-   * registry.setDefault('number')
-   * registry.getDefault() // => 'number'
+   * renderer.setDefault('number')
+   * renderer.getDefault() // => 'number'
    * ```
    */
   setDefault(type: T): void {
     if (!this.renderers.has(type)) {
       console.warn(
-        `[RendererRegistry] Cannot set default to "${type}": renderer not registered`
+        `[RendererRegistryType] Cannot set default to "${type}": renderer not registered`
       )
 
       return
@@ -233,7 +236,7 @@ class Renderer<T extends SchemxRendererKey = SchemxRendererKey, R = unknown> {
    *
    * @example
    * ```typescript
-   * registry.getDefault() // => 'text'
+   * renderer.getDefault() // => 'text'
    * ```
    */
   getDefault(): T | undefined {
@@ -245,8 +248,8 @@ class Renderer<T extends SchemxRendererKey = SchemxRendererKey, R = unknown> {
    *
    * @example
    * ```typescript
-   * registry.clear()
-   * registry.size() // => 0
+   * renderer.clear()
+   * renderer.size() // => 0
    * ```
    */
   clear(): void {
@@ -260,7 +263,7 @@ class Renderer<T extends SchemxRendererKey = SchemxRendererKey, R = unknown> {
    *
    * @example
    * ```typescript
-   * registry.size() // => 5
+   * renderer.size() // => 5
    * ```
    */
   size(): number {
@@ -269,12 +272,12 @@ class Renderer<T extends SchemxRendererKey = SchemxRendererKey, R = unknown> {
 }
 
 /**
- * RendererRegistry 的实例类型
+ * RendererRegistryType 的实例类型
  */
-export type RendererRegistry<
+export type RendererRegistryType<
   T extends SchemxRendererKey = SchemxRendererKey,
   R = unknown,
-> = InstanceType<typeof Renderer<T, R>>
+> = RendererRegistry<T, R>
 
 /**
  * 创建局部渲染器注册中心实例（仅内部使用）。
@@ -288,6 +291,6 @@ export type RendererRegistry<
  */
 export function createRendererRegistry<T extends SchemxRendererKey, R = unknown>(
   defaultType?: T
-): RendererRegistry<T, R> {
-  return new Renderer<T, R>(defaultType)
+): RendererRegistryType<T, R> {
+  return new RendererRegistry<T, R>(defaultType)
 }

@@ -128,6 +128,8 @@ export function createValidationEffect<TValues extends Values = Values>(
       label,
     } as SchemxBaseField<TValues>)
 
+    console.log(label, resolvedRules)
+
     context.validator.register(name, resolvedRules, `${label}为必填项`)
 
     registered.value = true

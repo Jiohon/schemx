@@ -1,7 +1,7 @@
 /**
  * core 模块统一导出
  *
- * 聚合 Validator、RendererRegistry、ValidatorsRegistry 等核心模块的公开 API。
+ * 聚合 Validator、RendererRegistryType、ValidatorsRegistryType 等核心模块的公开 API。
  *
  * @module core
  */
@@ -16,7 +16,7 @@ export {
 
 export {
   createRendererRegistry,
-  type RendererRegistry,
+  type RendererRegistryType,
   type RegistryOptions,
   type RendererMap,
 } from "./registry"
@@ -69,7 +69,7 @@ export {
 
 export {
   createValidatorsRegistry,
-  type ValidatorsRegistry,
+  type ValidatorsRegistryType,
   type ValidatorsRegistryOptions,
   type ValidatorsFactory,
   type ValidatorsEntry,
@@ -95,6 +95,7 @@ export type {
   DeepReadonly,
   CSSProperties,
   ValidationTrigger,
+  StandardSchemaV1,
   SchemxInstance,
   SchemxProps,
   SchemxGlobalContext,

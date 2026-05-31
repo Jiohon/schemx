@@ -1,5 +1,5 @@
 /**
- * ReactiveMap - 按 key 管理的响应式值存储。
+ * SignalMap - 按 key 管理的响应式值存储。
  *
  * API 贴近原生 Map：`get`、`set`、`has`、`delete`、`clear`、
  * `keys`、`values`、`entries`。额外提供 `peek` 用于无依赖追踪读取。
@@ -23,7 +23,7 @@ import type { Signal } from "./signal"
  * @typeParam K - key 类型
  * @typeParam V - value 类型
  */
-class ReactiveMapImpl<K, V> {
+class SignalMapImpl<K, V> {
   /** 每个 key 独占一个 signal，保证字段级更新能细粒度触发 */
   private signals = new Map<K, Signal<V>>()
 
@@ -55,7 +55,7 @@ class ReactiveMapImpl<K, V> {
    *
    * @param key - 待写入的 key。
    * @param value - 新值。
-   * @returns 当前 ReactiveMap 实例，便于链式调用。
+   * @returns 当前 SignalMap 实例，便于链式调用。
    */
   set(key: K, value: V): this {
     const s = this.signals.get(key)
@@ -165,15 +165,15 @@ class ReactiveMapImpl<K, V> {
 }
 
 /**
- * ReactiveMap 的实例类型。
+ * SignalMap 的实例类型。
  */
-export type ReactiveMap<K, V> = InstanceType<typeof ReactiveMapImpl<K, V>>
+export type SignalMap<K, V> = InstanceType<typeof SignalMapImpl<K, V>>
 
 /**
- * 创建 ReactiveMap 实例。
+ * 创建 SignalMap 实例。
  *
  * @returns 新的响应式 Map。
  */
-export function createReactiveMap<K, V>(): ReactiveMap<K, V> {
-  return new ReactiveMapImpl<K, V>()
+export function createSignalMap<K, V>(): SignalMap<K, V> {
+  return new SignalMapImpl<K, V>()
 }

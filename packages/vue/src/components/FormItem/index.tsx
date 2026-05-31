@@ -74,8 +74,7 @@ const FormItem = defineComponent(
      * 当字段不可见、只读或禁用时，无需进行校验。
      */
     const canVerified = computed(() => {
-      const isOperate =
-        schema().visible !== false && !schema().readonly && !schema().disabled
+      const isOperate = schema().visible && !schema().readonly && !schema().disabled
 
       const rules = schema().rules
 
@@ -86,7 +85,6 @@ const FormItem = defineComponent(
 
     /** 值变化处理，设置值后根据触发时机决定是否校验 */
     const handleChange = (v: FieldValue<T, NamePath<T>>) => {
-      field.setValue(v)
       if (canVerified.value && shouldValidateOn("change", trigger.value)) {
         field.validate()
       }
@@ -121,15 +119,9 @@ const FormItem = defineComponent(
     const componentProps = useStableRef<SchemxComponentProps<T>>(
       (): SchemxComponentProps<T> => ({
         ...schema().componentProps,
-        visible: schema().visible,
-        required: schema().required,
-        readonly: schema().readonly,
-        disabled: schema().disabled,
-        placeholder: schema().placeholder,
-        value: field.getValue(),
         onChange: handleChange,
         onBlur: handleBlur,
-        formItemProps: formItemProps.value,
+        "onUpdate:value": (v) => field.setValue(v),
       })
     )
 

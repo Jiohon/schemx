@@ -34,8 +34,8 @@ import { batchUpdates, createSignalEffect } from "./reactivity"
 import {
   createRendererRegistry,
   createValidatorsRegistry,
-  type RendererRegistry,
-  type ValidatorsRegistry,
+  type RendererRegistryType,
+  type ValidatorsRegistryType,
 } from "./registry"
 import { createScheduler, type Scheduler } from "./scheduler"
 import { createStore, type Store } from "./store"
@@ -70,6 +70,8 @@ import type {
   StandardSchemaV1,
   Values,
 } from "./types"
+import { pick } from "es-toolkit"
+import { defaultConfig, defaultConfigKey } from "./defaultConfig"
 
 type Callbacks<
   TValues extends Values = Values,
@@ -87,17 +89,15 @@ type Callbacks<
  *
  * @typeParam TValues - 表单值类型。
  */
-export interface SchemxFormContext<
-  TValues extends Values = Values,
-> extends SchemxDefaultProps {
+export interface SchemxFormContext<TValues extends Values = Values> {
   /**
    * schema 编译默认选项，供 root 与 dependency 子树复用
    */
-  readonly defaultProps: SchemxDefaultProps
+  defaultProps: SchemxDefaultProps
   /**
    * 校验规则注册表，解析字符串规则名称到 StandardSchema 或规则工厂
    */
-  readonly validatorRegistry: ValidatorsRegistry<TValues>
+  readonly validatorRegistry: ValidatorsRegistryType<TValues>
   /**
    * 表单状态存储，管理字段值、初始值和订阅
    */
@@ -161,7 +161,7 @@ export interface CreateFormOptions<
   /**
    * 当前 form 实例使用的渲染器注册表。
    */
-  rendererRegistry?: RendererRegistry
+  rendererRegistry?: RendererRegistryType
   /**
    * 字段未指定可用渲染器时使用的默认 renderer type。
    */
@@ -169,7 +169,7 @@ export interface CreateFormOptions<
   /**
    * 当前 form 实例使用的规则注册表。
    */
-  validatorRegistry?: ValidatorsRegistry
+  validatorRegistry?: ValidatorsRegistryType
 
   /**
    * submit 校验通过后的回调。
@@ -210,10 +210,10 @@ class CreateForm<
   private store: Store<TValues>
 
   /** 渲染器注册表，解析 schema.componentType 到具体渲染实现 */
-  readonly rendererRegistry: RendererRegistry
+  readonly rendererRegistry: RendererRegistryType
 
   /** 校验规则注册表，解析字符串规则名称到 StandardSchema 或规则工厂 */
-  readonly validatorRegistry: ValidatorsRegistry<TValues>
+  readonly validatorRegistry: ValidatorsRegistryType<TValues>
 
   /** 字段校验器，维护规则、错误状态和校验执行流程 */
   readonly validator: Validator<TValues>
@@ -256,9 +256,7 @@ class CreateForm<
       rendererRegistry,
       defaultRendererType,
       validatorRegistry,
-      validationTrigger,
-      readonly,
-      disabled,
+      ...restOptions
     } = options
 
     // 统一保存用户回调，后续 effect 和 submit 流程从同一入口读取。
@@ -274,7 +272,7 @@ class CreateForm<
       rendererRegistry ?? createRendererRegistry(defaultRendererType)
 
     this.validatorRegistry = (validatorRegistry ??
-      createValidatorsRegistry<TValues>()) as ValidatorsRegistry<TValues>
+      createValidatorsRegistry<TValues>()) as ValidatorsRegistryType<TValues>
 
     this.validator = createValidator<TValues, TName>()
 
@@ -300,11 +298,7 @@ class CreateForm<
 
     // dependency renderer 运行时需要回写 graph，因此上下文在首次编译前准备好。
     this.context = {
-      defaultProps: {
-        readonly,
-        disabled,
-        validationTrigger,
-      },
+      defaultProps: pick(restOptions, defaultConfigKey),
       store: this.store,
       validatorRegistry: this.validatorRegistry,
       validator: this.validator,
@@ -408,6 +402,7 @@ class CreateForm<
 
       setSchemas: this.setSchemas.bind(this),
       updateSchemas: this.updateSchemas.bind(this),
+      updateDefaultProps: this.updateDefaultProps.bind(this),
       getViewRevision: () => this.viewRevision.revision.value,
       getViewSchemas: this.getViewSchemas.bind(this),
       subscribeViewSchemas: this.subscribeViewSchemas.bind(this),
@@ -518,13 +513,14 @@ class CreateForm<
       return {
         ok: false,
         error: {
-          errors: pendingFields.map(({ field }) => {
-            const message = "字段正在处理中，请稍后重试"
-            this.validator.setFieldError(field as NamePath<TValues>, [message])
+          errors: pendingFields.map(({ field, message }) => {
+            const _message = message.length ? message : ["字段正在处理中，请稍后重试"]
+
+            this.validator.setFieldError(field as NamePath<TValues>, _message)
 
             return {
               field: field as string,
-              message: [message],
+              message: _message,
             }
           }),
           values: this.store.getFieldsSnapshot(),
@@ -612,6 +608,22 @@ class CreateForm<
     }
 
     this.schemas.update(updater)
+  }
+
+  /**
+   * 更新表单默认配置。
+   *
+   * 合并传入属性到当前 defaultProps，然后重新编译根 schemas 并 reconcile。
+   * 字段级属性未设置时会回退到这些默认值。
+   */
+  private updateDefaultProps(partial: Partial<SchemxDefaultProps>): void {
+    if (this.disposed) {
+      return
+    }
+
+    Object.assign(this.context.defaultProps, pick(partial, defaultConfigKey))
+
+    this.applySchemas(this.schemas.peek())
   }
 
   /**

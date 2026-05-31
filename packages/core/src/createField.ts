@@ -143,7 +143,7 @@ export interface SchemxFieldInstance<
    * @param pending - 是否处于操作中。
    * @param message - 可选的操作中提示信息。
    */
-  setPending: (pending: boolean, message?: string) => void
+  setPending: (pending: boolean, message?: string | string[]) => void
 
   /**
    * 检查当前字段是否处于操作中。
@@ -296,9 +296,8 @@ export function createField<
   /**
    * 设置当前字段 pending 状态。
    */
-  const setPending = (pending: boolean, _message?: string): void => {
-    form.setFieldPending(name, pending)
-    if (_message) form.setFieldError(name, [_message])
+  const setPending = (pending: boolean, message?: string | string[]): void => {
+    form.setFieldPending(name, pending, message)
   }
 
   /**

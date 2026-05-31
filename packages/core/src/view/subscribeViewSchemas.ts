@@ -39,8 +39,8 @@ export function subscribeViewSchemas<TValues extends Values = Values>(
     if (rootDisposed) {
       try {
         onChange([])
-      } catch {
-        // 捕获 onChange 错误，不中断流程
+      } catch (error) {
+        console.error("[subscribeViewSchemas] onChange error:", error)
       }
 
       return

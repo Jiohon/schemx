@@ -24,8 +24,8 @@ import { cloneDeep, isEqual } from "es-toolkit"
 import { batchUpdates, createFieldSignal, createFieldSignalMap } from "../reactivity"
 import { collectObjectPathsByLeaf, getByPath, setByPath } from "../utils"
 
-import type { NamePath, FieldValue, Values } from "../types"
 import type { FieldSignal } from "../reactivity"
+import type { FieldValue, NamePath, Values } from "../types"
 
 /**
  * Store 配置选项。
@@ -59,6 +59,7 @@ export interface StorePending<
   TName extends NamePath<TValues> = NamePath<TValues>,
 > {
   field: TName
+  message: string[]
 }
 
 /**
@@ -547,7 +548,7 @@ class StoreImpl<TValues extends Values = Values> {
 
     for (const [field, signal] of this.fieldSignals.entries()) {
       if (signal.pending.value) {
-        fields.push({ field })
+        fields.push({ field, message: signal.pendingMessage.peek() })
       }
     }
 
@@ -563,6 +564,7 @@ class StoreImpl<TValues extends Values = Values> {
    *
    * @param path - 字段路径
    * @param pending - 是否处于操作中
+   * @param message - 可选的操作中提示信息。
    *
    * @example
    * ```typescript
@@ -570,8 +572,12 @@ class StoreImpl<TValues extends Values = Values> {
    * store.setFieldPending('avatar', false)  // 上传结束
    * ```
    */
-  setFieldPending<TName extends NamePath<TValues>>(path: TName, pending: boolean): void {
-    this.getOrCreateFieldSignal(path).setPending(pending)
+  setFieldPending<TName extends NamePath<TValues>>(
+    path: TName,
+    pending: boolean,
+    message?: string | string[]
+  ): void {
+    this.getOrCreateFieldSignal(path).setPending(pending, message)
   }
 
   /**
@@ -579,6 +585,7 @@ class StoreImpl<TValues extends Values = Values> {
    *
    * @param paths - 要设置 pending 状态的字段路径数组
    * @param pending - 目标 pending 状态，默认 true
+   * @param message - 可选的操作中提示信息。
    *
    * @example
    * ```typescript
@@ -587,11 +594,12 @@ class StoreImpl<TValues extends Values = Values> {
    */
   setFieldsPending<TName extends NamePath<TValues>>(
     paths: TName[],
-    pending = true
+    pending = true,
+    message?: string | string[]
   ): void {
     batchUpdates(() => {
       for (const path of paths) {
-        this.setFieldPending(path, pending)
+        this.setFieldPending(path, pending, message)
       }
     })
   }

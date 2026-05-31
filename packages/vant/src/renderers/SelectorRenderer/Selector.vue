@@ -23,7 +23,7 @@
    */
   import { computed } from "vue"
 
-  import type { SelectorOption, SelectorProps } from "./types"
+  import type { SelectorOption, SelectorProps, SelectValue } from "./types"
 
   import "./selector.scss"
 
@@ -40,8 +40,8 @@
   })
 
   const emit = defineEmits<{
-    "update:modelValue": [value: string | number | (string | number)[]]
-    change: [value: string | number | (string | number)[], option: SelectorOption]
+    "update:modelValue": [value: SelectValue]
+    change: [value: SelectValue, option: SelectorOption]
   }>()
 
   const labelKey = computed(() => props.fieldNames?.label || "label")
@@ -64,7 +64,7 @@
    * 判断选项是否选中
    */
   const isSelected = (option: SelectorOption): boolean => {
-    return selectedValues.value.includes(option?.[valueKey.value] as string | number)
+    return selectedValues.value.includes(option?.[valueKey.value])
   }
 
   /**
@@ -76,7 +76,7 @@
     const value = option?.[valueKey.value]
 
     if (props.multiple) {
-      const next = selectedValues.value.includes(value as string | number)
+      const next = selectedValues.value.includes(value)
         ? selectedValues.value.filter((item) => item !== value)
         : [...selectedValues.value, value]
 

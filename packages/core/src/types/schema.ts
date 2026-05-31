@@ -52,23 +52,37 @@ export interface SchemxBaseComponentProps<
   TName extends NamePath<TValues> = NamePath<TValues>,
   TValue = FieldValue<TValues, TName>,
 > {
-  /** 是否必填 */
-  required?: boolean
-  /** 是否只读 */
+  /**
+   * 是否只读
+   */
   readonly?: boolean
-  /** 是否禁用 */
+  /**
+   * 是否禁用
+   */
   disabled?: boolean
-  /** 是否隐藏 */
-  visible?: boolean
-  /** 占位符 */
+  /**
+   * 占位符
+   */
   placeholder?: string
-  /** FormItem 组件 Props */
+  /**
+   * FormItem 组件 Props
+   */
   formItemProps?: SchemxFormItemProps<TValues>
-  /** 字段值 */
+  /**
+   * 字段值
+   */
   value?: TValue
-  /** 值变化处理 */
+  /**
+   * 值变化处理
+   */
+  "onUpdate:value"?: (value: TValue) => void
+  /**
+   * 值变化处理
+   */
   onChange?: (value: TValue, form: SchemxInstance<TValues>) => void
-  /** 失焦处理 */
+  /**
+   * 失焦处理
+   */
   onBlur?: (value: TValue, form: SchemxInstance<TValues>) => void
 }
 
@@ -248,6 +262,13 @@ export interface SchemxBase<
   contentAlign?: "left" | "center" | "right"
 
   /**
+   * 是否在标签后显示冒号
+   *
+   * 未设置时继承 FormContext 的全局 `colon` 配置。
+   */
+  colon?: boolean
+
+  /**
    * 校验触发时机
    *
    * 支持单个或多个触发时机组合，如 `'change'`、`'blur'`、`['change', 'blur']`。
@@ -256,11 +277,14 @@ export interface SchemxBase<
   validationTrigger?: ValidationTrigger | ValidationTrigger[]
 
   /**
-   * 是否在标签后显示冒号
-   *
-   * 未设置时继承 FormContext 的全局 `colon` 配置。
+   * 值变化触发
    */
-  colon?: boolean
+  onChange?: (value: FieldValue<TValues>, form: SchemxInstance<TValues>) => void
+
+  /**
+   * 失焦触发
+   */
+  onBlur?: (form: SchemxInstance<TValues>) => void
 }
 
 /**

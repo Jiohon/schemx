@@ -4,6 +4,8 @@
  * @module renderers/SliderRenderer/types
  */
 
+export type SliderValue = number | [number, number]
+
 /**
  * 滑块渲染器 Props
  *
@@ -11,7 +13,7 @@
  */
 export interface SliderRendererProps {
   /** 当前值，支持单值或范围值 */
-  value?: number | number[]
+  value?: SliderValue
   /** 最小值 */
   min?: number
   /** 最大值 */
@@ -27,7 +29,7 @@ export interface SliderRendererProps {
   /** 表单实例 */
   formInstance?: Record<string, any> | null
   /** 值变化回调 */
-  onChange?: (value: number | number[]) => void
+  onChange?: (value: SliderValue) => void
   /** 是否只读 */
   readonly?: boolean
   /** 只读时的占位文本 */

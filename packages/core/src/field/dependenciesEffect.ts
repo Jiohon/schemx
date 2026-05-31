@@ -20,6 +20,7 @@ import type {
   SchemxResolvedBaseField,
   Values,
 } from "../types"
+import { defaultConfig } from "@/defaultConfig"
 
 /**
  * 支持动态配置的字段呈现态键列表。
@@ -263,11 +264,12 @@ function patchFieldModel<TValues extends Values>(
   base: Readonly<SchemxResolvedBaseField<TValues>>,
   resolved: DependencyResolvedProps<TValues>
 ): void {
-  model.visible.value = resolved.visible ?? base.visible ?? true
-  model.disabled.value = resolved.disabled ?? base.disabled ?? false
-  model.readonly.value = resolved.readonly ?? base.readonly ?? false
-  model.required.value = resolved.required ?? base.required ?? false
-  model.rules.value = resolved.rules ?? base.rules ?? []
-  model.placeholder.value = resolved.placeholder ?? base.placeholder ?? ""
-  model.componentProps.value = resolved.componentProps ?? base.componentProps ?? {}
+  model.visible.value = resolved.visible || base.visible || defaultConfig.visible
+  model.disabled.value = resolved.disabled || base.disabled || defaultConfig.disabled
+  model.readonly.value = resolved.readonly || base.readonly || defaultConfig.readonly
+  model.required.value = resolved.required || base.required || defaultConfig.required
+  model.rules.value = resolved.rules || base.rules || []
+  model.placeholder.value =
+    resolved.placeholder || base.placeholder || defaultConfig.placeholder
+  model.componentProps.value = resolved.componentProps || base.componentProps || {}
 }

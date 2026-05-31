@@ -66,19 +66,20 @@ class RuntimeReconciler<TValues extends Values> {
     let changed = false
 
     for (const descriptor of descriptors) {
-      const existing = previousByKey.get(descriptor.key)
+      const existingFiber = previousByKey.get(descriptor.key)
 
-      if (existing && existing.type === descriptor.type) {
+      // TODO: diff schema是否有变更
+      if (existingFiber && existingFiber.type === descriptor.type) {
         previousByKey.delete(descriptor.key)
 
-        existing.parent = parentFiber
+        existingFiber.parent = parentFiber
 
-        this.fiberManager.update(existing, descriptor)
+        this.fiberManager.update(existingFiber, descriptor)
 
-        next.push(existing)
+        next.push(existingFiber)
 
         if (isGroupDescriptor(descriptor)) {
-          groups.push({ fiber: existing as GroupFiber<TValues>, descriptor })
+          groups.push({ fiber: existingFiber as GroupFiber<TValues>, descriptor })
         }
 
         continue

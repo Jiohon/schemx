@@ -13,7 +13,7 @@ import { onMounted, Ref, ref } from "vue"
 import { useFormInstance } from "./useForm"
 import { useWatchFields } from "./useWatch"
 
-import type { NamePath, FieldValue, SchemxDictionary, Values } from "@schemx/core"
+import type { FieldValue, NamePath, SchemxDictionary, Values } from "@schemx/core"
 
 export type { SchemxDictionary, SchemxWithDictionary } from "@schemx/core"
 

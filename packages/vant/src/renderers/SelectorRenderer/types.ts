@@ -4,6 +4,8 @@
  * @module renderers/SelectorRenderer/types
  */
 
+export type SelectValue = string | number | (string | number)[]
+
 /**
  * 选择器选项
  *
@@ -13,7 +15,7 @@ export interface SelectorOption {
   /** 选项标签 */
   label?: string
   /** 选项值 */
-  value?: string | number
+  value?: SelectValue
   /** 是否禁用 */
   disabled?: boolean
   /** 扩展字段 */
@@ -27,7 +29,7 @@ export interface SelectorOption {
  */
 export interface SelectorProps {
   /** 当前值 */
-  modelValue?: string | number | (string | number)[]
+  modelValue?: SelectValue
   /** 选项列表 */
   options?: SelectorOption[]
   /** 是否多选 */
@@ -52,9 +54,9 @@ export interface SelectorProps {
  */
 export interface SelectorRendererProps {
   /** 当前值 */
-  value?: string | number
+  value?: SelectValue
   /** 值变化回调 */
-  onChange?: (value: string | number) => void
+  onChange?: (value: SelectValue) => void
   /** 选项列表 */
   options?: SelectorOption[]
   /** 自定义 CSS 类名 */

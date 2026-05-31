@@ -42,6 +42,8 @@ export interface NumberRendererProps {
   min?: number
   /** 最大值 */
   max?: number
+  /** 最大输入长度 */
+  maxlength?: number | string
   /** 错误信息 */
   error?: string[]
 }
