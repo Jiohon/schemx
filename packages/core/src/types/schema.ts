@@ -79,11 +79,11 @@ export interface SchemxBaseComponentProps<
   /**
    * 值变化处理
    */
-  onChange?: (value: TValue, form: SchemxInstance<TValues>) => void
+  onChange?: (value: TValue) => void
   /**
    * 失焦处理
    */
-  onBlur?: (value: TValue, form: SchemxInstance<TValues>) => void
+  onBlur?: (value: TValue) => void
 }
 
 /**

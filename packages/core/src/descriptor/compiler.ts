@@ -227,7 +227,7 @@ function buildNormalizedFieldSchema<TValues extends Values>(
   const mergedDisabled =
     cp?.disabled || disabled || options.disabled || defaultConfig.disabled
 
-  const mergedPlaceholder = cp?.placeholder || placeholder || defaultConfig.placeholder
+  const mergedPlaceholder = getPlaceholder(schema)
 
   const componentProps: SchemxBaseField<TValues>["componentProps"] = {
     ...cp,
@@ -264,6 +264,24 @@ function buildNormalizedFieldSchema<TValues extends Values>(
     rules: mergedRules,
     validationTrigger: validationTrigger || defaultConfig.validationTrigger,
   }
+}
+
+/**
+ * 根据 componentType 和 placeholder 配置生成字段占位提示文本。
+ * 仅在 schema 和 componentProps 中都未提供 placeholder 时使用。
+ */
+export function getPlaceholder<TValues extends Values>(
+  schema: SchemxBaseField<TValues>
+): string {
+  const existingplaceholder = schema.componentProps?.placeholder || schema.placeholder
+
+  if (!existingplaceholder) {
+    return ["input", "text", "textarea"].includes(schema.componentType)
+      ? `请输入${schema.label || schema.name}`
+      : `请选择${schema.label || schema.name}`
+  }
+
+  return existingplaceholder
 }
 
 /**

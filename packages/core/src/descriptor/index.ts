@@ -6,7 +6,12 @@
  * @module core/descriptor
  */
 
-export { compileToDescriptors, CompileError, type CompileOptions } from "./compiler"
+export {
+  getPlaceholder,
+  compileToDescriptors,
+  CompileError,
+  type CompileOptions,
+} from "./compiler"
 
 export {
   isDependencyDescriptor,

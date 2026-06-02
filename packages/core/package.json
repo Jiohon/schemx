@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@schemx/core",
-  "version": "0.1.19",
+  "version": "0.1.20",
   "description": "框架无关的表单引擎核心（Framework-agnostic form engine core）",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -24,6 +24,7 @@
   ],
   "dependencies": {
     "@preact/signals-core": "^1.14.0",
+    "csstype": "^3.2.3",
     "es-toolkit": "^1.44.0"
   },
   "scripts": {

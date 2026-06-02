@@ -10,7 +10,7 @@
 import { createSignalEffect } from "../reactivity"
 
 import type { FieldDescriptor } from "../descriptor"
-import type { FieldModel } from "./model"
+import { patchFieldModel, type FieldModel } from "./model"
 import type { SchemxFormContext } from "../createForm"
 import type { Scope } from "../graph"
 import type {
@@ -37,7 +37,7 @@ export const FIELD_DEPENDENCY_PROP_KEYS = [
 
 type DependencyPropKey = (typeof FIELD_DEPENDENCY_PROP_KEYS)[number]
 
-type DependencyResolvedProps<TValues extends Values> = Partial<
+export type DependencyResolvedProps<TValues extends Values> = Partial<
   Pick<SchemxResolvedBaseField<TValues>, Exclude<DependencyPropKey, "rules">> & {
     rules?: SchemxResolvedBaseField<TValues>["rules"]
   }
@@ -104,7 +104,7 @@ export function createDependenciesEffect<TValues extends Values = Values>(
           return
         }
 
-        patchFieldModel(fieldModel, base, resolvedProps)
+        patchFieldModel(fieldModel, descriptor, resolvedProps)
       })
     )
   })
@@ -254,22 +254,4 @@ async function resolveCondition<TValues extends Values, TValue>(
 
     return defaultValue
   }
-}
-
-/**
- * 将解析结果写入 FieldModel，未解析项回退到 descriptor 静态值。
- */
-function patchFieldModel<TValues extends Values>(
-  model: FieldModel<TValues>,
-  base: Readonly<SchemxResolvedBaseField<TValues>>,
-  resolved: DependencyResolvedProps<TValues>
-): void {
-  model.visible.value = resolved.visible || base.visible || defaultConfig.visible
-  model.disabled.value = resolved.disabled || base.disabled || defaultConfig.disabled
-  model.readonly.value = resolved.readonly || base.readonly || defaultConfig.readonly
-  model.required.value = resolved.required || base.required || defaultConfig.required
-  model.rules.value = resolved.rules || base.rules || []
-  model.placeholder.value =
-    resolved.placeholder || base.placeholder || defaultConfig.placeholder
-  model.componentProps.value = resolved.componentProps || base.componentProps || {}
 }

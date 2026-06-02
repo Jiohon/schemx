@@ -126,6 +126,9 @@ importers:
       '@preact/signals-core':
         specifier: ^1.14.0
         version: 1.14.0
+      csstype:
+        specifier: ^3.2.3
+        version: 3.2.3
       es-toolkit:
         specifier: ^1.44.0
         version: 1.45.1

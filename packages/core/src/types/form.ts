@@ -78,11 +78,39 @@ export type ValidationTrigger =
 export type SchemxDefaultProps = Pick<SchemxBaseField, DefaultConfigKey>
 
 /**
+ * 表单级默认配置。
+ *
+ * 这些配置会作为 schema 编译和字段呈现态的默认值，字段自身配置优先级更高。
+ */
+/**
  * schemx 组件 Props
  *
  * @typeParam T - 表单值类型
  */
-export interface SchemxProps<T extends Values = Values> extends SchemxDefaultProps {
+export interface SchemxProps<T extends Values = Values> {
+  /** 是否展示必填的 * 号 */
+  required?: boolean
+  /** 是否只读 */
+  readonly?: boolean
+  /** 是否禁用 */
+  disabled?: boolean
+  /** 是否可见 */
+  visible?: boolean
+  /** 标签图标 */
+  labelIcon?: string
+  /** 标签对齐方式 */
+  labelAlign?: "left" | "center" | "right"
+  /** 标签位置 */
+  labelPosition?: "left" | "top" | "right"
+  /** 标签宽度 */
+  labelWidth?: string
+  /** 内容区域对齐方式 */
+  contentAlign?: "left" | "center" | "right"
+  /** 校验触发时机 */
+  validationTrigger?: ValidationTrigger | ValidationTrigger[]
+  /** 是否在标签后显示冒号 */
+  colon?: boolean
+
   /** 表单数据（v-model） */
   modelValue?: T
   /** 初始值 */

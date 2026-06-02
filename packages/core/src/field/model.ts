@@ -9,11 +9,12 @@
 
 import { createSignal } from "../reactivity"
 
-import type { FieldDescriptor } from "../descriptor"
+import { getPlaceholder, type FieldDescriptor } from "../descriptor"
 import type { FieldFiber } from "../graph"
 import type { Signal } from "../reactivity"
-import type { SchemxComponentProps, SchemxRules, Values } from "../types"
+import type { SchemxBaseField, SchemxComponentProps, SchemxRules, Values } from "../types"
 import { defaultConfig } from "@/defaultConfig"
+import { DependencyResolvedProps } from "./dependenciesEffect"
 
 /**
  * 字段呈现态。
@@ -62,7 +63,7 @@ export function createFieldModel<TValues extends Values = Values>(
     required: createSignal(schema.required || defaultConfig.required),
     label: createSignal(schema.label || ""),
     rules: createSignal(schema.rules || []),
-    placeholder: createSignal(schema.placeholder || defaultConfig.placeholder),
+    placeholder: createSignal(getPlaceholder(schema)),
     componentProps: createSignal({
       ...(schema.componentProps || {}),
     }),
@@ -87,6 +88,30 @@ export function updateFieldModel<TValues extends Values = Values>(
   model.required.value = schema.required || defaultConfig.required
   model.label.value = schema.label || ""
   model.rules.value = schema.rules || []
-  model.placeholder.value = schema.placeholder || defaultConfig.placeholder
+  model.placeholder.value = getPlaceholder(schema)
   model.componentProps.value = schema.componentProps || {}
+}
+
+/**
+ * 将解析结果写入 FieldModel，未解析项回退到 descriptor 静态值。
+ *
+ * @param model - 需要更新的字段模型。
+ * @param descriptor - 最新字段 descriptor。
+ * @param resolved - 解析结果。
+ */
+export function patchFieldModel<TValues extends Values>(
+  model: FieldModel<TValues>,
+  descriptor: FieldDescriptor<TValues>,
+  resolved: DependencyResolvedProps<TValues>
+): void {
+  const base = descriptor.schema
+
+  model.visible.value = resolved.visible || base.visible || defaultConfig.visible
+  model.disabled.value = resolved.disabled || base.disabled || defaultConfig.disabled
+  model.readonly.value = resolved.readonly || base.readonly || defaultConfig.readonly
+  model.required.value = resolved.required || base.required || defaultConfig.required
+  model.rules.value = resolved.rules || base.rules || []
+  model.placeholder.value =
+    resolved.placeholder || base.placeholder || getPlaceholder(base)
+  model.componentProps.value = resolved.componentProps || base.componentProps || {}
 }
