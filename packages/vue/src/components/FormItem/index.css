@@ -67,7 +67,7 @@
 
 .schemx-item--label-top .schemx-item__label {
   margin-right: 0;
-  margin-bottom: 4px;
+  margin-bottom: var(--schemx-item-label-top-gap);
   width: auto;
 }
 
@@ -85,7 +85,7 @@
 
 .schemx-item__required {
   color: var(--schemx-danger-color);
-  margin-right: 2px;
+  margin-right: var(--schemx-item-required-gap);
 }
 
 /**
@@ -95,7 +95,7 @@
   flex: 1;
   min-width: 0;
   width: 100%;
-  padding: 0 6px;
+  padding: 0 var(--schemx-item-content-padding-inline);
 }
 
 .schemx-item__control {
@@ -111,5 +111,5 @@
   font-size: var(--schemx-font-size-sm);
   text-align: var(--schemx-error-align, right);
   line-height: var(--schemx-item-error-line-height);
-  margin-top: 2px;
+  margin-top: var(--schemx-item-error-gap);
 }

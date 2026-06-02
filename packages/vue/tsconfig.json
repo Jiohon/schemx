@@ -3,7 +3,9 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@schemx/core": ["../core/src/index.ts"],
+      "@schemx/core/*": ["../core/src/*"]
     },
     "rootDir": "./src",
     "composite": true,

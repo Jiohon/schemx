@@ -46,6 +46,43 @@ const InputRenderer = defineComponent({
   },
 })
 
+const ControlledRenderer = defineComponent({
+  name: "ControlledRenderer",
+  props: {
+    value: String,
+    onChange: Function,
+  },
+  emits: ["update:value"],
+  setup(props, { emit }) {
+    return () =>
+      h("input", {
+        "data-testid": "controlled-renderer",
+        value: props.value,
+        onInput: (event: Event) => {
+          emit("update:value", (event.target as HTMLInputElement).value)
+        },
+      })
+  },
+})
+
+const ChangeRenderer = defineComponent({
+  name: "ChangeRenderer",
+  props: {
+    value: String,
+    onChange: Function,
+  },
+  setup(props) {
+    return () =>
+      h("input", {
+        "data-testid": "change-renderer",
+        value: props.value,
+        onInput: (event: Event) => {
+          props.onChange?.((event.target as HTMLInputElement).value)
+        },
+      })
+  },
+})
+
 describe("FormItem 集成测试", () => {
   it("ViewSchema 驱动 visible 随依赖字段变化", async () => {
     const schema: SchemxBaseField = {
@@ -63,7 +100,7 @@ describe("FormItem 集成测试", () => {
       schemas: [schema as any],
     })
 
-    form.getInternalHooks().registerRenderer("input", InputRenderer)
+    form.registerRenderer("input", InputRenderer)
     await form.waitForDependencies()
 
     const wrapper = mount(FormItem, {
@@ -99,7 +136,7 @@ describe("FormItem 集成测试", () => {
       initialValues: { name: "" },
     })
 
-    form.getInternalHooks().registerRenderer("input", InputRenderer)
+    form.registerRenderer("input", InputRenderer)
 
     const schema: SchemxBaseField = {
       name: "name",
@@ -140,7 +177,7 @@ describe("FormItem 集成测试", () => {
       schemas: [schema as any],
     })
 
-    form.getInternalHooks().registerRenderer("input", InputRenderer)
+    form.registerRenderer("input", InputRenderer)
 
     const wrapper = mount(FormItem, {
       props: { schema: form.getViewSchemas()[0] },
@@ -156,6 +193,77 @@ describe("FormItem 集成测试", () => {
     await Promise.resolve()
 
     expect(form.getFieldValue("pickupStore")).toBe("hubin")
+
+    wrapper.unmount()
+    form.destroy()
+  })
+
+  it("向受控 renderer 下发字段值，并将 update:value 写回 store", async () => {
+    const schema: SchemxBaseField = {
+      name: "website",
+      label: "个人网站",
+      componentType: "controlled" as any,
+    }
+
+    const form: SchemxInstance = createFormInstance({
+      initialValues: { website: "www.baidu.com" },
+      schemas: [schema as any],
+    })
+
+    form.registerRenderer("controlled" as any, ControlledRenderer)
+
+    const wrapper = mount(FormItem, {
+      props: { schema: form.getViewSchemas()[0] },
+      global: {
+        provide: {
+          [FORM_INSTANCE_KEY]: form,
+          [FORM_CONTEXT_KEY]: createFormContext(),
+        },
+      },
+    })
+
+    await nextTick()
+
+    const input = wrapper.get<HTMLInputElement>('[data-testid="controlled-renderer"]')
+
+    expect(input.element.value).toBe("www.baidu.com")
+
+    await input.setValue("schemx.dev")
+
+    expect(form.getFieldValue("website")).toBe("schemx.dev")
+
+    wrapper.unmount()
+    form.destroy()
+  })
+
+  it("将 renderer 的 onChange 值写回 store", async () => {
+    const schema: SchemxBaseField = {
+      name: "bio",
+      label: "个人简介",
+      componentType: "change" as any,
+    }
+
+    const form: SchemxInstance = createFormInstance({
+      schemas: [schema as any],
+    })
+
+    form.registerRenderer("change" as any, ChangeRenderer)
+
+    const wrapper = mount(FormItem, {
+      props: { schema: form.getViewSchemas()[0] },
+      global: {
+        provide: {
+          [FORM_INSTANCE_KEY]: form,
+          [FORM_CONTEXT_KEY]: createFormContext(),
+        },
+      },
+    })
+
+    await nextTick()
+
+    await wrapper.get('[data-testid="change-renderer"]').setValue("新的简介")
+
+    expect(form.getFieldValue("bio")).toBe("新的简介")
 
     wrapper.unmount()
     form.destroy()

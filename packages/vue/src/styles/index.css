@@ -17,12 +17,12 @@
   --schemx-input-align: end;
 
   box-sizing: border-box;
-  padding-bottom: 15px;
+  padding-bottom: var(--schemx-form-padding-bottom);
 }
 
 .schemx-schemas {
   background-color: var(--schemx-background-color);
-  padding: var(--schemx-padding-md) 6px;
+  padding: var(--schemx-padding-md) var(--schemx-schemas-padding-inline);
   border-radius: var(--schemx-border-radius-lg);
 }
 

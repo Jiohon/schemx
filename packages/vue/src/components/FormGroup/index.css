@@ -28,10 +28,10 @@
   display: inline-block;
   width: 0;
   height: 0;
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-bottom: 5px solid var(--schemx-text-color-secondary);
-  transition: transform 0.2s ease;
+  border-left: var(--schemx-group-arrow-size) solid transparent;
+  border-right: var(--schemx-group-arrow-size) solid transparent;
+  border-bottom: var(--schemx-group-arrow-size) solid var(--schemx-text-color-secondary);
+  transition: transform var(--schemx-group-arrow-duration) ease;
 }
 
 .schemx-group__arrow--down {

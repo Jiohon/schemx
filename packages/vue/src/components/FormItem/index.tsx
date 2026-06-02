@@ -85,6 +85,8 @@ const FormItem = defineComponent(
 
     /** 值变化处理，设置值后根据触发时机决定是否校验 */
     const handleChange = (v: FieldValue<T, NamePath<T>>) => {
+      field.setValue(v)
+
       if (canVerified.value && shouldValidateOn("change", trigger.value)) {
         field.validate()
       }
@@ -119,6 +121,11 @@ const FormItem = defineComponent(
     const componentProps = useStableRef<SchemxComponentProps<T>>(
       (): SchemxComponentProps<T> => ({
         ...schema().componentProps,
+        formItemProps: formItemProps.value,
+        value: field.getValue(),
+        readonly: schema().readonly,
+        disabled: schema().disabled,
+        placeholder: schema().placeholder,
         onChange: handleChange,
         onBlur: handleBlur,
         "onUpdate:value": (v) => field.setValue(v),

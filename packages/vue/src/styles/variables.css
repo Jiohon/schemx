@@ -45,26 +45,23 @@
   --schemx-border-radius-md: 8px;
   --schemx-border-radius-lg: 12px;
 
+  /* 表单容器 */
+  --schemx-form-padding-bottom: 15px;
+  --schemx-schemas-padding-inline: 6px;
+
   /* 表单项 */
   --schemx-item-gap: 16px;
   --schemx-item-line-height: 1.6;
   --schemx-item-error-line-height: 1.5714285714285714;
   --schemx-item-label-color: #666666;
+  --schemx-item-label-top-gap: 4px;
+  --schemx-item-content-padding-inline: 6px;
+  --schemx-item-required-gap: 2px;
+  --schemx-item-error-gap: 2px;
   --schemx-input-align: end;
   --schemx-error-align: right;
 
-  /* 图标 */
-  --schemx-icon-size: 18px;
-  --schemx-icon-color: #969799;
-  --schemx-clear-icon-color: #c8c9cc;
-
-  /* 评分组件 */
-  --schemx-rate-star-size: 20px;
-  --schemx-rate-star-color: #ddd;
-  --schemx-rate-star-active-color: #ffd21e;
-
-  /* 选择器组件 */
-  --schemx-selector-gap: 12px;
-  --schemx-selector-option-min-width: 80px;
-  --schemx-selector-option-padding: 8px 18px;
+  /* 分组 */
+  --schemx-group-arrow-size: 5px;
+  --schemx-group-arrow-duration: 0.2s;
 }
