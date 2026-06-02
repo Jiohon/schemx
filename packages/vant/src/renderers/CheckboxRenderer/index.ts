@@ -8,4 +8,4 @@ import { WithRemoteOptions } from "@schemx/vue"
 import CheckboxRendererComponent from "./index.vue"
 
 export default WithRemoteOptions(CheckboxRendererComponent)
-export type { CheckboxOption, CheckboxRendererProps } from "./types"
+export type { CheckboxOption, CheckboxRendererProps, CheckboxValue } from "./types"

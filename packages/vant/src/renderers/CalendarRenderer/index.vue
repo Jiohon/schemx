@@ -70,9 +70,6 @@
     type: "single",
     format: "YYYY-MM-DD",
     separator: " - ",
-    formItemProps: undefined,
-    formInstance: undefined,
-    error: undefined,
   })
 
   const attrs = useAttrs()
@@ -82,9 +79,7 @@
   const minDate = new Date(1970, 0, 1)
   const maxDate = dayjs().add(10, "year").toDate()
 
-  const placeholder = computed(
-    () => props?.placeholder || `请选择${props.formItemProps?.label}`
-  )
+  const placeholder = computed(() => props?.placeholder || "请选择")
 
   const readonly = computed(() => props?.readonly || props.formItemProps?.readonly)
 

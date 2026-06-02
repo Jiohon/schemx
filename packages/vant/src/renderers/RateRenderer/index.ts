@@ -5,4 +5,4 @@
  */
 
 export { default } from "./index.vue"
-export type { RateRendererProps } from "./types"
+export type { RateRendererProps, RateValue } from "./types"

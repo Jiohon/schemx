@@ -4,6 +4,8 @@
  * @module renderers/SelectorRenderer/types
  */
 
+import type { SchemxBaseComponentProps } from "@schemx/vue"
+
 export type SelectValue = string | number | (string | number)[]
 
 /**
@@ -23,7 +25,7 @@ export interface SelectorOption {
 }
 
 /**
- * 选择器组件 Props
+ * 选择器子组件 Props
  *
  * 定义选择器子组件的属性。
  */
@@ -52,7 +54,8 @@ export interface SelectorProps {
  *
  * 定义选择组组件的所有可配置属性。
  */
-export interface SelectorRendererProps {
+export interface SelectorRendererProps
+  extends Omit<SchemxBaseComponentProps, "onChange" | "onBlur" | "value" | "onUpdate:value"> {
   /** 当前值 */
   value?: SelectValue
   /** 值变化回调 */
@@ -76,10 +79,4 @@ export interface SelectorRendererProps {
   readonlyPlaceholder?: string
   /** 是否禁用 */
   disabled?: boolean
-  /** FormItem 组件 Props */
-  formItemProps?: Record<string, any>
-  /** 表单实例 */
-  formInstance?: Record<string, any> | null
-  /** 错误信息 */
-  error?: string[]
 }

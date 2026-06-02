@@ -68,14 +68,11 @@
     format: "YYYY-MM-DD",
     className: "",
     popupClassName: "",
-    formItemProps: () => ({}),
-    formInstance: null,
     onChange: () => {},
     placeholder: undefined,
     readonly: false,
     readonlyPlaceholder: "-",
     disabled: false,
-    error: undefined,
   })
 
   const attrs = useAttrs()
@@ -83,7 +80,7 @@
   const showPicker = ref(false)
 
   const placeholder = computed(
-    () => props.placeholder || `请选择${props.formItemProps.label}`
+    () => props.placeholder || "请选择"
   )
 
   const readonly = computed(() => props.readonly || props.formItemProps?.readonly)

@@ -51,7 +51,7 @@
    *
    * @module renderers/PickerRenderer
    */
-  import { computed, ref, useAttrs, watchEffect } from "vue"
+  import { computed, ref, useAttrs } from "vue"
 
   import { Field, Picker, Popup } from "vant"
 
@@ -76,8 +76,6 @@
     onConfirm: () => {},
     className: "",
     popupClassName: "",
-    formItemProps: () => ({}),
-    formInstance: null,
     onChange: () => {},
     readonlyPlaceholder: "-",
     readonly: false,
@@ -85,7 +83,6 @@
     title: "",
     options: () => [],
     fieldNames: () => ({ text: "text", value: "value", children: "children" }),
-    error: undefined,
   })
 
   const attrs = useAttrs()
@@ -93,8 +90,7 @@
   const showPicker = ref(false)
 
   const placeholder = computed(
-    () =>
-      (attrs as Record<string, any>)?.placeholder || `请选择${props.formItemProps.label}`
+    () => (attrs as Record<string, any>)?.placeholder || "请选择"
   )
 
   const readonly = computed(
@@ -166,11 +162,4 @@
     showPicker.value = true
   }
 
-  /** 监听值变化, 设置表单值 */
-  watchEffect(
-    () => {
-      props.formInstance?.setFieldValue(`${props.formItemProps.name}`, fieldValue.value)
-    },
-    { flush: "post" }
-  )
 </script>

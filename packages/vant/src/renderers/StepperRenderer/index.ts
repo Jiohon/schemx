@@ -5,4 +5,4 @@
  */
 
 export { default } from "./index.vue"
-export type { StepperRendererProps } from "./types"
+export type { StepperRendererProps, StepperValue } from "./types"

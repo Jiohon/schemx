@@ -5,4 +5,4 @@
  */
 
 export { default } from "./index.vue"
-export type { TextAreaRendererProps, TextAreaAutosize } from "./types"
+export type { TextAreaAutosize, TextAreaRendererProps, TextAreaValue } from "./types"

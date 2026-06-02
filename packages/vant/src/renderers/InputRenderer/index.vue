@@ -1,9 +1,9 @@
 <template>
-  <div :class="classNames('schema-input', props.className)">
+  <div :class="classNames('schemx-input', props.className)" @click="handleClickRoot">
     <!-- 左侧图标 -->
     <div
       v-if="props.leftIcon || slots['left-icon']"
-      class="schema-input__left-icon"
+      class="schemx-input__left-icon"
       role="button"
       tabindex="0"
       @click="handleClickLeftIcon"
@@ -14,7 +14,7 @@
     </div>
 
     <!-- 主体 -->
-    <div class="schema-input__body">
+    <div class="schemx-input__body">
       <!-- 输入框/文本域 -->
       <textarea
         v-if="props.type === 'textarea'"
@@ -70,7 +70,7 @@
         v-if="showClear"
         ref="clearIconRef"
         :name="props.clearIcon"
-        class="schema-input__clear"
+        class="schemx-input__clear"
         @touchstart.passive="handleClear"
         @mousedown="handleClear"
       />
@@ -78,7 +78,7 @@
       <!-- 右侧图标 -->
       <div
         v-if="props.rightIcon || slots['right-icon']"
-        class="schema-input__right-icon"
+        class="schemx-input__right-icon"
         role="button"
         tabindex="0"
         @click="handleClickRightIcon"
@@ -89,15 +89,14 @@
       </div>
 
       <!-- 按钮插槽 -->
-      <div v-if="slots.button" class="schema-input__button">
+      <div v-if="slots.button" class="schemx-input__button">
         <slot name="button" />
       </div>
     </div>
 
     <!-- 字数统计 -->
-    <div v-if="props.showWordLimit && props.maxlength" class="schema-input__word-limit">
-      <span class="schema-input__word-num">{{ wordCount }}</span
-      >/{{ props.maxlength }}
+    <div v-if="props.showWordLimit && props.maxlength" class="schemx-input__word-limit">
+      <span class="schemx-input__word-num"> {{ wordCount }} </span>/{{ props.maxlength }}
     </div>
 
     <!-- 额外插槽 -->
@@ -163,8 +162,9 @@
     align: "left",
     className: "",
     readonlyPlaceholder: "-",
-    formItemProps: () => ({}),
   })
+
+  console.log(props.align)
 
   const emit = defineEmits<{
     "update:value": [value: string]
@@ -244,10 +244,10 @@
 
   /** 输入框控制类名 */
   const inputControlClass = computed(() =>
-    classNames("schema-input__control", `schema-input__control--${props.align}`, {
-      "schema-input__control--disabled": props.disabled,
-      "schema-input__control--readonly": props.readonly,
-      "schema-input__control--min-height": props.type === "textarea" && !props.autosize,
+    classNames("schemx-input__control", `schemx-input__control--${props.align}`, {
+      "schemx-input__control--disabled": props.disabled,
+      "schemx-input__control--readonly": props.readonly,
+      "schemx-input__control--min-height": props.type === "textarea" && !props.autosize,
     })
   )
 
@@ -415,6 +415,34 @@
   /** 点击输入框 */
   const handleClickInput = (event: MouseEvent): void => {
     emit("click-input", event)
+  }
+
+  /** 点击非交互展示区域时聚焦输入框 */
+  const handleClickRoot = (event: MouseEvent): void => {
+    if (props.disabled) return
+
+    const target = event.target
+
+    if (!(target instanceof Element)) return
+
+    const interactiveSelector = [
+      "input",
+      "textarea",
+      "button",
+      "a",
+      "select",
+      "option",
+      "label",
+      "[role='button']",
+      "[tabindex]",
+      "[contenteditable='true']",
+      ".schemx-input__clear",
+      ".schemx-input__button",
+    ].join(",")
+
+    if (target.closest(interactiveSelector)) return
+
+    inputRef.value?.focus()
   }
 
   /** 点击左侧图标 */

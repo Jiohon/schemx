@@ -12,8 +12,6 @@
       :schemas="schemas"
       :initial-values="initialValues"
       label-width="80px"
-      label-align="right"
-      label-position="left"
       :disabled="globalDisibled"
       :colon="true"
       @finish="handleSubmit"

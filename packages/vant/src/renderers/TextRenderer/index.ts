@@ -5,4 +5,4 @@
  */
 
 export { default } from "./index.vue"
-export type { TextRendererProps } from "./types"
+export type { TextRendererProps, TextValue } from "./types"

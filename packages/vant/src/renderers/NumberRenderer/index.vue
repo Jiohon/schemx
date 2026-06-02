@@ -16,7 +16,6 @@
       :readonly="readonly"
       :disabled="disabled"
       :align="props.align"
-      :form-item-props="props.formItemProps"
       :min="props.min"
       :max="props.max"
       :maxlength="props.maxlength"
@@ -67,21 +66,15 @@
   const props = withDefaults(defineProps<NumberRendererProps>(), {
     className: "",
     type: "number",
-    formItemProps: () => ({}),
-    formInstance: null,
     placeholder: undefined,
     readonlyPlaceholder: "-",
     readonly: false,
     disabled: false,
     value: "",
-    onChange: () => {},
-    onBlur: undefined,
-    onFocus: undefined,
     align: "right",
     clearable: false,
     min: undefined,
     max: undefined,
-    error: undefined,
   })
 
   const attrs = useAttrs()

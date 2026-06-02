@@ -5,4 +5,4 @@
  */
 
 export { default } from "./index.vue"
-export type { CascaderRendererProps, CascaderFieldNames } from "./types"
+export type { CascaderFieldNames, CascaderRendererProps, CascaderValue } from "./types"

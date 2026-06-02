@@ -5,4 +5,4 @@
  */
 
 export { default } from "./index.vue"
-export type { DateRendererProps } from "./types"
+export type { DateRendererProps, DateValue } from "./types"

@@ -4,12 +4,15 @@
  * @module renderers/CascaderRenderer/types
  */
 
+import type { SchemxBaseComponentProps } from "@schemx/vue"
 import type { CascaderOption, PopupProps } from "vant"
 
 export type CascaderValue = (string | number)[]
 
 /**
  * 级联选择器字段名配置
+ *
+ * 自定义选项数据中各字段对应的键名。
  */
 export interface CascaderFieldNames {
   /** 显示文本字段名 */
@@ -25,11 +28,14 @@ export interface CascaderFieldNames {
  *
  * 定义级联选择组件的所有可配置属性。
  */
-export interface CascaderRendererProps {
+export interface CascaderRendererProps
+  extends Omit<SchemxBaseComponentProps, "onChange" | "onBlur" | "value" | "onUpdate:value"> {
   /** 当前值 */
   value?: CascaderValue
-  /** 确认回调 */
+  /** 确认回调，用户选择完成时触发 */
   onConfirm?: (value: CascaderValue) => void
+  /** 值变化回调，选中项变化时触发 */
+  onChange?: (value: CascaderValue) => void
   /** 自定义 CSS 类名 */
   className?: string
   /** 是否显示所有层级 */
@@ -40,22 +46,16 @@ export interface CascaderRendererProps {
   fieldNames?: CascaderFieldNames
   /** 分隔符 */
   separator?: string
-  /** 占位提示文本 */
-  placeholder?: string
-  /** 只读时的占位文本 */
-  readonlyPlaceholder?: string
   /** 是否只读 */
   readonly?: boolean
+  /** 只读时的占位文本 */
+  readonlyPlaceholder?: string
   /** 是否禁用 */
   disabled?: boolean
-  /** 值变化回调 */
-  onChange?: (value: CascaderValue) => void
   /** 选项数据 */
   options?: CascaderOption[]
   /** 弹窗标题 */
   title?: string
-  /** FormItem 组件 Props */
-  formItemProps?: Record<string, any>
   /**
    * Popup 组件 Props 与事件透传
    *
@@ -78,8 +78,6 @@ export interface CascaderRendererProps {
   popupProps?: Partial<Omit<PopupProps, "show">>
   /** 弹窗 CSS 类名 */
   popupClassName?: string
-  /** 错误信息 */
-  error?: string[]
   /**
    * 关闭回调
    *

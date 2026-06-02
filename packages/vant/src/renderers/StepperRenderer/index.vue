@@ -59,14 +59,11 @@
     integer: false,
     decimalLength: undefined,
     className: "",
-    formItemProps: () => ({}),
-    formInstance: null,
     onChange: () => {},
     readonly: false,
     readonlyPlaceholder: "-",
     disabled: false,
     allowEmpty: false,
-    error: undefined,
   })
 
   const attrs = useAttrs()

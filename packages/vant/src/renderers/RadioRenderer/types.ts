@@ -4,6 +4,10 @@
  * @module renderers/RadioRenderer/types
  */
 
+import type { SchemxBaseComponentProps } from "@schemx/vue"
+
+export type RadioValue = string | number | boolean
+
 /**
  * 单选选项
  *
@@ -25,11 +29,12 @@ export interface RadioOption {
  *
  * 定义单选框组件的所有可配置属性。
  */
-export interface RadioRendererProps {
+export interface RadioRendererProps
+  extends Omit<SchemxBaseComponentProps, "onChange" | "onBlur" | "value" | "onUpdate:value"> {
   /** 当前值 */
-  value?: string | number | boolean
+  value?: RadioValue
   /** 值变化回调 */
-  onChange?: (value: string | number | boolean) => void
+  onChange?: (value: RadioValue) => void
   /** 选项列表 */
   options?: RadioOption[]
   /** 自定义 CSS 类名 */
@@ -49,10 +54,4 @@ export interface RadioRendererProps {
   readonlyPlaceholder?: string
   /** 是否禁用 */
   disabled?: boolean
-  /** FormItem 组件 Props */
-  formItemProps?: Record<string, any>
-  /** 表单实例 */
-  formInstance?: Record<string, any> | null
-  /** 错误信息 */
-  error?: string[]
 }

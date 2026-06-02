@@ -4,26 +4,29 @@
  * @module renderers/SwitchRenderer/types
  */
 
+import type { SchemxBaseComponentProps } from "@schemx/vue"
+
+export type SwitchValue = boolean | string | number
+
 /**
  * 开关渲染器 Props
  *
  * 定义开关组件的所有可配置属性。
  */
-export interface SwitchRendererProps {
+export interface SwitchRendererProps
+  extends Omit<SchemxBaseComponentProps, "onChange" | "onBlur" | "value" | "onUpdate:value"> {
   /** 当前值 */
-  value?: boolean | string | number
+  value?: SwitchValue
   /** 值变化回调，支持异步返回值以更新表单字段 */
-  onChange?: (
-    value: boolean | string | number
-  ) => void | Promise<boolean | string | number | void>
+  onChange?: (value: SwitchValue) => void | Promise<SwitchValue | void>
   /** 自定义 CSS 类名 */
   className?: string
   /** 激活状态的文本 */
   activeText?: string
   /** 激活状态对应的值 */
-  activeValue?: boolean | string | number
+  activeValue?: SwitchValue
   /** 非激活状态对应的值 */
-  inactiveValue?: boolean | string | number
+  inactiveValue?: SwitchValue
   /** 非激活状态的文本 */
   inactiveText?: string
   /** 是否只读 */
@@ -32,10 +35,4 @@ export interface SwitchRendererProps {
   readonlyPlaceholder?: string
   /** 是否禁用 */
   disabled?: boolean
-  /** FormItem 组件 Props */
-  formItemProps?: Record<string, any>
-  /** 表单实例，用于异步更新字段值 */
-  formInstance?: Record<string, any> | null
-  /** 错误信息 */
-  error?: string[]
 }

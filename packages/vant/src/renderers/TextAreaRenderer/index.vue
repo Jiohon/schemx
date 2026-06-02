@@ -10,13 +10,12 @@
     <InputRenderer
       ref="inputRef"
       type="textarea"
-      :value="props.value"
+      :value="value"
       :placeholder="props.placeholder"
       :readonly-placeholder="props.readonlyPlaceholder"
       :readonly="readonly"
       :disabled="disabled"
       :align="props.align"
-      :form-item-props="props.formItemProps"
       :rows="computedRows"
       :autosize="computedAutosize"
       :maxlength="props.maxlength"
@@ -69,20 +68,17 @@
     autosize: () => ({ minRows: 2, maxRows: 6 }),
     autoSize: undefined,
     rows: undefined,
-    formItemProps: () => ({}),
-    formInstance: null,
     placeholder: undefined,
     readonlyPlaceholder: "-",
     readonly: false,
     disabled: false,
     value: "",
-    onChange: () => {},
-    onBlur: undefined,
     onFocus: undefined,
-    align: "right",
+    align: "left",
     showWordLimit: false,
-    error: undefined,
   })
+
+  const value = defineModel<string>("value")
 
   const attrs = useAttrs()
   const slots = useSlots()

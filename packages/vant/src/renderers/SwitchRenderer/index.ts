@@ -5,4 +5,4 @@
  */
 
 export { default } from "./index.vue"
-export type { SwitchRendererProps } from "./types"
+export type { SwitchRendererProps, SwitchValue } from "./types"

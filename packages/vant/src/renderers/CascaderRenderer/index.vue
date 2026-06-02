@@ -79,7 +79,6 @@
     onChange: undefined,
     options: () => [],
     title: undefined,
-    formItemProps: () => ({}),
     popupProps: () => ({}) as PopupProps,
     popupClassName: "",
     onClose: undefined,
@@ -95,7 +94,7 @@
   // ==================== 计算属性 ====================
 
   const placeholder = computed(
-    () => props.placeholder || `请选择${props.formItemProps.label}`
+    () => props.placeholder || "请选择"
   )
 
   const readonly = computed(() => props.readonly)

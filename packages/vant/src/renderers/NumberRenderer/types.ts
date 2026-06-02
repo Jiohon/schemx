@@ -4,36 +4,35 @@
  * @module renderers/NumberRenderer/types
  */
 
+import type { SchemxBaseComponentProps } from "@schemx/vue"
+
+export type NumberValue = string | number
+
 /**
  * 数字输入渲染器 Props
  *
  * 定义数字输入组件的所有可配置属性。
  */
-export interface NumberRendererProps {
-  /** 自定义 CSS 类名 */
-  className?: string
-  /** 输入类型，number 支持小数，digit 仅支持整数 */
-  type?: "number" | "digit"
-  /** FormItem 组件 Props */
-  formItemProps?: Record<string, any>
-  /** 表单实例 */
-  formInstance?: Record<string, any> | null
-  /** 占位提示文本 */
-  placeholder?: string
-  /** 只读时的占位文本 */
-  readonlyPlaceholder?: string
-  /** 是否只读 */
-  readonly?: boolean
-  /** 是否禁用 */
-  disabled?: boolean
+export interface NumberRendererProps
+  extends Omit<SchemxBaseComponentProps, "onChange" | "onBlur" | "value" | "onUpdate:value"> {
   /** 当前值 */
-  value?: string | number
+  value?: NumberValue
   /** 值变化回调 */
   onChange?: (value: string) => void
   /** 失焦回调 */
   onBlur?: (event: FocusEvent) => void
   /** 聚焦回调 */
   onFocus?: (event: FocusEvent) => void
+  /** 自定义 CSS 类名 */
+  className?: string
+  /** 输入类型：number 支持小数，digit 仅支持整数 */
+  type?: "number" | "digit"
+  /** 是否只读 */
+  readonly?: boolean
+  /** 只读时的占位文本 */
+  readonlyPlaceholder?: string
+  /** 是否禁用 */
+  disabled?: boolean
   /** 文本对齐方式 */
   align?: "left" | "center" | "right"
   /** 是否可清除 */
@@ -44,6 +43,4 @@ export interface NumberRendererProps {
   max?: number
   /** 最大输入长度 */
   maxlength?: number | string
-  /** 错误信息 */
-  error?: string[]
 }

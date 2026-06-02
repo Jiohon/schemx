@@ -30,7 +30,7 @@
 
   import { Uploader } from "vant"
 
-  import { SchemxFormItemProps, useFieldContext } from "@schemx/vue"
+  import { useFieldContext } from "@schemx/vue"
   import classNames from "classnames"
 
   import { getFileName } from "@/utils"
@@ -56,13 +56,11 @@
     readonlyPlaceholder: "-",
     disabled: false,
     uploader: () => Promise.resolve({}),
-    formItemProps: () => ({}) as SchemxFormItemProps,
     propsHttp: () => ({
       res: "data",
       url: "link",
       name: "originalName",
     }),
-    error: undefined,
   })
 
   const attrs = useAttrs()

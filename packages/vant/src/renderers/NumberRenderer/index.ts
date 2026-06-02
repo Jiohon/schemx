@@ -5,4 +5,4 @@
  */
 
 export { default } from "./index.vue"
-export type { NumberRendererProps } from "./types"
+export type { NumberRendererProps, NumberValue } from "./types"

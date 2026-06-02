@@ -56,14 +56,11 @@
     step: 1,
     range: false,
     className: "",
-    formItemProps: () => ({}),
-    formInstance: null,
     onChange: () => {},
     readonly: false,
     readonlyPlaceholder: "-",
     disabled: false,
     button: true,
-    error: undefined,
   })
 
   const attrs = useAttrs()

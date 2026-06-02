@@ -16,7 +16,6 @@
       :readonly="readonly"
       :disabled="disabled"
       :align="props.align"
-      :form-item-props="props.formItemProps"
       :maxlength="props.maxlength"
       :min="props.min"
       :max="props.max"
@@ -85,15 +84,11 @@
 
   const props = withDefaults(defineProps<TextRendererProps>(), {
     className: "",
-    formInstance: null,
     placeholder: undefined,
     readonlyPlaceholder: "-",
     readonly: false,
     disabled: false,
     value: "",
-    onChange: () => {},
-    onBlur: undefined,
-    onFocus: undefined,
     align: "right",
     clearable: false,
     clearIcon: "clear",

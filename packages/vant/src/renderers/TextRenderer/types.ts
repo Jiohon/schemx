@@ -6,12 +6,17 @@
 
 import { SchemxBaseComponentProps } from "@schemx/vue"
 
+export type TextValue = string
+
 /**
  * 文本输入渲染器 Props
  *
  * 定义文本输入组件的所有可配置属性。
  */
-export interface TextRendererProps extends Omit<SchemxBaseComponentProps, 'onChange' | 'onBlur'> {
+export interface TextRendererProps extends Omit<
+  SchemxBaseComponentProps,
+  "onChange" | "onBlur" | "value" | "onUpdate:value"
+> {
   /** 自定义 CSS 类名 */
   className?: string
   /** 占位提示文本 */
@@ -23,7 +28,7 @@ export interface TextRendererProps extends Omit<SchemxBaseComponentProps, 'onCha
   /** 是否禁用 */
   disabled?: boolean
   /** 当前值 */
-  value?: string | number
+  value?: TextValue
   /** 值变化回调 */
   onChange?: (value: string) => void
   /** 失焦回调 */
@@ -51,7 +56,7 @@ export interface TextRendererProps extends Omit<SchemxBaseComponentProps, 'onCha
   /** 最大值（数字类型） */
   max?: number
   /** 自定义格式化函数 */
-  formatter?: (value: string) => string
+  formatter?: (value: TextValue) => string
   /** 格式化触发时机 */
   formatTrigger?: "onChange" | "onBlur"
   /** 自动完成属性 */

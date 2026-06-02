@@ -8,4 +8,4 @@ import { WithRemoteOptions } from "@schemx/vue"
 import RadioRendererComponent from "./index.vue"
 
 export default WithRemoteOptions(RadioRendererComponent)
-export type { RadioOption, RadioRendererProps } from "./types"
+export type { RadioOption, RadioRendererProps, RadioValue } from "./types"

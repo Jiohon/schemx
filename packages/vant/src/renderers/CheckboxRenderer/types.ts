@@ -4,6 +4,10 @@
  * @module renderers/CheckboxRenderer/types
  */
 
+import type { SchemxBaseComponentProps } from "@schemx/vue"
+
+export type CheckboxValue = any[]
+
 /**
  * 复选选项
  *
@@ -25,11 +29,12 @@ export interface CheckboxOption {
  *
  * 定义复选框组件的所有可配置属性。
  */
-export interface CheckboxRendererProps {
+export interface CheckboxRendererProps
+  extends Omit<SchemxBaseComponentProps, "onChange" | "onBlur" | "value" | "onUpdate:value"> {
   /** 当前值（数组形式） */
-  value?: any[]
+  value?: CheckboxValue
   /** 值变化回调 */
-  onChange?: (value: any[]) => void
+  onChange?: (value: CheckboxValue) => void
   /** 选项列表 */
   options?: CheckboxOption[]
   /** 字段名映射 */
@@ -49,10 +54,4 @@ export interface CheckboxRendererProps {
   readonlyPlaceholder?: string
   /** 是否禁用 */
   disabled?: boolean
-  /** FormItem 组件 Props */
-  formItemProps?: Record<string, any>
-  /** 表单实例 */
-  formInstance?: Record<string, any> | null
-  /** 错误信息 */
-  error?: string[]
 }

@@ -76,9 +76,6 @@
     readonly: false,
     readonlyPlaceholder: "-",
     disabled: false,
-    formItemProps: () => ({}),
-    formInstance: null,
-    error: undefined,
   })
 
   const attrs = useAttrs() as Record<string, any>

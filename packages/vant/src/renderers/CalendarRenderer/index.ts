@@ -5,4 +5,4 @@
  */
 
 export { default } from "./index.vue"
-export type { CalendarRendererProps } from "./types"
+export type { CalendarRendererProps, CalendarValue } from "./types"

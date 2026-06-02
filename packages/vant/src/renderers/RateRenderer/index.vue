@@ -57,13 +57,10 @@
     count: 5,
     allowHalf: false,
     className: "",
-    formItemProps: () => ({}),
-    formInstance: null,
     onChange: () => {},
     readonly: false,
     readonlyPlaceholder: "-",
     disabled: false,
-    error: undefined,
   })
 
   const attrs = useAttrs()

@@ -3,7 +3,10 @@
  *
  * @module renderers/UploadRenderer/types
  */
-import { SchemxFormItemProps } from "@schemx/vue"
+
+import type { SchemxBaseComponentProps } from "@schemx/vue"
+
+export type UploadValue = UploadFile[]
 
 /**
  * 上传文件对象
@@ -30,13 +33,14 @@ export interface UploadFile {
  *
  * 定义上传组件的所有可配置属性。
  */
-export interface UploadRendererProps {
+export interface UploadRendererProps
+  extends Omit<SchemxBaseComponentProps, "onChange" | "onBlur" | "value" | "onUpdate:value"> {
   /** 已上传的文件列表 */
-  value?: UploadFile[]
-  /** 接受的文件类型 */
-  accept?: string
+  value?: UploadValue
   /** 文件列表变化回调 */
   onChange?: (files: UploadFile[]) => void
+  /** 接受的文件类型 */
+  accept?: string
   /** 自定义 CSS 类名 */
   className?: string
   /** 是否显示上传按钮 */
@@ -53,8 +57,6 @@ export interface UploadRendererProps {
   disabled?: boolean
   /** 自定义上传函数 */
   uploader?: (file: File) => Promise<any>
-  /** FormItem 组件 Props */
-  formItemProps?: SchemxFormItemProps
   /** HTTP 响应字段映射 */
   propsHttp?: {
     /** 响应数据字段名 */
@@ -64,6 +66,4 @@ export interface UploadRendererProps {
     /** 文件名字段名 */
     name?: string
   }
-  /** 错误信息 */
-  error?: string[]
 }

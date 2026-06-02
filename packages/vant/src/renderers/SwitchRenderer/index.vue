@@ -65,9 +65,6 @@
     readonly: false,
     readonlyPlaceholder: "-",
     disabled: false,
-    formItemProps: () => ({}),
-    formInstance: null,
-    error: undefined,
   })
 
   const attrs = useAttrs()
@@ -93,15 +90,7 @@
     try {
       loading.value = true
 
-      const result = await props.onChange?.(value)
-
-      if (result === props.activeValue) {
-        props.formInstance?.setFieldValue(props.formItemProps.name, props.activeValue)
-      }
-
-      if (result === props.inactiveValue) {
-        props.formInstance?.setFieldValue(props.formItemProps.name, props.inactiveValue)
-      }
+      await props.onChange?.(value)
 
       loading.value = false
     } catch (error) {

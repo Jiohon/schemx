@@ -4,14 +4,19 @@
  * @module renderers/InputRenderer/types
  */
 
+import type { SchemxBaseComponentProps } from "@schemx/vue"
+
+export type InputValue = string | number
+
 /**
  * 输入渲染器 Props
  *
  * 定义输入组件的所有可配置属性。
  */
-export interface InputRendererProps {
+export interface InputRendererProps
+  extends Omit<SchemxBaseComponentProps, "onChange" | "onBlur" | "value" | "onUpdate:value"> {
   /** 当前值 */
-  value?: string | number
+  value?: InputValue
   /** 值变化回调 */
   onChange?: (value: string) => void
   /** 失焦回调 */
@@ -20,12 +25,10 @@ export interface InputRendererProps {
   onFocus?: (event: FocusEvent) => void
   /** 输入类型 */
   type?: "text" | "textarea" | "number" | "password" | "digit"
-  /** 占位提示文本 */
-  placeholder?: string
-  /** 是否禁用 */
-  disabled?: boolean
   /** 是否只读 */
   readonly?: boolean
+  /** 是否禁用 */
+  disabled?: boolean
   /** 是否自动聚焦 */
   autofocus?: boolean
   /** 最大输入长度 */
@@ -54,6 +57,10 @@ export interface InputRendererProps {
   rightIcon?: string
   /** 是否显示字数统计 */
   showWordLimit?: boolean
+  /** 自定义 CSS 类名 */
+  className?: string
+  /** 只读时的占位文本 */
+  readonlyPlaceholder?: string
   /** 自动完成属性 */
   autocomplete?: string
   /** 自动大写属性 */
@@ -68,14 +75,6 @@ export interface InputRendererProps {
   inputmode?: "text" | "search" | "tel" | "url" | "email" | "none" | "numeric" | "decimal"
   /** 文本对齐方式 */
   align?: "left" | "center" | "right"
-  /** 自定义 CSS 类名 */
-  className?: string
-  /** 只读时的占位文本 */
-  readonlyPlaceholder?: string
-  /** FormItem 组件 Props */
-  formItemProps?: Record<string, any>
-  /** 错误信息 */
-  error?: string[]
 }
 
 /**

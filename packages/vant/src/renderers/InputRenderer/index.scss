@@ -1,7 +1,8 @@
-.schema-input {
+.schemx-input {
   display: flex;
   flex-direction: column;
   width: 100%;
+  font-size: var(--van-field-font-size, var(--van-font-size-md, 14px));
 
   // 输入框主体（包含输入框、清除按钮、右侧图标、按钮）
   &__body {

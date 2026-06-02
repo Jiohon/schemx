@@ -5,4 +5,4 @@
  */
 
 export { default } from "./index.vue"
-export type { SliderRendererProps } from "./types"
+export type { SliderRendererProps, SliderValue } from "./types"
