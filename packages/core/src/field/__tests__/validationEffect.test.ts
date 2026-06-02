@@ -7,9 +7,9 @@
 import { describe, expect, it, vi } from "vitest"
 
 import { createRuntimeScope } from "../../graph/scope"
-import { createSignalEffect, createSignal } from "../../reactivity"
-import { createFieldModel } from "../model"
+import { createSignal, createSignalEffect } from "../../reactivity"
 import { createScheduler } from "../../scheduler"
+import { createFieldModel } from "../model"
 import { createValidationEffect } from "../validationEffect"
 
 import type { SchemxFormContext } from "../../createForm"
@@ -184,7 +184,10 @@ describe("rule management", () => {
 
     const dispose = createSignalEffect(() => {
       if (trigger.value > 0) {
-        fieldModel.visible.value = false
+        fieldModel.snapshot.value = {
+          ...fieldModel.snapshot.peek(),
+          visible: false,
+        }
       }
     })
 

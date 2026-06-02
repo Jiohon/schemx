@@ -317,6 +317,7 @@ describe("字段规则注册上下文 单元测试", () => {
                           name: "pickupStore",
                           label: "自提门店",
                           componentType: "selector",
+                          initialValue: "mixc",
                           required: true,
                           rules: "required",
                         },
@@ -356,6 +357,69 @@ describe("字段规则注册上下文 单元测试", () => {
       deliveryMode: "pickup",
       pickupStore: "hubin",
     })
+
+    form.destroy()
+  })
+
+  it("dependency 子树字段的 initialValue 应驱动嵌套 dependency 展开", async () => {
+    const form = createForm({
+      initialValues: { orderType: "standard" },
+      schemas: [
+        {
+          name: "orderType",
+          label: "订单类型",
+          componentType: "selector",
+        },
+        {
+          componentType: "dependency",
+          to: ["orderType"],
+          renderer: (values: any) => {
+            if (values.orderType !== "standard") return []
+
+            return [
+              {
+                label: "标准订单配置",
+                componentType: "group",
+                children: [
+                  {
+                    name: "deliveryMode",
+                    label: "配送方式",
+                    componentType: "radio",
+                    initialValue: "courier",
+                  },
+                  {
+                    componentType: "dependency",
+                    to: ["deliveryMode"],
+                    renderer: (deliveryValues: any) => {
+                      if (deliveryValues.deliveryMode !== "courier") return []
+
+                      return [
+                        {
+                          name: "receiverPhone",
+                          label: "收件电话",
+                          componentType: "input",
+                        },
+                      ]
+                    },
+                  },
+                ],
+              },
+            ]
+          },
+        },
+      ] as any,
+    })
+
+    await form.waitForDependencies()
+
+    expect(form.getFieldValue("deliveryMode")).toBe("courier")
+    expect(form.getViewSchemas()).toMatchObject([
+      { name: "orderType" },
+      {
+        componentType: "group",
+        children: [{ name: "deliveryMode" }, { name: "receiverPhone" }],
+      },
+    ])
 
     form.destroy()
   })

@@ -99,12 +99,14 @@ export function createValidationEffect<TValues extends Values = Values>(
    * 读取参与规则注册决策的响应式字段呈现态。
    */
   const readValidationProps = (): ValidationRegistrationSnapshot => {
+    const snapshot = fieldModel.snapshot.value
+
     return {
-      visible: fieldModel.visible.value,
-      readonly: fieldModel.readonly.value,
-      disabled: fieldModel.disabled.value,
-      label: fieldModel.label.value,
-      rules: fieldModel.rules.value,
+      visible: snapshot.visible,
+      readonly: snapshot.readonly,
+      disabled: snapshot.disabled,
+      label: snapshot.label,
+      rules: snapshot.rules,
     }
   }
 

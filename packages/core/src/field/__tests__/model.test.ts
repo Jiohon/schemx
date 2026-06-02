@@ -6,11 +6,12 @@
 
 import { describe, expect, it } from "vitest"
 
-import { createRuntimeScope } from "../../graph/scope"
 import {
   createTestFieldFiber,
   createTestRootFiber,
 } from "../../graph/__tests__/fiberTestUtils"
+import { createRuntimeScope } from "../../graph/scope"
+import { createSignalEffect } from "../../reactivity"
 import { createFieldModel, updateFieldModel } from "../model"
 
 import type { FieldDescriptor } from "../../descriptor/descriptor"
@@ -52,12 +53,16 @@ describe("mountFieldModel", () => {
     fiber.fieldModel = model
 
     expect(fiber.fieldModel).toBe(model)
-    expect(model.visible.value).toBe(false)
-    expect(model.disabled.value).toBe(true)
-    expect(model.readonly.value).toBe(true)
-    expect(model.required.value).toBe(true)
-    expect(model.placeholder.value).toBe("请输入")
-    expect(model.componentProps.value).toEqual({ clearable: true })
+    expect(model.snapshot.value).toEqual({
+      visible: false,
+      disabled: true,
+      readonly: true,
+      required: true,
+      label: "",
+      rules: [],
+      placeholder: "请输入",
+      componentProps: { clearable: true },
+    })
     expect("name" in model).toBe(false)
     expect("state" in model).toBe(false)
     expect("props" in model).toBe(false)
@@ -106,12 +111,83 @@ describe("updateFieldModel", () => {
       }),
     })
 
-    expect(model.visible.value).toBe(false)
-    expect(model.disabled.value).toBe(true)
-    expect(model.readonly.value).toBe(true)
-    expect(model.required.value).toBe(true)
-    expect(model.placeholder.value).toBe("updated")
-    expect(model.componentProps.value).toEqual({ size: "large" })
-    expect(model.rules.value).toEqual(["required"])
+    expect(model.snapshot.value).toEqual({
+      visible: false,
+      disabled: true,
+      readonly: true,
+      required: true,
+      label: "",
+      rules: ["required"],
+      placeholder: "updated",
+      componentProps: { size: "large" },
+    })
+  })
+})
+
+describe("updateFieldModel", () => {
+  it("应该保留 dependencies 解析得到的 false 和空字符串", () => {
+    const descriptor = createDescriptor(["field"], {
+      visible: true,
+      disabled: true,
+      readonly: true,
+      required: true,
+      placeholder: "baseline",
+    })
+    const model = createFieldModel(descriptor)
+
+    updateFieldModel(model, descriptor, {
+      visible: false,
+      disabled: false,
+      readonly: false,
+      required: false,
+      placeholder: "",
+    })
+
+    expect(model.snapshot.value).toMatchObject({
+      visible: false,
+      disabled: false,
+      readonly: false,
+      required: false,
+      placeholder: "",
+    })
+  })
+
+  it("一次更新只应替换一次 snapshot", () => {
+    const descriptor = createDescriptor(["field"])
+    const model = createFieldModel(descriptor)
+    let effectRuns = 0
+    const dispose = createSignalEffect(() => {
+      void model.snapshot.value
+      effectRuns += 1
+    })
+
+    updateFieldModel(model, descriptor, {
+      visible: false,
+      disabled: true,
+      readonly: true,
+      required: true,
+      placeholder: "updated",
+      componentProps: { size: "large" },
+    })
+
+    expect(effectRuns).toBe(2)
+
+    dispose()
+  })
+
+  it("呈现态未变化时不应替换 snapshot", () => {
+    const descriptor = createDescriptor(["field"])
+    const model = createFieldModel(descriptor)
+    let effectRuns = 0
+    const dispose = createSignalEffect(() => {
+      void model.snapshot.value
+      effectRuns += 1
+    })
+
+    updateFieldModel(model, descriptor)
+
+    expect(effectRuns).toBe(1)
+
+    dispose()
   })
 })

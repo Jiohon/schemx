@@ -7,7 +7,7 @@
  */
 
 export {
-  FIELD_DEPENDENCY_PROP_KEYS,
+  FIELD_DEPENDENCIES_PROP_KEYS,
   createDependenciesEffect,
   type CreateDependenciesEffectOptions,
 } from "./dependenciesEffect"
@@ -20,7 +20,12 @@ export {
   type DependencyEffectSlot,
 } from "./dependencyEffect"
 
-export { createFieldModel, updateFieldModel, type FieldModel } from "./model"
+export {
+  createFieldModel,
+  updateFieldModel,
+  type FieldModel,
+  type FieldModelSnapshot,
+} from "./model"
 
 export {
   createFieldRegistry,

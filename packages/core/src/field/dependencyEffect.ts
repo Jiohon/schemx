@@ -115,8 +115,8 @@ export function createDependencyEffect<TValues extends Values = Values>(
 
   fiber.dependencyResourceScope = resourceScope
 
-  slot.run = async (): Promise<void> => {
-    if (resourceScope.disposed) return
+  slot.run = (): Promise<void> => {
+    if (resourceScope.disposed) return Promise.resolve()
 
     const currentDescriptor = fiber.descriptor
 
@@ -130,46 +130,48 @@ export function createDependencyEffect<TValues extends Values = Values>(
     slot.loading.value = true
     slot.error.value = null
 
-    try {
-      const childSchemas = await context.scheduler.track(
-        Promise.resolve(
-          currentDescriptor.renderer(context.getFormApi(), controller.signal)
-        )
-      )
+    return context.scheduler.track(
+      (async () => {
+        try {
+          const childSchemas = await Promise.resolve(
+            currentDescriptor.renderer(context.getFormApi(), controller.signal)
+          )
 
-      if (
-        resourceScope.disposed ||
-        controller.signal.aborted ||
-        currentVersion !== slot.version.value
-      ) {
-        return
-      }
+          if (
+            resourceScope.disposed ||
+            controller.signal.aborted ||
+            currentVersion !== slot.version.value
+          ) {
+            return
+          }
 
-      const descriptors = compileToDescriptors<TValues>(
-        childSchemas,
-        context.defaultProps
-      )
+          const descriptors = compileToDescriptors<TValues>(
+            childSchemas,
+            context.defaultProps
+          )
 
-      context.commitChildren(fiber, descriptors)
-    } catch (cause) {
-      if (
-        resourceScope.disposed ||
-        controller.signal.aborted ||
-        currentVersion !== slot.version.value
-      ) {
-        return
-      }
+          context.commitChildren(fiber, descriptors)
+        } catch (cause) {
+          if (
+            resourceScope.disposed ||
+            controller.signal.aborted ||
+            currentVersion !== slot.version.value
+          ) {
+            return
+          }
 
-      slot.error.value = normalizeError(cause)
-    } finally {
-      if (
-        !resourceScope.disposed &&
-        !controller.signal.aborted &&
-        currentVersion === slot.version.value
-      ) {
-        slot.loading.value = false
-      }
-    }
+          slot.error.value = normalizeError(cause)
+        } finally {
+          if (
+            !resourceScope.disposed &&
+            !controller.signal.aborted &&
+            currentVersion === slot.version.value
+          ) {
+            slot.loading.value = false
+          }
+        }
+      })()
+    )
   }
 
   slot.dispose = (): void => {

@@ -164,8 +164,6 @@
     readonlyPlaceholder: "-",
   })
 
-  console.log(props.align)
-
   const emit = defineEmits<{
     "update:value": [value: string]
     change: [value: string]

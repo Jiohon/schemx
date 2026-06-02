@@ -7,42 +7,50 @@
  * @module core/field/model
  */
 
+import { defaultConfig } from "@/defaultConfig"
+
+import { type FieldDescriptor, getPlaceholder } from "../descriptor"
 import { createSignal } from "../reactivity"
 
-import { getPlaceholder, type FieldDescriptor } from "../descriptor"
-import type { FieldFiber } from "../graph"
 import type { Signal } from "../reactivity"
-import type { SchemxBaseField, SchemxComponentProps, SchemxRules, Values } from "../types"
-import { defaultConfig } from "@/defaultConfig"
-import { DependencyResolvedProps } from "./dependenciesEffect"
+import type { SchemxComponentProps, SchemxRules, Values } from "../types"
+import type { DependenciesResolvedProps } from "./dependenciesEffect"
 
 /**
- * 字段呈现态。
+ * 字段呈现态快照。
  */
-export interface FieldModel<TValues extends Values = Values> {
+export interface FieldModelSnapshot<TValues extends Values = Values> {
   /** 是否可见 */
-  visible: Signal<boolean>
+  visible: boolean
 
   /** 是否禁用 */
-  disabled: Signal<boolean>
+  disabled: boolean
 
   /** 是否只读 */
-  readonly: Signal<boolean>
+  readonly: boolean
 
   /** 是否必填 */
-  required: Signal<boolean>
+  required: boolean
 
   /** 字段标签，用于校验错误消息等场景 */
-  label: Signal<string>
+  label: string
 
   /** 校验规则 */
-  rules: Signal<SchemxRules | SchemxRules[]>
+  rules: SchemxRules | SchemxRules[]
 
   /** 占位提示文本 */
-  placeholder: Signal<string>
+  placeholder: string
 
   /** 传递给渲染组件的属性 */
-  componentProps: Signal<SchemxComponentProps<TValues>>
+  componentProps: SchemxComponentProps<TValues>
+}
+
+/**
+ * 字段呈现态模型。
+ */
+export interface FieldModel<TValues extends Values = Values> {
+  /** 当前字段呈现态快照 */
+  snapshot: Signal<FieldModelSnapshot<TValues>>
 }
 
 /**
@@ -54,19 +62,8 @@ export interface FieldModel<TValues extends Values = Values> {
 export function createFieldModel<TValues extends Values = Values>(
   descriptor: FieldDescriptor<TValues>
 ): FieldModel<TValues> {
-  const schema = descriptor.schema
-
   return {
-    visible: createSignal(schema.visible || defaultConfig.visible),
-    disabled: createSignal(schema.disabled || defaultConfig.disabled),
-    readonly: createSignal(schema.readonly || defaultConfig.readonly),
-    required: createSignal(schema.required || defaultConfig.required),
-    label: createSignal(schema.label || ""),
-    rules: createSignal(schema.rules || []),
-    placeholder: createSignal(getPlaceholder(schema)),
-    componentProps: createSignal({
-      ...(schema.componentProps || {}),
-    }),
+    snapshot: createSignal(createFieldModelSnapshot(descriptor)),
   }
 }
 
@@ -75,43 +72,99 @@ export function createFieldModel<TValues extends Values = Values>(
  *
  * @param model - 需要更新的字段模型。
  * @param descriptor - 最新字段 descriptor。
+ * @param resolved - 解析结果。
  */
 export function updateFieldModel<TValues extends Values = Values>(
   model: FieldModel<TValues>,
-  descriptor: FieldDescriptor<TValues>
+  descriptor: FieldDescriptor<TValues>,
+  resolved?: DependenciesResolvedProps<TValues>
 ): void {
-  const schema = descriptor.schema
+  const nextSnapshot = createFieldModelSnapshot(descriptor, resolved)
 
-  model.visible.value = schema.visible || defaultConfig.visible
-  model.disabled.value = schema.disabled || defaultConfig.disabled
-  model.readonly.value = schema.readonly || defaultConfig.readonly
-  model.required.value = schema.required || defaultConfig.required
-  model.label.value = schema.label || ""
-  model.rules.value = schema.rules || []
-  model.placeholder.value = getPlaceholder(schema)
-  model.componentProps.value = schema.componentProps || {}
+  if (isSameFieldModelSnapshot(model.snapshot.peek(), nextSnapshot)) {
+    return
+  }
+
+  model.snapshot.value = nextSnapshot
 }
 
 /**
- * 将解析结果写入 FieldModel，未解析项回退到 descriptor 静态值。
- *
- * @param model - 需要更新的字段模型。
- * @param descriptor - 最新字段 descriptor。
- * @param resolved - 解析结果。
+ * 根据 descriptor 和 dependencies 解析结果创建字段呈现态快照。
  */
-export function patchFieldModel<TValues extends Values>(
-  model: FieldModel<TValues>,
+function createFieldModelSnapshot<TValues extends Values = Values>(
   descriptor: FieldDescriptor<TValues>,
-  resolved: DependencyResolvedProps<TValues>
-): void {
-  const base = descriptor.schema
+  resolved?: DependenciesResolvedProps<TValues>
+): FieldModelSnapshot<TValues> {
+  const schema = descriptor.schema
 
-  model.visible.value = resolved.visible || base.visible || defaultConfig.visible
-  model.disabled.value = resolved.disabled || base.disabled || defaultConfig.disabled
-  model.readonly.value = resolved.readonly || base.readonly || defaultConfig.readonly
-  model.required.value = resolved.required || base.required || defaultConfig.required
-  model.rules.value = resolved.rules || base.rules || []
-  model.placeholder.value =
-    resolved.placeholder || base.placeholder || getPlaceholder(base)
-  model.componentProps.value = resolved.componentProps || base.componentProps || {}
+  return {
+    visible: resolved?.visible ?? schema.visible ?? defaultConfig.visible,
+    disabled: resolved?.disabled ?? schema.disabled ?? defaultConfig.disabled,
+    readonly: resolved?.readonly ?? schema.readonly ?? defaultConfig.readonly,
+    required: resolved?.required ?? schema.required ?? defaultConfig.required,
+    label: schema.label || "",
+    rules: (resolved?.rules ?? schema.rules) || [],
+    placeholder:
+      resolved?.placeholder ?? schema.placeholder ?? getPlaceholder(schema),
+    componentProps: (resolved?.componentProps ?? schema.componentProps) || {},
+  }
+}
+
+/**
+ * 判断字段呈现态快照是否保持不变。
+ */
+function isSameFieldModelSnapshot<TValues extends Values>(
+  current: FieldModelSnapshot<TValues>,
+  next: FieldModelSnapshot<TValues>
+): boolean {
+  return (
+    current.visible === next.visible &&
+    current.disabled === next.disabled &&
+    current.readonly === next.readonly &&
+    current.required === next.required &&
+    current.label === next.label &&
+    isSameArrayOrValue(current.rules, next.rules) &&
+    current.placeholder === next.placeholder &&
+    isShallowEqualRecord(current.componentProps, next.componentProps)
+  )
+}
+
+/**
+ * 比较数组或单值配置。
+ */
+function isSameArrayOrValue(current: unknown, next: unknown): boolean {
+  if (current === next) {
+    return true
+  }
+
+  if (!Array.isArray(current) || !Array.isArray(next)) {
+    return false
+  }
+
+  return (
+    current.length === next.length &&
+    current.every((value, index) => value === next[index])
+  )
+}
+
+/**
+ * 浅比较对象配置。
+ */
+function isShallowEqualRecord(
+  current: object,
+  next: object
+): boolean {
+  if (current === next) {
+    return true
+  }
+
+  const currentKeys = Object.keys(current)
+  const nextKeys = Object.keys(next)
+  const currentRecord = current as Record<string, unknown>
+  const nextRecord = next as Record<string, unknown>
+
+  return (
+    currentKeys.length === nextKeys.length &&
+    currentKeys.every((key) => currentRecord[key] === nextRecord[key])
+  )
 }

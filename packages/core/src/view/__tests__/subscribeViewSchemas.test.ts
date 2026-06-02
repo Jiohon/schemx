@@ -6,13 +6,13 @@
 
 import { describe, expect, it, vi } from "vitest"
 
-import { createViewRevision } from "../viewRevision"
 import { createFieldModel } from "../../field/model"
 import {
   createTestFieldFiber,
   createTestRootFiber,
 } from "../../graph/__tests__/fiberTestUtils"
 import { subscribeViewSchemas } from "../subscribeViewSchemas"
+import { createViewRevision } from "../viewRevision"
 
 import type { FieldDescriptor } from "../../descriptor/descriptor"
 import type { ContainerFiber } from "../../graph/fiber"
@@ -66,6 +66,35 @@ describe("subscribeViewSchemas", () => {
     ])
   })
 
+  it("FieldModel 呈现态变化后应重新回调最新 ViewSchemas", () => {
+    vi.useFakeTimers()
+
+    const root = createTestRootFiber()
+    const field = createFieldFiber(root, "f1", ["f1"])
+    root.childFibers = [field]
+    const revision = createViewRevision()
+    const onChange = vi.fn()
+
+    subscribeViewSchemas(root, revision, onChange)
+    const model = field.fieldModel
+    if (!model) {
+      throw new Error("fieldModel should be initialized")
+    }
+
+    model.snapshot.value = {
+      ...model.snapshot.peek(),
+      visible: false,
+    }
+    vi.advanceTimersByTime(16)
+
+    expect(onChange).toHaveBeenCalledTimes(2)
+    expect(onChange).toHaveBeenLastCalledWith([
+      expect.objectContaining({ key: "f1", visible: false }),
+    ])
+
+    vi.useRealTimers()
+  })
+
   it("取消订阅后 revision 变化不再回调", () => {
     const root = createTestRootFiber()
     const revision = createViewRevision()
@@ -96,6 +125,8 @@ describe("subscribeViewSchemas", () => {
   })
 
   it("root dispose 后应回调空 ViewSchemas", () => {
+    vi.useFakeTimers()
+
     const root = createTestRootFiber()
     root.childFibers = [createFieldFiber(root, "f1", ["f1"])]
     const revision = createViewRevision()
@@ -104,8 +135,11 @@ describe("subscribeViewSchemas", () => {
     subscribeViewSchemas(root, revision, onChange)
     root.scope.dispose()
     revision.bump()
+    vi.advanceTimersByTime(16)
 
     const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1]
     expect(lastCall[0]).toEqual([])
+
+    vi.useRealTimers()
   })
 })

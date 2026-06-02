@@ -2,6 +2,13 @@
 }
 
 .schemx-picker-renderer {
+  .van-field {
+    padding-inline: 0;
+
+    &::after {
+      display: none;
+    }
+  }
 }
 
 .schemx-picker-empty {

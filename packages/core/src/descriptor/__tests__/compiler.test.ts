@@ -29,6 +29,24 @@ describe("compileToDescriptors", () => {
       expect(descriptors[0].schema.name).toBe("username")
       expect(descriptors[0].schema.componentType).toBe("input")
       expect(descriptors[0].schema.placeholder).toBe("请输入用户名")
+      expect(descriptors[0].schema).not.toHaveProperty("initialValue")
+    }
+  })
+
+  it("应该保留显式配置的空 placeholder", () => {
+    const schemas: SchemxField[] = [
+      {
+        name: "username",
+        label: "用户名",
+        componentType: "input",
+        placeholder: "",
+      },
+    ]
+
+    const descriptors = compileToDescriptors(schemas)
+
+    if (descriptors[0].type === "field") {
+      expect(descriptors[0].schema.placeholder).toBe("")
     }
   })
 

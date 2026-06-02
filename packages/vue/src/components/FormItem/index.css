@@ -43,7 +43,6 @@
  */
 .schemx-item--label-left {
   flex-direction: row;
-  align-items: center;
 }
 
 /**
@@ -81,6 +80,7 @@
   color: var(--schemx-item-label-color);
   font-size: var(--schemx-font-size-md);
   margin-right: var(--schemx-padding-xs);
+  line-height: var(--schemx-item-line-height);
 }
 
 .schemx-item__required {

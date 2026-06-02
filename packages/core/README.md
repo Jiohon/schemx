@@ -54,17 +54,13 @@ const form = createForm<LoginValues>({
   },
 })
 
-form.register("email", z.string().email("请输入正确的邮箱"))
-form.register("password", z.string().min(6, "密码至少 6 位"))
+form.registerRules("email", z.string().email("请输入正确的邮箱"))
+form.registerRules("password", z.string().min(6, "密码至少 6 位"))
 
 form.setFieldValue("email", "hello@example.com")
 form.setFieldValue("password", "123456")
 
-const result = await form.submit()
-
-if (result.ok) {
-  console.log(result.values)
-}
+await form.submit()
 
 form.destroy()
 ```
@@ -246,8 +242,8 @@ const form = createForm({
   },
 })
 
-form.register("email", z.string().email("邮箱格式错误"))
-form.register("age", z.number().min(18, "必须年满 18 岁"))
+form.registerRules("email", z.string().email("邮箱格式错误"))
+form.registerRules("age", z.number().min(18, "必须年满 18 岁"))
 
 const result = await form.validate()
 
@@ -352,7 +348,7 @@ const form = createForm({
 const nameField = createField(form, "name")
 
 nameField.setValue("Jane")
-nameField.register("required")
+nameField.registerRules("required")
 
 const result = await nameField.validate()
 
@@ -460,7 +456,7 @@ schemas.update((current) => [
 | 初始值     | `getInitialValue`、`getInitialValues`、`setInitialValues`                               |
 | touched    | `isFieldTouched`、`setFieldTouched`、`getTouchedFields`                                 |
 | pending    | `setFieldPending`、`isFieldPending`、`getPendingFields`                                 |
-| 校验       | `register`、`unregister`、`validateField`、`validate`、`getFieldError`、`setFieldError` |
+| 校验       | `registerRules`、`unregisterRules`、`validateField`、`validate`、`getFieldError`、`setFieldError` |
 | 提交与重置 | `submit`、`reset`、`resetFields`                                                        |
 | 响应式     | `effect`、`batch`                                                                       |
 | schema     | `setSchemas`、`updateSchemas`                                                           |
@@ -513,7 +509,3 @@ src/
 - `@schemx/vue`：Vue 3 适配层。
 - `@schemx/vant`：基于 Vant 的 renderer 适配包。
 - `@schemx/core`：当前包，框架无关表单引擎。
-
-## 许可证
-
-MIT

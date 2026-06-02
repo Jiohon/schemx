@@ -23,7 +23,12 @@ export {
   type FieldSignalMapOptions,
 } from "./fieldSignalMap"
 
-export { createSignalEffect, type SignalEffectDispose } from "./effect"
+export {
+  createSignalEffect,
+  createDebouncedSignalEffect,
+  type DebouncedSignalEffectOptions,
+  type SignalEffectDispose,
+} from "./effect"
 
 export { batchUpdates } from "./batch"
 

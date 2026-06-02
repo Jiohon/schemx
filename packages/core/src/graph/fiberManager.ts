@@ -24,6 +24,7 @@ import {
   updateFieldModel,
 } from "../field"
 import { createSignal } from "../reactivity"
+import { setByPath } from "../utils"
 
 import { getChildFibers, hasDescriptor, isContainerFiber, setChildFibers } from "./fiber"
 import { createScope } from "./scope"
@@ -347,6 +348,8 @@ class RuntimeFiberManager<TValues extends Values = Values> {
       return
     }
 
+    this.initializeFieldValue(fiber)
+
     fiber.fieldResourceScope = resourceScope
     this.fieldRegistry.register({
       name: fiber.descriptor.name,
@@ -364,6 +367,23 @@ class RuntimeFiberManager<TValues extends Values = Values> {
 
     this.mountFieldValidation(fiber, model, resourceScope)
     this.mountOrRestartFieldDependencies(fiber, model)
+  }
+
+  private initializeFieldValue(fiber: FieldFiber<TValues>): void {
+    const { name, schema } = fiber.descriptor
+
+    if (
+      !Object.hasOwn(schema, "initialValue") ||
+      this.context.store.getFieldSnapshot(name) !== undefined
+    ) {
+      return
+    }
+
+    const values = {} as Partial<TValues>
+    setByPath(values, name, schema.initialValue)
+
+    this.context.store.setInitialValues(values)
+    this.context.store.setFieldValue(name, schema.initialValue)
   }
 
   private mountGroup(_fiber: GroupFiber<TValues>): void {

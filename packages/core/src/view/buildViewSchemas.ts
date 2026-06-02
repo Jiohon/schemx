@@ -19,7 +19,6 @@ import type {
   SchemxViewGroupSchema,
   SchemxViewSchema,
 } from "./types"
-import type { FieldModel } from "../field"
 import type { DependencyFiber, Fiber, FieldFiber, GroupFiber, RootFiber } from "../graph"
 import type { SchemxComponentProps, SchemxResolvedBaseField, Values } from "../types"
 
@@ -43,6 +42,8 @@ export function buildViewSchemas<TValues extends Values = Values>(
     return []
   }
 
+  // TODO: 按脏 Fiber 缓存 ViewSchema，复用未变化字段的构建结果；
+  // graph 结构变化时需要使受影响的 group 和 dependency 子树缓存失效。
   return buildFiberChildren<TValues>(getChildFibers(root), 1)
 }
 
@@ -102,15 +103,7 @@ function buildFiberSchema<TValues extends Values = Values>(
   }
 
   if (isFieldFiber(fiber)) {
-    if (fiber.fieldModel) {
-      return buildFieldViewSchema<TValues>(fiber, fiber.fieldModel)
-    }
-
-    console.warn(
-      `[buildViewSchemas] skipping field fiber "${fiber.key}": no FieldModel resource`
-    )
-
-    return null
+    return buildFieldViewSchema<TValues>(fiber)
   }
 
   return null
@@ -120,28 +113,38 @@ function buildFiberSchema<TValues extends Values = Values>(
  * 将 FieldModel 构建为字段 ViewSchema。
  */
 function buildFieldViewSchema<TValues extends Values = Values>(
-  fiber: FieldFiber<TValues>,
-  model: FieldModel<TValues>
+  fiber: FieldFiber<TValues>
 ): SchemxViewFieldSchema<TValues> | null {
   const descriptor = fiber.descriptor
+  const model = fiber.fieldModel
+
+  if (!model) {
+    console.warn(
+      `[buildViewSchemas] skipping field fiber "${fiber.key}": no FieldModel resource`
+    )
+
+    return null
+  }
 
   if (descriptor?.type !== "field") {
     return null
   }
 
   const schema = descriptor.schema as SchemxResolvedBaseField<TValues>
+  const snapshot = model.snapshot.value
+  console.log("🚀 ~ buildFieldViewSchema ~ snapshot:", snapshot)
 
   return {
     ...schema,
     key: fiber.key,
-    visible: model.visible.peek(),
-    label: model.label.peek(),
-    readonly: model.readonly.peek(),
-    disabled: model.disabled.peek(),
-    required: model.required.peek(),
-    placeholder: sanitizePlaceholder(model.placeholder.peek()),
-    componentProps: sanitizeComponentProps(model.componentProps.peek() ?? {}),
-    rules: model.rules.peek(),
+    visible: snapshot.visible,
+    label: snapshot.label,
+    readonly: snapshot.readonly,
+    disabled: snapshot.disabled,
+    required: snapshot.required,
+    placeholder: sanitizePlaceholder(snapshot.placeholder),
+    componentProps: sanitizeComponentProps(snapshot.componentProps ?? {}),
+    rules: snapshot.rules,
     validationTrigger: schema.validationTrigger,
     debug: buildDebugMeta(fiber),
   }

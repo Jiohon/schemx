@@ -76,9 +76,17 @@ describe("buildViewSchemas", () => {
       placeholder: "static",
       componentProps: { clearable: false },
     })
-    field.fieldModel!.required.value = true
-    field.fieldModel!.placeholder.value = "dynamic"
-    field.fieldModel!.componentProps.value = { clearable: true }
+    const model = field.fieldModel
+    if (!model) {
+      throw new Error("fieldModel should be initialized")
+    }
+
+    model.snapshot.value = {
+      ...model.snapshot.peek(),
+      required: true,
+      placeholder: "dynamic",
+      componentProps: { clearable: true },
+    }
     root.childFibers = [field]
 
     const [schema] = buildViewSchemas(root)
@@ -97,7 +105,15 @@ describe("buildViewSchemas", () => {
       rules: "required",
       validationTrigger: "onBlur" as any,
     })
-    field.fieldModel!.rules.value = ["email"]
+    const model = field.fieldModel
+    if (!model) {
+      throw new Error("fieldModel should be initialized")
+    }
+
+    model.snapshot.value = {
+      ...model.snapshot.peek(),
+      rules: ["email"],
+    }
     root.childFibers = [field]
 
     const [schema] = buildViewSchemas(root)

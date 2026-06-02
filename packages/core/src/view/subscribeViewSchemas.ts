@@ -5,8 +5,7 @@
  *
  * @module core/view/subscribeViewSchemas
  */
-
-import { createSignalEffect } from "../reactivity"
+import { createDebouncedSignalEffect } from "../reactivity"
 
 import { buildViewSchemas } from "./buildViewSchemas"
 
@@ -35,27 +34,22 @@ export function subscribeViewSchemas<TValues extends Values = Values>(
     rootDisposed = true
   })
 
-  const disposeEffect = createSignalEffect(() => {
-    if (rootDisposed) {
+  const disposeEffect = createDebouncedSignalEffect(
+    () => {
+      void revision.revision.value
+
+      return rootDisposed ? [] : buildViewSchemas<TValues>(root)
+    },
+    (viewSchemas) => {
       try {
-        onChange([])
+        onChange(viewSchemas)
       } catch (error) {
         console.error("[subscribeViewSchemas] onChange error:", error)
       }
-
-      return
-    }
-
-    void revision.revision.value
-
-    const viewSchemas = buildViewSchemas<TValues>(root)
-
-    try {
-      onChange(viewSchemas)
-    } catch (error) {
-      console.error("[subscribeViewSchemas] onChange error:", error)
-    }
-  })
+    },
+    16,
+    { immediate: true, edges: ["leading", "trailing"] }
+  )
 
   const unsubscribe = (): void => {
     disposeEffect()

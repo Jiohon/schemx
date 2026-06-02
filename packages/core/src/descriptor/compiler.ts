@@ -7,6 +7,8 @@
  * @module core/descriptor/compiler
  */
 
+import { defaultConfig } from "@/defaultConfig"
+
 import { isDependencySchema, isGroupSchema, normalizeSchemas } from "../utils"
 
 import type {
@@ -30,7 +32,6 @@ import type {
   SchemxField,
   SchemxGroupField,
 } from "../types/schema"
-import { defaultConfig } from "@/defaultConfig"
 
 /**
  * 编译器选项。
@@ -220,12 +221,12 @@ function buildNormalizedFieldSchema<TValues extends Values>(
     ...rest
   } = schema
 
-  const mergedVisible = visible || defaultConfig.visible
+  const mergedVisible = visible ?? defaultConfig.visible
 
   const mergedReadonly =
-    cp?.readonly || readonly || options.readonly || defaultConfig.readonly
+    cp?.readonly ?? readonly ?? options.readonly ?? defaultConfig.readonly
   const mergedDisabled =
-    cp?.disabled || disabled || options.disabled || defaultConfig.disabled
+    cp?.disabled ?? disabled ?? options.disabled ?? defaultConfig.disabled
 
   const mergedPlaceholder = getPlaceholder(schema)
 
@@ -236,7 +237,7 @@ function buildNormalizedFieldSchema<TValues extends Values>(
     placeholder: mergedPlaceholder,
   }
 
-  const mergedRequired = required || hasRequiredRule(rules)
+  const mergedRequired = required ?? hasRequiredRule(rules)
   const mergedRules = mergeRules(mergedRequired, rules)
 
   return {
@@ -244,7 +245,9 @@ function buildNormalizedFieldSchema<TValues extends Values>(
     key: rest.key,
     name: rest.name,
     label: rest.label,
-    initialValue: rest.initialValue,
+    ...(Object.hasOwn(schema, "initialValue")
+      ? { initialValue: rest.initialValue }
+      : {}),
     componentType: rest.componentType,
 
     visible: mergedVisible,
@@ -259,7 +262,7 @@ function buildNormalizedFieldSchema<TValues extends Values>(
     labelPosition: rest.labelPosition || defaultConfig.labelPosition,
     labelWidth: rest.labelWidth || defaultConfig.labelWidth,
     contentAlign: rest.contentAlign || defaultConfig.contentAlign,
-    colon: rest.colon || defaultConfig.colon,
+    colon: rest.colon ?? defaultConfig.colon,
 
     rules: mergedRules,
     validationTrigger: validationTrigger || defaultConfig.validationTrigger,
@@ -273,9 +276,9 @@ function buildNormalizedFieldSchema<TValues extends Values>(
 export function getPlaceholder<TValues extends Values>(
   schema: SchemxBaseField<TValues>
 ): string {
-  const existingplaceholder = schema.componentProps?.placeholder || schema.placeholder
+  const existingplaceholder = schema.componentProps?.placeholder ?? schema.placeholder
 
-  if (!existingplaceholder) {
+  if (existingplaceholder == null) {
     return ["input", "text", "textarea"].includes(schema.componentType)
       ? `请输入${schema.label || schema.name}`
       : `请选择${schema.label || schema.name}`

@@ -2,16 +2,17 @@
  * Field dependencies - 字段级动态呈现态派生。
  *
  * 根据 descriptor.dependencies 监听 triggerFields，并把解析结果写入
- * FieldModel signals。该模块不修改 descriptor/schema。
+ * FieldModel snapshot signal。该模块不修改 descriptor/schema。
  *
  * @module core/field/dependencies
  */
 
 import { createSignalEffect } from "../reactivity"
 
-import type { FieldDescriptor } from "../descriptor"
-import { patchFieldModel, type FieldModel } from "./model"
+import { type FieldModel, updateFieldModel } from "./model"
+
 import type { SchemxFormContext } from "../createForm"
+import type { FieldDescriptor } from "../descriptor"
 import type { Scope } from "../graph"
 import type {
   SchemxConditionFn,
@@ -20,12 +21,11 @@ import type {
   SchemxResolvedBaseField,
   Values,
 } from "../types"
-import { defaultConfig } from "@/defaultConfig"
 
 /**
  * 支持动态配置的字段呈现态键列表。
  */
-export const FIELD_DEPENDENCY_PROP_KEYS = [
+export const FIELD_DEPENDENCIES_PROP_KEYS = [
   "componentProps",
   "placeholder",
   "required",
@@ -35,10 +35,10 @@ export const FIELD_DEPENDENCY_PROP_KEYS = [
   "rules",
 ] as const
 
-type DependencyPropKey = (typeof FIELD_DEPENDENCY_PROP_KEYS)[number]
+type DependenciesPropKey = (typeof FIELD_DEPENDENCIES_PROP_KEYS)[number]
 
-export type DependencyResolvedProps<TValues extends Values> = Partial<
-  Pick<SchemxResolvedBaseField<TValues>, Exclude<DependencyPropKey, "rules">> & {
+export type DependenciesResolvedProps<TValues extends Values> = Partial<
+  Pick<SchemxResolvedBaseField<TValues>, Exclude<DependenciesPropKey, "rules">> & {
     rules?: SchemxResolvedBaseField<TValues>["rules"]
   }
 >
@@ -94,9 +94,7 @@ export function createDependenciesEffect<TValues extends Values = Values>(
     const currentVersion = ++version
 
     // 读取 trigger 字段值以建立响应式依赖；字段值变化时 effect 会重新执行。
-    for (const triggerField of dependencies.triggerFields) {
-      void formApi.getValue(triggerField)
-    }
+    void formApi.getValues(dependencies.triggerFields)
 
     void context.scheduler.track(
       resolveDependencies(dependencies, base, formApi).then((resolvedProps) => {
@@ -104,7 +102,7 @@ export function createDependenciesEffect<TValues extends Values = Values>(
           return
         }
 
-        patchFieldModel(fieldModel, descriptor, resolvedProps)
+        updateFieldModel(fieldModel, descriptor, resolvedProps)
       })
     )
   })
@@ -122,12 +120,12 @@ async function resolveDependencies<TValues extends Values>(
   dependencies: SchemxDependencies<TValues>,
   base: Readonly<SchemxResolvedBaseField<TValues>>,
   formApi: SchemxFormApi<TValues>
-): Promise<DependencyResolvedProps<TValues>> {
+): Promise<DependenciesResolvedProps<TValues>> {
   const values = formApi.getValues() as TValues
 
   const [resolvedProps] = await Promise.all([
-    resolveDependencyProps(dependencies, base, values, formApi),
-    runDependencyTrigger(dependencies, values, formApi),
+    resolveDependenciesProps(dependencies, base, values, formApi),
+    runDependenciesTrigger(dependencies, values, formApi),
   ])
 
   return resolvedProps
@@ -136,7 +134,7 @@ async function resolveDependencies<TValues extends Values>(
 /**
  * 执行 dependencies.trigger 副作用。
  */
-async function runDependencyTrigger<TValues extends Values>(
+async function runDependenciesTrigger<TValues extends Values>(
   dependencies: SchemxDependencies<TValues>,
   values: TValues,
   formApi: SchemxFormApi<TValues>
@@ -155,51 +153,51 @@ async function runDependencyTrigger<TValues extends Values>(
 /**
  * 解析 dependencies 中显式配置的动态属性。
  */
-async function resolveDependencyProps<TValues extends Values>(
+async function resolveDependenciesProps<TValues extends Values>(
   dependencies: SchemxDependencies<TValues>,
   base: Readonly<SchemxResolvedBaseField<TValues>>,
   values: TValues,
   formApi: SchemxFormApi<TValues>
-): Promise<DependencyResolvedProps<TValues>> {
+): Promise<DependenciesResolvedProps<TValues>> {
   const [componentProps, placeholder, required, readonly, disabled, visible, rules] =
     await Promise.all([
-      resolveDependencyProp({
+      resolveDependenciesProp({
         condition: dependencies.componentProps,
         values,
         formApi,
         defaultValue: base.componentProps,
       }),
-      resolveDependencyProp({
+      resolveDependenciesProp({
         condition: dependencies.placeholder,
         values,
         formApi,
         defaultValue: base.placeholder,
       }),
-      resolveDependencyProp({
+      resolveDependenciesProp({
         condition: dependencies.required,
         values,
         formApi,
         defaultValue: base.required,
       }),
-      resolveDependencyProp({
+      resolveDependenciesProp({
         condition: dependencies.readonly,
         values,
         formApi,
         defaultValue: base.readonly,
       }),
-      resolveDependencyProp({
+      resolveDependenciesProp({
         condition: dependencies.disabled,
         values,
         formApi,
         defaultValue: base.disabled,
       }),
-      resolveDependencyProp({
+      resolveDependenciesProp({
         condition: dependencies.visible,
         values,
         formApi,
         defaultValue: base.visible,
       }),
-      resolveDependencyProp({
+      resolveDependenciesProp({
         condition: dependencies.rules,
         values,
         formApi,
@@ -221,7 +219,7 @@ async function resolveDependencyProps<TValues extends Values>(
 /**
  * 解析单个动态属性；未配置时返回静态默认值。
  */
-async function resolveDependencyProp<TValues extends Values, TValue>(options: {
+async function resolveDependenciesProp<TValues extends Values, TValue>(options: {
   condition?: SchemxConditionFn<TValues, TValue>
   values: TValues
   formApi: SchemxFormApi<TValues>
