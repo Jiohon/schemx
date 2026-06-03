@@ -71,6 +71,7 @@ describe("createFieldSignal", () => {
       initialValue: "initial",
       touched: true,
       pending: true,
+      pendingMessage: [],
     })
 
     field.reset()

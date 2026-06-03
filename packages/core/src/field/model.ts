@@ -7,7 +7,7 @@
  * @module core/field/model
  */
 
-import { defaultConfig } from "@/defaultConfig"
+import { defaultConfig } from "../defaultConfig"
 
 import { type FieldDescriptor, getPlaceholder } from "../descriptor"
 import { createSignal } from "../reactivity"

@@ -14,7 +14,7 @@
 
 import { debounce } from "es-toolkit"
 
-import type { Values } from "@/types"
+import type { Values } from "../types"
 
 /**
  * 动态属性类型

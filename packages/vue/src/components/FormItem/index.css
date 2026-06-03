@@ -33,6 +33,7 @@
 .schemx-item {
   display: flex;
   align-items: flex-start;
+  justify-content: space-between;
   padding: var(--schemx-padding-sm) var(--schemx-padding-sm);
   line-height: var(--schemx-item-line-height);
   gap: var(--schemx-item-gap);
@@ -94,7 +95,7 @@
 .schemx-item__content {
   flex: 1;
   min-width: 0;
-  width: 100%;
+  max-width: 70%;
   padding: 0 var(--schemx-item-content-padding-inline);
 }
 
@@ -112,4 +113,9 @@
   text-align: var(--schemx-error-align, right);
   line-height: var(--schemx-item-error-line-height);
   margin-top: var(--schemx-item-error-gap);
+}
+
+.schemx-item--label-top > .schemx-item__content {
+  width: 100%;
+  max-width: none;
 }

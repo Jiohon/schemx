@@ -7,7 +7,7 @@
  * @module core/descriptor/compiler
  */
 
-import { defaultConfig } from "@/defaultConfig"
+import { defaultConfig } from "../defaultConfig"
 
 import { isDependencySchema, isGroupSchema, normalizeSchemas } from "../utils"
 
@@ -237,17 +237,16 @@ function buildNormalizedFieldSchema<TValues extends Values>(
     placeholder: mergedPlaceholder,
   }
 
-  const mergedRequired = required ?? hasRequiredRule(rules)
-  const mergedRules = mergeRules(mergedRequired, rules)
+  const rulesArray = (Array.isArray(rules) ? rules : [rules]).filter(Boolean)
+
+  const mergedRequired = required ?? (rulesArray.length > 0 || defaultConfig.required)
 
   return {
     ...(rest ?? {}),
     key: rest.key,
     name: rest.name,
     label: rest.label,
-    ...(Object.hasOwn(schema, "initialValue")
-      ? { initialValue: rest.initialValue }
-      : {}),
+    initialValue: rest.initialValue,
     componentType: rest.componentType,
 
     visible: mergedVisible,
@@ -264,7 +263,7 @@ function buildNormalizedFieldSchema<TValues extends Values>(
     contentAlign: rest.contentAlign || defaultConfig.contentAlign,
     colon: rest.colon ?? defaultConfig.colon,
 
-    rules: mergedRules,
+    rules: rules,
     validationTrigger: validationTrigger || defaultConfig.validationTrigger,
   }
 }
@@ -285,45 +284,4 @@ export function getPlaceholder<TValues extends Values>(
   }
 
   return existingplaceholder
-}
-
-/**
- * 检查 rules 中是否包含必填规则。
- */
-function hasRequiredRule(rules?: SchemxRules | SchemxRules[]): boolean {
-  if (!rules) return false
-
-  if (Array.isArray(rules)) {
-    return rules.length > 0
-  }
-
-  if (rules) {
-    return true
-  }
-
-  return defaultConfig.required
-}
-
-/**
- * 合并 rules 规则。
- */
-function mergeRules(
-  required: boolean,
-  rules?: SchemxRules | SchemxRules[]
-): SchemxRules | SchemxRules[] {
-  if (rules) {
-    if (!required) return rules
-
-    if (Array.isArray(rules)) {
-      if (rules.includes("required")) return rules
-
-      return ["required", ...rules]
-    }
-
-    if (rules === "required") return rules
-
-    return ["required", rules]
-  }
-
-  return required ? "required" : []
 }

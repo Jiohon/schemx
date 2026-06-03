@@ -6,7 +6,7 @@
  * @module utils/validation
  */
 
-import { defaultConfig } from "@/defaultConfig"
+import { defaultConfig } from "../defaultConfig"
 import type { ValidationTrigger } from "../types"
 
 /**

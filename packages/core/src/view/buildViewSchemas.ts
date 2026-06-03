@@ -132,7 +132,6 @@ function buildFieldViewSchema<TValues extends Values = Values>(
 
   const schema = descriptor.schema as SchemxResolvedBaseField<TValues>
   const snapshot = model.snapshot.value
-  console.log("🚀 ~ buildFieldViewSchema ~ snapshot:", snapshot)
 
   return {
     ...schema,

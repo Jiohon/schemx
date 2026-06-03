@@ -298,7 +298,7 @@ describe("Store", () => {
       })
       store.setFieldPending("email", true)
       expect(store.isFieldPending("email")).toBe(true)
-      expect(store.getPendingFields()).toEqual([{ field: "email" }])
+      expect(store.getPendingFields()).toEqual([{ field: "email", message: [] }])
 
       store.setFieldPending("email", false)
       expect(store.isFieldPending("email")).toBe(false)

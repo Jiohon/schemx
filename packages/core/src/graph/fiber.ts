@@ -13,7 +13,7 @@
  * @module core/graph/fiber
  */
 
-import { Values } from "@/types"
+import { Values } from "../types"
 
 import { findNodeBFS } from "../utils/find"
 

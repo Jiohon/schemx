@@ -39,6 +39,7 @@ describe("SchemxForm 动态 schemas", () => {
       ],
     })
     await nextTick()
+    await new Promise((resolve) => setTimeout(resolve, 30))
 
     expect(wrapper.text()).toContain("姓名")
     expect(wrapper.text()).toContain("年龄")

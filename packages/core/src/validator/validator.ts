@@ -374,8 +374,6 @@ class ValidatorImpl<
       try {
         const result = await schema["~standard"].validate(value)
 
-        console.log(result)
-
         if (result.issues) {
           allMessages.push(...result.issues.map((i: { message: any }) => i.message))
         }

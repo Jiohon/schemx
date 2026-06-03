@@ -25,7 +25,7 @@
  * ```
  */
 
-import { SchemxRuleKey } from "@/types/rule"
+import { SchemxRuleKey } from "../types/rule"
 
 import { SchemxBaseField, Values } from "../types"
 

@@ -22,7 +22,7 @@ import type {
 } from "../registry"
 import type { ValidateError, ValidateResult } from "../validator"
 import type { SchemxViewSchema } from "../view"
-import { DefaultConfigKey } from "@/defaultConfig"
+import { DefaultConfigKey } from "../defaultConfig"
 
 /**
  * 字段值类型。

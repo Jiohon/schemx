@@ -4,12 +4,12 @@ import {
   batchUpdates,
   createSignalEffect,
   createSignal,
-  createReactiveMap,
+  createSignalMap,
 } from "../index"
 
 describe("ReactiveMap", () => {
   it("reads and writes keyed values", () => {
-    const map = createReactiveMap<string, unknown>()
+    const map = createSignalMap<string, unknown>()
 
     map.set("name", "Alice")
 
@@ -19,7 +19,7 @@ describe("ReactiveMap", () => {
   })
 
   it("supports fluent set chaining", () => {
-    const map = createReactiveMap<string, number>()
+    const map = createSignalMap<string, number>()
 
     const returned = map.set("count", 1).set("count", 2)
 
@@ -28,7 +28,7 @@ describe("ReactiveMap", () => {
   })
 
   it("deletes and clears values", () => {
-    const map = createReactiveMap<string, number>()
+    const map = createSignalMap<string, number>()
 
     map.set("a", 1)
     map.set("b", 2)
@@ -45,7 +45,7 @@ describe("ReactiveMap", () => {
   })
 
   it("iterates keys, values, and entries like Map", () => {
-    const map = createReactiveMap<string, number>()
+    const map = createSignalMap<string, number>()
 
     map.set("a", 1)
     map.set("b", 2)
@@ -59,7 +59,7 @@ describe("ReactiveMap", () => {
   })
 
   it("tracks keys that are created after an effect reads them", () => {
-    const map = createReactiveMap<string, unknown>()
+    const map = createSignalMap<string, unknown>()
     let runs = 0
     let latest: unknown
 
@@ -80,7 +80,7 @@ describe("ReactiveMap", () => {
   })
 
   it("batches multiple reactive writes", () => {
-    const map = createReactiveMap<string, number>()
+    const map = createSignalMap<string, number>()
     map.set("count", 0)
 
     let runs = 0
@@ -108,7 +108,7 @@ describe("ReactiveMap", () => {
   })
 
   it("notifies subscribers when a key is deleted", () => {
-    const map = createReactiveMap<string, number>()
+    const map = createSignalMap<string, number>()
     map.set("count", 0)
 
     let runs = 0
@@ -136,7 +136,7 @@ describe("reactivity runtime", () => {
     const count = createSignal(0)
     const seen: number[] = []
 
-    const map = createReactiveMap<string, number>()
+    const map = createSignalMap<string, number>()
     map.set("count", count.value)
     const dispose = createSignalEffect(() => {
       seen.push(map.get("count") ?? 0)

@@ -73,7 +73,6 @@ export function createSchemas<TValues extends Values = Values>(
   schemas: readonly SchemxField<TValues>[] = []
 ): SchemxSchemas<TValues> {
   const source = createSignal<readonly SchemxField<TValues>[]>(schemas)
-  const listeners = new Set<SchemxSchemasListener<TValues>>()
 
   /**
    * 响应式读取当前 schema 列表。
@@ -90,22 +89,10 @@ export function createSchemas<TValues extends Values = Values>(
   }
 
   /**
-   * 将最新 schema 列表同步给所有手动订阅者。
-   */
-  const notify = (): void => {
-    const current = source.peek()
-
-    for (const listener of listeners) {
-      listener(current)
-    }
-  }
-
-  /**
    * 替换 schema 列表并通知订阅者。
    */
   const set = (nextSchemas: readonly SchemxField<TValues>[]): void => {
     source.value = nextSchemas
-    notify()
   }
 
   /**
@@ -115,17 +102,16 @@ export function createSchemas<TValues extends Values = Values>(
     updater: (schemas: readonly SchemxField<TValues>[]) => readonly SchemxField<TValues>[]
   ): void => {
     source.value = updater(source.peek())
-    notify()
   }
 
   /**
    * 注册 schema source 的手动订阅者。
    */
   const subscribe = (listener: SchemxSchemasListener<TValues>): (() => void) => {
-    listeners.add(listener)
+    const unsubscribe = source.subscribe(listener)
 
     return () => {
-      listeners.delete(listener)
+      unsubscribe()
     }
   }
 

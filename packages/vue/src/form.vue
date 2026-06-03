@@ -100,7 +100,6 @@
   watch(
     () => props.schemas,
     (schemas) => {
-      console.log(schemas)
       form.setSchemas(schemas)
     },
     { deep: false, immediate: !!props.form }
