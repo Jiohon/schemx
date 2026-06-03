@@ -9,8 +9,8 @@
   >
     <InputRenderer
       ref="inputRef"
+      v-model:value="numberValue"
       :type="props.type"
-      :value="props.value?.toString() || ''"
       :placeholder="props.placeholder"
       :readonly-placeholder="props.readonlyPlaceholder"
       :readonly="readonly"
@@ -48,13 +48,13 @@
    *
    * @module renderers/NumberRenderer
    */
-  import { computed, ref, useAttrs, useSlots } from "vue"
+  import { computed, ref, useSlots } from "vue"
 
   import classNames from "classnames"
 
   import InputRenderer from "../InputRenderer"
 
-  import type { NumberRendererProps } from "./types"
+  import type { NumberRendererProps, NumberValue } from "./types"
 
   import "./index.scss"
 
@@ -77,8 +77,9 @@
     max: undefined,
   })
 
-  const attrs = useAttrs()
   const slots = useSlots()
+
+  const numberValue = defineModel<NumberValue>("value")
 
   const inputRef = ref<InstanceType<typeof InputRenderer> | null>(null)
 
@@ -92,11 +93,13 @@
    */
   const handleChange = (value: string): void => {
     if (value === "" || value === null || value === undefined) {
+      numberValue.value = ""
       props.onChange?.("")
 
       return
     }
 
+    numberValue.value = value
     props.onChange?.(value)
   }
 

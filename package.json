@@ -44,7 +44,16 @@
     "test:watch": "vitest",
     "lint": "pnpm -r run lint",
     "lint:fix": "eslint \"packages/*/src/**/*.{ts,tsx,vue,js,jsx}\" --fix",
-    "format": "prettier --write \"packages/*/src/**/*.{vue,ts,tsx,js,jsx,json,css,scss}\""
+    "format": "prettier --write \"packages/*/src/**/*.{vue,ts,tsx,js,jsx,json,css,scss}\"",
+    "release:check": "bash scripts/release.sh check",
+    "release:pack": "bash scripts/release.sh pack",
+    "release:publish": "bash scripts/release.sh publish",
+    "release:publish:core": "bash scripts/release.sh publish core",
+    "release:publish:vue": "bash scripts/release.sh publish vue",
+    "release:publish:vant": "bash scripts/release.sh publish vant",
+    "release:version:patch": "bash scripts/release.sh version patch",
+    "release:version:minor": "bash scripts/release.sh version minor",
+    "release:version:major": "bash scripts/release.sh version major"
   },
   "repository": {
     "type": "git",

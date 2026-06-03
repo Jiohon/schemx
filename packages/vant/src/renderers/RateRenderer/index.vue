@@ -5,8 +5,8 @@
     :class="className"
   >
     <Rate
-      v-if="value"
-      :model-value="value"
+      v-if="rateValue"
+      :model-value="rateValue"
       :count="count"
       :allow-half="allowHalf"
       readonly
@@ -22,11 +22,11 @@
   >
     <Rate
       v-bind="attrs"
-      :model-value="value"
+      :model-value="rateValue"
       :count="count"
       :allow-half="allowHalf"
       :disabled="finalDisabled"
-      @update:model-value="onChange"
+      @update:model-value="handleChange"
     />
   </div>
 </template>
@@ -43,7 +43,7 @@
 
   import { Rate } from "vant"
 
-  import type { RateRendererProps } from "./types"
+  import type { RateRendererProps, RateValue } from "./types"
 
   import "./index.scss"
 
@@ -65,6 +65,14 @@
 
   const attrs = useAttrs()
 
+  const rateValue = defineModel<RateValue>("value")
+
   const finalReadonly = computed(() => props.readonly || props.formItemProps?.readonly)
   const finalDisabled = computed(() => props.disabled || props.formItemProps?.disabled)
+
+  const handleChange = (value: RateValue): void => {
+    if (finalDisabled.value || finalReadonly.value) return
+    rateValue.value = value
+    props.onChange?.(value)
+  }
 </script>

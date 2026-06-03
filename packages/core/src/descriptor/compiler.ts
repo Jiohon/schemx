@@ -8,7 +8,6 @@
  */
 
 import { defaultConfig } from "../defaultConfig"
-
 import { isDependencySchema, isGroupSchema, normalizeSchemas } from "../utils"
 
 import type {
@@ -23,7 +22,6 @@ import type {
   SchemxDefaultProps,
   SchemxResolvedBaseField,
   SchemxResolvedGroupField,
-  SchemxRules,
   Values,
 } from "../types"
 import type {
@@ -241,12 +239,11 @@ function buildNormalizedFieldSchema<TValues extends Values>(
 
   const mergedRequired = required ?? (rulesArray.length > 0 || defaultConfig.required)
 
-  return {
+  const normalizedSchema = {
     ...(rest ?? {}),
     key: rest.key,
     name: rest.name,
     label: rest.label,
-    initialValue: rest.initialValue,
     componentType: rest.componentType,
 
     visible: mergedVisible,
@@ -266,6 +263,15 @@ function buildNormalizedFieldSchema<TValues extends Values>(
     rules: rules,
     validationTrigger: validationTrigger || defaultConfig.validationTrigger,
   }
+
+  if (Object.hasOwn(schema, "initialValue")) {
+    return {
+      ...normalizedSchema,
+      initialValue: rest.initialValue,
+    }
+  }
+
+  return normalizedSchema
 }
 
 /**

@@ -12,17 +12,17 @@ import { DeepNamePath, PathValue } from "./namePathType"
 import { SchemxRendererKey } from "./renderer"
 import { SchemxRules } from "./rule"
 
-import type { StorePending } from "../store"
-import type { SchemxBaseField, SchemxField } from "./schema"
+import type { DefaultConfigKey } from "../defaultConfig"
 import type {
   RendererRegistryType,
   ValidatorsEntry,
   ValidatorsRegistryOptions,
   ValidatorsRegistryType,
 } from "../registry"
+import type { StorePending } from "../store"
 import type { ValidateError, ValidateResult } from "../validator"
 import type { SchemxViewSchema } from "../view"
-import { DefaultConfigKey } from "../defaultConfig"
+import type { SchemxBaseField, SchemxField } from "./schema"
 
 /**
  * 字段值类型。

@@ -4,9 +4,11 @@
  * @module renderers/InputRenderer/types
  */
 
+import type { FieldProps } from "vant"
+
 import type { SchemxBaseComponentProps } from "@schemx/vue"
 
-export type InputValue = string | number
+export type InputValue = FieldProps["modelValue"]
 
 /**
  * 输入渲染器 Props
@@ -14,7 +16,32 @@ export type InputValue = string | number
  * 定义输入组件的所有可配置属性。
  */
 export interface InputRendererProps
-  extends Omit<SchemxBaseComponentProps, "onChange" | "onBlur" | "value" | "onUpdate:value"> {
+  extends
+    Omit<SchemxBaseComponentProps, "onChange" | "onBlur" | "value" | "onUpdate:value">,
+    /* @vue-ignore */
+    Partial<
+      Omit<
+        FieldProps,
+        | "modelValue"
+        | "value"
+        | "onUpdate:modelValue"
+        | "onChange"
+        | "onBlur"
+        | "onFocus"
+        | "autosize"
+        | "formatter"
+        | "formatTrigger"
+        | "clearable"
+        | "clearIcon"
+        | "clearTrigger"
+        | "leftIcon"
+        | "rightIcon"
+        | "showWordLimit"
+        | "enterkeyhint"
+        | "spellcheck"
+        | "inputmode"
+      >
+    > {
   /** 当前值 */
   value?: InputValue
   /** 值变化回调 */
@@ -24,7 +51,7 @@ export interface InputRendererProps
   /** 聚焦回调 */
   onFocus?: (event: FocusEvent) => void
   /** 输入类型 */
-  type?: "text" | "textarea" | "number" | "password" | "digit"
+  type?: FieldProps["type"]
   /** 是否只读 */
   readonly?: boolean
   /** 是否禁用 */
@@ -42,21 +69,21 @@ export interface InputRendererProps
   /** 文本域自适应高度配置 */
   autosize?: boolean | { minRows?: number; maxRows?: number }
   /** 自定义格式化函数 */
-  formatter?: (value: string) => string
+  formatter?: FieldProps["formatter"]
   /** 格式化触发时机 */
-  formatTrigger?: "onChange" | "onBlur"
+  formatTrigger?: FieldProps["formatTrigger"]
   /** 是否可清除 */
-  clearable?: boolean
+  clearable?: FieldProps["clearable"]
   /** 清除图标名称 */
-  clearIcon?: string
+  clearIcon?: FieldProps["clearIcon"]
   /** 清除按钮触发方式 */
-  clearTrigger?: "focus" | "always"
+  clearTrigger?: FieldProps["clearTrigger"]
   /** 左侧图标名称 */
-  leftIcon?: string
+  leftIcon?: FieldProps["leftIcon"]
   /** 右侧图标名称 */
-  rightIcon?: string
+  rightIcon?: FieldProps["rightIcon"]
   /** 是否显示字数统计 */
-  showWordLimit?: boolean
+  showWordLimit?: FieldProps["showWordLimit"]
   /** 自定义 CSS 类名 */
   className?: string
   /** 只读时的占位文本 */
@@ -68,13 +95,13 @@ export interface InputRendererProps
   /** 自动纠正属性 */
   autocorrect?: string
   /** 回车键类型提示 */
-  enterkeyhint?: "search" | "done" | "enter" | "go" | "next" | "previous" | "send"
+  enterkeyhint?: FieldProps["enterkeyhint"]
   /** 拼写检查 */
   spellcheck?: boolean | null
   /** 输入模式 */
-  inputmode?: "text" | "search" | "tel" | "url" | "email" | "none" | "numeric" | "decimal"
+  inputmode?: FieldProps["inputmode"]
   /** 文本对齐方式 */
-  align?: "left" | "center" | "right"
+  align?: FieldProps["inputAlign"]
 }
 
 /**

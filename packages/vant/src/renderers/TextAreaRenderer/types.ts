@@ -4,9 +4,9 @@
  * @module renderers/TextAreaRenderer/types
  */
 
-import type { SchemxBaseComponentProps } from "@schemx/vue"
+import type { InputRendererProps, InputValue } from "../InputRenderer"
 
-export type TextAreaValue = string | number
+export type TextAreaValue = InputValue
 
 /**
  * 文本域自适应高度配置
@@ -26,7 +26,7 @@ export interface TextAreaAutosize {
  * 定义文本域输入组件的所有可配置属性。
  */
 export interface TextAreaRendererProps
-  extends Omit<SchemxBaseComponentProps, "onChange" | "onBlur" | "value" | "onUpdate:value"> {
+  extends Omit<InputRendererProps, "value" | "type" | "onChange"> {
   /** 当前值 */
   value?: TextAreaValue
   /** 值变化回调 */

@@ -4,19 +4,17 @@
  * @module renderers/TextRenderer/types
  */
 
-import { SchemxBaseComponentProps } from "@schemx/vue"
+import type { InputRendererProps, InputValue } from "../InputRenderer"
 
-export type TextValue = string
+export type TextValue = Extract<InputValue, string>
 
 /**
  * 文本输入渲染器 Props
  *
  * 定义文本输入组件的所有可配置属性。
  */
-export interface TextRendererProps extends Omit<
-  SchemxBaseComponentProps,
-  "onChange" | "onBlur" | "value" | "onUpdate:value"
-> {
+export interface TextRendererProps
+  extends Omit<InputRendererProps, "value" | "onChange"> {
   /** 自定义 CSS 类名 */
   className?: string
   /** 占位提示文本 */

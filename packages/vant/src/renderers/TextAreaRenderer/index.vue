@@ -9,8 +9,8 @@
   >
     <InputRenderer
       ref="inputRef"
+      v-model:value="textAreaValue"
       type="textarea"
-      :value="value"
       :placeholder="props.placeholder"
       :readonly-placeholder="props.readonlyPlaceholder"
       :readonly="readonly"
@@ -48,7 +48,7 @@
    *
    * @module renderers/TextAreaRenderer
    */
-  import { computed, ref, useAttrs, useSlots } from "vue"
+  import { computed, ref, useSlots } from "vue"
 
   import classNames from "classnames"
 
@@ -78,9 +78,8 @@
     showWordLimit: false,
   })
 
-  const value = defineModel<string>("value")
+  const textAreaValue = defineModel<string>("value")
 
-  const attrs = useAttrs()
   const slots = useSlots()
 
   const inputRef = ref<InstanceType<typeof InputRenderer> | null>(null)

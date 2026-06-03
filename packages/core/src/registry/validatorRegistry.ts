@@ -25,11 +25,8 @@
  * ```
  */
 
-import { SchemxRuleKey } from "../types/rule"
-
-import { SchemxBaseField, Values } from "../types"
-
-import type { StandardSchemaV1 } from "../types"
+import type { SchemxBaseField, StandardSchemaV1, Values } from "../types"
+import type { SchemxRuleKey } from "../types/rule"
 
 /**
  * Validators 工厂函数类型。

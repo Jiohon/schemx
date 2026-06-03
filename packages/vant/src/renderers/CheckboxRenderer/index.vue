@@ -29,7 +29,7 @@
         justifyContent: align,
         ...(attrs?.style || {}),
       }"
-      @update:model-value="onChange"
+      @update:model-value="handleChange"
     >
       <Checkbox
         v-for="option in options"
@@ -58,7 +58,7 @@
 
   import { getFieldProps } from "@/utils"
 
-  import type { CheckboxRendererProps } from "./types"
+  import type { CheckboxRendererProps, CheckboxValue } from "./types"
 
   import "./index.scss"
 
@@ -80,6 +80,8 @@
 
   const attrs = useAttrs() as Record<string, any>
 
+  const checkboxValue = defineModel<CheckboxValue>("value")
+
   const labelName = computed(() => props.fieldNames?.label || "label")
   const valueName = computed(() => props.fieldNames?.value || "value")
   const disabledName = computed(() => props.fieldNames?.disabled || "disabled")
@@ -89,16 +91,21 @@
   const align = computed(() => getFieldProps(attrs, "align", "right"))
 
   const modelValue = computed(() => {
-    if (!props.value) return []
+    if (!checkboxValue.value) return []
 
-    return typeof props.value === "string"
-      ? (props.value as string).split(",")
-      : props.value
+    return typeof checkboxValue.value === "string"
+      ? (checkboxValue.value as string).split(",")
+      : checkboxValue.value
   })
 
   const fieldValue = computed(() => {
     return modelValue.value?.map((v: any) => getOption(v, labelName.value)).join("、")
   })
+
+  const handleChange = (value: CheckboxValue): void => {
+    checkboxValue.value = value
+    props.onChange?.(value)
+  }
 
   /**
    * 获取选项的指定字段值

@@ -22,8 +22,8 @@
     <Switch
       size="22px"
       v-bind="attrs"
-      :model-value="value"
-      :loading="loading"
+      :model-value="switchValue"
+      :loading="switchLoading"
       :disabled="disabled"
       @update:model-value="handleChange"
     />
@@ -45,7 +45,7 @@
 
   import { getFieldProps } from "@/utils"
 
-  import type { SwitchRendererProps } from "./types"
+  import type { SwitchRendererProps, SwitchValue } from "./types"
 
   import "./index.scss"
 
@@ -69,32 +69,39 @@
 
   const attrs = useAttrs()
 
-  const loading = ref(false)
+  const switchValue = defineModel<SwitchValue>("value")
+
+  const switchLoading = ref(false)
 
   const disabled = computed(() => props.disabled || props.formItemProps?.disabled)
   const readonly = computed(() => props.readonly || props.formItemProps?.readonly)
-  const align = computed(() =>
-    getFieldProps(attrs as Record<string, any>, "align", "right")
+  const align = computed(
+    () => getFieldProps(attrs as Record<string, any>, "align", "right") as
+      | "left"
+      | "center"
+      | "right"
   )
 
   const fieldValue = computed(() => {
-    return props.value === props.activeValue ? props.activeText : props.inactiveText
+    return switchValue.value === props.activeValue ? props.activeText : props.inactiveText
   })
 
   /**
    * 处理开关值变化
    */
-  const handleChange = async (value: boolean | string | number): Promise<void> => {
+  const handleChange = async (value: SwitchValue): Promise<void> => {
     if (readonly.value || disabled.value) return
 
     try {
-      loading.value = true
+      switchLoading.value = true
 
-      await props.onChange?.(value)
+      const nextValue = await props.onChange?.(value)
 
-      loading.value = false
+      switchValue.value = nextValue ?? value
+
+      switchLoading.value = false
     } catch (error) {
-      loading.value = false
+      switchLoading.value = false
     }
   }
 </script>

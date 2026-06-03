@@ -86,6 +86,7 @@ const FormItem = defineComponent(
     /** 值变化处理，设置值后根据触发时机决定是否校验 */
     const handleChange = (v: FieldValue<T, NamePath<T>>) => {
       field.setValue(v)
+      schema().componentProps?.onChange?.(v)
 
       if (canVerified.value && shouldValidateOn("change", trigger.value)) {
         field.validate()
@@ -94,6 +95,8 @@ const FormItem = defineComponent(
 
     /** 失焦处理，根据触发时机决定是否校验 */
     const handleBlur = () => {
+      // schema().componentProps?.onBlur?.()
+
       if (canVerified.value && shouldValidateOn("blur", trigger.value)) {
         field.validate()
       }

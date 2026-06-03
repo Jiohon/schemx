@@ -7,6 +7,7 @@
  */
 
 import { defaultConfig } from "../defaultConfig"
+
 import type { ValidationTrigger } from "../types"
 
 /**

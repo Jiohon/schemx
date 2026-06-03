@@ -4,6 +4,8 @@
  * @module renderers/SwitchRenderer/types
  */
 
+import type { SwitchProps } from "vant"
+
 import type { SchemxBaseComponentProps } from "@schemx/vue"
 
 export type SwitchValue = boolean | string | number
@@ -14,7 +16,21 @@ export type SwitchValue = boolean | string | number
  * 定义开关组件的所有可配置属性。
  */
 export interface SwitchRendererProps
-  extends Omit<SchemxBaseComponentProps, "onChange" | "onBlur" | "value" | "onUpdate:value"> {
+  extends
+    Omit<SchemxBaseComponentProps, "onChange" | "onBlur" | "value" | "onUpdate:value">,
+    /* @vue-ignore */
+    Partial<
+      Omit<
+        SwitchProps,
+        | "modelValue"
+        | "onUpdate:modelValue"
+        | "onChange"
+        | "activeValue"
+        | "inactiveValue"
+        | "loading"
+        | "disabled"
+      >
+    > {
   /** 当前值 */
   value?: SwitchValue
   /** 值变化回调，支持异步返回值以更新表单字段 */

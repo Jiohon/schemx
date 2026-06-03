@@ -23,7 +23,7 @@
       :options="options"
       :field-names="fieldNames"
       :disabled="disabled"
-      :model-value="value"
+      :model-value="selectorValue"
       :style="{
         display: 'flex',
         flexWrap: 'wrap',
@@ -31,7 +31,7 @@
         justifyContent: align,
         ...(attrs?.style || {}),
       }"
-      @update:model-value="onChange"
+      @update:model-value="handleChange"
     />
   </div>
 </template>
@@ -50,7 +50,7 @@
 
   import Selector from "./Selector.vue"
 
-  import type { SelectorOption, SelectorRendererProps } from "./types"
+  import type { SelectorOption, SelectorRendererProps, SelectValue } from "./types"
 
   import "./index.scss"
 
@@ -72,6 +72,8 @@
 
   const attrs = useAttrs() as Record<string, any>
 
+  const selectorValue = defineModel<SelectValue>("value")
+
   const labelName = computed(() => props.fieldNames?.label || "label")
   const valueName = computed(() => props.fieldNames?.value || "value")
 
@@ -80,8 +82,13 @@
   const align = computed(() => getFieldProps(attrs, "align", "right"))
 
   const fieldValue = computed(() => {
-    return getOption(props.value, labelName.value)
+    return getOption(selectorValue.value, labelName.value)
   })
+
+  const handleChange = (value: SelectValue): void => {
+    selectorValue.value = value
+    props.onChange?.(value)
+  }
 
   /**
    * 获取选项的指定字段值

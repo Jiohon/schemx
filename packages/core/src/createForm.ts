@@ -6,12 +6,15 @@
  * @module core/createForm
  */
 
+import { pick } from "es-toolkit"
+
 import {
   createSchemas,
   isSchemxSchemas,
   type SchemxSchemas,
   type SchemxSchemasInput,
 } from "./createSchemas"
+import { defaultConfigKey } from "./defaultConfig"
 import { compileToDescriptors } from "./descriptor"
 import { createFieldRegistry, type FieldRegistry } from "./field"
 import {
@@ -70,8 +73,6 @@ import type {
   StandardSchemaV1,
   Values,
 } from "./types"
-import { pick } from "es-toolkit"
-import { defaultConfig, defaultConfigKey } from "./defaultConfig"
 
 type Callbacks<
   TValues extends Values = Values,

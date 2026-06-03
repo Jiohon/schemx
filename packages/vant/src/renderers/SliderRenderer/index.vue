@@ -6,7 +6,7 @@
   >
     <div class="schemx-slider-renderer__readonly">
       <span class="schemx-slider-renderer__readonly-value">
-        {{ formatDisplayValue(value) }}
+        {{ formatDisplayValue(sliderValue) }}
       </span>
     </div>
   </div>
@@ -17,7 +17,7 @@
   >
     <Slider
       v-bind="attrs"
-      :model-value="value"
+      :model-value="sliderValue"
       :min="min"
       :max="max"
       :step="step"
@@ -65,6 +65,8 @@
 
   const attrs = useAttrs()
 
+  const sliderValue = defineModel<SliderValue>("value")
+
   const fieldProps = computed(() => ({
     readonly: props.readonly || props.formItemProps?.readonly,
     disabled: props.disabled || props.formItemProps?.disabled,
@@ -78,13 +80,14 @@
    */
   const handleChange = (value: SliderValue): void => {
     if (finalDisabled.value || finalReadonly.value) return
+    sliderValue.value = value
     props.onChange?.(value)
   }
 
   /**
    * 格式化显示值
    */
-  const formatDisplayValue = (value: SliderValue): string => {
+  const formatDisplayValue = (value?: SliderValue): string => {
     if (value === null || value === undefined) {
       return props.readonlyPlaceholder
     }

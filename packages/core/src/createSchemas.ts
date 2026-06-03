@@ -108,7 +108,16 @@ export function createSchemas<TValues extends Values = Values>(
    * 注册 schema source 的手动订阅者。
    */
   const subscribe = (listener: SchemxSchemasListener<TValues>): (() => void) => {
-    const unsubscribe = source.subscribe(listener)
+    let isInitialNotify = true
+    const unsubscribe = source.subscribe((value) => {
+      if (isInitialNotify) {
+        isInitialNotify = false
+
+        return
+      }
+
+      listener(value)
+    })
 
     return () => {
       unsubscribe()

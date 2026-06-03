@@ -4,9 +4,9 @@
  * @module renderers/NumberRenderer/types
  */
 
-import type { SchemxBaseComponentProps } from "@schemx/vue"
+import type { InputRendererProps, InputValue } from "../InputRenderer"
 
-export type NumberValue = string | number
+export type NumberValue = InputValue
 
 /**
  * 数字输入渲染器 Props
@@ -14,7 +14,7 @@ export type NumberValue = string | number
  * 定义数字输入组件的所有可配置属性。
  */
 export interface NumberRendererProps
-  extends Omit<SchemxBaseComponentProps, "onChange" | "onBlur" | "value" | "onUpdate:value"> {
+  extends Omit<InputRendererProps, "value" | "type" | "onChange"> {
   /** 当前值 */
   value?: NumberValue
   /** 值变化回调 */
