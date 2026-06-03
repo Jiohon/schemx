@@ -8,7 +8,6 @@
  */
 
 import { defaultConfig } from "../defaultConfig"
-
 import { type FieldDescriptor, getPlaceholder } from "../descriptor"
 import { createSignal } from "../reactivity"
 

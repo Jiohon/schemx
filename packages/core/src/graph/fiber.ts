@@ -14,7 +14,6 @@
  */
 
 import { Values } from "../types"
-
 import { findNodeBFS } from "../utils/find"
 
 import type { Scope } from "./scope"

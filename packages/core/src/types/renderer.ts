@@ -35,6 +35,7 @@ import { Values } from "./form"
  * 扩展后，`SchemxRendererKey` 会自动推导出所有已注册的渲染器类型字符串，
  * `SchemxBase` 的 `componentProps` 也会根据 `componentType` 自动关联对应的 Props 类型。
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export interface SchemxRendererDefinition<T extends Values> {}
 
 /**
