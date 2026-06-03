@@ -1,11 +1,11 @@
 <template>
   <div
-    v-if="props.readonly"
+    v-if="readonly"
     class="schemx-radio-renderer"
     :class="className"
     :style="{ textAlign: align }"
   >
-    {{ props.readonly ? readonlyPlaceholder : fieldValue }}
+    {{ readonly ? readonlyPlaceholder : fieldValue }}
   </div>
   <div
     v-else
@@ -20,7 +20,7 @@
   >
     <RadioGroup
       v-bind="attrs"
-      :model-value="value"
+      :model-value="radioValue"
       :style="{
         display: 'flex',
         flexWrap: 'wrap',
@@ -28,7 +28,7 @@
         justifyContent: align,
         ...(attrs?.style || {}),
       }"
-      @update:model-value="onChange"
+      @update:model-value="handleChange"
     >
       <Radio
         v-for="option in options"
@@ -57,7 +57,7 @@
 
   import { getFieldProps } from "@/utils"
 
-  import type { RadioRendererProps } from "./types"
+  import type { RadioRendererProps, RadioValue } from "./types"
 
   import "./index.scss"
 
@@ -79,6 +79,8 @@
 
   const attrs = useAttrs() as Record<string, any>
 
+  const radioValue = defineModel<RadioValue>("value")
+
   const labelName = computed(() => props.fieldNames?.label || "label")
   const valueName = computed(() => props.fieldNames?.value || "value")
   const disabledName = computed(() => props.fieldNames?.disabled || "disabled")
@@ -88,8 +90,13 @@
   const align = computed(() => getFieldProps(attrs, "align", "right"))
 
   const fieldValue = computed(() => {
-    return getOption(props.value, labelName.value)
+    return getOption(radioValue.value, labelName.value)
   })
+
+  const handleChange = (value: RadioValue): void => {
+    radioValue.value = value
+    props.onChange?.(value)
+  }
 
   /**
    * 获取选项的指定字段值

@@ -9,7 +9,7 @@
   >
     <InputRenderer
       ref="inputRef"
-      v-model:value="value"
+      v-model:value="textValue"
       :type="inputType"
       :placeholder="props.placeholder"
       :readonly-placeholder="props.readonlyPlaceholder"
@@ -65,7 +65,7 @@
    *
    * @module renderers/TextRenderer
    */
-  import { computed, ref, useAttrs, useSlots } from "vue"
+  import { computed, ref, useSlots } from "vue"
 
   import { Icon } from "vant"
 
@@ -98,9 +98,8 @@
     showWordLimit: false,
   })
 
-  const value = defineModel<string>("value")
+  const textValue = defineModel<string>("value")
 
-  const attrs = useAttrs()
   const slots = useSlots()
 
   const inputRef = ref<InstanceType<typeof InputRenderer> | null>(null)
@@ -110,9 +109,7 @@
   const disabled = computed(() => props.disabled || props.formItemProps?.disabled)
 
   /** 判断是否为密码模式 */
-  const isPasswordMode = computed(
-    () => (attrs as Record<string, any>).type === "password"
-  )
+  const isPasswordMode = computed(() => props.type === "password")
 
   /** 计算实际的输入类型 */
   const inputType = computed(() => {
@@ -120,7 +117,7 @@
       return passwordVisible.value ? "text" : "password"
     }
 
-    return (attrs as Record<string, any>).type || "text"
+    return props.type || "text"
   })
 
   /** 密码可见性图标 */

@@ -6,7 +6,7 @@
   >
     <div class="schemx-stepper-renderer__readonly">
       <span class="schemx-stepper-renderer__readonly-value">
-        {{ formatDisplayValue(value) }}
+        {{ formatDisplayValue(stepperValue) }}
       </span>
     </div>
   </div>
@@ -17,7 +17,7 @@
   >
     <Stepper
       v-bind="attrs"
-      :model-value="value"
+      :model-value="stepperValue"
       :min="min"
       :max="max"
       :step="step"
@@ -42,7 +42,7 @@
 
   import { Stepper } from "vant"
 
-  import type { StepperRendererProps } from "./types"
+  import type { StepperRendererProps, StepperValue } from "./types"
 
   import "./index.scss"
 
@@ -68,6 +68,8 @@
 
   const attrs = useAttrs()
 
+  const stepperValue = defineModel<StepperValue>("value")
+
   const fieldProps = computed(() => ({
     readonly: props.readonly || props.formItemProps?.readonly,
     disabled: props.disabled || props.formItemProps?.disabled,
@@ -79,15 +81,16 @@
   /**
    * 处理值变化事件
    */
-  const handleChange = (value: number): void => {
+  const handleChange = (value: StepperValue): void => {
     if (finalDisabled.value || finalReadonly.value) return
+    stepperValue.value = value
     props.onChange?.(value)
   }
 
   /**
    * 格式化显示值
    */
-  const formatDisplayValue = (value?: number): string => {
+  const formatDisplayValue = (value?: StepperValue): string => {
     if (
       value === null ||
       value === undefined ||

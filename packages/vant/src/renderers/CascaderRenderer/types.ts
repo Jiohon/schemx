@@ -4,24 +4,23 @@
  * @module renderers/CascaderRenderer/types
  */
 
-import type { SchemxBaseComponentProps } from "@schemx/vue"
-import type { CascaderOption, PopupProps } from "vant"
+import type {
+  CascaderProps,
+  FieldProps,
+  PopupProps,
+  CascaderFieldNames as VantCascaderFieldNames,
+} from "vant"
 
-export type CascaderValue = (string | number)[]
+import type { SchemxBaseComponentProps } from "@schemx/vue"
+
+export type CascaderValue = Array<NonNullable<CascaderProps["modelValue"]>>
 
 /**
  * 级联选择器字段名配置
  *
  * 自定义选项数据中各字段对应的键名。
  */
-export interface CascaderFieldNames {
-  /** 显示文本字段名 */
-  text?: string
-  /** 值字段名 */
-  value?: string
-  /** 子节点字段名 */
-  children?: string
-}
+export type CascaderFieldNames = VantCascaderFieldNames
 
 /**
  * 级联选择器渲染器 Props
@@ -29,7 +28,10 @@ export interface CascaderFieldNames {
  * 定义级联选择组件的所有可配置属性。
  */
 export interface CascaderRendererProps
-  extends Omit<SchemxBaseComponentProps, "onChange" | "onBlur" | "value" | "onUpdate:value"> {
+  extends
+    Omit<SchemxBaseComponentProps, "onChange" | "onBlur" | "value" | "onUpdate:value">,
+    /* @vue-ignore */
+    Partial<Omit<CascaderProps, "modelValue" | "onUpdate:modelValue">> {
   /** 当前值 */
   value?: CascaderValue
   /** 确认回调，用户选择完成时触发 */
@@ -53,7 +55,11 @@ export interface CascaderRendererProps
   /** 是否禁用 */
   disabled?: boolean
   /** 选项数据 */
-  options?: CascaderOption[]
+  options?: CascaderProps["options"]
+  /**
+   * 内容区域对齐方式
+   */
+  contentAlign?: FieldProps["inputAlign"]
   /** 弹窗标题 */
   title?: string
   /**
@@ -78,11 +84,4 @@ export interface CascaderRendererProps
   popupProps?: Partial<Omit<PopupProps, "show">>
   /** 弹窗 CSS 类名 */
   popupClassName?: string
-  /**
-   * 关闭回调
-   *
-   * 用户点击遮罩层或 Cascader 关闭按钮时触发，
-   * 区别于 onConfirm（仅在选择完成时触发）。
-   */
-  onClose?: () => void
 }

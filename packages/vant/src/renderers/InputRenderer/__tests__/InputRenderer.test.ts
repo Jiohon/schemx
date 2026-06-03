@@ -17,7 +17,7 @@ describe("InputRenderer 容器聚焦", () => {
       },
     })
 
-    await wrapper.get(".schema-input__word-limit").trigger("click")
+    await wrapper.get(".schemx-input__word-limit").trigger("click")
 
     expect(document.activeElement).toBe(wrapper.get("input").element)
 

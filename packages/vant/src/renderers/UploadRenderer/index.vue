@@ -10,7 +10,7 @@
     :deletable="deletableComputed"
     :disabled="disabledComputed"
     :readonly="readonlyComputed"
-    :before-read="beforeRead"
+    :before-read="handleBeforeRead"
     :after-read="afterRead"
     :accept="accept"
     @delete="onDelete"
@@ -35,7 +35,7 @@
 
   import { getFileName } from "@/utils"
 
-  import type { UploadFile, UploadRendererProps } from "./types"
+  import type { UploadFile, UploadRendererProps, UploadValue } from "./types"
 
   import "./index.scss"
 
@@ -64,6 +64,9 @@
   })
 
   const attrs = useAttrs()
+  const uploadAttrs = attrs as Record<string, any>
+
+  const uploadValue = defineModel<UploadValue>("value")
 
   const field = useFieldContext()
 
@@ -97,7 +100,10 @@
    * 合并 props.value 和上传中的文件，去重
    */
   const innerFileList = computed(() => {
-    const propsFiles = (Array.isArray(props.value) ? props.value : [props.value])
+    const propsFiles = (Array.isArray(uploadValue.value)
+      ? uploadValue.value
+      : [uploadValue.value]
+    )
       .filter(Boolean)
       .map(normalizeFile)
       .filter(Boolean) as UploadFile[]
@@ -121,7 +127,7 @@
 
   // 监听外部 value 变化，清理已完成上传的文件
   watch(
-    () => props.value,
+    () => uploadValue.value,
     (newVal) => {
       if (!newVal || (Array.isArray(newVal) && newVal.length === 0)) {
         uploadingFiles.value = []
@@ -172,12 +178,15 @@
 
     uploadingFiles.value = uploadingFiles.value.filter((i) => i.uid !== file.uid)
 
-    const currentDoneFiles = (Array.isArray(props.value) ? props.value : [])
+    const currentDoneFiles = (Array.isArray(uploadValue.value) ? uploadValue.value : [])
       .filter(Boolean)
       .map(normalizeFile)
       .filter(Boolean) as UploadFile[]
 
-    props.onChange?.([...currentDoneFiles, completedFile])
+    const nextFiles = [...currentDoneFiles, completedFile]
+
+    uploadValue.value = nextFiles
+    props.onChange?.(nextFiles)
 
     resetFieldPending()
   }
@@ -199,12 +208,11 @@
     resetFieldPending()
   }
 
-  const beforeRead = (
+  const handleBeforeRead = (
     file: File | File[]
   ): boolean | Promise<File | File[] | undefined> | undefined => {
-    const attrsObj = attrs as Record<string, any>
-    if (attrsObj.beforeRead) {
-      return attrsObj.beforeRead(file)
+    if (uploadAttrs.beforeRead) {
+      return uploadAttrs.beforeRead(file)
     }
 
     return true
@@ -212,9 +220,8 @@
 
   const afterRead = async (files: any | any[]): Promise<void> => {
     try {
-      const attrsObj = attrs as Record<string, any>
-      if (attrsObj.afterRead) {
-        return attrsObj.afterRead(files)
+      if (uploadAttrs.afterRead) {
+        return uploadAttrs.afterRead(files)
       }
 
       const _fileList = Array.isArray(files) ? files : [files]
@@ -253,9 +260,8 @@
   }
 
   const onDelete = (file: UploadFile, detail: { index: number }): void => {
-    const attrsObj = attrs as Record<string, any>
-    if (attrsObj.onDelete) {
-      return attrsObj.onDelete(file, detail)
+    if (uploadAttrs.onDelete) {
+      return uploadAttrs.onDelete(file, detail)
     }
 
     if (file.status === "uploading" || file.status === "failed") {
@@ -264,11 +270,12 @@
       return
     }
 
-    const currentFiles = (Array.isArray(props.value) ? props.value : [])
+    const currentFiles = (Array.isArray(uploadValue.value) ? uploadValue.value : [])
       .filter(Boolean)
       .map(normalizeFile)
       .filter((i) => i && i.uid !== file.uid) as UploadFile[]
 
+    uploadValue.value = currentFiles
     props.onChange?.(currentFiles)
   }
 </script>

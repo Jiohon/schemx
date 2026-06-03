@@ -11,7 +11,7 @@
       :placeholder="readonly ? props.readonlyPlaceholder : placeholder"
       :readonly="true"
       :disabled="disabled"
-      :right-icon="!readonly ? rightIcon : ''"
+      right-icon="arrow"
       :input-align="align"
       :model-value="fieldValue"
       @click="handleClick"
@@ -20,9 +20,8 @@
     <Popup
       v-if="!readonly && !disabled"
       v-model:show="showPicker"
-      position="bottom"
       :class="classNames('schemx-date-popup-renderer', props.popupClassName)"
-      teleport="body"
+      v-bind="popupProps"
     >
       <DatePicker
         :model-value="modelValue"
@@ -46,14 +45,14 @@
    */
   import { computed, ref, useAttrs } from "vue"
 
-  import { DatePicker, Field, Popup } from "vant"
+  import { DatePicker, Field, type FieldTextAlign, Popup } from "vant"
 
   import classNames from "classnames"
   import dayjs from "dayjs"
 
   import { getFieldProps } from "@/utils"
 
-  import type { DateRendererProps } from "./types"
+  import type { DateRendererProps, DateValue } from "./types"
 
   import "./index.scss"
 
@@ -77,22 +76,26 @@
 
   const attrs = useAttrs()
 
+  const dateValue = defineModel<DateValue>("value")
+
   const showPicker = ref(false)
 
-  const placeholder = computed(
-    () => props.placeholder || "请选择"
-  )
+  const placeholder = computed(() => props.placeholder || "请选择")
 
   const readonly = computed(() => props.readonly || props.formItemProps?.readonly)
   const disabled = computed(() => props.disabled || props.formItemProps?.disabled)
 
-  const rightIcon = computed(() =>
-    getFieldProps(attrs as Record<string, any>, "rightIcon", "arrow")
+  const align = computed(
+    () => getFieldProps(props, "contentAlign", "right") as FieldTextAlign
   )
 
-  const align = computed(() =>
-    getFieldProps(attrs as Record<string, any>, "align", "right")
-  )
+  const popupProps = computed(() => ({
+    round: true,
+    position: "bottom" as const,
+    safeAreaInsetBottom: true,
+    teleport: "body",
+    ...props.popupProps,
+  }))
 
   /**
    * 获取值的函数
@@ -121,18 +124,19 @@
   }
 
   const fieldValue = computed(() => {
-    return getValue(props.value)
+    return getValue(dateValue.value)
   })
 
   const modelValue = computed(() => {
-    const value = getValue(props.value) || new Date().toISOString()
-    const dateValue = dayjs(value).format("YYYY-MM-DD").split("-")
+    const value = getValue(dateValue.value) || new Date().toISOString()
+    const dateParts = dayjs(value).format("YYYY-MM-DD").split("-")
 
-    return dateValue
+    return dateParts
   })
 
   const handleConfirm = ({ selectedValues }: { selectedValues: string[] }): void => {
     const formattedValue = getValue(selectedValues)
+    dateValue.value = formattedValue
     props.onConfirm?.(formattedValue)
     props.onChange?.(formattedValue)
     showPicker.value = false

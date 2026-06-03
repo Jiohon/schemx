@@ -12,8 +12,8 @@
       :readonly="true"
       :disabled="disabled"
       :model-value="fieldValue"
-      :right-icon="!readonly ? rightIcon : ''"
-      :input-align="align"
+      right-icon="arrow"
+      :input-align="contentAlign"
       @click="handleClick"
     />
 
@@ -25,7 +25,7 @@
     >
       <Cascader
         :model-value="cascaderValue"
-        :options="schemas"
+        :options="columns"
         :title="props.title ?? placeholder"
         :placeholder="placeholder"
         :field-names="fieldNames"
@@ -46,16 +46,17 @@
    *
    * @module renderers/CascaderRenderer
    */
-  import { computed, ref, useAttrs, watch } from "vue"
+  import { computed, ref, useAttrs } from "vue"
 
-  import { Cascader, Field, Popup, PopupProps } from "vant"
+  import { Cascader, Field, Popup } from "vant"
+  import type { FieldTextAlign, PopupProps } from "vant"
 
   import classNames from "classnames"
   import { omitBy } from "es-toolkit"
 
   import { findTreeItem, getFieldProps } from "@/utils"
 
-  import type { CascaderFieldNames, CascaderRendererProps } from "./types"
+  import type { CascaderFieldNames, CascaderRendererProps, CascaderValue } from "./types"
 
   import "./index.scss"
 
@@ -81,42 +82,34 @@
     title: undefined,
     popupProps: () => ({}) as PopupProps,
     popupClassName: "",
-    onClose: undefined,
   })
 
   const attrs = useAttrs()
 
-  const showCascader = ref(false)
+  const cascaderModel = defineModel<CascaderValue>("value")
 
-  /** 跟踪是否由确认操作关闭，用于区分 onConfirm 与 onClose */
-  let confirmed = false
+  const showCascader = ref(false)
 
   // ==================== 计算属性 ====================
 
-  const placeholder = computed(
-    () => props.placeholder || "请选择"
-  )
+  const placeholder = computed(() => props.placeholder || "请选择")
 
-  const readonly = computed(() => props.readonly)
-  const disabled = computed(() => props.disabled)
+  const readonly = computed(() => props.readonly || props.formItemProps?.readonly)
+  const disabled = computed(() => props.disabled || props.formItemProps?.disabled)
 
-  const rightIcon = computed(() =>
-    getFieldProps(attrs as Record<string, any>, "rightIcon", "arrow")
-  )
-
-  const align = computed(() =>
-    getFieldProps(attrs as Record<string, any>, "align", "right")
+  const contentAlign = computed(
+    () => getFieldProps(props, "contentAlign", "right") as FieldTextAlign
   )
 
   const fieldNames = computed<CascaderFieldNames>(() => props.fieldNames)
 
-  /** 数据源：优先使用 props.options，回退到 attrs.schemas */
-  const schemas = computed(() => {
+  /** 数据源：优先使用 props.options，回退到 attrs.columns */
+  const columns = computed(() => {
     if (Array.isArray(props.options) && props.options.length > 0) {
       return props.options
     }
 
-    return (attrs as Record<string, any>)?.schemas ?? []
+    return []
   })
 
   /**
@@ -125,9 +118,11 @@
    * Vant Cascader 仅接受叶子节点值，取路径最后一项。
    */
   const cascaderValue = computed(() => {
-    if (!Array.isArray(props.value) || props.value.length === 0) return undefined
+    if (!Array.isArray(cascaderModel.value) || cascaderModel.value.length === 0) {
+      return undefined
+    }
 
-    return props.value[props.value.length - 1]
+    return cascaderModel.value[cascaderModel.value.length - 1]
   })
 
   /**
@@ -137,11 +132,11 @@
    * 支持 showAllLevels 控制显示全部层级或仅末级。
    */
   const fieldValue = computed(() => {
-    const targetValue = Array.isArray(props.value)
-      ? props.value[props.value.length - 1]
-      : props.value
+    const targetValue = Array.isArray(cascaderModel.value)
+      ? cascaderModel.value[cascaderModel.value.length - 1]
+      : cascaderModel.value
 
-    const result = findTreeItem(schemas.value, targetValue, {
+    const result = findTreeItem(columns.value, targetValue, {
       labelKey: fieldNames.value.text,
       valueKey: fieldNames.value.value,
       childrenKey: fieldNames.value.children,
@@ -160,7 +155,7 @@
       position: "bottom",
       safeAreaInsetBottom: true,
       teleport: "body",
-      ...omitBy(props.popupProps as PopupProps, (_, key) => key !== "show"),
+      ...omitBy(props.popupProps as PopupProps, (_, key) => key === "show"),
     }
   })
 
@@ -178,7 +173,7 @@
     const valuePath = data.selectedOptions.map((i) => i[valueKey])
     const value = props.emitPath ? valuePath : [data.value]
 
-    confirmed = true
+    cascaderModel.value = value
     props.onConfirm?.(value)
     props.onChange?.(value)
     showCascader.value = false
@@ -188,23 +183,4 @@
     showCascader.value = false
     // onClose 由 watch(showCascader) 统一触发，避免重复
   }
-
-  // ==================== 副作用 ====================
-
-  /**
-   * 监听 Popup 关闭以触发 onClose 回调。
-   *
-   * 覆盖遮罩点击（closeOnClickOverlay=true 时自动关闭）、
-   * Cascader 关闭按钮两种场景。
-   * 确认操作通过 confirmed 标志排除，避免与 onConfirm 重复触发。
-   */
-  watch(showCascader, (val) => {
-    if (!val) {
-      if (!confirmed) {
-        props.onClose?.()
-      }
-
-      confirmed = false
-    }
-  })
 </script>

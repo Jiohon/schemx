@@ -22,11 +22,11 @@
  * getFieldProps(attrs, "align", "right")
  * getFieldProps(attrs, "rightIcon", "arrow")
  */
-export function getFieldProps(
-  attrs: Record<string, any>,
-  key: string,
-  defaultValue: any = undefined
-): any {
+export function getFieldProps<T extends Record<string, any>>(
+  attrs: T,
+  key: keyof T,
+  defaultValue: T[typeof key] = undefined as T[typeof key]
+): T[typeof key] {
   return attrs?.[key] ?? defaultValue
 }
 

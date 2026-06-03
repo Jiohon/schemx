@@ -8,29 +8,26 @@
     "
   >
     <Field
-      :placeholder="readonly ? props.readonlyPlaceholder : placeholder"
+      :placeholder="readonly ? props.readonlyPlaceholder : displayPlaceholder"
       :readonly="true"
       :disabled="disabled"
       :model-value="fieldValue as string"
-      :right-icon="!readonly ? rightIcon : ''"
-      :input-align="align"
+      right-icon="arrow"
+      :input-align="contentAlign"
       @click="handleClick"
     />
 
     <Popup
       v-if="!readonly && !disabled"
       v-model:show="showPicker"
-      round
-      position="bottom"
-      safe-area-inset-bottom
       :class="classNames('schemx-picker-popup-renderer', props.popupClassName)"
-      teleport="body"
+      v-bind="popupProps"
     >
       <Picker
         :model-value="modelValue"
-        :title="props.title || placeholder"
-        :columns="schemas"
-        :schemas-field-names="fieldNames"
+        :title="props.title || displayPlaceholder"
+        :columns="columns"
+        :columns-field-names="fieldNames"
         v-bind="attrs"
         @confirm="handleConfirm"
         @cancel="handleCancel"
@@ -54,12 +51,13 @@
   import { computed, ref, useAttrs } from "vue"
 
   import { Field, Picker, Popup } from "vant"
+  import type { FieldTextAlign, PickerConfirmEventParams } from "vant"
 
   import classNames from "classnames"
 
   import { findTreeItem, getFieldProps } from "@/utils"
 
-  import type { PickerFieldNames, PickerRendererProps } from "./types"
+  import type { PickerFieldNames, PickerRendererProps, PickerValue } from "./types"
 
   import "./index.scss"
 
@@ -87,45 +85,45 @@
 
   const attrs = useAttrs()
 
+  const pickerValue = defineModel<PickerValue>("value")
+
   const showPicker = ref(false)
 
-  const placeholder = computed(
-    () => (attrs as Record<string, any>)?.placeholder || "请选择"
+  const displayPlaceholder = computed(() => props?.placeholder || "请选择")
+
+  const readonly = computed(() => props?.readonly || props.formItemProps?.readonly)
+
+  const disabled = computed(() => props?.disabled || props.formItemProps?.disabled)
+
+  const contentAlign = computed(
+    () => getFieldProps(props, "contentAlign", "right") as FieldTextAlign
   )
 
-  const readonly = computed(
-    () => (attrs as Record<string, any>)?.readonly || props.formItemProps?.readonly
-  )
-
-  const disabled = computed(
-    () => (attrs as Record<string, any>)?.disabled || props.formItemProps?.disabled
-  )
-
-  const rightIcon = computed(() =>
-    getFieldProps(attrs as Record<string, any>, "rightIcon", "arrow")
-  )
-
-  const align = computed(() =>
-    getFieldProps(attrs as Record<string, any>, "align", "right")
-  )
+  const popupProps = computed(() => ({
+    round: true,
+    position: "bottom" as const,
+    safeAreaInsetBottom: true,
+    teleport: "body",
+    ...props.popupProps,
+  }))
 
   /** 数据源 */
-  const schemas = computed(() => {
+  const columns = computed(() => {
     if (Array.isArray(props.options) && props.options?.length > 0) {
       return props.options
     }
 
-    return (attrs as Record<string, any>)?.schemas || []
+    return props?.columns || []
   })
 
   /** 获取字段名 */
   const fieldNames = computed<PickerFieldNames>(
-    () => (attrs as Record<string, any>)?.columnsFieldNames || props?.fieldNames
+    () => props?.columnsFieldNames || props?.fieldNames
   )
 
   /** 获取字段值 */
   const fieldValue = computed(() => {
-    const result = findTreeItem(schemas.value, props.value, {
+    const result = findTreeItem(columns.value, pickerValue.value, {
       labelKey: fieldNames.value?.text,
       valueKey: fieldNames.value?.value,
       childrenKey: fieldNames.value?.children,
@@ -133,18 +131,28 @@
 
     const label = props.showAllLevels ? result?.labels : result?.labels.slice(-1)
 
-    return result.labels.length ? label?.join(props.separator) : props.value
+    return result.labels.length ? label?.join(props.separator) : pickerValue.value
   })
 
   const modelValue = computed(() => {
-    return Array.isArray(props.value) ? props.value : [props.value]
+    if (
+      pickerValue.value === undefined ||
+      pickerValue.value === null ||
+      pickerValue.value === ""
+    ) {
+      return []
+    }
+
+    return Array.isArray(pickerValue.value) ? pickerValue.value : [pickerValue.value]
   })
 
   /** 处理确认 */
-  const handleConfirm = (values: { selectedValues: any[] }): void => {
+  const handleConfirm = (values: PickerConfirmEventParams): void => {
     const value = props.emitPath
       ? values.selectedValues
       : values.selectedValues[values.selectedValues.length - 1]
+
+    pickerValue.value = value
 
     props.onConfirm?.(value, values)
     props.onChange?.(value, values)
@@ -161,5 +169,4 @@
     if (readonly.value || disabled.value) return
     showPicker.value = true
   }
-
 </script>

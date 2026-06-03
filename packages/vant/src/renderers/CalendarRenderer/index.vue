@@ -12,7 +12,7 @@
       :readonly="true"
       :disabled="disabled"
       :model-value="modelValue"
-      :right-icon="!readonly ? rightIcon : ''"
+      right-icon="arrow"
       :input-align="align"
       @click="handleClick"
     />
@@ -23,8 +23,8 @@
       :type="props.type"
       :title="title"
       show-confirm
-      :min-date="minDate"
-      :max-date="maxDate"
+      :min-date="minSelectableDate"
+      :max-date="maxSelectableDate"
       v-bind="attrs"
       @confirm="handleConfirm"
     />
@@ -42,13 +42,14 @@
   import { computed, ref, useAttrs } from "vue"
 
   import { Calendar, Field } from "vant"
+  import type { FieldTextAlign } from "vant"
 
   import classNames from "classnames"
   import dayjs from "dayjs"
 
   import { getFieldProps } from "@/utils"
 
-  import type { CalendarRendererProps } from "./types"
+  import type { CalendarRendererProps, CalendarValue } from "./types"
 
   import "./index.scss"
 
@@ -61,7 +62,6 @@
     value: "",
     onConfirm: () => {},
     className: "",
-    popupClassName: "",
     placeholder: "",
     onChange: () => {},
     readonly: false,
@@ -74,10 +74,12 @@
 
   const attrs = useAttrs()
 
+  const calendarValue = defineModel<CalendarValue>("value")
+
   const showCalendar = ref(false)
 
-  const minDate = new Date(1970, 0, 1)
-  const maxDate = dayjs().add(10, "year").toDate()
+  const minSelectableDate = new Date(1970, 0, 1)
+  const maxSelectableDate = dayjs().add(10, "year").toDate()
 
   const placeholder = computed(() => props?.placeholder || "请选择")
 
@@ -85,22 +87,18 @@
 
   const disabled = computed(() => props?.disabled || props.formItemProps?.disabled)
 
-  const rightIcon = computed(() =>
-    getFieldProps(attrs as Record<string, any>, "rightIcon", "arrow")
-  )
-
-  const align = computed(() =>
-    getFieldProps(attrs as Record<string, any>, "align", "right")
+  const align = computed(
+    () => getFieldProps(props, "contentAlign", "right") as FieldTextAlign
   )
 
   const modelValue = computed(() => {
-    const value = getValue(props.value)
+    const value = getValue(calendarValue.value)
 
     return Array.isArray(value) ? value.join(props.separator) : value
   })
 
   const title = computed(() => {
-    return (attrs as Record<string, any>)?.title || placeholder.value
+    return props?.title || placeholder.value
   })
 
   /**
@@ -109,7 +107,7 @@
    * 支持 String, Array, Date 三种类型。
    */
   const getValue = (
-    value: string | string[] | Date | null | undefined
+    value: CalendarValue | null | undefined
   ): string | string[] => {
     if (!value) return ""
 
@@ -125,6 +123,7 @@
 
     const value = getValue(date as any)
 
+    calendarValue.value = date
     props.onConfirm?.(value)
     props.onChange?.(value)
     showCalendar.value = false
