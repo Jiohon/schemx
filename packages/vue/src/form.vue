@@ -111,20 +111,13 @@
     form.updateDefaultProps(props)
   })
 
-  /**
-   * 表单容器样式
-   */
-  const formStyle = computed<CSSProperties>(() => ({
-    "--schemx-input-align": (attrs.align as string) ?? "right",
-  }))
-
   defineExpose({
     ...form,
   })
 </script>
 
 <template>
-  <div :class="['schemx', props.class]" :style="formStyle">
+  <div :class="['schemx', props.class]">
     <FormItem
       v-for="schema in viewSchemas"
       :key="schema.key"

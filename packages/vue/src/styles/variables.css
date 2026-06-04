@@ -58,7 +58,7 @@
   --schemx-item-content-padding-inline: 6px;
   --schemx-item-required-gap: 2px;
   --schemx-item-error-gap: 2px;
-  --schemx-input-align: end;
+  --schemx-input-align: right;
   --schemx-error-align: right;
 
   /* 分组 */
