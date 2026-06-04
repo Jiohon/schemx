@@ -14,8 +14,6 @@
  * schemx 容器
  */
 .schemx {
-  --schemx-input-align: end;
-
   box-sizing: border-box;
   padding-bottom: var(--schemx-form-padding-bottom);
 }
