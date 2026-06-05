@@ -3,6 +3,24 @@
   "name": "@schemx/core",
   "version": "0.1.23",
   "description": "框架无关的表单引擎核心（Framework-agnostic form engine core）",
+  "keywords": [
+    "schemx",
+    "form",
+    "form-engine",
+    "dynamic-form",
+    "json-schema",
+    "validation",
+    "framework-agnostic"
+  ],
+  "homepage": "https://github.com/Jiohon/schemx/tree/main/packages/core#readme",
+  "bugs": {
+    "url": "https://github.com/Jiohon/schemx/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Jiohon/schemx.git",
+    "directory": "packages/core"
+  },
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",

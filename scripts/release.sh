@@ -141,6 +141,10 @@ assert_npm_auth() {
   bash "$ROOT_DIR/scripts/release/check-npm-auth.sh"
 }
 
+assert_github_auth() {
+  bash "$ROOT_DIR/scripts/release/check-github-auth.sh"
+}
+
 assert_npm_registry() {
   bash "$ROOT_DIR/scripts/release/check-npm-registry.sh"
 }
@@ -280,6 +284,7 @@ run_publish() {
   assert_clean_git
   assert_npm_registry
   assert_npm_auth
+  assert_github_auth
 
   targets=($(resolve_targets "$target"))
   check_target_versions_available "${targets[@]}"
@@ -291,6 +296,7 @@ run_publish() {
   done
 
   bash "$ROOT_DIR/scripts/release/create-release-tag.sh" "${targets[@]}"
+  bash "$ROOT_DIR/scripts/release/create-github-release.sh" "${targets[@]}"
 }
 
 run_prerelease_publish() {

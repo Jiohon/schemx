@@ -3,6 +3,24 @@
   "name": "@schemx/vant",
   "version": "0.1.10",
   "description": "基于 Vant 组件库的 schemx 渲染器适配包",
+  "keywords": [
+    "schemx",
+    "vant",
+    "vue",
+    "vue3",
+    "form",
+    "dynamic-form",
+    "json-schema"
+  ],
+  "homepage": "https://github.com/Jiohon/schemx/tree/main/packages/vant#readme",
+  "bugs": {
+    "url": "https://github.com/Jiohon/schemx/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Jiohon/schemx.git",
+    "directory": "packages/vant"
+  },
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
