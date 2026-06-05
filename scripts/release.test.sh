@@ -45,7 +45,9 @@ case "$1" in
     ;;
   tag)
     if [[ "${2:-}" == "--sort=-creatordate" ]]; then
-      printf 'v0.1.22\n'
+      printf '@schemx/core@0.1.22\n'
+      printf '@schemx/vue@0.1.19\n'
+      printf '@schemx/vant@0.1.9\n'
       exit 0
     fi
     exit 0
@@ -117,7 +119,12 @@ case "$1" in
     ;;
   release)
     if [[ "${2:-}" == "create" ]]; then
+      tag_name="${3:-}"
+      pkg="${tag_name#@schemx/}"
+      pkg="${pkg%%@*}"
+      version="${tag_name#@schemx/${pkg}@}"
       notes_file=""
+
       while [[ "$#" -gt 0 ]]; do
         if [[ "$1" == "--notes-file" ]]; then
           notes_file="${2:-}"
@@ -131,8 +138,8 @@ case "$1" in
         exit 1
       fi
 
-      grep -Fq '## v0.1.23' "$notes_file"
-      grep -Fq '@schemx/core@0.1.23' "$notes_file"
+      grep -Fq "## @schemx/${pkg}@${version}" "$notes_file"
+      grep -Fq "@schemx/${pkg}@${version}" "$notes_file"
       grep -Fq 'feat(core): 支持动态 schema 更新' "$notes_file"
       exit 0
     fi
@@ -210,11 +217,11 @@ test_help_lists_channel_commands_without_package_shortcuts() {
   local output
   output="$(run_release help)"
 
-  assert_contains "$output" "pnpm release:publish:dev"
+  assert_contains "$output" "pnpm release:publish:alpha"
   assert_contains "$output" "pnpm release:publish:next"
   assert_not_contains "$output" "pnpm release:publish:core"
   assert_not_contains "$output" "pnpm release:publish:wot"
-  assert_contains "$output" "bash scripts/release.sh publish-dev [all|core|vue|vant]"
+  assert_contains "$output" "bash scripts/release.sh publish-alpha [all|core|vue|vant]"
 }
 
 test_package_scripts_keep_only_publish_channels() {
@@ -225,7 +232,7 @@ console.log(Object.keys(pkg.scripts).filter((name) => name.startsWith('release:p
 ")"
 
   assert_contains "$scripts" "release:publish"
-  assert_contains "$scripts" "release:publish:dev"
+  assert_contains "$scripts" "release:publish:alpha"
   assert_contains "$scripts" "release:publish:beta"
   assert_contains "$scripts" "release:publish:rc"
   assert_contains "$scripts" "release:publish:next"
@@ -296,26 +303,26 @@ test_publish_without_github_auth_stops_before_publish() {
   assert_log_not_contains "pnpm --dir packages/core publish"
 }
 
-test_dev_publish_uses_dev_tag_and_restores_version() {
+test_alpha_publish_uses_alpha_tag_and_restores_version() {
   local before after
 
   before="$(node -p "require('$ROOT_DIR/packages/core/package.json').version")"
   : >"$COMMAND_LOG"
 
   export MOCK_BRANCH="feature/demo"
-  output="$(run_release publish-dev core)"
+  output="$(run_release publish-alpha core)"
   unset MOCK_BRANCH
 
   after="$(node -p "require('$ROOT_DIR/packages/core/package.json').version")"
 
   if [[ "$before" != "$after" ]]; then
-    printf 'dev 发布后应恢复 package.json 版本：%s != %s\n' "$before" "$after" >&2
+    printf 'alpha 发布后应恢复 package.json 版本：%s != %s\n' "$before" "$after" >&2
     exit 1
   fi
 
-  assert_contains "$output" "发布模式：dev"
+  assert_contains "$output" "发布模式：alpha"
   assert_contains "$output" "发布目标：core"
-  assert_log_contains "pnpm --dir packages/core publish --access public --registry https://registry.npmjs.org/ --tag dev --no-git-checks"
+  assert_log_contains "pnpm --dir packages/core publish --access public --registry https://registry.npmjs.org/ --tag alpha --no-git-checks"
   assert_log_not_contains "gh auth status"
   assert_log_not_contains "gh release create"
   assert_log_not_contains "git tag"
@@ -345,11 +352,35 @@ test_latest_publish_tags_and_pushes_after_publish() {
   SCHEMX_RELEASE_TARGET=core run_release publish
 
   assert_log_contains "pnpm --dir packages/core publish --access public --registry https://registry.npmjs.org/"
-  assert_log_contains "git tag -a v${version} -m release: v${version}"
+  assert_log_contains "git tag -a @schemx/core@${version} -m release: @schemx/core@${version}"
   assert_log_contains "git push origin main"
-  assert_log_contains "git push origin v${version}"
+  assert_log_contains "git push origin @schemx/core@${version}"
   assert_log_contains "gh auth status"
-  assert_log_contains "gh release create v${version} --repo Jiohon/schemx --title v${version} --notes-file"
+  assert_log_contains "gh release create @schemx/core@${version} --repo Jiohon/schemx --title @schemx/core@${version} --notes-file"
+}
+
+test_latest_publish_all_creates_package_scoped_tags_and_releases() {
+  local core_version vue_version vant_version
+
+  core_version="$(node -p "require('$ROOT_DIR/packages/core/package.json').version")"
+  vue_version="$(node -p "require('$ROOT_DIR/packages/vue/package.json').version")"
+  vant_version="$(node -p "require('$ROOT_DIR/packages/vant/package.json').version")"
+  : >"$COMMAND_LOG"
+
+  SCHEMX_RELEASE_TARGET=all run_release publish
+
+  assert_log_contains "pnpm --dir packages/core publish --access public --registry https://registry.npmjs.org/"
+  assert_log_contains "pnpm --dir packages/vue publish --access public --registry https://registry.npmjs.org/"
+  assert_log_contains "pnpm --dir packages/vant publish --access public --registry https://registry.npmjs.org/"
+  assert_log_contains "git tag -a @schemx/core@${core_version} -m release: @schemx/core@${core_version}"
+  assert_log_contains "git tag -a @schemx/vue@${vue_version} -m release: @schemx/vue@${vue_version}"
+  assert_log_contains "git tag -a @schemx/vant@${vant_version} -m release: @schemx/vant@${vant_version}"
+  assert_log_contains "git push origin @schemx/core@${core_version}"
+  assert_log_contains "git push origin @schemx/vue@${vue_version}"
+  assert_log_contains "git push origin @schemx/vant@${vant_version}"
+  assert_log_contains "gh release create @schemx/core@${core_version} --repo Jiohon/schemx --title @schemx/core@${core_version} --notes-file"
+  assert_log_contains "gh release create @schemx/vue@${vue_version} --repo Jiohon/schemx --title @schemx/vue@${vue_version} --notes-file"
+  assert_log_contains "gh release create @schemx/vant@${vant_version} --repo Jiohon/schemx --title @schemx/vant@${vant_version} --notes-file"
 }
 
 test_selector_rejects_unknown_environment_target() {
@@ -427,9 +458,10 @@ test_package_scripts_keep_only_publish_channels
 test_latest_publish_is_main_only
 test_publish_without_npm_auth_shows_clear_message
 test_publish_without_github_auth_stops_before_publish
-test_dev_publish_uses_dev_tag_and_restores_version
+test_alpha_publish_uses_alpha_tag_and_restores_version
 test_publish_without_target_prompts_for_package_selection
 test_latest_publish_tags_and_pushes_after_publish
+test_latest_publish_all_creates_package_scoped_tags_and_releases
 test_selector_rejects_unknown_environment_target
 test_selector_requires_tty_or_automation_target
 test_selector_rejects_unknown_channel

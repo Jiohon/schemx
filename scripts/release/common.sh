@@ -25,6 +25,22 @@ package_json_value() {
   node -p "const pkg=require('./$(package_path "$pkg")/package.json'); pkg['$field']"
 }
 
+release_tag_name() {
+  local pkg="$1"
+  local version
+
+  version="$(package_json_value "$pkg" version)"
+  printf '@schemx/%s@%s' "$pkg" "$version"
+}
+
+release_title() {
+  local pkg="$1"
+  local version
+
+  version="$(package_json_value "$pkg" version)"
+  printf '@schemx/%s@%s' "$pkg" "$version"
+}
+
 github_repository() {
   local repo="${GITHUB_REPOSITORY:-}"
 
