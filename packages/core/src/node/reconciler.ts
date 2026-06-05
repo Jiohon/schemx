@@ -4,82 +4,86 @@
  * Reconciler 只处理结构复用，不理解 descriptor 的领域含义，
  * 也不发布生命周期事件。
  *
- * @module core/graph/reconciler
+ * @module core/node/reconciler
  */
 
 import { isGroupDescriptor } from "../descriptor"
 
-import { getChildFibers, setChildFibers } from "./fiber"
+import { getChildRuntimeNodes, setChildRuntimeNodes } from "./runtimeNode"
 
-import type { ContainerFiber, DescribedFiber, GroupFiber } from "./fiber"
+import type {
+  ContainerRuntimeNode,
+  DescribedRuntimeNode,
+  GroupRuntimeNode,
+} from "./runtimeNode"
 import type { FormDescriptor } from "../descriptor"
 import type { Values } from "../types"
-import type { FiberManager } from "./fiberManager"
+import type { RuntimeNodeManager } from "./runtimeNodeManager"
 
 /**
- * 默认的 keyed runtime graph reconciler。
+ * 默认的 keyed runtime node reconciler。
  *
  * @typeParam TValues - 表单值类型。
  */
 class RuntimeReconciler<TValues extends Values> {
-  /** 执行 Fiber 创建、挂载、更新和销毁的生命周期管理器。 */
-  private fiberManager: FiberManager<TValues>
+  /** 执行 RuntimeNode 创建、挂载、更新和销毁的生命周期管理器。 */
+  private runtimeNodeManager: RuntimeNodeManager<TValues>
 
-  constructor(fiberManager: FiberManager<TValues>) {
-    this.fiberManager = fiberManager
+  constructor(runtimeNodeManager: RuntimeNodeManager<TValues>) {
+    this.runtimeNodeManager = runtimeNodeManager
   }
 
   /**
-   * 将容器 Fiber 的子节点更新为目标 descriptor 列表。
+   * 将容器 RuntimeNode 的子节点更新为目标 descriptor 列表。
    *
-   * @param parentFiber - 承载子节点的 Fiber。
+   * @param parentNode - 承载子节点的 RuntimeNode。
    * @param descriptors - 新一轮编译后的子节点描述符。
    * @returns 子节点结构是否发生可观测变化（新增、移除、类型变更或子树变动）。
    *
    * @remarks
-   * 同 key 且同 type 的 Fiber 会被复用；不同 type 即使 key 相同也会重建。
+   * 同 key 且同 type 的 RuntimeNode 会被复用；不同 type 即使 key 相同也会重建。
    * 新子节点会先提交到 parent，再销毁被移除的旧节点，避免 cleanup 或视图投影
    * 期间仍读取到过期结构。`viewRevision` 由外层 commit boundary 统一推进。
    */
   reconcileChildren(
-    parentFiber: ContainerFiber<TValues>,
+    parentNode: ContainerRuntimeNode<TValues>,
     descriptors: FormDescriptor<TValues>[]
   ): boolean {
-    return this.reconcileChildrenTree(parentFiber, descriptors)
+    return this.reconcileChildrenTree(parentNode, descriptors)
   }
 
   private reconcileChildrenTree(
-    parentFiber: ContainerFiber<TValues>,
+    parentNode: ContainerRuntimeNode<TValues>,
     descriptors: FormDescriptor<TValues>[]
   ): boolean {
     const previousByKey = new Map(
-      getChildFibers(parentFiber).map((fiber) => [fiber.key, fiber])
+      getChildRuntimeNodes(parentNode).map((node) => [node.key, node])
     )
 
-    const next: DescribedFiber<TValues>[] = []
+    const next: DescribedRuntimeNode<TValues>[] = []
 
     const groups: Array<{
-      fiber: GroupFiber<TValues>
+      node: GroupRuntimeNode<TValues>
       descriptor: FormDescriptor<TValues>
     }> = []
 
     let changed = false
 
     for (const descriptor of descriptors) {
-      const existingFiber = previousByKey.get(descriptor.key)
+      const existingNode = previousByKey.get(descriptor.key)
 
       // TODO: diff schema是否有变更
-      if (existingFiber && existingFiber.type === descriptor.type) {
+      if (existingNode && existingNode.type === descriptor.type) {
         previousByKey.delete(descriptor.key)
 
-        existingFiber.parent = parentFiber
+        existingNode.parent = parentNode
 
-        this.fiberManager.update(existingFiber, descriptor)
+        this.runtimeNodeManager.update(existingNode, descriptor)
 
-        next.push(existingFiber)
+        next.push(existingNode)
 
         if (isGroupDescriptor(descriptor)) {
-          groups.push({ fiber: existingFiber as GroupFiber<TValues>, descriptor })
+          groups.push({ node: existingNode as GroupRuntimeNode<TValues>, descriptor })
         }
 
         continue
@@ -88,23 +92,23 @@ class RuntimeReconciler<TValues extends Values> {
       // 新建或类型变更
       changed = true
 
-      const fiber = this.fiberManager.create(descriptor, parentFiber)
+      const node = this.runtimeNodeManager.create(descriptor, parentNode)
 
-      this.fiberManager.mount(fiber)
+      this.runtimeNodeManager.mount(node)
 
-      next.push(fiber)
+      next.push(node)
 
       if (isGroupDescriptor(descriptor)) {
-        groups.push({ fiber: fiber as GroupFiber<TValues>, descriptor })
+        groups.push({ node: node as GroupRuntimeNode<TValues>, descriptor })
       }
     }
 
     // 先提交新结构，避免 cleanup 或投影期间仍遍历旧子树。
-    setChildFibers(parentFiber, next)
+    setChildRuntimeNodes(parentNode, next)
 
-    for (const { fiber, descriptor } of groups) {
+    for (const { node, descriptor } of groups) {
       if (isGroupDescriptor(descriptor)) {
-        if (this.reconcileChildrenTree(fiber, descriptor.children)) {
+        if (this.reconcileChildrenTree(node, descriptor.children)) {
           changed = true
         }
       }
@@ -115,7 +119,7 @@ class RuntimeReconciler<TValues extends Values> {
     }
 
     for (const removed of previousByKey.values()) {
-      this.fiberManager.disposeTree(removed)
+      this.runtimeNodeManager.disposeTree(removed)
     }
 
     return changed
@@ -132,11 +136,11 @@ export type Reconciler<TValues extends Values> = InstanceType<
 /**
  * 创建默认 Reconciler。
  *
- * @param fiberManager - 执行 Fiber 创建、更新和销毁的生命周期管理器。
+ * @param runtimeNodeManager - 执行 RuntimeNode 创建、更新和销毁的生命周期管理器。
  * @returns 新的 Reconciler 实例。
  */
 export function createReconciler<TValues extends Values>(
-  fiberManager: FiberManager<TValues>
+  runtimeNodeManager: RuntimeNodeManager<TValues>
 ): Reconciler<TValues> {
-  return new RuntimeReconciler(fiberManager)
+  return new RuntimeReconciler(runtimeNodeManager)
 }

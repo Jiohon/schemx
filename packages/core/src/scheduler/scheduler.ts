@@ -7,7 +7,7 @@
  * @module core/scheduler/scheduler
  */
 
-import type { Scope } from "../graph"
+import type { Scope } from "../node"
 
 /**
  * 任务优先级。

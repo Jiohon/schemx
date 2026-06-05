@@ -30,8 +30,8 @@ export type SchemxRendererKey = string
  * ViewSchema 调试元数据。
  */
 export interface SchemxViewDebugMeta {
-  readonly fiberId: number
-  readonly fiberType: string
+  readonly runtimeNodeId: number
+  readonly runtimeNodeType: string
   readonly hasFieldModel: boolean
   readonly hasDependencySlot: boolean
 }

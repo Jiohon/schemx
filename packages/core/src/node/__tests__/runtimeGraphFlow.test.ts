@@ -3,9 +3,9 @@ import { describe, expect, it, vi } from "vitest"
 import { compileToDescriptors } from "../../descriptor"
 import { createRawFieldSchema, createRuntimeGraphHarness } from "./runtimeGraphTestUtils"
 
-import type { Fiber } from "../fiber"
+import type { RuntimeNode } from "../runtimeNode"
 
-describe("runtime graph flow", () => {
+describe("runtime node flow", () => {
   it("root schema commit 复用同 key 节点并释放被移除节点", () => {
     const { commitSchemas, root, viewRevision } = createRuntimeGraphHarness()
 
@@ -14,13 +14,13 @@ describe("runtime graph flow", () => {
       createRawFieldSchema("age", "age"),
     ])
 
-    const name = root.childFibers[0]
-    const age = root.childFibers[1]
+    const name = root.childNodes[0]
+    const age = root.childNodes[1]
 
     commitSchemas(root, [createRawFieldSchema("name", "name")])
 
-    expect(root.childFibers).toHaveLength(1)
-    expect(root.childFibers[0]).toBe(name)
+    expect(root.childNodes).toHaveLength(1)
+    expect(root.childNodes[0]).toBe(name)
     expect(age?.disposed.value).toBe(true)
     expect(age?.parent).toBeNull()
     expect(viewRevision.revision.value).toBe(2)
@@ -30,7 +30,7 @@ describe("runtime graph flow", () => {
     const { commitSchemas, root } = createRuntimeGraphHarness()
 
     commitSchemas(root, [createRawFieldSchema("slot", "slot")])
-    const first = root.childFibers[0]
+    const first = root.childNodes[0]
 
     commitSchemas(root, [
       {
@@ -41,10 +41,10 @@ describe("runtime graph flow", () => {
       },
     ])
 
-    expect(root.childFibers[0]).not.toBe(first)
-    expect(root.childFibers[0]?.type).toBe("group")
+    expect(root.childNodes[0]).not.toBe(first)
+    expect(root.childNodes[0]?.type).toBe("group")
     expect(
-      root.childFibers[0]?.type === "group" && root.childFibers[0].childFibers[0]?.key
+      root.childNodes[0]?.type === "group" && root.childNodes[0].childNodes[0]?.key
     ).toBe("child")
     expect(first?.disposed.value).toBe(true)
   })
@@ -70,9 +70,9 @@ describe("runtime graph flow", () => {
   })
 
   it("removed-node cleanup 观察到的是已经提交的新 parent.children", () => {
-    let rootRef: Fiber | undefined
+    let rootRef: RuntimeNode | undefined
     const beforeUnmount = vi.fn(() => {
-      expect(rootRef?.childFibers.map((child) => child.key)).toEqual(["next"])
+      expect(rootRef?.childNodes.map((child) => child.key)).toEqual(["next"])
     })
     const { commitSchemas, root } = createRuntimeGraphHarness({ beforeUnmount })
     rootRef = root
@@ -88,6 +88,6 @@ describe("runtime graph flow", () => {
     const descriptors = compileToDescriptors([createRawFieldSchema("field", "field")])
 
     expect(reconciler.reconcileChildren(root, descriptors)).toBe(true)
-    expect(root.childFibers[0]?.key).toBe("field")
+    expect(root.childNodes[0]?.key).toBe("field")
   })
 })

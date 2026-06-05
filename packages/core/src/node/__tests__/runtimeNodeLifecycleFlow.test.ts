@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from "vitest"
 
 import { createRawFieldSchema, createRuntimeGraphHarness } from "./runtimeGraphTestUtils"
 
-import type { FieldFiber } from "../fiber"
+import type { FieldRuntimeNode } from "../runtimeNode"
 
-describe("fiber lifecycle flow", () => {
+describe("node lifecycle flow", () => {
   it("create/update/remove transition 每类生命周期事件只触发一次", () => {
     const hooks = {
       beforeMount: vi.fn(),
@@ -34,7 +34,7 @@ describe("fiber lifecycle flow", () => {
     expect(hooks.unmounted).toHaveBeenCalledTimes(1)
   })
 
-  it("生命周期回调只接收 fiber，update 回调接收 previousFiber", () => {
+  it("生命周期回调只接收 node，update 回调接收 previousNode", () => {
     const hooks = {
       beforeMount: vi.fn(),
       mount: vi.fn(),
@@ -46,38 +46,38 @@ describe("fiber lifecycle flow", () => {
     const { commitSchemas, root } = createRuntimeGraphHarness(hooks)
 
     commitSchemas(root, [createRawFieldSchema("name", "name")])
-    const fiber = root.childFibers[0] as FieldFiber
-    const previousDescriptor = fiber.descriptor
+    const node = root.childNodes[0] as FieldRuntimeNode
+    const previousDescriptor = node.descriptor
 
     commitSchemas(root, [createRawFieldSchema("name", "nickname")])
 
-    expect(hooks.beforeMount).toHaveBeenCalledWith(fiber)
-    expect(hooks.mount).toHaveBeenCalledWith(fiber)
-    expect(hooks.mounted).toHaveBeenCalledWith(fiber)
+    expect(hooks.beforeMount).toHaveBeenCalledWith(node)
+    expect(hooks.mount).toHaveBeenCalledWith(node)
+    expect(hooks.mounted).toHaveBeenCalledWith(node)
 
-    const [beforeUpdateFiber, beforeUpdatePreviousFiber] =
+    const [beforeUpdateNode, beforeUpdatePreviousRuntimeNode] =
       hooks.beforeUpdate.mock.calls[0] ?? []
-    const [updateFiber, updatePreviousFiber] = hooks.update.mock.calls[0] ?? []
-    const [updatedFiber, updatedPreviousFiber] = hooks.updated.mock.calls[0] ?? []
+    const [updateNode, updatePreviousRuntimeNode] = hooks.update.mock.calls[0] ?? []
+    const [updatedNode, updatedPreviousRuntimeNode] = hooks.updated.mock.calls[0] ?? []
 
-    expect(beforeUpdateFiber).toBe(fiber)
-    expect(updateFiber).toBe(fiber)
-    expect(updatedFiber).toBe(fiber)
-    expect(beforeUpdatePreviousFiber).toMatchObject({
+    expect(beforeUpdateNode).toBe(node)
+    expect(updateNode).toBe(node)
+    expect(updatedNode).toBe(node)
+    expect(beforeUpdatePreviousRuntimeNode).toMatchObject({
       type: "field",
       key: "name",
       descriptor: previousDescriptor,
     })
-    expect(updatePreviousFiber).toBe(beforeUpdatePreviousFiber)
-    expect(updatedPreviousFiber).toBe(beforeUpdatePreviousFiber)
-    expect(beforeUpdatePreviousFiber).not.toBe(previousDescriptor)
+    expect(updatePreviousRuntimeNode).toBe(beforeUpdatePreviousRuntimeNode)
+    expect(updatedPreviousRuntimeNode).toBe(beforeUpdatePreviousRuntimeNode)
+    expect(beforeUpdatePreviousRuntimeNode).not.toBe(previousDescriptor)
   })
 
   it("disposed field 保留 descriptor 和 model 快照但释放资源 scope", () => {
     const { commitSchemas, root } = createRuntimeGraphHarness()
 
     commitSchemas(root, [createRawFieldSchema("name", "name")])
-    const field = root.childFibers[0] as FieldFiber
+    const field = root.childNodes[0] as FieldRuntimeNode
     const descriptor = field.descriptor
     const model = field.fieldModel
 

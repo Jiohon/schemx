@@ -8,16 +8,20 @@ import { describe, expect, it, vi } from "vitest"
 
 import { createFieldModel } from "../../field/model"
 import {
-  createTestFieldFiber,
-  createTestRootFiber,
-} from "../../graph/__tests__/fiberTestUtils"
+  createTestFieldRuntimeNode,
+  createTestRootRuntimeNode,
+} from "../../node/__tests__/runtimeNodeTestUtils"
 import { subscribeViewSchemas } from "../subscribeViewSchemas"
 import { createViewRevision } from "../viewRevision"
 
 import type { FieldDescriptor } from "../../descriptor/descriptor"
-import type { ContainerFiber } from "../../graph/fiber"
+import type { ContainerRuntimeNode } from "../../node/runtimeNode"
 
-const createFieldFiber = (parent: ContainerFiber, key: string, name: string[]) => {
+const createFieldRuntimeNode = (
+  parent: ContainerRuntimeNode,
+  key: string,
+  name: string[]
+) => {
   const descriptor: FieldDescriptor = {
     type: "field",
     key,
@@ -33,15 +37,15 @@ const createFieldFiber = (parent: ContainerFiber, key: string, name: string[]) =
     },
   }
 
-  const fiber = createTestFieldFiber({ key, parent, descriptor })
-  fiber.fieldModel = createFieldModel(descriptor)
+  const node = createTestFieldRuntimeNode({ key, parent, descriptor })
+  node.fieldModel = createFieldModel(descriptor)
 
-  return fiber
+  return node
 }
 
 describe("subscribeViewSchemas", () => {
   it("应该返回取消订阅函数并立即回调", () => {
-    const root = createTestRootFiber()
+    const root = createTestRootRuntimeNode()
     const revision = createViewRevision()
     const onChange = vi.fn()
 
@@ -54,8 +58,8 @@ describe("subscribeViewSchemas", () => {
   })
 
   it("应该在有字段时立即回调包含字段的 ViewSchemas", () => {
-    const root = createTestRootFiber()
-    root.childFibers = [createFieldFiber(root, "f1", ["f1"])]
+    const root = createTestRootRuntimeNode()
+    root.childNodes = [createFieldRuntimeNode(root, "f1", ["f1"])]
     const revision = createViewRevision()
     const onChange = vi.fn()
 
@@ -69,9 +73,9 @@ describe("subscribeViewSchemas", () => {
   it("FieldModel 呈现态变化后应重新回调最新 ViewSchemas", () => {
     vi.useFakeTimers()
 
-    const root = createTestRootFiber()
-    const field = createFieldFiber(root, "f1", ["f1"])
-    root.childFibers = [field]
+    const root = createTestRootRuntimeNode()
+    const field = createFieldRuntimeNode(root, "f1", ["f1"])
+    root.childNodes = [field]
     const revision = createViewRevision()
     const onChange = vi.fn()
 
@@ -96,7 +100,7 @@ describe("subscribeViewSchemas", () => {
   })
 
   it("取消订阅后 revision 变化不再回调", () => {
-    const root = createTestRootFiber()
+    const root = createTestRootRuntimeNode()
     const revision = createViewRevision()
     const onChange = vi.fn()
 
@@ -110,7 +114,7 @@ describe("subscribeViewSchemas", () => {
   })
 
   it("onChange 回调抛出错误不应中断订阅", () => {
-    const root = createTestRootFiber()
+    const root = createTestRootRuntimeNode()
     const revision = createViewRevision()
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
     const onChange = vi.fn(() => {
@@ -127,8 +131,8 @@ describe("subscribeViewSchemas", () => {
   it("root dispose 后应回调空 ViewSchemas", () => {
     vi.useFakeTimers()
 
-    const root = createTestRootFiber()
-    root.childFibers = [createFieldFiber(root, "f1", ["f1"])]
+    const root = createTestRootRuntimeNode()
+    root.childNodes = [createFieldRuntimeNode(root, "f1", ["f1"])]
     const revision = createViewRevision()
     const onChange = vi.fn()
 

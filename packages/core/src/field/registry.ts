@@ -8,7 +8,7 @@
  */
 
 import type { FieldModel } from "./model"
-import type { FieldFiber } from "../graph"
+import type { FieldRuntimeNode } from "../node"
 import type { NamePath, Values } from "../types/form"
 
 /**
@@ -24,11 +24,11 @@ export interface FieldRegistryEntry<
   readonly name: TName
 
   /**
-   * 字段 Fiber，持有字段描述符、字段模型和字段相关资源作用域。
+   * 字段 RuntimeNode，持有字段描述符、字段模型和字段相关资源作用域。
    *
    * @typeParam TValues - 表单值类型。
    */
-  readonly fiber: FieldFiber<TValues>
+  readonly node: FieldRuntimeNode<TValues>
 
   /**
    * 字段运行时模型；卸载字段主体资源后会被清空或重建。
@@ -50,11 +50,11 @@ class RuntimeFieldRegistry<
     this.fields.set(key, entry)
   }
 
-  unregister(name: TName, fiber?: FieldFiber<TValues>): void {
+  unregister(name: TName, node?: FieldRuntimeNode<TValues>): void {
     const key = name
     const current = this.fields.get(key)
 
-    if (fiber && current?.fiber !== fiber) {
+    if (node && current?.node !== node) {
       return
     }
 

@@ -7,9 +7,9 @@
 import { describe, expect, it } from "vitest"
 
 import {
-  createTestFieldFiber,
-  createTestRootFiber,
-} from "../../graph/__tests__/fiberTestUtils"
+  createTestFieldRuntimeNode,
+  createTestRootRuntimeNode,
+} from "../../node/__tests__/runtimeNodeTestUtils"
 import { createFieldModel } from "../model"
 import { createFieldRegistry } from "../registry"
 
@@ -26,11 +26,15 @@ const createDescriptor = (name: string): FieldDescriptor => ({
 
 const createEntry = (name: string) => {
   const descriptor = createDescriptor(name)
-  const root = createTestRootFiber()
-  const fiber = createTestFieldFiber({ key: descriptor.key, parent: root, descriptor })
+  const root = createTestRootRuntimeNode()
+  const node = createTestFieldRuntimeNode({
+    key: descriptor.key,
+    parent: root,
+    descriptor,
+  })
   const model = createFieldModel(descriptor)
 
-  return { name, fiber, descriptor, model }
+  return { name, node, descriptor, model }
 }
 
 describe("createFieldRegistry", () => {
@@ -83,14 +87,14 @@ describe("list and unregister", () => {
     expect(registry.list()).toEqual([])
   })
 
-  it("旧 fiber 注销时不会移除同名新 fiber 的注册项", () => {
+  it("旧 node 注销时不会移除同名新 node 的注册项", () => {
     const registry = createFieldRegistry()
     const oldEntry = createEntry("user.name")
-    const root = createTestRootFiber()
+    const root = createTestRootRuntimeNode()
     const descriptor = createDescriptor("user.name")
     const newEntry = {
       ...createEntry("user.name"),
-      fiber: createTestFieldFiber({
+      node: createTestFieldRuntimeNode({
         id: 2,
         key: "new-field",
         parent: root,
@@ -100,7 +104,7 @@ describe("list and unregister", () => {
 
     registry.register(oldEntry)
     registry.register(newEntry)
-    registry.unregister("user.name" as any, oldEntry.fiber)
+    registry.unregister("user.name" as any, oldEntry.node)
 
     expect(registry.get("user.name" as any)).toBe(newEntry)
   })

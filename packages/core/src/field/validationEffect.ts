@@ -10,7 +10,7 @@ import { createSignal, createSignalEffect } from "../reactivity"
 
 import type { SchemxFormContext } from "../createForm"
 import type { FieldModel } from "./model"
-import type { Scope } from "../graph"
+import type { Scope } from "../node"
 import type { Signal } from "../reactivity"
 import type { SchemxBaseField, Values } from "../types"
 import type { ValidateResult } from "../validator"
@@ -117,20 +117,15 @@ export function createValidationEffect<TValues extends Values = Values>(
     const { visible, readonly, disabled, label, rules } = snapshot
 
     if (!visible || readonly || disabled || !rules) {
-      context.validator.unregister(name)
-      context.validator.setFieldError(name, [])
+      context.instance.unregisterRules(name)
+      context.instance.setFieldError(name, [])
 
       registered.value = false
 
       return
     }
 
-    const resolvedRules = context.validatorRegistry.resolveValidatorsBySchema({
-      rules,
-      label,
-    } as SchemxBaseField<TValues>)
-
-    context.validator.register(name, resolvedRules, `${label}为必填项`)
+    context.instance.registerRules(name, rules, `${label}为必填项`)
 
     registered.value = true
   }
@@ -157,8 +152,8 @@ export function createValidationEffect<TValues extends Values = Values>(
 
   scope.add(() => {
     registrationVersion += 1
-    context.validator.unregister(name)
-    context.validator.setFieldError(name, [])
+    context.instance.unregisterRules(name)
+    context.instance.setFieldError(name, [])
 
     registered.value = false
   })
@@ -176,10 +171,7 @@ export function createValidationEffect<TValues extends Values = Values>(
     validating.value = true
 
     try {
-      const result = await context.validator.validateField(
-        name,
-        context.store.getFieldsSnapshot()
-      )
+      const result = await context.instance.validateField(name)
 
       return result as ValidateResult<TValues>
     } finally {

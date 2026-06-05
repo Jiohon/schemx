@@ -8,7 +8,7 @@
  * - cleanup 抛错不阻断后续 cleanup
  * - disposed 后 add() 立即执行 cleanup 并返回已释放 handle
  *
- * @module core/graph/scope
+ * @module core/node/scope
  */
 
 /**

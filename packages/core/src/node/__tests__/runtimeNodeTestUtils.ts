@@ -7,21 +7,21 @@ import type {
   GroupDescriptor,
 } from "../../descriptor"
 import type {
-  ContainerFiber,
-  DependencyFiber,
-  FieldFiber,
-  GroupFiber,
-  RootFiber,
-} from "../fiber"
+  ContainerRuntimeNode,
+  DependencyRuntimeNode,
+  FieldRuntimeNode,
+  GroupRuntimeNode,
+  RootRuntimeNode,
+} from "../runtimeNode"
 import type { Scope } from "../scope"
 
-export function createTestRootFiber(
+export function createTestRootRuntimeNode(
   options: {
     id?: number
     key?: string
     scope?: Scope
   } = {}
-): RootFiber {
+): RootRuntimeNode {
   return {
     id: options.id ?? 0,
     key: options.key ?? "root",
@@ -30,17 +30,17 @@ export function createTestRootFiber(
     scope: options.scope ?? createScope(),
     disposed: createSignal(false),
     mounted: createSignal(false),
-    childFibers: [],
+    childNodes: [],
   }
 }
 
-export function createTestFieldFiber(options: {
+export function createTestFieldRuntimeNode(options: {
   id?: number
   key: string
-  parent: ContainerFiber
+  parent: ContainerRuntimeNode
   descriptor: FieldDescriptor
   scope?: Scope
-}): FieldFiber {
+}): FieldRuntimeNode {
   return {
     id: options.id ?? 1,
     key: options.key,
@@ -56,13 +56,13 @@ export function createTestFieldFiber(options: {
   }
 }
 
-export function createTestGroupFiber(options: {
+export function createTestGroupRuntimeNode(options: {
   id?: number
   key: string
-  parent: ContainerFiber
+  parent: ContainerRuntimeNode
   descriptor: GroupDescriptor
   scope?: Scope
-}): GroupFiber {
+}): GroupRuntimeNode {
   return {
     id: options.id ?? 1,
     key: options.key,
@@ -72,17 +72,17 @@ export function createTestGroupFiber(options: {
     disposed: createSignal(false),
     mounted: createSignal(false),
     descriptor: options.descriptor,
-    childFibers: [],
+    childNodes: [],
   }
 }
 
-export function createTestDependencyFiber(options: {
+export function createTestDependencyRuntimeNode(options: {
   id?: number
   key: string
-  parent: ContainerFiber
+  parent: ContainerRuntimeNode
   descriptor: DependencyDescriptor
   scope?: Scope
-}): DependencyFiber {
+}): DependencyRuntimeNode {
   return {
     id: options.id ?? 1,
     key: options.key,
@@ -94,6 +94,6 @@ export function createTestDependencyFiber(options: {
     descriptor: options.descriptor,
     dependencySlot: null,
     dependencyResourceScope: null,
-    subChildren: [],
+    dynamicChildNodes: [],
   }
 }

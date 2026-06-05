@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest"
 
-import { getChildFibers, setChildFibers } from "../fiber"
+import { getChildRuntimeNodes, setChildRuntimeNodes } from "../runtimeNode"
 
-import { createTestFieldFiber, createTestRootFiber } from "./fiberTestUtils"
+import { createTestFieldRuntimeNode, createTestRootRuntimeNode } from "./runtimeNodeTestUtils"
 
 import type { FieldDescriptor } from "../../descriptor"
 
@@ -23,18 +23,18 @@ function createFieldDescriptor(key: string): FieldDescriptor {
   }
 }
 
-describe("fiber child helpers", () => {
-  it("应该读写 root.childFibers", () => {
-    const root = createTestRootFiber()
-    const field = createTestFieldFiber({
+describe("node child helpers", () => {
+  it("应该读写 root.childNodes", () => {
+    const root = createTestRootRuntimeNode()
+    const field = createTestFieldRuntimeNode({
       key: "name",
       parent: root,
       descriptor: createFieldDescriptor("name"),
     })
 
-    setChildFibers(root, [field])
+    setChildRuntimeNodes(root, [field])
 
-    expect(root.childFibers).toEqual([field])
-    expect(getChildFibers(root)).toEqual([field])
+    expect(root.childNodes).toEqual([field])
+    expect(getChildRuntimeNodes(root)).toEqual([field])
   })
 })

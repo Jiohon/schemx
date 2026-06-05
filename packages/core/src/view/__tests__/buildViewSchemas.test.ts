@@ -8,15 +8,15 @@ import { describe, expect, it } from "vitest"
 
 import { createFieldModel } from "../../field/model"
 import {
-  createTestDependencyFiber,
-  createTestFieldFiber,
-  createTestGroupFiber,
-  createTestRootFiber,
-} from "../../graph/__tests__/fiberTestUtils"
+  createTestDependencyRuntimeNode,
+  createTestFieldRuntimeNode,
+  createTestGroupRuntimeNode,
+  createTestRootRuntimeNode,
+} from "../../node/__tests__/runtimeNodeTestUtils"
 import { buildViewSchemas } from "../buildViewSchemas"
 
 import type { FieldDescriptor } from "../../descriptor/descriptor"
-import type { ContainerFiber, FieldFiber } from "../../graph/fiber"
+import type { ContainerRuntimeNode, FieldRuntimeNode } from "../../node/runtimeNode"
 
 const createDescriptor = (
   key: string,
@@ -39,17 +39,17 @@ const createDescriptor = (
   },
 })
 
-const createFieldFiber = (
-  parent: ContainerFiber,
+const createFieldRuntimeNode = (
+  parent: ContainerRuntimeNode,
   key: string,
   name: string[],
   schema: Partial<FieldDescriptor["schema"]> = {}
-): FieldFiber => {
+): FieldRuntimeNode => {
   const descriptor = createDescriptor(key, name, schema)
-  const fiber = createTestFieldFiber({ key, parent, descriptor })
-  fiber.fieldModel = createFieldModel(descriptor)
+  const node = createTestFieldRuntimeNode({ key, parent, descriptor })
+  node.fieldModel = createFieldModel(descriptor)
 
-  return fiber
+  return node
 }
 
 describe("buildViewSchemas", () => {
@@ -58,9 +58,9 @@ describe("buildViewSchemas", () => {
     expect(buildViewSchemas(undefined)).toEqual([])
   })
 
-  it("root Fiber 应该透明展开", () => {
-    const root = createTestRootFiber()
-    root.childFibers = [createFieldFiber(root, "field", ["field"])]
+  it("root RuntimeNode 应该透明展开", () => {
+    const root = createTestRootRuntimeNode()
+    root.childNodes = [createFieldRuntimeNode(root, "field", ["field"])]
 
     const schemas = buildViewSchemas(root)
 
@@ -70,8 +70,8 @@ describe("buildViewSchemas", () => {
   })
 
   it("字段 schema 保持扁平格式，动态呈现态合并为静态值", () => {
-    const root = createTestRootFiber()
-    const field = createFieldFiber(root, "email", ["email"], {
+    const root = createTestRootRuntimeNode()
+    const field = createFieldRuntimeNode(root, "email", ["email"], {
       required: false,
       placeholder: "static",
       componentProps: { clearable: false },
@@ -87,7 +87,7 @@ describe("buildViewSchemas", () => {
       placeholder: "dynamic",
       componentProps: { clearable: true },
     }
-    root.childFibers = [field]
+    root.childNodes = [field]
 
     const [schema] = buildViewSchemas(root)
 
@@ -100,8 +100,8 @@ describe("buildViewSchemas", () => {
   })
 
   it("应该从 schema 和 FieldModel 输出 rules 与 validationTrigger", () => {
-    const root = createTestRootFiber()
-    const field = createFieldFiber(root, "email", ["email"], {
+    const root = createTestRootRuntimeNode()
+    const field = createFieldRuntimeNode(root, "email", ["email"], {
       rules: "required",
       validationTrigger: "onBlur" as any,
     })
@@ -114,7 +114,7 @@ describe("buildViewSchemas", () => {
       ...model.snapshot.peek(),
       rules: ["email"],
     }
-    root.childFibers = [field]
+    root.childNodes = [field]
 
     const [schema] = buildViewSchemas(root)
 
@@ -123,7 +123,7 @@ describe("buildViewSchemas", () => {
   })
 
   it("group 应该投影 children", () => {
-    const root = createTestRootFiber()
+    const root = createTestRootRuntimeNode()
     const descriptor = {
       type: "group",
       key: "group",
@@ -133,9 +133,9 @@ describe("buildViewSchemas", () => {
       },
       children: [],
     }
-    const group = createTestGroupFiber({ key: "group", parent: root, descriptor })
-    group.childFibers = [createFieldFiber(group, "child", ["child"])]
-    root.childFibers = [group]
+    const group = createTestGroupRuntimeNode({ key: "group", parent: root, descriptor })
+    group.childNodes = [createFieldRuntimeNode(group, "child", ["child"])]
+    root.childNodes = [group]
 
     const schemas = buildViewSchemas(root)
 
@@ -144,9 +144,9 @@ describe("buildViewSchemas", () => {
     expect(schemas[0].children[0].key).toBe("child")
   })
 
-  it("dependency fiber 应该透明展开 subChildren", () => {
-    const root = createTestRootFiber()
-    const dependency = createTestDependencyFiber({
+  it("dependency node 应该透明展开 dynamicChildNodes", () => {
+    const root = createTestRootRuntimeNode()
+    const dependency = createTestDependencyRuntimeNode({
       key: "dep",
       parent: root,
       descriptor: {
@@ -157,8 +157,10 @@ describe("buildViewSchemas", () => {
       },
     })
     dependency.dependencySlot = {} as any
-    dependency.subChildren = [createFieldFiber(dependency, "inner", ["inner"])]
-    root.childFibers = [dependency]
+    dependency.dynamicChildNodes = [
+      createFieldRuntimeNode(dependency, "inner", ["inner"]),
+    ]
+    root.childNodes = [dependency]
 
     const schemas = buildViewSchemas(root)
 
@@ -166,10 +168,10 @@ describe("buildViewSchemas", () => {
     expect(schemas[0].key).toBe("inner")
   })
 
-  it("disposed fiber 应该被跳过", () => {
-    const root = createTestRootFiber()
-    const field = createFieldFiber(root, "field", ["field"])
-    root.childFibers = [field]
+  it("disposed node 应该被跳过", () => {
+    const root = createTestRootRuntimeNode()
+    const field = createFieldRuntimeNode(root, "field", ["field"])
+    root.childNodes = [field]
 
     field.disposed.value = true
 

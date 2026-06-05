@@ -7,10 +7,10 @@
 import { describe, expect, it } from "vitest"
 
 import {
-  createTestFieldFiber,
-  createTestRootFiber,
-} from "../../graph/__tests__/fiberTestUtils"
-import { createRuntimeScope } from "../../graph/scope"
+  createTestFieldRuntimeNode,
+  createTestRootRuntimeNode,
+} from "../../node/__tests__/runtimeNodeTestUtils"
+import { createRuntimeScope } from "../../node/scope"
 import { createSignalEffect } from "../../reactivity"
 import { createFieldModel, updateFieldModel } from "../model"
 
@@ -36,7 +36,7 @@ const createDescriptor = (
 })
 
 describe("mountFieldModel", () => {
-  it("应该创建纯呈现态 FieldModel 并挂载到 Fiber", () => {
+  it("应该创建纯呈现态 FieldModel 并挂载到 RuntimeNode", () => {
     const scope = createRuntimeScope()
     const descriptor = createDescriptor(["user", "name"], {
       visible: false,
@@ -46,13 +46,18 @@ describe("mountFieldModel", () => {
       placeholder: "请输入",
       componentProps: { clearable: true },
     })
-    const root = createTestRootFiber()
-    const fiber = createTestFieldFiber({ key: "field", parent: root, descriptor, scope })
+    const root = createTestRootRuntimeNode()
+    const node = createTestFieldRuntimeNode({
+      key: "field",
+      parent: root,
+      descriptor,
+      scope,
+    })
 
     const model = createFieldModel(descriptor)
-    fiber.fieldModel = model
+    node.fieldModel = model
 
-    expect(fiber.fieldModel).toBe(model)
+    expect(node.fieldModel).toBe(model)
     expect(model.snapshot.value).toEqual({
       visible: false,
       disabled: true,
@@ -69,35 +74,35 @@ describe("mountFieldModel", () => {
     expect("scope" in model).toBe(false)
   })
 
-  it("resource scope dispose 后应保留 Fiber 上的 FieldModel 快照", () => {
-    const fiberScope = createRuntimeScope()
-    const resourceScope = fiberScope.child()
+  it("resource scope dispose 后应保留 RuntimeNode 上的 FieldModel 快照", () => {
+    const nodeScope = createRuntimeScope()
+    const resourceScope = nodeScope.child()
     const descriptor = createDescriptor(["field"])
-    const root = createTestRootFiber()
-    const fiber = createTestFieldFiber({
+    const root = createTestRootRuntimeNode()
+    const node = createTestFieldRuntimeNode({
       key: "field",
       parent: root,
       descriptor,
-      scope: fiberScope,
+      scope: nodeScope,
     })
     const model = createFieldModel(descriptor)
-    fiber.fieldModel = model
+    node.fieldModel = model
 
-    expect(fiber.fieldModel).toBe(model)
+    expect(node.fieldModel).toBe(model)
 
     resourceScope.dispose()
 
-    expect(fiber.fieldModel).toBe(model)
+    expect(node.fieldModel).toBe(model)
   })
 })
 
 describe("updateFieldModel", () => {
   it("应该用新的 descriptor 静态 schema 刷新呈现态 baseline", () => {
     const descriptor = createDescriptor(["field"])
-    const root = createTestRootFiber()
-    const fiber = createTestFieldFiber({ key: "field", parent: root, descriptor })
+    const root = createTestRootRuntimeNode()
+    const node = createTestFieldRuntimeNode({ key: "field", parent: root, descriptor })
     const model = createFieldModel(descriptor)
-    fiber.fieldModel = model
+    node.fieldModel = model
 
     updateFieldModel(model, {
       ...createDescriptor(["field"], {

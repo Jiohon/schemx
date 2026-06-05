@@ -13,7 +13,7 @@ describe("dependency effect", () => {
     expect(fieldModule).not.toHaveProperty("mountDependencyEffect")
   })
 
-  it("renderer 返回的子 schema 会编译后通过 commit boundary 写入 dependency.subChildren", async () => {
+  it("renderer 返回的子 schema 会编译后通过 commit boundary 写入 dependency.dynamicChildNodes", async () => {
     const renderer = vi.fn().mockResolvedValue([createRawFieldSchema("child", "child")])
     const { commitSchemas, root, scheduler, viewRevision } = createRuntimeGraphHarness()
 
@@ -27,11 +27,11 @@ describe("dependency effect", () => {
     ])
     await flushRuntimeGraph(scheduler)
 
-    const dependency = root.childFibers[0]
+    const dependency = root.childNodes[0]
     expect(dependency?.type).toBe("dependency")
-    expect(dependency?.subChildren).toHaveLength(1)
-    expect(dependency?.subChildren[0]?.key).toBe("child")
-    expect(dependency?.subChildren[0]?.type).toBe("field")
+    expect(dependency?.dynamicChildNodes).toHaveLength(1)
+    expect(dependency?.dynamicChildNodes[0]?.key).toBe("child")
+    expect(dependency?.dynamicChildNodes[0]?.type).toBe("field")
     expect(viewRevision.revision.value).toBe(2)
   })
 
@@ -55,14 +55,14 @@ describe("dependency effect", () => {
     ])
     await flushRuntimeGraph(scheduler)
 
-    expect(root.childFibers[0]?.type).toBe("dependency")
-    if (root.childFibers[0]?.type !== "dependency") return
-    expect(root.childFibers[0].subChildren).toHaveLength(1)
+    expect(root.childNodes[0]?.type).toBe("dependency")
+    if (root.childNodes[0]?.type !== "dependency") return
+    expect(root.childNodes[0].dynamicChildNodes).toHaveLength(1)
 
     formApi.setValue("mode" as any, "b")
     await flushRuntimeGraph(scheduler)
 
-    expect(root.childFibers[0].subChildren).toHaveLength(0)
+    expect(root.childNodes[0].dynamicChildNodes).toHaveLength(0)
   })
 
   it("失败的 renderer 不会覆盖上一次成功提交的 dependency children", async () => {
@@ -88,9 +88,9 @@ describe("dependency effect", () => {
     formApi.setValue("mode" as any, "b")
     await flushRuntimeGraph(scheduler)
 
-    expect(root.childFibers[0]?.type).toBe("dependency")
-    if (root.childFibers[0]?.type !== "dependency") return
-    expect(root.childFibers[0].subChildren.map((child) => child.key)).toEqual(["stable"])
+    expect(root.childNodes[0]?.type).toBe("dependency")
+    if (root.childNodes[0]?.type !== "dependency") return
+    expect(root.childNodes[0].dynamicChildNodes.map((child) => child.key)).toEqual(["stable"])
   })
 
   it("旧 renderer 晚于新 renderer 完成时不会覆盖最新 dependency children", async () => {
@@ -127,8 +127,8 @@ describe("dependency effect", () => {
     resolveSlowRenderer([createRawFieldSchema("stale", "stale")])
     await flushRuntimeGraph(scheduler)
 
-    expect(root.childFibers[0]?.type).toBe("dependency")
-    if (root.childFibers[0]?.type !== "dependency") return
-    expect(root.childFibers[0].subChildren.map((child) => child.key)).toEqual(["latest"])
+    expect(root.childNodes[0]?.type).toBe("dependency")
+    if (root.childNodes[0]?.type !== "dependency") return
+    expect(root.childNodes[0].dynamicChildNodes.map((child) => child.key)).toEqual(["latest"])
   })
 })

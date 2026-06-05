@@ -6,28 +6,28 @@ import { createLifecycleBus, type LifecycleListener } from "../../lifecycle"
 import { createSignal } from "../../reactivity"
 import { createScheduler, type Scheduler } from "../../scheduler"
 import { createViewRevision, type ViewRevision } from "../../view"
-import { createFiberManager, type FiberManager } from "../fiberManager"
+import { createRuntimeNodeManager, type RuntimeNodeManager } from "../runtimeNodeManager"
 import { createReconciler, type Reconciler } from "../reconciler"
 
 import type { SchemxFormContext } from "../../createForm"
 import type { FieldDescriptor } from "../../descriptor"
 import type { SchemxField, SchemxFormApi, Values } from "../../types"
-import type { ContainerFiber, Fiber, RootFiber } from "../fiber"
+import type { ContainerRuntimeNode, RuntimeNode, RootRuntimeNode } from "../runtimeNode"
 
 export interface RuntimeGraphTestHarness<TValues extends Values = Values> {
   readonly context: SchemxFormContext<TValues>
   readonly fieldRegistry: FieldRegistry<TValues>
-  readonly fiberManager: FiberManager<TValues>
+  readonly runtimeNodeManager: RuntimeNodeManager<TValues>
   readonly reconciler: Reconciler<TValues>
-  readonly root: RootFiber
+  readonly root: RootRuntimeNode
   readonly scheduler: Scheduler
   readonly viewRevision: ViewRevision
   readonly commitChildren: (
-    parent: ContainerFiber<TValues>,
+    parent: ContainerRuntimeNode<TValues>,
     descriptors: FormDescriptor<TValues>[]
   ) => void
   readonly commitSchemas: (
-    parent: ContainerFiber<TValues>,
+    parent: ContainerRuntimeNode<TValues>,
     schemas: SchemxField<TValues>[]
   ) => void
   readonly formApi: SchemxFormApi<TValues>
@@ -59,13 +59,13 @@ export function createRawFieldSchema<TValues extends Values = Values>(
 }
 
 export function createRuntimeGraphHarness<TValues extends Values = Values>(
-  listener: LifecycleListener<Fiber<TValues>> = {},
+  listener: LifecycleListener<RuntimeNode<TValues>> = {},
   initialValues: Record<string, unknown> = {}
 ): RuntimeGraphTestHarness<TValues> {
   const signals = new Map<string, ReturnType<typeof createSignal<unknown>>>()
   const values = { ...initialValues }
   const fieldRegistry = createFieldRegistry<TValues>()
-  const lifecycleBus = createLifecycleBus<Fiber<TValues>>(listener)
+  const lifecycleBus = createLifecycleBus<RuntimeNode<TValues>>(listener)
   const scheduler = createScheduler()
   const viewRevision = createViewRevision()
 
@@ -120,34 +120,33 @@ export function createRuntimeGraphHarness<TValues extends Values = Values>(
     validate: vi.fn().mockResolvedValue({ ok: true, values }),
   } as unknown as SchemxFormApi<TValues>
 
+  const instance = {
+    ...formApi,
+    getFieldSnapshot: vi.fn((name: unknown) => values[normalizeName(name)]),
+    setInitialValues: vi.fn((nextValues: Record<string, unknown>) => {
+      Object.assign(values, nextValues)
+    }),
+    setFieldValue: writeValue,
+    registerRules: vi.fn(),
+    unregisterRules: vi.fn(),
+    setFieldError: vi.fn(),
+    validateField: vi.fn().mockResolvedValue({ ok: true, values }),
+  }
+
   const context = {
+    defaultProps: {},
+    instance,
+    formApi,
     scheduler,
     lifecycleBus,
     fieldRegistry,
-    store: {
-      getFieldsSnapshot: vi.fn(() => values),
-      getFieldsValue: vi.fn(() => values),
-    },
-    validator: {
-      getFieldError: vi.fn(() => []),
-      setFieldError: vi.fn(),
-      register: vi.fn(),
-      unregister: vi.fn(),
-      validateField: vi.fn().mockResolvedValue({ ok: true, values }),
-      validate: vi.fn().mockResolvedValue({ ok: true, values }),
-    },
-    validatorRegistry: {
-      resolveValidatorsBySchema: vi.fn(() => []),
-    },
-    defaultProps: {},
-    getFormApi: () => formApi,
   } as unknown as SchemxFormContext<TValues>
 
-  const fiberManager = createFiberManager<TValues>(context)
-  const reconciler = createReconciler(fiberManager)
-  const root = fiberManager.createRoot()
+  const runtimeNodeManager = createRuntimeNodeManager<TValues>(context)
+  const reconciler = createReconciler(runtimeNodeManager)
+  const root = runtimeNodeManager.createRoot()
   const commitChildren = (
-    parent: ContainerFiber<TValues>,
+    parent: ContainerRuntimeNode<TValues>,
     descriptors: FormDescriptor<TValues>[]
   ): void => {
     const changed = reconciler.reconcileChildren(parent, descriptors)
@@ -158,7 +157,7 @@ export function createRuntimeGraphHarness<TValues extends Values = Values>(
   }
 
   const commitSchemas = (
-    parent: ContainerFiber<TValues>,
+    parent: ContainerRuntimeNode<TValues>,
     schemas: SchemxField<TValues>[]
   ): void => commitChildren(parent, compileToDescriptors<TValues>(schemas))
 
@@ -167,7 +166,7 @@ export function createRuntimeGraphHarness<TValues extends Values = Values>(
   return {
     context,
     fieldRegistry,
-    fiberManager,
+    runtimeNodeManager,
     reconciler,
     root,
     scheduler,

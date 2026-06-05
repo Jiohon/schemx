@@ -2,7 +2,7 @@
  * DependencyEffect - dependency renderer 执行态容器。
  *
  * Slot 只记录异步执行状态。renderer 返回的结构由 reconciler 写入
- * DependencyFiber.subChildren。
+ * DependencyRuntimeNode.dynamicChildNodes。
  *
  * @module core/field/dependencyEffect
  */
@@ -12,30 +12,30 @@ import { createSignal, createSignalEffect } from "../reactivity"
 
 import type { SchemxFormContext } from "../createForm"
 import type { DependencyDescriptor } from "../descriptor"
-import type { DependencyFiber, Scope } from "../graph"
+import type { DependencyRuntimeNode, Scope } from "../node"
 import type { Signal } from "../reactivity"
 import type { NamePath, SchemxFormApi, Values } from "../types"
 
 /**
- * 检查 DependencyFiber 是否有 DependencySlot。
+ * 检查 DependencyRuntimeNode 是否有 DependencySlot。
  *
- * @param fiber - dependency runtime 节点。
+ * @param node - dependency runtime 节点。
  * @returns 已挂载 slot 时返回 true。
  */
-export function hasDependencySlot(fiber: DependencyFiber): boolean {
-  return fiber.dependencySlot != null
+export function hasDependencySlot(node: DependencyRuntimeNode): boolean {
+  return node.dependencySlot != null
 }
 
 /**
- * 从 DependencyFiber 获取 DependencySlot。
+ * 从 DependencyRuntimeNode 获取 DependencySlot。
  *
- * @param fiber - dependency runtime 节点。
+ * @param node - dependency runtime 节点。
  * @returns 当前 slot；尚未挂载时返回 undefined。
  */
 export function getDependencySlot(
-  fiber: DependencyFiber
+  node: DependencyRuntimeNode
 ): DependencyEffectSlot | undefined {
-  return fiber.dependencySlot ?? undefined
+  return node.dependencySlot ?? undefined
 }
 
 /**
@@ -69,7 +69,7 @@ export interface CreateDependencyEffectOptions<TValues extends Values = Values> 
   /**
    * dependency runtime 节点。
    */
-  fiber: DependencyFiber<TValues>
+  node: DependencyRuntimeNode<TValues>
 
   /**
    * dependency descriptor，提供静态 trigger、renderer 配置。
@@ -77,7 +77,7 @@ export interface CreateDependencyEffectOptions<TValues extends Values = Values> 
   descriptor: DependencyDescriptor<TValues>
 
   /**
-   * 关联的 scope，默认创建 fiber 的子 scope。
+   * 关联的 scope，默认创建 node 的子 scope。
    */
   scope?: Scope
 
@@ -88,21 +88,21 @@ export interface CreateDependencyEffectOptions<TValues extends Values = Values> 
 }
 
 /**
- * 创建并挂载 DependencyEffectSlot 到 Fiber。
+ * 创建并挂载 DependencyEffectSlot 到 RuntimeNode。
  *
  * 会创建 slot 的 run/dispose 逻辑，并把 renderer 结果经由统一 commit 边界写入
  * dependency 子树。
  *
  * @param options - 创建 dependency effect 的配置。
- * @returns 已挂载到 fiber 的 DependencyEffectSlot。
+ * @returns 已挂载到 node 的 DependencyEffectSlot。
  */
 export function createDependencyEffect<TValues extends Values = Values>(
   options: CreateDependencyEffectOptions<TValues>
 ): DependencyEffectSlot {
-  const { fiber, descriptor, context } = options
-  const resourceScope = options.scope ?? fiber.scope.child()
+  const { node, descriptor, context } = options
+  const resourceScope = options.scope ?? node.scope.child()
 
-  fiber.dependencySlot?.dispose()
+  node.dependencySlot?.dispose()
 
   const slot: DependencyEffectSlot = {
     loading: createSignal(false),
@@ -113,12 +113,12 @@ export function createDependencyEffect<TValues extends Values = Values>(
     dispose: (): void => undefined,
   }
 
-  fiber.dependencyResourceScope = resourceScope
+  node.dependencyResourceScope = resourceScope
 
   slot.run = (): Promise<void> => {
     if (resourceScope.disposed) return Promise.resolve()
 
-    const currentDescriptor = fiber.descriptor
+    const currentDescriptor = node.descriptor
 
     const currentVersion = slot.version.value + 1
     slot.version.value = currentVersion
@@ -134,7 +134,7 @@ export function createDependencyEffect<TValues extends Values = Values>(
       (async () => {
         try {
           const childSchemas = await Promise.resolve(
-            currentDescriptor.renderer(context.getFormApi(), controller.signal)
+            currentDescriptor.renderer(context.formApi, controller.signal)
           )
 
           if (
@@ -150,7 +150,7 @@ export function createDependencyEffect<TValues extends Values = Values>(
             context.defaultProps
           )
 
-          context.commitChildren(fiber, descriptors)
+          context.commitChildren(node, descriptors)
         } catch (cause) {
           if (
             resourceScope.disposed ||
@@ -184,25 +184,25 @@ export function createDependencyEffect<TValues extends Values = Values>(
     slot.abortController.value?.abort()
     slot.abortController.value = null
 
-    if (fiber.dependencySlot === slot) {
-      fiber.dependencySlot = null
+    if (node.dependencySlot === slot) {
+      node.dependencySlot = null
     }
 
-    if (fiber.dependencyResourceScope === resourceScope) {
-      fiber.dependencyResourceScope = null
+    if (node.dependencyResourceScope === resourceScope) {
+      node.dependencyResourceScope = null
     }
   })
 
   if (descriptor.trigger.length > 0) {
     setupTriggerSubscription(
       descriptor.trigger,
-      context.getFormApi(),
+      context.formApi,
       () => slot.run(),
       resourceScope
     )
   }
 
-  fiber.dependencySlot = slot
+  node.dependencySlot = slot
 
   void slot.run().catch((runError) => {
     console.error("DependencyEffectSlot initial run error:", runError)

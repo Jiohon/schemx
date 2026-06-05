@@ -1,12 +1,12 @@
 /**
  * Scheduler 模块测试。
  *
- * @module core/graph/__tests__/scheduler.test
+ * @module core/node/__tests__/scheduler.test
  */
 
 import { describe, expect, it, vi } from "vitest"
 
-import { createRuntimeScope } from "../../graph/scope"
+import { createRuntimeScope } from "../../node/scope"
 import { createScheduler } from "../scheduler"
 
 describe("schedule", () => {

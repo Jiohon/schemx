@@ -16,9 +16,9 @@ describe("dependency flow", () => {
     ])
     await flushRuntimeGraph(scheduler)
 
-    const dependency = root.childFibers[0]
+    const dependency = root.childNodes[0]
     if (dependency?.type !== "dependency") {
-      throw new Error("expected dependency fiber")
+      throw new Error("expected dependency node")
     }
 
     const firstSlot = dependency.dependencySlot
