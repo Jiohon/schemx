@@ -8,7 +8,7 @@
  * @module utils/rulesProvider
  */
 
-import { createValidatorsRegistry } from "@schemx/core"
+import { createValidatorsRegistry, type ValidatorsRegistryType } from "@schemx/core"
 
 /**
  * 全局校验规则注册实例
@@ -23,4 +23,4 @@ import { createValidatorsRegistry } from "@schemx/core"
  * // props 传入的 validatorRegistry 优先级更高
  * ```
  */
-export const validatorRegistry = createValidatorsRegistry()
+export const validatorRegistry: ValidatorsRegistryType = createValidatorsRegistry()

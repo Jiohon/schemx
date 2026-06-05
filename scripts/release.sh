@@ -5,7 +5,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-PACKAGES=(core vue vant wot)
+PACKAGES=(core vue vant)
 NPM_REGISTRY="${NPM_REGISTRY:-https://registry.npmjs.org/}"
 PRERELEASE_BACKUP_DIR=""
 PRERELEASE_TARGETS=()
@@ -28,11 +28,11 @@ usage() {
 也可以直接调用：
   bash scripts/release.sh check
   bash scripts/release.sh pack
-  bash scripts/release.sh publish [all|core|vue|vant|wot]
-  bash scripts/release.sh publish-dev [all|core|vue|vant|wot]
-  bash scripts/release.sh publish-beta [all|core|vue|vant|wot]
-  bash scripts/release.sh publish-rc [all|core|vue|vant|wot]
-  bash scripts/release.sh publish-next [all|core|vue|vant|wot]
+  bash scripts/release.sh publish [all|core|vue|vant]
+  bash scripts/release.sh publish-dev [all|core|vue|vant]
+  bash scripts/release.sh publish-beta [all|core|vue|vant]
+  bash scripts/release.sh publish-rc [all|core|vue|vant]
+  bash scripts/release.sh publish-next [all|core|vue|vant]
   bash scripts/release.sh version [patch|minor|major]
 USAGE
 }

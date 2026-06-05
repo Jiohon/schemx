@@ -62,6 +62,8 @@ module.exports = {
     "static/**",
     "**/*.d.ts",
     ".eslintrc.cjs",
+    "packages/vue/src/formRuntime.js",
+    "**/formRuntime.js",
     "**/vite.config.ts",
     "**/vitest.config.ts",
   ],

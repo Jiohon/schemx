@@ -144,7 +144,7 @@ test_help_lists_channel_commands_without_package_shortcuts() {
   assert_contains "$output" "pnpm release:publish:next"
   assert_not_contains "$output" "pnpm release:publish:core"
   assert_not_contains "$output" "pnpm release:publish:wot"
-  assert_contains "$output" "bash scripts/release.sh publish-dev [all|core|vue|vant|wot]"
+  assert_contains "$output" "bash scripts/release.sh publish-dev [all|core|vue|vant]"
 }
 
 test_package_scripts_keep_only_publish_channels() {
