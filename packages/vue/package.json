@@ -3,6 +3,24 @@
   "name": "@schemx/vue",
   "version": "0.1.20",
   "description": "基于 JSON Schema 配置的 Vue 3 动态表单引擎（UI 无关核心）",
+  "keywords": [
+    "schemx",
+    "vue",
+    "vue3",
+    "form",
+    "dynamic-form",
+    "json-schema",
+    "form-renderer"
+  ],
+  "homepage": "https://github.com/Jiohon/schemx/tree/main/packages/vue#readme",
+  "bugs": {
+    "url": "https://github.com/Jiohon/schemx/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Jiohon/schemx.git",
+    "directory": "packages/vue"
+  },
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",

@@ -37,8 +37,26 @@ case "$1" in
       exit 0
     fi
     ;;
+  config)
+    if [[ "${2:-}" == "--get" && "${3:-}" == "remote.origin.url" ]]; then
+      printf 'git@github.com:Jiohon/schemx.git\n'
+      exit 0
+    fi
+    ;;
   tag)
+    if [[ "${2:-}" == "--sort=-creatordate" ]]; then
+      printf 'v0.1.22\n'
+      exit 0
+    fi
     exit 0
+    ;;
+  log)
+    if [[ "$*" == *"--format=%s"* ]]; then
+      printf 'feat(core): 支持动态 schema 更新\n'
+      printf 'fix(vue): 修复 renderer 字段值同步链路\n'
+      printf 'chore(发布): 优化发布流程\n'
+      exit 0
+    fi
     ;;
   push)
     exit 0
@@ -81,6 +99,50 @@ set -euo pipefail
 printf 'npm %s\n' "$*" >>"${COMMAND_LOG:?}"
 MOCK
 
+cat >"$MOCK_BIN/gh" <<'MOCK'
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf 'gh %s\n' "$*" >>"${COMMAND_LOG:?}"
+
+case "$1" in
+  auth)
+    if [[ "${2:-}" == "status" ]]; then
+      if [[ "${MOCK_GITHUB_AUTH_FAIL:-0}" == "1" ]]; then
+        printf 'gh auth failed\n' >&2
+        exit 1
+      fi
+      exit 0
+    fi
+    ;;
+  release)
+    if [[ "${2:-}" == "create" ]]; then
+      notes_file=""
+      while [[ "$#" -gt 0 ]]; do
+        if [[ "$1" == "--notes-file" ]]; then
+          notes_file="${2:-}"
+          break
+        fi
+        shift
+      done
+
+      if [[ -z "$notes_file" || ! -f "$notes_file" ]]; then
+        printf 'missing release notes file\n' >&2
+        exit 1
+      fi
+
+      grep -Fq '## v0.1.23' "$notes_file"
+      grep -Fq '@schemx/core@0.1.23' "$notes_file"
+      grep -Fq 'feat(core): 支持动态 schema 更新' "$notes_file"
+      exit 0
+    fi
+    ;;
+esac
+
+printf 'unexpected gh command: %s\n' "$*" >&2
+exit 1
+MOCK
+
 cat >"$MOCK_BIN/node" <<'MOCK'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -94,7 +156,7 @@ fi
 exec "${REAL_NODE:?}" "$@"
 MOCK
 
-chmod +x "$MOCK_BIN/git" "$MOCK_BIN/pnpm" "$MOCK_BIN/npm" "$MOCK_BIN/node"
+chmod +x "$MOCK_BIN/git" "$MOCK_BIN/pnpm" "$MOCK_BIN/npm" "$MOCK_BIN/gh" "$MOCK_BIN/node"
 
 export REAL_NODE="$(command -v node)"
 export PATH="$MOCK_BIN:$PATH"
@@ -211,6 +273,29 @@ test_publish_without_npm_auth_shows_clear_message() {
   assert_not_contains "$output" "ELIFECYCLE"
 }
 
+test_publish_without_github_auth_stops_before_publish() {
+  local output status
+
+  : >"$COMMAND_LOG"
+
+  export MOCK_GITHUB_AUTH_FAIL=1
+  set +e
+  output="$(run_release publish core 2>&1)"
+  status=$?
+  set -e
+  unset MOCK_GITHUB_AUTH_FAIL
+
+  if [[ "$status" -eq 0 ]]; then
+    printf 'GitHub CLI 未登录时，正式发布应失败。\n' >&2
+    exit 1
+  fi
+
+  assert_contains "$output" "检查 GitHub CLI 登录状态"
+  assert_contains "$output" "GitHub CLI 未登录或无权限"
+  assert_log_contains "gh auth status"
+  assert_log_not_contains "pnpm --dir packages/core publish"
+}
+
 test_dev_publish_uses_dev_tag_and_restores_version() {
   local before after
 
@@ -231,6 +316,8 @@ test_dev_publish_uses_dev_tag_and_restores_version() {
   assert_contains "$output" "发布模式：dev"
   assert_contains "$output" "发布目标：core"
   assert_log_contains "pnpm --dir packages/core publish --access public --registry https://registry.npmjs.org/ --tag dev --no-git-checks"
+  assert_log_not_contains "gh auth status"
+  assert_log_not_contains "gh release create"
   assert_log_not_contains "git tag"
   assert_log_not_contains "git push"
 }
@@ -261,6 +348,8 @@ test_latest_publish_tags_and_pushes_after_publish() {
   assert_log_contains "git tag -a v${version} -m release: v${version}"
   assert_log_contains "git push origin main"
   assert_log_contains "git push origin v${version}"
+  assert_log_contains "gh auth status"
+  assert_log_contains "gh release create v${version} --repo Jiohon/schemx --title v${version} --notes-file"
 }
 
 test_selector_rejects_unknown_environment_target() {
@@ -337,6 +426,7 @@ test_help_lists_channel_commands_without_package_shortcuts
 test_package_scripts_keep_only_publish_channels
 test_latest_publish_is_main_only
 test_publish_without_npm_auth_shows_clear_message
+test_publish_without_github_auth_stops_before_publish
 test_dev_publish_uses_dev_tag_and_restores_version
 test_publish_without_target_prompts_for_package_selection
 test_latest_publish_tags_and_pushes_after_publish

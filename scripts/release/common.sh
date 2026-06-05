@@ -24,3 +24,34 @@ package_json_value() {
 
   node -p "const pkg=require('./$(package_path "$pkg")/package.json'); pkg['$field']"
 }
+
+github_repository() {
+  local repo="${GITHUB_REPOSITORY:-}"
+
+  if [[ -z "$repo" ]]; then
+    repo="$(git config --get remote.origin.url 2>/dev/null || true)"
+  fi
+
+  case "$repo" in
+    git@github.com:*)
+      repo="${repo#git@github.com:}"
+      ;;
+    ssh://git@github.com/*)
+      repo="${repo#ssh://git@github.com/}"
+      ;;
+    https://github.com/*)
+      repo="${repo#https://github.com/}"
+      ;;
+    http://github.com/*)
+      repo="${repo#http://github.com/}"
+      ;;
+  esac
+
+  repo="${repo%.git}"
+
+  if [[ ! "$repo" =~ ^[^/]+/[^/]+$ ]]; then
+    die "无法从 origin remote 解析 GitHub 仓库，请设置 GITHUB_REPOSITORY=owner/repo。"
+  fi
+
+  printf '%s' "$repo"
+}
