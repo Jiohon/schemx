@@ -9,7 +9,7 @@ import { createDebouncedSignalEffect } from "../reactivity"
 
 import { buildViewSchemas } from "./buildViewSchemas"
 
-import type { RootFiber } from "../graph"
+import type { RootRuntimeNode } from "../node"
 import type { Values } from "../types"
 import type { SchemxViewSchema } from "./types"
 import type { ViewRevision } from "./viewRevision"
@@ -23,7 +23,7 @@ import type { ViewRevision } from "./viewRevision"
  * @returns 取消订阅函数。
  */
 export function subscribeViewSchemas<TValues extends Values = Values>(
-  root: RootFiber<TValues>,
+  root: RootRuntimeNode<TValues>,
   revision: ViewRevision,
   onChange: (schemas: readonly SchemxViewSchema<TValues>[]) => void
 ): () => void {

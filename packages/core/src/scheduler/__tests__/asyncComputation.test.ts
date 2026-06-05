@@ -7,7 +7,7 @@
 import { describe, expect, it, vi } from "vitest"
 
 import { createScheduler } from "../scheduler"
-import { createRuntimeScope } from "../../graph/scope"
+import { createRuntimeScope } from "../../node/scope"
 import { createAsyncComputation } from "../asyncComputation"
 
 describe("createAsyncComputation", () => {

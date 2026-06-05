@@ -7,7 +7,7 @@
  */
 
 export type {
-  FiberLifecycleHooks,
+  RuntimeNodeLifecycleHooks,
   LifecycleBus,
   LifecycleHooks,
   LifecycleListener,

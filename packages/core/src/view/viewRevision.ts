@@ -1,7 +1,7 @@
 /**
  * ViewRevision - 视图结构版本追踪。
  *
- * Reconciler 和 DependencyEffectSlot 在修改 Fiber 树结构时推进 revision，
+ * Reconciler 和 DependencyEffectSlot 在修改 RuntimeNode 树结构时推进 revision，
  * subscribeViewSchemas 读取此 revision 以追踪结构变化。
  *
  * @module core/view/viewRevision

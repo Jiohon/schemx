@@ -2,4 +2,4 @@ export {
   createRawFieldSchema,
   createRuntimeGraphHarness,
   flushRuntimeGraph,
-} from "../../graph/__tests__/runtimeGraphTestUtils"
+} from "../../node/__tests__/runtimeGraphTestUtils"

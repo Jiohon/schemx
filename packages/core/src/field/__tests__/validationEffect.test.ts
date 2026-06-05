@@ -6,7 +6,7 @@
 
 import { describe, expect, it, vi } from "vitest"
 
-import { createRuntimeScope } from "../../graph/scope"
+import { createRuntimeScope } from "../../node/scope"
 import { createSignal, createSignalEffect } from "../../reactivity"
 import { createScheduler } from "../../scheduler"
 import { createFieldModel } from "../model"
@@ -46,9 +46,9 @@ const createContext = (
   } = {}
 ) => {
   const scheduler = createScheduler()
-  const validator = {
-    register: vi.fn(),
-    unregister: vi.fn(),
+  const instance = {
+    registerRules: vi.fn(),
+    unregisterRules: vi.fn(),
     setFieldError: vi.fn(),
     validateField: vi.fn().mockResolvedValue(
       options.validateResult ?? {
@@ -58,24 +58,12 @@ const createContext = (
     ),
   }
 
-  const validatorRegistry = {
-    resolveValidatorsBySchema: vi.fn(() => ["resolved-rule"]),
-  }
-
-  const store = {
-    getFieldsSnapshot: vi.fn(() => ({ field: "value" })),
-  }
-
   return {
     context: {
-      validator,
-      validatorRegistry,
-      store,
+      instance,
       scheduler,
     } as unknown as SchemxFormContext<TestValues>,
-    validator,
-    validatorRegistry,
-    store,
+    instance,
     scheduler,
   }
 }
@@ -85,7 +73,7 @@ describe("createValidationEffect", () => {
     const scope = createRuntimeScope()
     const descriptor = createDescriptor()
     const fieldModel = createFieldModel(descriptor)
-    const { context, validator, validatorRegistry, scheduler } = createContext()
+    const { context, instance, scheduler } = createContext()
 
     const validation = createValidationEffect({
       name: "field",
@@ -98,13 +86,9 @@ describe("createValidationEffect", () => {
 
     expect(validation.registered.value).toBe(true)
     expect(validation.validating.value).toBe(false)
-    expect(validatorRegistry.resolveValidatorsBySchema).toHaveBeenCalledWith({
-      rules: descriptor.schema.rules,
-      label: "字段",
-    })
-    expect(validator.register).toHaveBeenCalledWith(
+    expect(instance.registerRules).toHaveBeenCalledWith(
       "field",
-      ["resolved-rule"],
+      descriptor.schema.rules,
       "字段为必填项"
     )
   })
@@ -115,7 +99,7 @@ describe("rule management", () => {
     const scope = createRuntimeScope()
     const descriptor = createDescriptor(createSchema({ visible: false }))
     const fieldModel = createFieldModel(descriptor)
-    const { context, validator, scheduler } = createContext()
+    const { context, instance, scheduler } = createContext()
 
     createValidationEffect({
       name: "field",
@@ -126,15 +110,15 @@ describe("rule management", () => {
 
     await scheduler.flush()
 
-    expect(validator.unregister).toHaveBeenCalledWith("field")
-    expect(validator.setFieldError).toHaveBeenCalledWith("field", [])
+    expect(instance.unregisterRules).toHaveBeenCalledWith("field")
+    expect(instance.setFieldError).toHaveBeenCalledWith("field", [])
   })
 
   it("应该在 readonly=true 时从 Validator 注销规则并清空错误", async () => {
     const scope = createRuntimeScope()
     const descriptor = createDescriptor(createSchema({ readonly: true }))
     const fieldModel = createFieldModel(descriptor)
-    const { context, validator, scheduler } = createContext()
+    const { context, instance, scheduler } = createContext()
 
     createValidationEffect({
       name: "field",
@@ -145,15 +129,15 @@ describe("rule management", () => {
 
     await scheduler.flush()
 
-    expect(validator.unregister).toHaveBeenCalledWith("field")
-    expect(validator.setFieldError).toHaveBeenCalledWith("field", [])
+    expect(instance.unregisterRules).toHaveBeenCalledWith("field")
+    expect(instance.setFieldError).toHaveBeenCalledWith("field", [])
   })
 
   it("应该在 disabled=true 时从 Validator 注销规则并清空错误", async () => {
     const scope = createRuntimeScope()
     const descriptor = createDescriptor(createSchema({ disabled: true }))
     const fieldModel = createFieldModel(descriptor)
-    const { context, validator, scheduler } = createContext()
+    const { context, instance, scheduler } = createContext()
 
     createValidationEffect({
       name: "field",
@@ -164,8 +148,8 @@ describe("rule management", () => {
 
     await scheduler.flush()
 
-    expect(validator.unregister).toHaveBeenCalledWith("field")
-    expect(validator.setFieldError).toHaveBeenCalledWith("field", [])
+    expect(instance.unregisterRules).toHaveBeenCalledWith("field")
+    expect(instance.setFieldError).toHaveBeenCalledWith("field", [])
   })
 
   it("字段呈现态在响应式 effect 中变化时不应同步写 Validator 造成循环", async () => {
@@ -173,7 +157,7 @@ describe("rule management", () => {
     const descriptor = createDescriptor()
     const fieldModel = createFieldModel(descriptor)
     const trigger = createSignal(0)
-    const { context, validator, scheduler } = createContext()
+    const { context, instance, scheduler } = createContext()
 
     createValidationEffect({
       name: "field",
@@ -197,7 +181,7 @@ describe("rule management", () => {
 
     await scheduler.flush()
 
-    expect(validator.unregister).toHaveBeenCalledWith("field")
+    expect(instance.unregisterRules).toHaveBeenCalledWith("field")
 
     dispose()
   })
@@ -208,7 +192,7 @@ describe("validate method", () => {
     const scope = createRuntimeScope()
     const descriptor = createDescriptor()
     const fieldModel = createFieldModel(descriptor)
-    const { context, validator, store } = createContext()
+    const { context, instance } = createContext()
 
     const validation = createValidationEffect({
       name: "field",
@@ -220,9 +204,6 @@ describe("validate method", () => {
     const result = await validation.validate()
 
     expect(result).toEqual({ ok: true, values: { field: "value" } })
-    expect(store.getFieldsSnapshot).toHaveBeenCalled()
-    expect(validator.validateField).toHaveBeenCalledWith("field", {
-      field: "value",
-    })
+    expect(instance.validateField).toHaveBeenCalledWith("field")
   })
 })

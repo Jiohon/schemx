@@ -8,7 +8,7 @@
 
 import { createSignal } from "../reactivity"
 
-import type { Scope } from "../graph"
+import type { Scope } from "../node"
 import type { Signal } from "../reactivity"
 import type { FieldValue, NamePath, Values } from "../types"
 import type { Scheduler } from "./scheduler"

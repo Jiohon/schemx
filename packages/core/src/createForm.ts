@@ -18,16 +18,17 @@ import { defaultConfigKey } from "./defaultConfig"
 import { compileToDescriptors } from "./descriptor"
 import { createFieldRegistry, type FieldRegistry } from "./field"
 import {
-  type ContainerFiber,
+  type ContainerRuntimeNode,
   createReconciler,
   createScope,
-  type FiberManager,
-  FieldFiber,
+  FieldRuntimeNode,
+  findFieldRuntimeNode,
   type Reconciler,
-  type RootFiber,
+  type RootRuntimeNode,
+  type RuntimeNodeManager,
   type Scope,
-} from "./graph"
-import { createFiberManager } from "./graph/fiberManager"
+} from "./node"
+import { createRuntimeNodeManager } from "./node/runtimeNodeManager"
 import {
   createLifecycleBus,
   type LifecycleBus,
@@ -85,7 +86,7 @@ type Callbacks<
 /**
  * createForm 内部运行时上下文。
  *
- * 字段、dependency effect 和 graph lifecycle 通过该对象共享 store、
+ * 字段、dependency effect 和 node lifecycle 通过该对象共享 store、
  * validator、scheduler、registry 以及唯一的子树提交边界。
  *
  * @typeParam TValues - 表单值类型。
@@ -96,45 +97,38 @@ export interface SchemxFormContext<TValues extends Values = Values> {
    */
   defaultProps: SchemxDefaultProps
   /**
-   * 校验规则注册表，解析字符串规则名称到 StandardSchema 或规则工厂
+   * 表单实例，定义表单的所有操作方法
    */
-  readonly validatorRegistry: ValidatorsRegistryType<TValues>
-  /**
-   * 表单状态存储，管理字段值、初始值和订阅
-   */
-  readonly store: Store<TValues>
-  /**
-   * 字段校验器，维护规则、错误状态和校验执行流程
-   */
-  readonly validator: Validator<TValues>
-  /**
-   * 运行时异步调度器，用于追踪 dependency renderer 和字段动态依赖
-   */
-  readonly scheduler: Scheduler
-  /**
-   * graph 生命周期事件总线，连接 reconciler 与字段资源挂载流程
-   */
-  readonly lifecycleBus: LifecycleBus<FieldFiber<TValues>>
-  /**
-   * 字段 Fiber 到字段模型的注册表，供表单 API 和视图投影读取
-   */
-  readonly fieldRegistry: FieldRegistry<TValues>
-  /**
-   * 唯一子节点提交边界，负责 reconcile 后推进 viewRevision。
-   *
-   * @param parent - 接收子节点的容器 Fiber。
-   * @param descriptors - 新一轮编译得到的子 descriptor 列表。
-   */
-  commitChildren(
-    parent: ContainerFiber<TValues>,
-    descriptors: FormDescriptor<TValues>[]
-  ): void
+  readonly instance: SchemxInstance<TValues>
   /**
    * 获取传递给动态 renderer 的表单 API。
    *
    * @returns 当前表单实例的公开操作 API。
    */
-  readonly getFormApi: () => SchemxFormApi<TValues>
+  readonly formApi: SchemxFormApi<TValues>
+
+  /**
+   * 运行时异步调度器，用于追踪 dependency renderer 和字段动态依赖
+   */
+  readonly scheduler: Scheduler
+  /**
+   * node 生命周期事件总线，连接 reconciler 与字段资源挂载流程
+   */
+  readonly lifecycleBus: LifecycleBus<FieldRuntimeNode<TValues>>
+  /**
+   * 字段 RuntimeNode 到字段模型的注册表，供表单 API 和视图投影读取
+   */
+  readonly fieldRegistry: FieldRegistry<TValues>
+  /**
+   * 唯一子节点提交边界，负责 reconcile 后推进 viewRevision。
+   *
+   * @param parent - 接收子节点的容器 RuntimeNode。
+   * @param descriptors - 新一轮编译得到的子 descriptor 列表。
+   */
+  commitChildren(
+    parent: ContainerRuntimeNode<TValues>,
+    descriptors: FormDescriptor<TValues>[]
+  ): void
 }
 
 /**
@@ -192,7 +186,7 @@ export interface CreateFormOptions<
    */
   onFieldsChange?: (changedFields: TName[], allFields: TName[]) => void
   /**
-   * graph lifecycle hook，用于观察字段节点挂载、更新和卸载。
+   * node lifecycle hook，用于观察字段节点挂载、更新和卸载。
    */
   lifecycleHooks?: SchemxLifecycleHooks<TValues>
 }
@@ -219,25 +213,25 @@ class CreateForm<
   /** 字段校验器，维护规则、错误状态和校验执行流程 */
   readonly validator: Validator<TValues>
 
-  /** Runtime graph 的透明根节点，承载所有编译后的表单描述符节点 */
-  readonly root: RootFiber<TValues>
+  /** Runtime node 的透明根节点，承载所有编译后的表单描述符节点 */
+  readonly root: RootRuntimeNode<TValues>
 
   /** 运行时异步调度器，用于追踪 dependency renderer 和字段动态依赖 */
   readonly scheduler: Scheduler
 
-  /** 视图结构版本号，graph 结构变化时推进以触发 ViewSchemas 重新构建 */
+  /** 视图结构版本号，node 结构变化时推进以触发 ViewSchemas 重新构建 */
   readonly viewRevision: ViewRevision
 
-  /** descriptor 到 Fiber tree 的协调器，负责创建、复用和销毁节点 */
+  /** descriptor 到 RuntimeNode tree 的协调器，负责创建、复用和销毁节点 */
   readonly reconciler: Reconciler<TValues>
 
-  /** 单个 Fiber 生命周期执行器，负责挂载和释放运行期资源 */
-  readonly fiberManager: FiberManager<TValues>
+  /** 单个 RuntimeNode 生命周期执行器，负责挂载和释放运行期资源 */
+  readonly runtimeNodeManager: RuntimeNodeManager<TValues>
 
-  /** 字段 Fiber 到字段模型的注册表，供表单 API 和视图投影读取 */
+  /** 字段 RuntimeNode 到字段模型的注册表，供表单 API 和视图投影读取 */
   readonly fieldRegistry: FieldRegistry<TValues>
 
-  /** 表单级资源作用域，统一管理回调 effect 等非 Fiber 资源 */
+  /** 表单级资源作用域，统一管理回调 effect 等非 RuntimeNode 资源 */
   private readonly scope: Scope = createScope()
 
   /** root schema 的统一数据源 */
@@ -246,8 +240,8 @@ class CreateForm<
   /** 标记表单实例是否已销毁，保证 dispose 幂等 */
   private disposed = false
 
-  /** graph 生命周期事件总线，连接 reconciler 与字段资源挂载流程 */
-  private lifecycleBus: LifecycleBus<FieldFiber<TValues>>
+  /** node 生命周期事件总线，连接 reconciler 与字段资源挂载流程 */
+  private lifecycleBus: LifecycleBus<FieldRuntimeNode<TValues>>
 
   constructor(options: CreateFormOptions<TValues> = {}) {
     const {
@@ -289,32 +283,30 @@ class CreateForm<
       uploadRequired: createUploadRequiredRule,
     })
 
-    // 生命周期总线连接 graph 结构变化与字段模型、依赖资源的挂载和更新流程。
-    this.lifecycleBus = createLifecycleBus<FieldFiber<TValues>>()
+    // 生命周期总线连接 node 结构变化与字段模型、依赖资源的挂载和更新流程。
+    this.lifecycleBus = createLifecycleBus<FieldRuntimeNode<TValues>>()
 
-    // 初始化运行时 graph 所需的核心基础设施。
+    // 初始化运行时 node 所需的核心基础设施。
     this.scheduler = createScheduler()
     this.viewRevision = createViewRevision()
     this.fieldRegistry = createFieldRegistry<TValues>()
 
-    // dependency renderer 运行时需要回写 graph，因此上下文在首次编译前准备好。
+    // dependency renderer 运行时需要回写 node，因此上下文在首次编译前准备好。
     this.context = {
       defaultProps: pick(restOptions, defaultConfigKey),
-      store: this.store,
-      validatorRegistry: this.validatorRegistry,
-      validator: this.validator,
+      instance: this.getFormInstance(),
+      formApi: this.getFormApi(),
       scheduler: this.scheduler,
       lifecycleBus: this.lifecycleBus,
       fieldRegistry: this.fieldRegistry,
       commitChildren: this.commitChildren,
-      getFormApi: () => this.getFormApi(),
     }
 
-    this.fiberManager = createFiberManager<TValues>(this.context)
+    this.runtimeNodeManager = createRuntimeNodeManager<TValues>(this.context)
 
-    this.reconciler = createReconciler(this.fiberManager)
+    this.reconciler = createReconciler(this.runtimeNodeManager)
 
-    this.root = this.fiberManager.createRoot()
+    this.root = this.runtimeNodeManager.createRoot()
 
     if (options.lifecycleHooks) {
       this.lifecycleBus.on(options.lifecycleHooks)
@@ -326,7 +318,7 @@ class CreateForm<
       ? schemasInput
       : createSchemas<TValues>(schemasInput ?? [])
 
-    // 将外部 schema 编译成内部 descriptor tree，再交给 reconciler 建立 runtime graph。
+    // 将外部 schema 编译成内部 descriptor tree，再交给 reconciler 建立 runtime node。
     this.applySchemas(this.schemas.peek())
 
     const schemasDisposer = this.schemas.subscribe((nextSchemas) => {
@@ -386,13 +378,12 @@ class CreateForm<
       setFieldPending: this.store.setFieldPending.bind(this.store),
       isFieldPending: this.store.isFieldPending.bind(this.store),
       getPendingFields: this.store.getPendingFields.bind(this.store),
-      resetFields: this.store.resetFields.bind(this.store),
-      reset: this.reset.bind(this),
-
       validateField: this.validateField.bind(this),
       validate: this.validate.bind(this),
       getFieldError: this.validator.getFieldError.bind(this.validator),
       setFieldError: this.validator.setFieldError.bind(this.validator),
+      resetFields: this.store.resetFields.bind(this.store),
+      reset: this.reset.bind(this),
       submit: this.submit.bind(this),
 
       registerRules: this.register.bind(this),
@@ -456,33 +447,20 @@ class CreateForm<
   ): void {
     const resolvedRules: StandardSchemaV1[] = []
 
-    const schema = this.fieldRegistry.get(path)?.fiber.descriptor.schema
+    const node = findFieldRuntimeNode(this.root, path)
+
+    const schema = node?.descriptor.schema
 
     this.validator.unregister(path)
 
-    if (schema) {
-      const schemaWithRules = {
-        ...schema,
-        rules,
-      } as SchemxBaseField<TValues>
+    const schemaWithRules = {
+      ...schema,
+      rules,
+    } as SchemxBaseField<TValues>
 
-      resolvedRules.push(
-        ...this.validatorRegistry.resolveValidatorsBySchema(schemaWithRules)
-      )
-    } else {
-      const ruleList = Array.isArray(rules) ? rules : [rules]
-
-      for (const rule of ruleList) {
-        if (typeof rule === "string") {
-          const entry = this.validatorRegistry.get(rule as never)
-          const resolved = typeof entry === "function" ? entry(undefined) : entry
-
-          if (resolved) resolvedRules.push(resolved)
-        } else if (rule) {
-          resolvedRules.push(rule)
-        }
-      }
-    }
+    resolvedRules.push(
+      ...this.validatorRegistry.resolveValidatorsBySchema(schemaWithRules)
+    )
 
     if (resolvedRules.length > 0) {
       this.validator.register(path, resolvedRules, defaultMessage)
@@ -628,7 +606,7 @@ class CreateForm<
   }
 
   /**
-   * 将 schema source 的当前值提交到 runtime graph。
+   * 将 schema source 的当前值提交到 runtime node。
    */
   private applySchemas(schemas: readonly SchemxField<TValues>[]): void {
     if (this.disposed) {
@@ -638,7 +616,7 @@ class CreateForm<
     const previousRevision = this.viewRevision.revision.value
     const descriptors = compileToDescriptors([...schemas], this.context.defaultProps)
 
-    this.commitChildren(this.root as ContainerFiber<TValues>, descriptors)
+    this.commitChildren(this.root as ContainerRuntimeNode<TValues>, descriptors)
 
     if (this.viewRevision.revision.value === previousRevision) {
       this.viewRevision.bump()
@@ -648,14 +626,14 @@ class CreateForm<
   /**
    * 唯一子节点提交边界。
    *
-   * 所有结构输入先编译成 descriptor，再经由这里提交到某个 parent Fiber。
-   * Reconciler 只负责 graph 结构；public commit 完成后由这里推进一次 viewRevision。
+   * 所有结构输入先编译成 descriptor，再经由这里提交到某个 parent RuntimeNode。
+   * Reconciler 只负责 node 结构；public commit 完成后由这里推进一次 viewRevision。
    */
   private commitChildren = (
-    parentFiber: ContainerFiber<TValues>,
+    parentNode: ContainerRuntimeNode<TValues>,
     descriptors: FormDescriptor<TValues>[]
   ): void => {
-    const changed = this.reconciler.reconcileChildren(parentFiber, descriptors)
+    const changed = this.reconciler.reconcileChildren(parentNode, descriptors)
 
     if (changed) {
       this.viewRevision.bump()
@@ -675,7 +653,7 @@ class CreateForm<
     this.disposed = true
 
     this.scope.dispose()
-    this.fiberManager.disposeTree(this.root)
+    this.runtimeNodeManager.disposeTree(this.root)
     this.scheduler.dispose()
     this.store.destroy()
   }

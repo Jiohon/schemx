@@ -5,13 +5,13 @@ import { createFieldRegistry } from "../../field"
 import { createLifecycleBus } from "../../lifecycle"
 import { createScheduler } from "../../scheduler"
 import { createViewRevision } from "../../view"
-import { createFiberManager } from "../fiberManager"
+import { createRuntimeNodeManager } from "../runtimeNodeManager"
 import { createReconciler } from "../reconciler"
 
 import type { SchemxFormContext } from "../../createForm"
 import type { DependencyDescriptor, FieldDescriptor } from "../../descriptor"
 import type { LifecycleListener } from "../../lifecycle"
-import type { Fiber, FieldFiber } from "../fiber"
+import type { RuntimeNode, FieldRuntimeNode } from "../runtimeNode"
 
 function createFieldDescriptor(key: string, name = key): FieldDescriptor {
   return {
@@ -39,39 +39,39 @@ function createDependencyDescriptor(
   }
 }
 
-function createGraphRuntime(listener: LifecycleListener<Fiber> = {}) {
+function createGraphRuntime(listener: LifecycleListener<RuntimeNode> = {}) {
   const fieldRegistry = createFieldRegistry()
   const lifecycleBus = createLifecycleBus(listener)
   const scheduler = createScheduler()
   const viewRevision = createViewRevision()
+  const formApi = {
+    getValue: vi.fn(),
+    getValues: vi.fn(() => ({})),
+  }
+  const instance = {
+    ...formApi,
+    getFieldSnapshot: vi.fn(() => undefined),
+    setInitialValues: vi.fn(),
+    setFieldValue: vi.fn(),
+    registerRules: vi.fn(),
+    unregisterRules: vi.fn(),
+    setFieldError: vi.fn(),
+    validateField: vi.fn().mockResolvedValue({ ok: true, values: {} }),
+  }
 
   const context = {
+    defaultProps: {},
+    instance,
+    formApi,
     scheduler,
     lifecycleBus,
-    store: {
-      getFieldsSnapshot: vi.fn(() => ({})),
-    },
-    validator: {
-      getFieldError: vi.fn(() => []),
-      setFieldError: vi.fn(),
-      register: vi.fn(),
-      unregister: vi.fn(),
-      validateField: vi.fn().mockResolvedValue({ ok: true, values: {} }),
-    },
-    validatorRegistry: {
-      resolveValidatorsBySchema: vi.fn(() => []),
-    },
-    getFormApi: () => ({
-      getValue: vi.fn(),
-      getValues: vi.fn(() => ({})),
-    }),
   } as unknown as SchemxFormContext
 
   Object.assign(context, { fieldRegistry })
 
-  const fiberManager = createFiberManager(context)
-  const reconciler = createReconciler(fiberManager)
-  const commitChildren = (parent: Fiber, descriptors: any[]) => {
+  const runtimeNodeManager = createRuntimeNodeManager(context)
+  const reconciler = createReconciler(runtimeNodeManager)
+  const commitChildren = (parent: RuntimeNode, descriptors: any[]) => {
     const changed = reconciler.reconcileChildren(parent, descriptors)
 
     if (changed) {
@@ -79,14 +79,14 @@ function createGraphRuntime(listener: LifecycleListener<Fiber> = {}) {
     }
   }
 
-  const root = fiberManager.createRoot()
+  const root = runtimeNodeManager.createRoot()
 
   Object.assign(context, { reconciler, commitChildren, compileOptions: {} })
 
   return {
     context,
     fieldRegistry,
-    fiberManager,
+    runtimeNodeManager,
     lifecycleBus,
     reconciler,
     commitChildren,
@@ -96,7 +96,7 @@ function createGraphRuntime(listener: LifecycleListener<Fiber> = {}) {
   }
 }
 
-describe("RuntimeReconciler + RuntimeFiberManager", () => {
+describe("RuntimeReconciler + DefaultRuntimeNodeManager", () => {
   it("嵌套 group reconcile 只推进一次 viewRevision", () => {
     const { commitChildren, root, viewRevision } = createGraphRuntime()
     const descriptors = compileToDescriptors([
@@ -123,7 +123,7 @@ describe("RuntimeReconciler + RuntimeFiberManager", () => {
     expect(viewRevision.revision.value).toBe(1)
   })
 
-  it("生命周期事件只由 FiberManager 触发一次", () => {
+  it("生命周期事件只由 RuntimeNodeManager 触发一次", () => {
     const calls = {
       mount: vi.fn(),
       update: vi.fn(),
@@ -140,27 +140,27 @@ describe("RuntimeReconciler + RuntimeFiberManager", () => {
     expect(calls.unmount).toHaveBeenCalledTimes(1)
   })
 
-  it("同名字段替换时旧 fiber cleanup 不会误删新注册", () => {
+  it("同名字段替换时旧 node cleanup 不会误删新注册", () => {
     const { fieldRegistry, commitChildren, root } = createGraphRuntime()
 
     commitChildren(root, [createFieldDescriptor("old", "user.name")])
     commitChildren(root, [createFieldDescriptor("new", "user.name")])
 
-    expect(fieldRegistry.get("user.name")?.fiber.key).toBe("new")
+    expect(fieldRegistry.get("user.name")?.node.key).toBe("new")
   })
 
   it("disposeTree 不清空 descriptor 和 fieldModel，只释放字段 scope", () => {
-    const { fiberManager, commitChildren, root } = createGraphRuntime()
+    const { runtimeNodeManager, commitChildren, root } = createGraphRuntime()
 
     commitChildren(root, [createFieldDescriptor("name", "name")])
 
-    const field = root.childFibers[0] as FieldFiber
+    const field = root.childNodes[0] as FieldRuntimeNode
     const descriptor = field.descriptor
     const fieldModel = field.fieldModel
 
     expect(field.fieldResourceScope).not.toBeNull()
 
-    fiberManager.disposeTree(field)
+    runtimeNodeManager.disposeTree(field)
 
     expect(field.disposed.value).toBe(true)
     expect(field.descriptor).toBe(descriptor)
@@ -176,10 +176,10 @@ describe("RuntimeReconciler + RuntimeFiberManager", () => {
       createDependencyDescriptor("dep", ["type"], vi.fn().mockResolvedValue([])),
     ])
 
-    const dependency = root.childFibers[0]
+    const dependency = root.childNodes[0]
 
     if (dependency?.type !== "dependency") {
-      throw new Error("expected dependency fiber")
+      throw new Error("expected dependency node")
     }
 
     const firstSlot = dependency.dependencySlot

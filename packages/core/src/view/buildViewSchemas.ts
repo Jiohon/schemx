@@ -1,17 +1,22 @@
 /**
  * buildViewSchemas - 渲染 schema 构建算法。
  *
- * 从 Fiber Tree 生成处理后的 SchemxField 风格 schema。
+ * 从 RuntimeNode Tree 生成处理后的 SchemxField 风格 schema。
  * 核心原则：
- * - dependency Fiber 透明展开
+ * - dependency RuntimeNode 透明展开
  * - group 保留 children 结构
  * - field 保持扁平 schema 格式
- * - disposed Fiber 被跳过
+ * - disposed RuntimeNode 被跳过
  *
  * @module core/view/buildViewSchemas
  */
 
-import { getChildFibers, isDependencyFiber, isFieldFiber, isGroupFiber } from "../graph"
+import {
+  getChildRuntimeNodes,
+  isDependencyRuntimeNode,
+  isFieldRuntimeNode,
+  isGroupRuntimeNode,
+} from "../node"
 
 import type {
   SchemxViewDebugMeta,
@@ -19,7 +24,13 @@ import type {
   SchemxViewGroupSchema,
   SchemxViewSchema,
 } from "./types"
-import type { DependencyFiber, Fiber, FieldFiber, GroupFiber, RootFiber } from "../graph"
+import type {
+  DependencyRuntimeNode,
+  FieldRuntimeNode,
+  GroupRuntimeNode,
+  RootRuntimeNode,
+  RuntimeNode,
+} from "../node"
 import type { SchemxComponentProps, SchemxResolvedBaseField, Values } from "../types"
 
 /**
@@ -28,30 +39,30 @@ import type { SchemxComponentProps, SchemxResolvedBaseField, Values } from "../t
 const MAX_DEPTH = 100
 
 /**
- * 从 Root Fiber 构建 ViewSchemas。
+ * 从 Root RuntimeNode 构建 ViewSchemas。
  *
- * root Fiber 是透明的，返回 root.childFibers 的构建结果，而非 root 自身。
+ * root RuntimeNode 是透明的，返回 root.childNodes 的构建结果，而非 root 自身。
  *
  * @param root - root runtime 节点；为空时返回空数组。
  * @returns 可供渲染层消费的 ViewSchemas。
  */
 export function buildViewSchemas<TValues extends Values = Values>(
-  root: RootFiber<TValues> | null | undefined
+  root: RootRuntimeNode<TValues> | null | undefined
 ): readonly SchemxViewSchema<TValues>[] {
   if (!root) {
     return []
   }
 
-  // TODO: 按脏 Fiber 缓存 ViewSchema，复用未变化字段的构建结果；
-  // graph 结构变化时需要使受影响的 group 和 dependency 子树缓存失效。
-  return buildFiberChildren<TValues>(getChildFibers(root), 1)
+  // TODO: 按脏 RuntimeNode 缓存 ViewSchema，复用未变化字段的构建结果；
+  // node 结构变化时需要使受影响的 group 和 dependency 子树缓存失效。
+  return buildRuntimeNodeChildren<TValues>(getChildRuntimeNodes(root), 1)
 }
 
 /**
- * 递归构建 Fiber 子节点。
+ * 递归构建 RuntimeNode 子节点。
  */
-function buildFiberChildren<TValues extends Values = Values>(
-  fibers: Fiber<TValues>[],
+function buildRuntimeNodeChildren<TValues extends Values = Values>(
+  nodes: RuntimeNode<TValues>[],
   depth: number
 ): readonly SchemxViewSchema<TValues>[] {
   if (depth > MAX_DEPTH) {
@@ -62,8 +73,8 @@ function buildFiberChildren<TValues extends Values = Values>(
 
   const results: SchemxViewSchema<TValues>[] = []
 
-  for (const fiber of fibers) {
-    const schema = buildFiberSchema<TValues>(fiber, depth)
+  for (const node of nodes) {
+    const schema = buildRuntimeNodeSchema<TValues>(node, depth)
 
     if (schema === null) {
       continue
@@ -84,26 +95,26 @@ function buildFiberChildren<TValues extends Values = Values>(
 }
 
 /**
- * 构建单个 Fiber 对应的 ViewSchema。
+ * 构建单个 RuntimeNode 对应的 ViewSchema。
  */
-function buildFiberSchema<TValues extends Values = Values>(
-  fiber: Fiber<TValues>,
+function buildRuntimeNodeSchema<TValues extends Values = Values>(
+  node: RuntimeNode<TValues>,
   depth: number
 ): SchemxViewSchema<TValues> | readonly SchemxViewSchema<TValues>[] | null {
-  if (fiber.disposed.value) {
+  if (node.disposed.value) {
     return null
   }
 
-  if (isGroupFiber(fiber)) {
-    return buildGroupViewSchema<TValues>(fiber, depth)
+  if (isGroupRuntimeNode(node)) {
+    return buildGroupViewSchema<TValues>(node, depth)
   }
 
-  if (isDependencyFiber(fiber)) {
-    return buildDependencyFiber<TValues>(fiber, depth)
+  if (isDependencyRuntimeNode(node)) {
+    return buildDependencyRuntimeNode<TValues>(node, depth)
   }
 
-  if (isFieldFiber(fiber)) {
-    return buildFieldViewSchema<TValues>(fiber)
+  if (isFieldRuntimeNode(node)) {
+    return buildFieldViewSchema<TValues>(node)
   }
 
   return null
@@ -113,14 +124,14 @@ function buildFiberSchema<TValues extends Values = Values>(
  * 将 FieldModel 构建为字段 ViewSchema。
  */
 function buildFieldViewSchema<TValues extends Values = Values>(
-  fiber: FieldFiber<TValues>
+  node: FieldRuntimeNode<TValues>
 ): SchemxViewFieldSchema<TValues> | null {
-  const descriptor = fiber.descriptor
-  const model = fiber.fieldModel
+  const descriptor = node.descriptor
+  const model = node.fieldModel
 
   if (!model) {
     console.warn(
-      `[buildViewSchemas] skipping field fiber "${fiber.key}": no FieldModel resource`
+      `[buildViewSchemas] skipping field node "${node.key}": no FieldModel resource`
     )
 
     return null
@@ -135,7 +146,7 @@ function buildFieldViewSchema<TValues extends Values = Values>(
 
   return {
     ...schema,
-    key: fiber.key,
+    key: node.key,
     visible: snapshot.visible,
     label: snapshot.label,
     readonly: snapshot.readonly,
@@ -145,33 +156,36 @@ function buildFieldViewSchema<TValues extends Values = Values>(
     componentProps: sanitizeComponentProps(snapshot.componentProps ?? {}),
     rules: snapshot.rules,
     validationTrigger: schema.validationTrigger,
-    debug: buildDebugMeta(fiber),
+    debug: buildDebugMeta(node),
   }
 }
 
 /**
- * 将 group Fiber 构建为分组 ViewSchema。
+ * 将 group RuntimeNode 构建为分组 ViewSchema。
  */
 function buildGroupViewSchema<TValues extends Values = Values>(
-  fiber: GroupFiber<TValues>,
+  node: GroupRuntimeNode<TValues>,
   depth: number
 ): SchemxViewGroupSchema<TValues> {
-  const children = buildFiberChildren<TValues>(getChildFibers(fiber), depth + 1)
-  const descriptor = fiber.descriptor
+  const children = buildRuntimeNodeChildren<TValues>(
+    getChildRuntimeNodes(node),
+    depth + 1
+  )
+  const descriptor = node.descriptor
 
   return {
     ...descriptor.schema,
-    key: fiber.key,
+    key: node.key,
     children,
-    debug: buildDebugMeta(fiber),
+    debug: buildDebugMeta(node),
   } as SchemxViewGroupSchema<TValues>
 }
 
-function buildDependencyFiber<TValues extends Values = Values>(
-  fiber: DependencyFiber<TValues>,
+function buildDependencyRuntimeNode<TValues extends Values = Values>(
+  node: DependencyRuntimeNode<TValues>,
   depth: number
 ): readonly SchemxViewSchema<TValues>[] {
-  return buildFiberChildren<TValues>(getChildFibers(fiber), depth + 1)
+  return buildRuntimeNodeChildren<TValues>(getChildRuntimeNodes(node), depth + 1)
 }
 
 /**
@@ -234,12 +248,12 @@ function isValidPropKey(key: string): boolean {
  * 构建调试元数据。
  */
 function buildDebugMeta<TValues extends Values = Values>(
-  fiber: Fiber<TValues>
+  node: RuntimeNode<TValues>
 ): Readonly<SchemxViewDebugMeta> {
   return {
-    fiberId: fiber.id,
-    fiberType: fiber.type,
-    hasFieldModel: fiber.type === "field" && fiber.fieldModel !== undefined,
-    hasDependencySlot: fiber.type === "dependency" && fiber.dependencySlot !== undefined,
+    runtimeNodeId: node.id,
+    runtimeNodeType: node.type,
+    hasFieldModel: node.type === "field" && node.fieldModel !== undefined,
+    hasDependencySlot: node.type === "dependency" && node.dependencySlot !== undefined,
   }
 }

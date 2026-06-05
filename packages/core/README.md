@@ -1,12 +1,12 @@
 # @schemx/core
 
-框架无关的 Schema 驱动表单核心。它只处理表单状态、字段依赖、校验、运行时 schema graph 和可渲染 ViewSchemas，不绑定任何 UI 框架。
+框架无关的 Schema 驱动表单核心。它只处理表单状态、字段依赖、校验、运行时 schema node 和可渲染 ViewSchemas，不绑定任何 UI 框架。
 
 `@schemx/core` 适合用来构建 Vue、React、小程序、低代码表单、动态问卷、配置化后台表单等上层适配器。
 
 ## 为什么使用
 
-- **Headless core**：核心不渲染 DOM，只暴露状态、校验、schema graph 和 renderer/rule registry。
+- **Headless core**：核心不渲染 DOM，只暴露状态、校验、schema node 和 renderer/rule registry。
 - **Schema driven**：用 `schemas` 描述字段、分组、动态依赖和渲染器类型。
 - **细粒度响应式**：字段级依赖追踪，`effect` / `watch` 只响应实际读取的字段。
 - **Standard Schema 校验**：可直接接入 Zod、Valibot、ArkType 等实现 Standard Schema 的验证库。
@@ -67,7 +67,7 @@ form.destroy()
 
 ## Schema 配置
 
-`schemas` 是 core 与框架适配层之间最重要的协议。core 会把原始 schema 编译为运行时 graph，并输出适合 UI 层渲染的 ViewSchemas。
+`schemas` 是 core 与框架适配层之间最重要的协议。core 会把原始 schema 编译为运行时 node，并输出适合 UI 层渲染的 ViewSchemas。
 
 ```ts
 import { createForm, createSchemas } from "@schemx/core"
@@ -445,25 +445,25 @@ schemas.update((current) => [
 | `onFinishFailed`      | `submit()` 校验失败回调                                 |
 | `onValuesChange`      | 字段值变化回调                                          |
 | `onFieldsChange`      | 字段路径变化回调                                        |
-| `lifecycleHooks`      | graph 生命周期观察钩子                                  |
+| `lifecycleHooks`      | node 生命周期观察钩子                                   |
 
 ### SchemxInstance
 
-| 分类       | 方法                                                                                    |
-| ---------- | --------------------------------------------------------------------------------------- |
-| 值         | `getFieldValue`、`getFieldsValue`、`setFieldValue`、`setFieldsValue`                    |
-| 快照       | `getFieldSnapshot`、`getFieldsSnapshot`                                                 |
-| 初始值     | `getInitialValue`、`getInitialValues`、`setInitialValues`                               |
-| touched    | `isFieldTouched`、`setFieldTouched`、`getTouchedFields`                                 |
-| pending    | `setFieldPending`、`isFieldPending`、`getPendingFields`                                 |
+| 分类       | 方法                                                                                              |
+| ---------- | ------------------------------------------------------------------------------------------------- |
+| 值         | `getFieldValue`、`getFieldsValue`、`setFieldValue`、`setFieldsValue`                              |
+| 快照       | `getFieldSnapshot`、`getFieldsSnapshot`                                                           |
+| 初始值     | `getInitialValue`、`getInitialValues`、`setInitialValues`                                         |
+| touched    | `isFieldTouched`、`setFieldTouched`、`getTouchedFields`                                           |
+| pending    | `setFieldPending`、`isFieldPending`、`getPendingFields`                                           |
 | 校验       | `registerRules`、`unregisterRules`、`validateField`、`validate`、`getFieldError`、`setFieldError` |
-| 提交与重置 | `submit`、`reset`、`resetFields`                                                        |
-| 响应式     | `effect`、`batch`                                                                       |
-| schema     | `setSchemas`、`updateSchemas`                                                           |
-| view       | `getViewSchemas`、`subscribeViewSchemas`、`getViewRevision`、`waitForDependencies`      |
-| renderer   | `getRenderer`、`registerRenderer`、`hasRenderer`                                        |
-| validator  | `getValidator`、`registerValidator`、`hasValidator`                                     |
-| 生命周期   | `destroy`                                                                               |
+| 提交与重置 | `submit`、`reset`、`resetFields`                                                                  |
+| 响应式     | `effect`、`batch`                                                                                 |
+| schema     | `setSchemas`、`updateSchemas`                                                                     |
+| view       | `getViewSchemas`、`subscribeViewSchemas`、`getViewRevision`、`waitForDependencies`                |
+| renderer   | `getRenderer`、`registerRenderer`、`hasRenderer`                                                  |
+| validator  | `getValidator`、`registerValidator`、`hasValidator`                                               |
+| 生命周期   | `destroy`                                                                                         |
 
 ## 核心概念
 
@@ -489,7 +489,7 @@ raw schemas
 src/
 ├── createForm.ts       # 表单实例装配入口
 ├── descriptor/         # schema 编译
-├── graph/              # runtime fiber / reconciler / scope
+├── node/              # runtime fiber / reconciler / scope
 ├── field/              # 字段模型、字段注册、动态依赖 effect
 ├── store/              # 值、初始值、touched、pending 状态
 ├── validator/          # 规则注册与校验状态
@@ -502,7 +502,7 @@ src/
 └── utils/              # 路径、diff、schema 等工具
 ```
 
-框架适配层应优先通过 `SchemxInstance` 的公开 API 消费 core 能力，避免直接依赖 `descriptor/`、`graph/`、`field/` 等内部模块。
+框架适配层应优先通过 `SchemxInstance` 的公开 API 消费 core 能力，避免直接依赖 `descriptor/`、`node/`、`field/` 等内部模块。
 
 ## 相关包
 

@@ -2,7 +2,7 @@
  * 表单描述符类型，用于 schema 编译。
  *
  * 描述符是编译后的中间表示，不持有实例状态。
- * 它们由 schema compiler 生成，被表单内部 graph 消费以创建字段模型。
+ * 它们由 schema compiler 生成，被表单内部 node 消费以创建字段模型。
  *
  * @module core/descriptor/descriptor
  */
@@ -21,7 +21,7 @@ import type {
 /**
  * 表单描述符，所有描述符类型的联合类型。
  *
- * 描述符树表示 schema 编译后的表单结构，在 graph 实例化之前。
+ * 描述符树表示 schema 编译后的表单结构，在 node 实例化之前。
  *
  * @typeParam TValues - 表单值类型。
  * @typeParam TName - 字段名路径类型。
@@ -51,7 +51,7 @@ export interface FieldDescriptor<TValues extends Values = Values> {
   readonly type: "field"
 
   /**
-   * 用于 runtime graph reconcile 的稳定 key。
+   * 用于 runtime node reconcile 的稳定 key。
    */
   readonly key: string
 
@@ -95,7 +95,7 @@ export interface GroupDescriptor<
   readonly type: "group"
 
   /**
-   * 用于 runtime graph reconcile 的稳定 key。
+   * 用于 runtime node reconcile 的稳定 key。
    */
   readonly key: string
 
@@ -129,7 +129,7 @@ export interface DependencyDescriptor<
   readonly type: "dependency"
 
   /**
-   * 用于 runtime graph reconcile 的稳定 key。
+   * 用于 runtime node reconcile 的稳定 key。
    */
   readonly key: string
 

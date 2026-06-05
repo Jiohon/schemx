@@ -1,13 +1,13 @@
 /**
- * Lifecycle - Fiber 生命周期事件总线。
+ * Lifecycle - RuntimeNode 生命周期事件总线。
  *
- * Reconciler 负责决定 Fiber 的创建、复用和销毁，FiberManager 负责执行单个
- * Fiber 的生命周期动作。LifecycleBus 只观察 Fiber 生命周期，不参与内部资源挂载。
+ * Reconciler 负责决定 RuntimeNode 的创建、复用和销毁，RuntimeNodeManager 负责执行单个
+ * RuntimeNode 的生命周期动作。LifecycleBus 只观察 RuntimeNode 生命周期，不参与内部资源挂载。
  *
  * @module core/lifecycle
  */
 
-import type { Fiber } from "../graph"
+import type { RuntimeNode } from "../node"
 import type { Values } from "../types"
 
 /**
@@ -38,50 +38,50 @@ export interface LifecycleHooks<TNode> {
 }
 
 /**
- * Fiber 生命周期 hooks。
+ * RuntimeNode 生命周期 hooks。
  */
-export interface FiberLifecycleHooks<TNode> {
+export interface RuntimeNodeLifecycleHooks<TNode> {
   /**
-   * Fiber 挂载前。
+   * RuntimeNode 挂载前。
    *
-   * @param node - 即将挂载的 Fiber 节点。
+   * @param node - 即将挂载的 RuntimeNode 节点。
    */
   beforeMount(node: TNode): void
 
   /**
-   * Fiber 挂载后。
+   * RuntimeNode 挂载后。
    *
-   * @param node - 已挂载的 Fiber 节点。
+   * @param node - 已挂载的 RuntimeNode 节点。
    */
   mounted(node: TNode): void
 
   /**
-   * Fiber 更新前。
+   * RuntimeNode 更新前。
    *
-   * @param node - 即将更新的 Fiber 节点。
-   * @param previousNode - 更新前的 Fiber 快照。
+   * @param node - 即将更新的 RuntimeNode 节点。
+   * @param previousNode - 更新前的 RuntimeNode 快照。
    */
   beforeUpdate(node: TNode, previousNode: TNode): void
 
   /**
-   * Fiber 更新后。
+   * RuntimeNode 更新后。
    *
-   * @param node - 已更新的 Fiber 节点。
-   * @param previousNode - 更新前的 Fiber 快照。
+   * @param node - 已更新的 RuntimeNode 节点。
+   * @param previousNode - 更新前的 RuntimeNode 快照。
    */
   updated(node: TNode, previousNode: TNode): void
 
   /**
-   * Fiber 卸载前。
+   * RuntimeNode 卸载前。
    *
-   * @param node - 即将卸载的 Fiber 节点。
+   * @param node - 即将卸载的 RuntimeNode 节点。
    */
   beforeUnmount(node: TNode): void
 
   /**
-   * Fiber 卸载后。
+   * RuntimeNode 卸载后。
    *
-   * @param node - 已卸载的 Fiber 节点。
+   * @param node - 已卸载的 RuntimeNode 节点。
    */
   unmounted(node: TNode): void
 }
@@ -90,10 +90,10 @@ export interface FiberLifecycleHooks<TNode> {
  * 生命周期事件监听器。
  *
  * 监听器允许只实现关心的事件。mount/update/unmount 是兼容旧命名的观察入口，
- * mounted/updated/unmounted 是新的 Fiber 生命周期入口。
+ * mounted/updated/unmounted 是新的 RuntimeNode 生命周期入口。
  */
 export type LifecycleListener<TNode> = Partial<
-  LifecycleHooks<TNode> & FiberLifecycleHooks<TNode>
+  LifecycleHooks<TNode> & RuntimeNodeLifecycleHooks<TNode>
 >
 
 /**
@@ -172,8 +172,9 @@ export interface LifecycleBus<TNode> {
  * 这些 hook 由 createForm 传入，用于在表单内部资源装配后
  * 观察字段、分组和 dependency 节点的 mount/update/unmount。
  */
-export type SchemxLifecycleHooks<TValues extends Values = Values> =
-  LifecycleListener<Fiber<TValues>>
+export type SchemxLifecycleHooks<TValues extends Values = Values> = LifecycleListener<
+  RuntimeNode<TValues>
+>
 
 /**
  * 创建生命周期事件总线。

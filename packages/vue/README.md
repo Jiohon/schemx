@@ -11,7 +11,7 @@ Vue 3 adapter for schemx.
 - 提供 Vue 3 表单组件和 Composition API。
 - 通过 `rendererRegistry` 注册自定义 renderer。
 - 支持 `v-model`、`initialValues`、表单级事件和实例方法。
-- 复用 `@schemx/core` 的字段依赖、校验、运行时 schema graph 和 ViewSchemas。
+- 复用 `@schemx/core` 的字段依赖、校验、运行时 schema node 和 ViewSchemas。
 - 直接导出 `@schemx/core` 的公开类型与工具。
 
 ## 安装
@@ -117,20 +117,20 @@ rendererRegistry.register("input", InputRenderer)
 
 ## Composition API
 
-| API | 说明 |
-| --- | --- |
-| `useForm()` | 创建表单实例，并通过 Vue context 提供给子组件 |
-| `useField()` | 获取字段级读写、校验和状态能力 |
-| `useWatch()` | 监听字段变化 |
-| `useWatchField()` | 监听单个字段 |
-| `useWatchFields()` | 监听多个字段 |
-| `useWatchAll()` | 监听整张表单 |
-| `useDictionary()` | 管理依赖字段的远程或本地选项 |
-| `useEffect()` | 创建字段依赖追踪 effect |
-| `useFieldContext()` | 获取当前字段上下文 |
+| API                 | 说明                                          |
+| ------------------- | --------------------------------------------- |
+| `useForm()`         | 创建表单实例，并通过 Vue context 提供给子组件 |
+| `useField()`        | 获取字段级读写、校验和状态能力                |
+| `useWatch()`        | 监听字段变化                                  |
+| `useWatchField()`   | 监听单个字段                                  |
+| `useWatchFields()`  | 监听多个字段                                  |
+| `useWatchAll()`     | 监听整张表单                                  |
+| `useDictionary()`   | 管理依赖字段的远程或本地选项                  |
+| `useEffect()`       | 创建字段依赖追踪 effect                       |
+| `useFieldContext()` | 获取当前字段上下文                            |
 
 ## Adapter 边界
 
-Vue 适配层只负责将 core 输出的 ViewSchemas 映射为 Vue 组件树。descriptor 编译、dependency 执行、validation、scheduler 和 graph 生命周期由 `@schemx/core` 管理。
+Vue 适配层只负责将 core 输出的 ViewSchemas 映射为 Vue 组件树。descriptor 编译、dependency 执行、validation、scheduler 和 node 生命周期由 `@schemx/core` 管理。
 
 自定义 adapter 应优先使用 `form.getViewSchemas()`、`form.subscribeViewSchemas()` 和 `form.registerRenderer()` 等公开 API，避免依赖 core 内部目录。

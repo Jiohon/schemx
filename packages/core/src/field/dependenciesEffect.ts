@@ -13,7 +13,7 @@ import { type FieldModel, updateFieldModel } from "./model"
 
 import type { SchemxFormContext } from "../createForm"
 import type { FieldDescriptor } from "../descriptor"
-import type { Scope } from "../graph"
+import type { Scope } from "../node"
 import type {
   SchemxConditionFn,
   SchemxDependencies,
@@ -76,7 +76,6 @@ export function createDependenciesEffect<TValues extends Values = Values>(
   options: CreateDependenciesEffectOptions<TValues>
 ): void {
   const { descriptor, fieldModel, context, scope } = options
-  const formApi = context.getFormApi()
   const base = descriptor.schema
   const dependencies = descriptor.dependencies
 
@@ -94,10 +93,10 @@ export function createDependenciesEffect<TValues extends Values = Values>(
     const currentVersion = ++version
 
     // 读取 trigger 字段值以建立响应式依赖；字段值变化时 effect 会重新执行。
-    void formApi.getValues(dependencies.triggerFields)
+    void context.formApi.getValues(dependencies.triggerFields)
 
     void context.scheduler.track(
-      resolveDependencies(dependencies, base, formApi).then((resolvedProps) => {
+      resolveDependencies(dependencies, base, context.formApi).then((resolvedProps) => {
         if (scope.disposed || currentVersion !== version) {
           return
         }
