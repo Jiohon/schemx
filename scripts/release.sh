@@ -109,19 +109,11 @@ select_publish_target() {
 }
 
 assert_main_branch() {
-  local branch
-
-  branch="$(git branch --show-current)"
-  if [[ "$branch" != "main" ]]; then
-    die "正式发布只能在 main 分支执行。当前分支：$branch"
-  fi
+  bash "$ROOT_DIR/scripts/release/assert-main-branch.sh"
 }
 
 assert_clean_git() {
-  if [[ -n "$(git status --porcelain)" ]]; then
-    git status --short
-    die "工作区不干净。请先提交或暂存当前改动，再执行发布。"
-  fi
+  bash "$ROOT_DIR/scripts/release/assert-clean-git.sh"
 }
 
 assert_prerelease_channel() {
@@ -146,36 +138,15 @@ assert_prerelease_version_files_clean() {
 }
 
 assert_npm_auth() {
-  info "检查 npm 登录状态"
-  if ! pnpm whoami --registry "$NPM_REGISTRY" >/dev/null 2>&1; then
-    local login_hint
-
-    printf -v login_hint 'pnpm login --registry "%s"' "$NPM_REGISTRY"
-    die "$(printf 'npm 未登录或当前 registry 无权限，请先执行 `%s`，或检查 npm token / registry 配置。' "$login_hint")"
-  fi
+  bash "$ROOT_DIR/scripts/release/check-npm-auth.sh"
 }
 
 assert_npm_registry() {
-  info "检查 npm registry"
-  local configured_registry
-
-  configured_registry="$(pnpm config get registry)"
-  printf '当前 registry：%s\n' "$configured_registry"
-  printf '发布 registry：%s\n' "$NPM_REGISTRY"
+  bash "$ROOT_DIR/scripts/release/check-npm-registry.sh"
 }
 
 run_quality_checks() {
-  info "安装依赖一致性检查"
-  pnpm install --frozen-lockfile
-
-  info "运行测试"
-  pnpm test
-
-  info "运行 lint"
-  pnpm lint
-
-  info "构建发布产物"
-  pnpm build
+  bash "$ROOT_DIR/scripts/release/run-quality-checks.sh"
 }
 
 pack_packages() {
@@ -185,34 +156,7 @@ pack_packages() {
 }
 
 pack_target_packages() {
-  local pkg
-
-  for pkg in "$@"; do
-    pnpm --filter "@schemx/$pkg" pack --dry-run
-  done
-}
-
-check_version_available() {
-  local pkg package_name version
-
-  pkg="$1"
-  package_name="$(package_json_value "$pkg" name)"
-  version="$(package_json_value "$pkg" version)"
-
-  if pnpm view "${package_name}@${version}" version --registry "$NPM_REGISTRY" >/dev/null 2>&1; then
-    die "${package_name}@${version} 已存在，请先提升版本号。"
-  fi
-
-  printf '%s@%s 可发布\n' "$package_name" "$version"
-}
-
-check_versions_available() {
-  info "检查 npm 上是否已存在当前版本"
-
-  local pkg
-  for pkg in "${PACKAGES[@]}"; do
-    check_version_available "$pkg"
-  done
+  bash "$ROOT_DIR/scripts/release/pack-packages.sh" "$@"
 }
 
 run_check() {
@@ -233,13 +177,7 @@ publish_one() {
   local tag="${2:-}"
   assert_package "$pkg"
 
-  info "发布 @schemx/$pkg"
-  if [[ -n "$tag" ]]; then
-    pnpm --dir "$(package_path "$pkg")" publish --access public --registry "$NPM_REGISTRY" --tag "$tag" --no-git-checks
-    return
-  fi
-
-  pnpm --dir "$(package_path "$pkg")" publish --access public --registry "$NPM_REGISTRY"
+  bash "$ROOT_DIR/scripts/release/publish-package.sh" "$pkg" "$tag"
 }
 
 resolve_targets() {
@@ -255,12 +193,7 @@ resolve_targets() {
 }
 
 check_target_versions_available() {
-  local pkg
-
-  info "检查 npm 上是否已存在当前版本"
-  for pkg in "$@"; do
-    check_version_available "$pkg"
-  done
+  bash "$ROOT_DIR/scripts/release/check-versions-available.sh" "$@"
 }
 
 set_package_version() {
@@ -356,6 +289,8 @@ run_publish() {
   for pkg in "${targets[@]}"; do
     publish_one "$pkg"
   done
+
+  bash "$ROOT_DIR/scripts/release/create-release-tag.sh" "${targets[@]}"
 }
 
 run_prerelease_publish() {

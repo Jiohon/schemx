@@ -19,6 +19,8 @@ cat >"$MOCK_BIN/git" <<'MOCK'
 #!/usr/bin/env bash
 set -euo pipefail
 
+printf 'git %s\n' "$*" >>"${COMMAND_LOG:?}"
+
 case "$1" in
   branch)
     if [[ "${2:-}" == "--show-current" ]]; then
@@ -34,6 +36,12 @@ case "$1" in
       printf 'abc1234\n'
       exit 0
     fi
+    ;;
+  tag)
+    exit 0
+    ;;
+  push)
+    exit 0
     ;;
 esac
 
@@ -223,6 +231,8 @@ test_dev_publish_uses_dev_tag_and_restores_version() {
   assert_contains "$output" "发布模式：dev"
   assert_contains "$output" "发布目标：core"
   assert_log_contains "pnpm --dir packages/core publish --access public --registry https://registry.npmjs.org/ --tag dev --no-git-checks"
+  assert_log_not_contains "git tag"
+  assert_log_not_contains "git push"
 }
 
 test_publish_without_target_prompts_for_package_selection() {
@@ -237,6 +247,20 @@ test_publish_without_target_prompts_for_package_selection() {
   assert_not_contains "$output" "输入序号或名称"
   assert_log_contains "pnpm --dir packages/core publish --access public --registry https://registry.npmjs.org/"
   assert_log_not_contains "pnpm --dir packages/vue publish"
+}
+
+test_latest_publish_tags_and_pushes_after_publish() {
+  local version
+
+  version="$(node -p "require('$ROOT_DIR/packages/core/package.json').version")"
+  : >"$COMMAND_LOG"
+
+  SCHEMX_RELEASE_TARGET=core run_release publish
+
+  assert_log_contains "pnpm --dir packages/core publish --access public --registry https://registry.npmjs.org/"
+  assert_log_contains "git tag -a v${version} -m release: v${version}"
+  assert_log_contains "git push origin main"
+  assert_log_contains "git push origin v${version}"
 }
 
 test_selector_rejects_unknown_environment_target() {
@@ -315,6 +339,7 @@ test_latest_publish_is_main_only
 test_publish_without_npm_auth_shows_clear_message
 test_dev_publish_uses_dev_tag_and_restores_version
 test_publish_without_target_prompts_for_package_selection
+test_latest_publish_tags_and_pushes_after_publish
 test_selector_rejects_unknown_environment_target
 test_selector_requires_tty_or_automation_target
 test_selector_rejects_unknown_channel
