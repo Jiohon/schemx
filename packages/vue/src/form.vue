@@ -7,7 +7,7 @@
 -->
 
 <script lang="ts" setup generic="T extends Values = Values">
-  import { computed, type CSSProperties, useAttrs, watch, watchEffect } from "vue"
+  import { useAttrs, watch, watchEffect } from "vue"
 
   import { omit } from "es-toolkit"
 
