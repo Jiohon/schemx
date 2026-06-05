@@ -19,8 +19,10 @@ export default defineConfig({
     vue(),
     vueJsx(),
     dts({
-      include: ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"],
+      include: ["src/**/*.ts", "src/**/*.tsx"],
       outDir: "dist",
+      tsconfigPath: "tsconfig.build.json",
+      logDiagnostics: false,
       // rollupTypes: true,
     }),
   ],

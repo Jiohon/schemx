@@ -16,6 +16,7 @@ export default defineConfig({
     dts({
       include: ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"],
       outDir: "dist",
+      tsconfigPath: "tsconfig.build.json",
       rollupTypes: true,
     }),
   ],

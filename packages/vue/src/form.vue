@@ -7,7 +7,7 @@
 -->
 
 <script lang="ts" setup generic="T extends Values = Values">
-  import { useAttrs, watch, watchEffect } from "vue"
+  import { watch, watchEffect } from "vue"
 
   import { omit } from "es-toolkit"
 
@@ -42,8 +42,6 @@
   const emit = defineEmits<{
     "update:modelValue": [value: T]
   }>()
-
-  const attrs = useAttrs()
 
   /**
    * 创建 FormContext 上下文
