@@ -57,5 +57,10 @@
     "lint": "eslint \"src/**/*.{ts,tsx,vue,js,jsx}\"",
     "prepublishOnly": "pnpm run build"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "@vue/test-utils": "^2.4.6",
+    "vant": "^4.9.0",
+    "vue": "^3.4.0"
+  }
 }

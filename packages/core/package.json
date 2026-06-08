@@ -54,6 +54,7 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "fast-check": "^4.6.0"
+    "fast-check": "^4.6.0",
+    "vue": "^3.4.0"
   }
 }
