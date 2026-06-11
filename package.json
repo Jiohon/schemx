@@ -32,6 +32,7 @@
   "scripts": {
     "dev": "vite",
     "dev:vant": "pnpm --filter vant-demo dev",
+    "dev:wot": "pnpm --filter wot-demo dev:h5",
     "build": "pnpm -r run build",
     "preview": "vite preview",
     "type-check": "tsc --noEmit",
