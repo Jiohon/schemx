@@ -221,10 +221,8 @@ function buildNormalizedFieldSchema<TValues extends Values>(
 
   const mergedVisible = visible ?? defaultConfig.visible
 
-  const mergedReadonly =
-    cp?.readonly ?? readonly ?? options.readonly ?? defaultConfig.readonly
-  const mergedDisabled =
-    cp?.disabled ?? disabled ?? options.disabled ?? defaultConfig.disabled
+  const mergedReadonly = readonly ?? options.readonly ?? defaultConfig.readonly
+  const mergedDisabled = disabled ?? options.disabled ?? defaultConfig.disabled
 
   const mergedPlaceholder = getPlaceholder(schema)
 
