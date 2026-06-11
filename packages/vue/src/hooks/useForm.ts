@@ -25,8 +25,8 @@ import { computed, inject, onUnmounted, provide } from "vue"
 
 import { createForm } from "@schemx/core"
 
-import { rendererRegistry as globalRendererRegistry } from "@/utils/rendererProvider"
-import { validatorRegistry as globalRulesRegistry } from "@/utils/rulesProvider"
+import { rendererRegistry as globalRendererRegistry } from "../utils/rendererProvider"
+import { validatorRegistry as globalRulesRegistry } from "../utils/rulesProvider"
 
 import type { CreateFormOptions, NamePath, SchemxInstance, Values } from "@schemx/core"
 

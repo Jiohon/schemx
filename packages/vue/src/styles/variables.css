@@ -41,6 +41,7 @@
   --schemx-font-size-lg: 16px;
 
   /* 圆角 */
+  --schemx-border-radius-xs: 2px;
   --schemx-border-radius-sm: 4px;
   --schemx-border-radius-md: 8px;
   --schemx-border-radius-lg: 12px;

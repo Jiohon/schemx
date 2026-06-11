@@ -20,7 +20,7 @@ import { computed, onUnmounted, shallowRef } from "vue"
 
 import { createField } from "@schemx/core"
 
-import { FieldInstance } from "@/types/field"
+import { FieldInstance } from "../types/field"
 
 import { useFormInstance } from "./useForm"
 

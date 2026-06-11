@@ -10,7 +10,7 @@
 
 import { Component, computed, defineComponent, h, PropType, SetupContext } from "vue"
 
-import { useDictionary } from "@/hooks/useDictionary"
+import { useDictionary } from "../hooks/useDictionary"
 
 import type { NamePath, SchemxDictionary } from "@schemx/core"
 

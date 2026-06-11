@@ -4,16 +4,18 @@
 
 .schemx-group {
   margin-bottom: var(--schemx-padding-sm);
+  background-color: var(--schemx-background-color);
+  padding: var(--schemx-padding-base) var(--schemx-padding-md);
+  border-radius: var(--schemx-border-radius-md);
 }
 
 .schemx-group__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--schemx-padding-sm) var(--schemx-padding-base);
+  padding-block: var(--schemx-padding-sm);
   user-select: none;
 }
-
 .schemx-group__header--clickable {
   cursor: pointer;
 }
@@ -36,4 +38,12 @@
 
 .schemx-group__arrow--down {
   transform: rotate(180deg);
+}
+
+.schemx-group__body > .schemx-item-wrapper:last-child .schemx-item:after {
+  display: none;
+}
+
+.schemx-group__body > .schemx-item-wrapper > .schemx-item {
+  padding-inline: var(--schemx-padding-xs);
 }

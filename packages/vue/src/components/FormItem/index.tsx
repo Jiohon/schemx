@@ -14,16 +14,15 @@ import type { SetupContext, VNodeChild } from "vue"
 import classnames from "classnames"
 import { omit } from "es-toolkit"
 
-import { useField } from "@/hooks"
-import { useContext } from "@/hooks/useContext"
-import { provideFieldContext } from "@/hooks/useFieldContext"
-import { useFormInstance } from "@/hooks/useForm"
-import { useStableRef } from "@/hooks/useStableRef"
-import { extractChildSlots, mergeTrigger, resolveSlot, shouldValidateOn } from "@/utils"
-import type { TriggerConfig } from "@/utils"
-
+import { useField } from "../../hooks"
+import { useContext } from "../../hooks/useContext"
+import { provideFieldContext } from "../../hooks/useFieldContext"
+import { useFormInstance } from "../../hooks/useForm"
+import { useStableRef } from "../../hooks/useStableRef"
+import { extractChildSlots, mergeTrigger, resolveSlot, shouldValidateOn } from "../../utils"
 import FormGroup from "../FormGroup"
 
+import type { TriggerConfig } from "../../utils"
 import type {
   FieldValue,
   NamePath,
