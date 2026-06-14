@@ -13,7 +13,11 @@
   --schemx-text-color: #323233;
   --schemx-text-color-secondary: #666666;
   --schemx-text-color-placeholder: #c8c9cc;
-  --schemx-text-color-disabled: #c8c9cc;
+
+  /* 只读 / 禁用 */
+  --schemx-readonly-color: #969799;
+  --schemx-disabled-color: #c8c9cc;
+  --schemx-disabled-opacity: 0.6;
 
   /* 背景颜色 */
   --schemx-background-color: #ffffff;
@@ -58,8 +62,9 @@
   --schemx-item-label-top-gap: 4px;
   --schemx-item-content-padding-inline: 6px;
   --schemx-item-required-gap: 2px;
-  --schemx-item-error-gap: 2px;
-  --schemx-input-align: right;
+  --schemx-item-error-gap: 6px;
+
+  --schemx-content-align: right;
   --schemx-error-align: right;
 
   /* 分组 */

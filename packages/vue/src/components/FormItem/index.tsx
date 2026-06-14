@@ -19,7 +19,12 @@ import { useContext } from "../../hooks/useContext"
 import { provideFieldContext } from "../../hooks/useFieldContext"
 import { useFormInstance } from "../../hooks/useForm"
 import { useStableRef } from "../../hooks/useStableRef"
-import { extractChildSlots, mergeTrigger, resolveSlot, shouldValidateOn } from "../../utils"
+import {
+  extractChildSlots,
+  mergeTrigger,
+  resolveSlot,
+  shouldValidateOn,
+} from "../../utils"
 import FormGroup from "../FormGroup"
 
 import type { TriggerConfig } from "../../utils"
@@ -70,7 +75,7 @@ const FormItem = defineComponent(
     /**
      * 是否需要进行校验。
      *
-     * 当字段不可见、只读或禁用时，无需进行校验。
+     * 当字段不可见、详情展示、只读或禁用时，无需进行校验。
      */
     const canVerified = computed(() => {
       const isOperate = schema().visible && !schema().readonly && !schema().disabled
@@ -137,7 +142,7 @@ const FormItem = defineComponent(
     /**
      * 渲染 required 星号。
      *
-     * 当字段为必填且非禁用/只读状态时，在 label 前显示红色星号标记。
+     * 当字段为必填且非详情展示/禁用/只读状态时，在 label 前显示红色星号标记。
      *
      * @returns 星号 VNode 或空片段
      */
@@ -257,17 +262,16 @@ const FormItem = defineComponent(
       const labelPosition = schema().labelPosition || formContext.labelPosition
 
       return (
-        <div
-          class={classnames("schemx-item-wrapper", {
-            "is-readonly": schema().readonly,
-            "is-disabled": schema().disabled,
-          })}
-        >
+        <div class={classnames("schemx-item-wrapper")}>
           <div
             class={classnames(
               "schemx-item",
               `schemx-item--label-${labelPosition}`,
-              schema().class
+              schema().class,
+              {
+                "is-readonly": schema().readonly,
+                "is-disabled": schema().disabled,
+              }
             )}
             style={{ ...(schema().style ?? {}) }}
           >

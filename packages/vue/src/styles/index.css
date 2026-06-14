@@ -39,3 +39,8 @@
   font-size: var(--schemx-font-size-md);
   color: var(--schemx-text-color);
 }
+
+.schemx-renderer-readonly {
+  color: var(--schemx-readonly-color);
+  cursor: default;
+}

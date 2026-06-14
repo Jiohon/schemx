@@ -32,7 +32,7 @@
   align-items: flex-start;
   justify-content: space-between;
   padding-inline: var(--schemx-padding-md);
-  padding-block: var(--schemx-padding-sm);
+  padding-block: var(--schemx-padding-md);
   line-height: var(--schemx-item-line-height);
   gap: var(--schemx-item-gap);
 }
@@ -118,7 +118,7 @@
 }
 
 .schemx-item__control {
-  text-align: var(--schemx-input-align);
+  text-align: var(--schemx-content-align);
 }
 
 .schemx-item__control .schemx-renderer {

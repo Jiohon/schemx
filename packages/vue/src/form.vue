@@ -105,30 +105,6 @@
 
   const viewSchemas = useViewSchemas(form)
 
-  function isGroup(schema?: SchemxViewSchema<T>) {
-    return schema?.componentType === "group"
-  }
-
-  function getSectionPositionStatus(schema: SchemxViewSchema<T>) {
-    const list = viewSchemas.value
-
-    const index = viewSchemas.value.findIndex((item) => item.key === schema.key)
-
-    if (index === -1 || isGroup(viewSchemas.value[index])) {
-      return {
-        isFirst: false,
-
-        isLast: false,
-      }
-    }
-
-    return {
-      isFirst: index === 0 || isGroup(list[index - 1]),
-
-      isLast: index === list.length - 1 || isGroup(list[index + 1]),
-    }
-  }
-
   const getFormItemClass = (schema: SchemxViewSchema<T>) => {
     const { isFirst, isLast } = getSectionPosition(
       viewSchemas.value as SchemxViewSchema[],
