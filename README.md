@@ -15,11 +15,11 @@ Schema-driven, extensible form engine for modern web.
 
 ## 包说明
 
-| 包 | 说明 | 适用场景 |
-| --- | --- | --- |
-| [`@schemx/core`](./packages/core) | 框架无关的 headless 表单引擎 | 自定义框架适配、状态管理、字段依赖和校验 |
-| [`@schemx/vue`](./packages/vue) | Vue 3 表单适配层 | 使用 Vue 组件树渲染 Schema，接入自定义 renderer |
-| [`@schemx/vant`](./packages/vant) | 基于 Vant 的 renderer 集合 | 在 Vue 3 + Vant 项目中快速构建移动端表单 |
+| 包                                | 说明                         | 适用场景                                        |
+| --------------------------------- | ---------------------------- | ----------------------------------------------- |
+| [`@schemx/core`](./packages/core) | 框架无关的 headless 表单引擎 | 自定义框架适配、状态管理、字段依赖和校验        |
+| [`@schemx/vue`](./packages/vue)   | Vue 3 表单适配层             | 使用 Vue 组件树渲染 Schema，接入自定义 renderer |
+| [`@schemx/vant`](./packages/vant) | 基于 Vant 的 renderer 集合   | 在 Vue 3 + Vant 项目中快速构建移动端表单        |
 
 ## 快速开始
 
@@ -99,4 +99,4 @@ pnpm lint
 - [core 使用说明](./packages/core)
 - [Vue 适配层说明](./packages/vue)
 - [Vant renderer 说明](./packages/vant)
-- [Vant 示例项目](./examples/vant-demo)
+- [Vant 示例项目](./examples/vant)

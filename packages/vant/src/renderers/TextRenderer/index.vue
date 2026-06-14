@@ -7,14 +7,23 @@
       })
     "
   >
-    <InputRenderer
+    <SchemxCell
+      v-if="props.readonly"
+      :value="textValue"
+      :placeholder="placeholder"
+      :readonlyPlaceholder="props.readonlyPlaceholder"
+      :readonly="props.readonly"
+      :disabled="props.disabled"
+    />
+    <SchemxInput
+      v-else
       ref="inputRef"
       v-model:value="textValue"
       :type="inputType"
       :placeholder="props.placeholder"
       :readonly-placeholder="props.readonlyPlaceholder"
-      :readonly="readonly"
-      :disabled="disabled"
+      :readonly="props.readonly"
+      :disabled="props.disabled"
       :align="props.align"
       :maxlength="props.maxlength"
       :min="props.min"
@@ -27,8 +36,8 @@
       :clear-icon="props.clearIcon"
       :clear-trigger="props.clearTrigger"
       :left-icon="props.leftIcon"
-      :right-icon="isPasswordMode ? '' : props.rightIcon"
-      :show-word-limit="props.showWordLimit && !readonly && !disabled"
+      :right-icon="isPasswordMode || props.readonly ? '' : props.rightIcon"
+      :show-word-limit="props.showWordLimit && !props.readonly && !props.disabled"
       @change="props.onChange"
       @blur="props.onBlur"
       @focus="props.onFocus"
@@ -39,7 +48,7 @@
 
       <template #right-icon>
         <Icon
-          v-if="isPasswordMode"
+          v-if="isPasswordMode && !props.readonly"
           :name="passwordIcon"
           class="schemx-text-renderer__password-icon"
           @click="handleTogglePassword"
@@ -53,7 +62,7 @@
       <template v-if="slots.extra" #extra>
         <slot name="extra" />
       </template>
-    </InputRenderer>
+    </SchemxInput>
   </div>
 </template>
 
@@ -71,7 +80,8 @@
 
   import classNames from "classnames"
 
-  import InputRenderer from "../InputRenderer"
+  import SchemxCell from "@/components/Cell/index.vue"
+  import SchemxInput from "@/components/Input"
 
   import type { TextRendererProps } from "./types"
 
@@ -102,11 +112,8 @@
 
   const slots = useSlots()
 
-  const inputRef = ref<InstanceType<typeof InputRenderer> | null>(null)
+  const inputRef = ref<InstanceType<typeof SchemxInput> | null>(null)
   const passwordVisible = ref(false)
-
-  const readonly = computed(() => props.readonly || props.formItemProps?.readonly)
-  const disabled = computed(() => props.disabled || props.formItemProps?.disabled)
 
   /** 判断是否为密码模式 */
   const isPasswordMode = computed(() => props.type === "password")

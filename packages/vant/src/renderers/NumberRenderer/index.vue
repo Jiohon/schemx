@@ -1,20 +1,22 @@
 <template>
-  <div
-    :class="
-      classNames('schemx-renderer', 'schemx-number-renderer', props.className, {
-        'schemx-renderer-readonly': readonly,
-        'schemx-renderer-disabled': disabled,
-      })
-    "
-  >
-    <InputRenderer
+  <div :class="['schemx-renderer', 'schemx-number-renderer', props.className]">
+    <SchemxCell
+      v-if="props.readonly"
+      :value="numberValue"
+      :placeholder="placeholder"
+      :readonly-placeholder="props.readonlyPlaceholder"
+      :readonly="props.readonly"
+      :disabled="props.disabled"
+    />
+    <SchemxInput
+      v-else
       ref="inputRef"
       v-model:value="numberValue"
       :type="props.type"
       :placeholder="props.placeholder"
       :readonly-placeholder="props.readonlyPlaceholder"
-      :readonly="readonly"
-      :disabled="disabled"
+      :readonly="props.readonly"
+      :disabled="props.disabled"
       :align="props.align"
       :min="props.min"
       :max="props.max"
@@ -36,7 +38,7 @@
       <template v-if="slots.extra" #extra>
         <slot name="extra" />
       </template>
-    </InputRenderer>
+    </SchemxInput>
   </div>
 </template>
 
@@ -50,9 +52,8 @@
    */
   import { computed, ref, useSlots } from "vue"
 
-  import classNames from "classnames"
-
-  import InputRenderer from "../InputRenderer"
+  import SchemxInput from "@/components/Input"
+  import SchemxCell from "@/components/Cell/index.vue"
 
   import type { NumberRendererProps, NumberValue } from "./types"
 
@@ -81,10 +82,9 @@
 
   const numberValue = defineModel<NumberValue>("value")
 
-  const inputRef = ref<InstanceType<typeof InputRenderer> | null>(null)
+  const inputRef = ref<InstanceType<typeof SchemxInput> | null>(null)
 
-  const readonly = computed(() => props.readonly || props.formItemProps?.readonly)
-  const disabled = computed(() => props.disabled || props.formItemProps?.disabled)
+  const placeholder = computed(() => props.placeholder || "请选择")
 
   /**
    * 处理值变化

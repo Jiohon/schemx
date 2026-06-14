@@ -1,31 +1,21 @@
 <template>
   <div
-    v-if="finalReadonly"
-    class="schemx-rate-renderer schemx-rate-renderer--readonly"
-    :class="className"
+    :class="[
+      'schemx-renderer',
+      'schemx-rate-renderer',
+      className,
+      {
+        'schemx-rate-renderer__readonly': props.readonly,
+        'schemx-rate-renderer__disabled': props.disabled,
+      },
+    ]"
   >
     <Rate
-      v-if="rateValue"
+      v-bind="rateProps"
       :model-value="rateValue"
       :count="count"
       :allow-half="allowHalf"
-      readonly
-    />
-    <span v-else class="schemx-rate-renderer__readonly-placeholder">
-      {{ readonlyPlaceholder }}
-    </span>
-  </div>
-  <div
-    v-else
-    class="schemx-rate-renderer"
-    :class="[className, { 'schemx-rate-renderer--disabled': finalDisabled }]"
-  >
-    <Rate
-      v-bind="attrs"
-      :model-value="rateValue"
-      :count="count"
-      :allow-half="allowHalf"
-      :disabled="finalDisabled"
+      :disabled="props.disabled"
       @update:model-value="handleChange"
     />
   </div>
@@ -67,11 +57,21 @@
 
   const rateValue = defineModel<RateValue>("value")
 
-  const finalReadonly = computed(() => props.readonly || props.formItemProps?.readonly)
-  const finalDisabled = computed(() => props.disabled || props.formItemProps?.disabled)
+  const rateProps = computed(() => {
+    const {
+      value: _value,
+      onChange: _onChange,
+      className: _className,
+      formItemProps: _formItemProps,
+      ...rest
+    } = props
+
+    return { ...attrs, rest }
+  })
 
   const handleChange = (value: RateValue): void => {
-    if (finalDisabled.value || finalReadonly.value) return
+    if (props.disabled || props.readonly) return
+
     rateValue.value = value
     props.onChange?.(value)
   }

@@ -1,0 +1,23 @@
+{
+  "private": true,
+  "type": "module",
+  "name": "vant-demo",
+  "version": "0.0.0",
+  "scripts": {
+    "dev": " npx vite --config vite.config.ts "
+  },
+  "dependencies": {
+    "@schemx/core": "workspace:*",
+    "@schemx/vant": "workspace:*",
+    "@schemx/vue": "workspace:*",
+    "vant": "^4.9.24",
+    "vue": "^3.4.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.0",
+    "@vitejs/plugin-vue-jsx": "^4.0.0",
+    "typescript": "^5.0.0",
+    "vite": "^5.0.0"
+  }
+}

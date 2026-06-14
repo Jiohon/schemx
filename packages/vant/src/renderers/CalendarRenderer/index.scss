@@ -1,12 +1,18 @@
 .schemx-calendar-popup-renderer {
+  --van-calendar-popup-height: min(65vh, calc(80dvh - 96px));
+  border-radius: var(--van-popup-round-radius) var(--van-popup-round-radius) 0 0;
+
+  .van-calendar__body {
+    height: calc(100% - 250px);
+    flex: none;
+  }
+
+  .van-calendar__confirm {
+    --van-calendar-confirm-button-height: 40px;
+
+    border-radius: var(--schemx-border-radius-md);
+  }
 }
 
 .schemx-calendar-renderer {
-  .van-calendar__popup {
-    --van-calendar-popup-height: 60%;
-  }
-
-  .van-field {
-    padding-inline: 0;
-  }
 }

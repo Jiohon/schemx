@@ -14,6 +14,7 @@ export { default as SwitchRenderer } from "./SwitchRenderer"
 export { default as UploadRenderer } from "./UploadRenderer"
 export { default as CascaderRenderer } from "./CascaderRenderer"
 export { default as SelectorRenderer } from "./SelectorRenderer"
+export { default as SelectPickerRenderer } from "./SelectPickerRenderer"
 
 export type { InputRendererProps, InputValue } from "./InputRenderer"
 export type { TextRendererProps, TextValue } from "./TextRenderer"
@@ -48,6 +49,12 @@ export type {
   SelectorProps,
   SelectValue,
 } from "./SelectorRenderer"
+export type {
+  SelectPickerFieldNames,
+  SelectPickerOption,
+  SelectPickerRendererProps,
+  SelectPickerValue,
+} from "./SelectPickerRenderer"
 
 /**
  * 默认渲染器类型列表
@@ -63,6 +70,7 @@ export const DEFAULT_RENDERER_TYPES = [
   "date",
   "calendar",
   "picker",
+  "selectPicker",
   "selector",
   "rate",
   "slider",

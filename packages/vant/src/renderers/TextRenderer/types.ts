@@ -4,7 +4,7 @@
  * @module renderers/TextRenderer/types
  */
 
-import type { InputRendererProps, InputValue } from "../InputRenderer"
+import type { InputValue, SchemxInputProps } from "@/components/Input"
 
 export type TextValue = Extract<InputValue, string>
 
@@ -13,8 +13,7 @@ export type TextValue = Extract<InputValue, string>
  *
  * 定义文本输入组件的所有可配置属性。
  */
-export interface TextRendererProps
-  extends Omit<InputRendererProps, "value" | "onChange"> {
+export interface TextRendererProps extends Omit<SchemxInputProps, "value" | "onChange"> {
   /** 自定义 CSS 类名 */
   className?: string
   /** 占位提示文本 */

@@ -1,5 +1,6 @@
 .schemx-date-popup-renderer {
-  border-radius: 12px 12px 0 0;
+  height: 45vh;
+  border-radius: var(--van-popup-round-radius) var(--van-popup-round-radius) 0 0;
 }
 
 .schemx-date-renderer {
