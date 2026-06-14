@@ -4,7 +4,7 @@
  * @module renderers/TextAreaRenderer/types
  */
 
-import type { InputRendererProps, InputValue } from "../InputRenderer"
+import type { InputValue, SchemxInputProps } from "@/components/Input"
 
 export type TextAreaValue = InputValue
 
@@ -25,8 +25,10 @@ export interface TextAreaAutosize {
  *
  * 定义文本域输入组件的所有可配置属性。
  */
-export interface TextAreaRendererProps
-  extends Omit<InputRendererProps, "value" | "type" | "onChange"> {
+export interface TextAreaRendererProps extends Omit<
+  SchemxInputProps,
+  "value" | "type" | "onChange"
+> {
   /** 当前值 */
   value?: TextAreaValue
   /** 值变化回调 */

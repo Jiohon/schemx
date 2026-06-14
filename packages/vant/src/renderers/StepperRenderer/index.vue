@@ -1,30 +1,17 @@
 <template>
-  <div
-    v-if="finalReadonly"
-    class="schemx-stepper-renderer schemx-stepper-renderer--readonly"
-    :class="className"
-  >
-    <div class="schemx-stepper-renderer__readonly">
-      <span class="schemx-stepper-renderer__readonly-value">
-        {{ formatDisplayValue(stepperValue) }}
-      </span>
-    </div>
-  </div>
-  <div
-    v-else
-    class="schemx-stepper-renderer"
-    :class="[className, { 'schemx-stepper-renderer--disabled': finalDisabled }]"
-  >
+  <div :class="['schemx-renderer', 'schemx-stepper-renderer', props.className]">
+    <SchemxCell
+      v-if="props.readonly"
+      :value="stepperValue"
+      :placeholder="placeholder"
+      :readonlyPlaceholder="props.readonlyPlaceholder"
+      :readonly="props.readonly"
+      :disabled="props.disabled"
+    />
     <Stepper
-      v-bind="attrs"
+      v-else
+      v-bind="stepperProps"
       :model-value="stepperValue"
-      :min="min"
-      :max="max"
-      :step="step"
-      :integer="integer"
-      :decimal-length="decimalLength"
-      :disabled="finalDisabled"
-      :allow-empty="allowEmpty"
       @update:model-value="handleChange"
     />
   </div>
@@ -41,6 +28,8 @@
   import { computed, useAttrs } from "vue"
 
   import { Stepper } from "vant"
+
+  import SchemxCell from "@/components/Cell/index.vue"
 
   import type { StepperRendererProps, StepperValue } from "./types"
 
@@ -70,35 +59,20 @@
 
   const stepperValue = defineModel<StepperValue>("value")
 
-  const fieldProps = computed(() => ({
-    readonly: props.readonly || props.formItemProps?.readonly,
-    disabled: props.disabled || props.formItemProps?.disabled,
-  }))
+  const placeholder = computed(() => props.placeholder || "请选择")
 
-  const finalReadonly = computed(() => fieldProps.value.readonly)
-  const finalDisabled = computed(() => fieldProps.value.disabled)
+  const stepperProps = computed(() => {
+    const { value, className, formItemProps, ...rest } = props
+
+    return { ...attrs, ...rest }
+  })
 
   /**
    * 处理值变化事件
    */
   const handleChange = (value: StepperValue): void => {
-    if (finalDisabled.value || finalReadonly.value) return
+    if (props.readonly || props.disabled) return
     stepperValue.value = value
     props.onChange?.(value)
-  }
-
-  /**
-   * 格式化显示值
-   */
-  const formatDisplayValue = (value?: StepperValue): string => {
-    if (
-      value === null ||
-      value === undefined ||
-      (value === ("" as any) && !props.allowEmpty)
-    ) {
-      return props.readonlyPlaceholder
-    }
-
-    return String(value)
   }
 </script>

@@ -23,9 +23,6 @@ importers:
       '@vitejs/plugin-vue-jsx':
         specifier: ^4.0.0
         version: 4.2.0(vite@5.4.21(@types/node@25.2.0)(sass@1.97.3)(terser@5.46.0))(vue@3.5.27(typescript@5.9.3))
-      '@vue/test-utils':
-        specifier: ^2.4.6
-        version: 2.4.6
       eslint:
         specifier: ^8.57.1
         version: 8.57.1
@@ -47,9 +44,6 @@ importers:
       eslint-plugin-vue:
         specifier: ^9.33.0
         version: 9.33.0(eslint@8.57.1)
-      fast-check:
-        specifier: ^4.5.3
-        version: 4.5.3
       happy-dom:
         specifier: ^20.3.9
         version: 20.5.0
@@ -68,9 +62,6 @@ importers:
       typescript-eslint:
         specifier: ^7.18.0
         version: 7.18.0(eslint@8.57.1)(typescript@5.9.3)
-      vant:
-        specifier: ^4.9.0
-        version: 4.9.22(vue@3.5.27(typescript@5.9.3))
       vite:
         specifier: ^5.0.0
         version: 5.4.21(@types/node@25.2.0)(sass@1.97.3)(terser@5.46.0)
@@ -80,14 +71,8 @@ importers:
       vitest:
         specifier: ^4.0.18
         version: 4.0.18(@types/node@25.2.0)(happy-dom@20.5.0)(sass@1.97.3)(terser@5.46.0)
-      vue:
-        specifier: ^3.4.0
-        version: 3.5.27(typescript@5.9.3)
-      zod:
-        specifier: ^4.3.6
-        version: 4.3.6
 
-  examples/vant-demo:
+  examples/vant:
     dependencies:
       '@schemx/core':
         specifier: workspace:*
@@ -99,8 +84,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/vue
       vant:
-        specifier: ^4.9.0
-        version: 4.9.22(vue@3.5.27(typescript@5.9.3))
+        specifier: ^4.9.24
+        version: 4.9.24(vue@3.5.27(typescript@5.9.3))
       vue:
         specifier: ^3.4.0
         version: 3.5.27(typescript@5.9.3)
@@ -136,6 +121,9 @@ importers:
       fast-check:
         specifier: ^4.6.0
         version: 4.6.0
+      vue:
+        specifier: ^3.4.0
+        version: 3.5.27(typescript@5.9.3)
 
   packages/vant:
     dependencies:
@@ -154,11 +142,15 @@ importers:
       es-toolkit:
         specifier: ^1.47.0
         version: 1.47.0
+    devDependencies:
+      '@vue/test-utils':
+        specifier: ^2.4.6
+        version: 2.4.6
       vant:
-        specifier: ^4.0.0
+        specifier: ^4.9.0
         version: 4.9.22(vue@3.5.27(typescript@5.9.3))
       vue:
-        specifier: ^3.0.0
+        specifier: ^3.4.0
         version: 3.5.27(typescript@5.9.3)
 
   packages/vue:
@@ -178,9 +170,16 @@ importers:
       es-toolkit:
         specifier: ^1.45.1
         version: 1.45.1
+    devDependencies:
+      '@vue/test-utils':
+        specifier: ^2.4.6
+        version: 2.4.6
       vue:
-        specifier: ^3.0.0
+        specifier: ^3.4.0
         version: 3.5.27(typescript@5.9.3)
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
 
 packages:
 
@@ -1267,6 +1266,9 @@ packages:
   '@vue/shared@3.5.27':
     resolution: {integrity: sha512-dXr/3CgqXsJkZ0n9F3I4elY8wM9jMJpP3pvRG52r6m0tu/MsAFIe6JpXVGeNMd/D9F4hQynWT8Rfuj0bdm9kFQ==}
 
+  '@vue/shared@3.5.38':
+    resolution: {integrity: sha512-FTW0AFZNaK5/mOqvGBwVfUlNLU38TiQn4+DQgIFUnrBBJQ1crMJ82yeGQLV5jyKFsO8yRukpbuP7x+nRbH6aug==}
+
   '@vue/test-utils@2.4.6':
     resolution: {integrity: sha512-FMxEjOpYNYiFe0GkaHsnJPXFHxQ6m4t8vI/ElPGpMWxZKpmRvQ33OIrvRXemy6yha03RxhOlQuy+gZMC3CQSow==}
 
@@ -1748,10 +1750,6 @@ packages:
   expect-type@1.3.0:
     resolution: {integrity: sha512-knvyeauYhqjOYvQ66MznSMs83wmHrCycNEN6Ao+2AeYEfxUIkuiVxdEa1qlGEPK+We3n0THiDciYSsCcgW/DoA==}
     engines: {node: '>=12.0.0'}
-
-  fast-check@4.5.3:
-    resolution: {integrity: sha512-IE9csY7lnhxBnA8g/WI5eg/hygA6MGWJMSNfFRrBlXUciADEhS1EDB0SIsMSvzubzIlOBbVITSsypCsW717poA==}
-    engines: {node: '>=12.17.0'}
 
   fast-check@4.6.0:
     resolution: {integrity: sha512-h7H6Dm0Fy+H4ciQYFxFjXnXkzR2kr9Fb22c0UBpHnm59K2zpr2t13aPTHlltFiNT6zuxp6HMPAVVvgur4BLdpA==}
@@ -2365,9 +2363,6 @@ packages:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
     engines: {node: '>=6'}
 
-  pure-rand@7.0.1:
-    resolution: {integrity: sha512-oTUZM/NAZS8p7ANR3SHh30kXB+zK2r2BPcEn/awJIbOvq82WoMN4p62AWWp3Hhw50G0xMsw1mhIBLqHw64EcNQ==}
-
   pure-rand@8.2.0:
     resolution: {integrity: sha512-KHnUjm68KSO/hqpWlVwagMDPrIjnDNY9r0DbKN79xEa5RU2MLUe0lICBGpWDF8cwmhUiN8r9A8DLGPVcFB62/A==}
 
@@ -2695,6 +2690,11 @@ packages:
 
   vant@4.9.22:
     resolution: {integrity: sha512-P2PDSj3oB6l3W1OpVlQpapeLmI6bXMSvPqPdrw5rutslC0Y6tSkrVB/iSD57weD7K92GsjGkvgDK0eZlOsXGqw==}
+    peerDependencies:
+      vue: ^3.0.0
+
+  vant@4.9.24:
+    resolution: {integrity: sha512-tP1A7Vjzv1/B1ljb95Jhv9Q9w6acaaZDJvy6wcKrwGgY0gQZlg+FXLZH/AIKZBE3xvYGDUsv/M7AuGcr/Pqd6A==}
     peerDependencies:
       vue: ^3.0.0
 
@@ -3905,6 +3905,8 @@ snapshots:
 
   '@vue/shared@3.5.27': {}
 
+  '@vue/shared@3.5.38': {}
+
   '@vue/test-utils@2.4.6':
     dependencies:
       js-beautify: 1.15.4
@@ -4531,10 +4533,6 @@ snapshots:
 
   expect-type@1.3.0: {}
 
-  fast-check@4.5.3:
-    dependencies:
-      pure-rand: 7.0.1
-
   fast-check@4.6.0:
     dependencies:
       pure-rand: 8.2.0
@@ -5139,8 +5137,6 @@ snapshots:
 
   punycode@2.3.1: {}
 
-  pure-rand@7.0.1: {}
-
   pure-rand@8.2.0: {}
 
   queue-microtask@1.2.3: {}
@@ -5553,6 +5549,13 @@ snapshots:
       '@vant/popperjs': 1.3.0
       '@vant/use': 1.6.0(vue@3.5.27(typescript@5.9.3))
       '@vue/shared': 3.5.27
+      vue: 3.5.27(typescript@5.9.3)
+
+  vant@4.9.24(vue@3.5.27(typescript@5.9.3)):
+    dependencies:
+      '@vant/popperjs': 1.3.0
+      '@vant/use': 1.6.0(vue@3.5.27(typescript@5.9.3))
+      '@vue/shared': 3.5.38
       vue: 3.5.27(typescript@5.9.3)
 
   vite-plugin-dts@3.9.1(@types/node@25.2.0)(rollup@4.57.1)(typescript@5.9.3)(vite@5.4.21(@types/node@25.2.0)(sass@1.97.3)(terser@5.46.0)):

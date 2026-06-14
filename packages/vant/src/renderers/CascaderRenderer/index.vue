@@ -1,35 +1,24 @@
 <template>
-  <div
-    :class="
-      classNames('schemx-renderer', 'schemx-cascader-renderer', props.className, {
-        'schemx-renderer-readonly': readonly,
-        'schemx-renderer-disabled': disabled,
-      })
-    "
-  >
-    <Field
-      :placeholder="readonly ? props.readonlyPlaceholder : placeholder"
-      :readonly="true"
-      :disabled="disabled"
-      :model-value="fieldValue"
-      right-icon="arrow"
-      :input-align="contentAlign"
+  <div :class="['schemx-renderer', 'schemx-cascader-renderer', props.className]">
+    <SchemxCell
+      :value="fieldValue"
+      :placeholder="placeholder"
+      :readonlyPlaceholder="props.readonlyPlaceholder"
+      :readonly="props.readonly"
+      :disabled="props.disabled"
       @click="handleClick"
     />
 
     <Popup
-      v-if="!readonly && !disabled"
+      v-if="!props.readonly && !props.disabled"
       v-model:show="showCascader"
       :class="classNames('schemx-cascader-popup-renderer', props.popupClassName)"
       v-bind="popupProps"
+      safe-area-inset-bottom
     >
       <Cascader
+        v-bind="cascaderProps"
         :model-value="cascaderValue"
-        :options="columns"
-        :title="props.title ?? placeholder"
-        :placeholder="placeholder"
-        :field-names="fieldNames"
-        v-bind="attrs"
         @finish="handleConfirm"
         @close="handleClose"
       />
@@ -41,19 +30,20 @@
   /**
    * 级联选择器渲染器组件
    *
-   * 使用 Vant Cascader + Popup + Field 组合实现。
+   * 使用 Vant Cascader + Popup + Cell 组合实现。
    * 通过 popupProps 透传 Popup 原生属性与事件，避免命名冲突。
    *
    * @module renderers/CascaderRenderer
    */
   import { computed, ref, useAttrs } from "vue"
 
-  import { Cascader, Field, Popup } from "vant"
+  import { Cascader, Popup } from "vant"
   import type { FieldTextAlign, PopupProps } from "vant"
 
   import classNames from "classnames"
   import { omitBy } from "es-toolkit"
 
+  import SchemxCell from "@/components/Cell/index.vue"
   import { findTreeItem, getFieldProps } from "@/utils"
 
   import type { CascaderFieldNames, CascaderRendererProps, CascaderValue } from "./types"
@@ -94,14 +84,33 @@
 
   const placeholder = computed(() => props.placeholder || "请选择")
 
-  const readonly = computed(() => props.readonly || props.formItemProps?.readonly)
-  const disabled = computed(() => props.disabled || props.formItemProps?.disabled)
-
   const contentAlign = computed(
     () => getFieldProps(props, "contentAlign", "right") as FieldTextAlign
   )
 
   const fieldNames = computed<CascaderFieldNames>(() => props.fieldNames)
+  const title = computed(() => props.title ?? placeholder.value)
+
+  const cascaderProps = computed(() => {
+    const {
+      value: _value,
+      onChange: _onChange,
+      onConfirm: _onConfirm,
+      className: _className,
+      readonlyPlaceholder: _readonlyPlaceholder,
+      showAllLevels: _showAllLevels,
+      emitPath: _emitPath,
+      separator: _separator,
+      contentAlign: _contentAlign,
+      placeholder: _placeholder,
+      formItemProps: _formItemProps,
+      popupProps: _popupProps,
+      title: _title,
+      ...rest
+    } = props
+
+    return { ...attrs, ...rest, placeholder: placeholder.value, title: title.value }
+  })
 
   /** 数据源：优先使用 props.options，回退到 attrs.columns */
   const columns = computed(() => {
@@ -126,7 +135,7 @@
   })
 
   /**
-   * Field 展示文本
+   * Cell 展示文本
    *
    * 通过 findTreeItem 将 value 路径反向映射为 label 路径，
    * 支持 showAllLevels 控制显示全部层级或仅末级。
@@ -162,12 +171,12 @@
   // ==================== 事件处理 ====================
 
   const handleClick = (): void => {
-    if (readonly.value || disabled.value) return
+    if (props.readonly || props.disabled) return
     showCascader.value = true
   }
 
   const handleConfirm = (data: { selectedOptions: any[]; value: any }): void => {
-    if (readonly.value || disabled.value) return
+    if (props.readonly || props.disabled) return
 
     const valueKey = fieldNames.value.value || "value"
     const valuePath = data.selectedOptions.map((i) => i[valueKey])

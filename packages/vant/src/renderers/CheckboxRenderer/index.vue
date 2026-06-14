@@ -1,34 +1,26 @@
 <template>
   <div
-    v-if="readonly"
-    class="schemx-checkbox-renderer"
-    :class="className"
-    :style="{ textAlign: align }"
-  >
-    {{ readonly ? readonlyPlaceholder : fieldValue }}
-  </div>
-  <div
-    v-else
-    class="schemx-renderer schemx-checkbox-renderer"
     :class="[
+      'schemx-renderer',
+      'schemx-checkbox-renderer',
       className,
-      {
-        'schemx-renderer-disabled': disabled,
-        'schemx-renderer-readonly': readonly,
-      },
+      { 'schemx-renderer-readonly': props.readonly },
     ]"
   >
+    <SchemxCell
+      v-if="props.readonly"
+      :value="fieldValue"
+      :placeholder="placeholder"
+      :readonly-placeholder="props.readonlyPlaceholder"
+      :readonly="props.readonly"
+      :disabled="props.disabled"
+    />
+
     <CheckboxGroup
-      v-bind="attrs"
+      v-else
+      v-bind="checkProps"
       :disabled="disabled"
       :model-value="modelValue"
-      :style="{
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '8px 12px',
-        justifyContent: align,
-        ...(attrs?.style || {}),
-      }"
       @update:model-value="handleChange"
     >
       <Checkbox
@@ -56,6 +48,8 @@
 
   import { Checkbox, CheckboxGroup } from "vant"
 
+  import SchemxCell from "@/components/Cell/index.vue"
+
   import { getFieldProps } from "@/utils"
 
   import type { CheckboxRendererProps, CheckboxValue } from "./types"
@@ -73,6 +67,7 @@
     options: () => [],
     fieldNames: () => ({}),
     className: "",
+    view: false,
     readonly: false,
     readonlyPlaceholder: "-",
     disabled: false,
@@ -86,23 +81,38 @@
   const valueName = computed(() => props.fieldNames?.value || "value")
   const disabledName = computed(() => props.fieldNames?.disabled || "disabled")
 
-  const disabled = computed(() => props?.disabled || props.formItemProps?.disabled)
-  const readonly = computed(() => props?.readonly || props.formItemProps?.readonly)
-  const align = computed(() => getFieldProps(attrs, "align", "right"))
+  const placeholder = computed(() => props.placeholder || "请选择")
+
+  const contentAlign = computed(() => getFieldProps(attrs, "align", "right"))
 
   const modelValue = computed(() => {
-    if (!checkboxValue.value) return []
+    const value = checkboxValue.value ?? props.value
 
-    return typeof checkboxValue.value === "string"
-      ? (checkboxValue.value as string).split(",")
-      : checkboxValue.value
+    if (!value) return []
+
+    return typeof value === "string" ? (value as string).split(",") : value
   })
 
   const fieldValue = computed(() => {
     return modelValue.value?.map((v: any) => getOption(v, labelName.value)).join("、")
   })
 
+  const checkProps = computed(() => {
+    const { value, className, formItemProps, ...rest } = props
+
+    const style = {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: "8px 12px",
+      justifyContent: contentAlign.value,
+      ...(attrs?.style || {}),
+    }
+
+    return { ...attrs, ...rest, style }
+  })
+
   const handleChange = (value: CheckboxValue): void => {
+    if (props.readonly || props.disabled) return
     checkboxValue.value = value
     props.onChange?.(value)
   }

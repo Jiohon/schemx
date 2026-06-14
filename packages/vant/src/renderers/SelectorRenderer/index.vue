@@ -1,34 +1,35 @@
 <template>
   <div
-    v-if="readonly"
-    class="schemx-selector-renderer"
-    :class="className"
-    :style="{ textAlign: align }"
-  >
-    {{ readonly ? readonlyPlaceholder : fieldValue }}
-  </div>
-  <div
-    v-else
-    class="schemx-renderer schemx-selector-renderer"
     :class="[
+      'schemx-renderer',
+      'schemx-selector-renderer',
       className,
       {
         'schemx-renderer-readonly': readonly,
-        'schemx-renderer-disabled': disabled,
       },
     ]"
   >
+    <SchemxCell
+      v-if="props.readonly"
+      :value="fieldValue"
+      :placeholder="placeholder"
+      :readonlyPlaceholder="props.readonlyPlaceholder"
+      :readonly="props.readonly"
+      :disabled="props.disabled"
+    />
+
     <Selector
-      v-bind="attrs"
+      v-else
+      v-bind="selectorProps"
       :options="options"
       :field-names="fieldNames"
-      :disabled="disabled"
+      :disabled="props.disabled"
       :model-value="selectorValue"
       :style="{
         display: 'flex',
         flexWrap: 'wrap',
         gap: '8px 12px',
-        justifyContent: align,
+        justifyContent: contentAlign,
         ...(attrs?.style || {}),
       }"
       @update:model-value="handleChange"
@@ -45,8 +46,9 @@
    * @module renderers/SelectorRenderer
    */
   import { computed, useAttrs } from "vue"
+  import SchemxCell from "@/components/Cell/index.vue"
 
-  import { getFieldProps } from "@/utils"
+  import { getFieldProps, getReadonlyDisplayValue } from "@/utils"
 
   import Selector from "./Selector.vue"
 
@@ -65,6 +67,7 @@
     options: () => [],
     className: "",
     fieldNames: () => ({}),
+    view: false,
     readonly: false,
     readonlyPlaceholder: "-",
     disabled: false,
@@ -77,15 +80,20 @@
   const labelName = computed(() => props.fieldNames?.label || "label")
   const valueName = computed(() => props.fieldNames?.value || "value")
 
-  const disabled = computed(() => props.disabled || props.formItemProps?.disabled)
-  const readonly = computed(() => props.readonly || props.formItemProps?.readonly)
-  const align = computed(() => getFieldProps(attrs, "align", "right"))
+  const contentAlign = computed(() => getFieldProps(attrs, "align", "right"))
 
   const fieldValue = computed(() => {
-    return getOption(selectorValue.value, labelName.value)
+    return getOption(selectorValue.value ?? props.value, labelName.value)
+  })
+
+  const selectorProps = computed(() => {
+    const { value, className: _className, formItemProps: _formItemProps, ...rest } = props
+
+    return { ...attrs, rest }
   })
 
   const handleChange = (value: SelectValue): void => {
+    if (props.readonly || props.disabled) return
     selectorValue.value = value
     props.onChange?.(value)
   }

@@ -1,25 +1,18 @@
 <template>
   <div
-    v-if="readonly"
-    class="schemx-switch-renderer"
-    :class="className"
-    :style="{ justifyContent: align }"
+    :class="['schemx-renderer', 'schemx-switch-renderer', props.className]"
+    :style="{ justifyContent: contentAlign }"
   >
-    {{ readonly ? readonlyPlaceholder : fieldValue }}
-  </div>
-  <div
-    v-else
-    class="schemx-renderer schemx-switch-renderer"
-    :class="[
-      className,
-      {
-        'schemx-renderer-readonly': readonly,
-        'schemx-renderer-disabled': disabled,
-      },
-    ]"
-    :style="{ justifyContent: align }"
-  >
+    <SchemxCell
+      v-if="props.readonly"
+      :value="fieldValue"
+      :placeholder="props.placeholder"
+      :readonly-placeholder="props.readonlyPlaceholder"
+      :readonly="props.readonly"
+      :disabled="props.disabled"
+    />
     <Switch
+      v-else
       size="22px"
       v-bind="attrs"
       :model-value="switchValue"
@@ -42,8 +35,9 @@
   import { computed, ref, useAttrs } from "vue"
 
   import { Switch } from "vant"
+  import SchemxCell from "@/components/Cell/index.vue"
 
-  import { getFieldProps } from "@/utils"
+  import { getFieldProps, getReadonlyDisplayValue } from "@/utils"
 
   import type { SwitchRendererProps, SwitchValue } from "./types"
 
@@ -73,24 +67,25 @@
 
   const switchLoading = ref(false)
 
-  const disabled = computed(() => props.disabled || props.formItemProps?.disabled)
-  const readonly = computed(() => props.readonly || props.formItemProps?.readonly)
-  const align = computed(
-    () => getFieldProps(attrs as Record<string, any>, "align", "right") as
-      | "left"
-      | "center"
-      | "right"
+  const contentAlign = computed(
+    () =>
+      getFieldProps(attrs as Record<string, any>, "align", "right") as
+        | "left"
+        | "center"
+        | "right"
   )
 
   const fieldValue = computed(() => {
-    return switchValue.value === props.activeValue ? props.activeText : props.inactiveText
+    return (switchValue.value ?? props.value) === props.activeValue
+      ? props.activeText
+      : props.inactiveText
   })
 
   /**
    * 处理开关值变化
    */
   const handleChange = async (value: SwitchValue): Promise<void> => {
-    if (readonly.value || disabled.value) return
+    if (props.readonly || props.disabled) return
 
     try {
       switchLoading.value = true

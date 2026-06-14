@@ -1,28 +1,17 @@
 <template>
-  <div
-    v-if="finalReadonly"
-    class="schemx-slider-renderer schemx-slider-renderer--readonly"
-    :class="className"
-  >
-    <div class="schemx-slider-renderer__readonly">
-      <span class="schemx-slider-renderer__readonly-value">
-        {{ formatDisplayValue(sliderValue) }}
-      </span>
-    </div>
-  </div>
-  <div
-    v-else
-    class="schemx-slider-renderer"
-    :class="[className, { 'schemx-slider-renderer--disabled': finalDisabled }]"
-  >
+  <div :class="['schemx-renderer', 'schemx-slider-renderer', props.className]">
+    <SchemxCell
+      v-if="props.readonly"
+      :value="displayValue"
+      :placeholder="placeholder"
+      :readonlyPlaceholder="props.readonlyPlaceholder"
+      :readonly="props.readonly"
+      :disabled="props.disabled"
+    />
     <Slider
-      v-bind="attrs"
+      v-else
+      v-bind="sliderProps"
       :model-value="sliderValue"
-      :min="min"
-      :max="max"
-      :step="step"
-      :range="range"
-      :disabled="finalDisabled"
       @update:model-value="handleChange"
     />
   </div>
@@ -39,6 +28,8 @@
   import { computed, useAttrs } from "vue"
 
   import { Slider } from "vant"
+
+  import SchemxCell from "@/components/Cell/index.vue"
 
   import type { SliderRendererProps, SliderValue } from "./types"
 
@@ -67,35 +58,25 @@
 
   const sliderValue = defineModel<SliderValue>("value")
 
-  const fieldProps = computed(() => ({
-    readonly: props.readonly || props.formItemProps?.readonly,
-    disabled: props.disabled || props.formItemProps?.disabled,
-  }))
+  const placeholder = computed(() => props.placeholder || "请选择")
 
-  const finalReadonly = computed(() => fieldProps.value.readonly)
-  const finalDisabled = computed(() => fieldProps.value.disabled)
+  const displayValue = computed(() => {
+    return Array.isArray(sliderValue.value)
+      ? sliderValue.value.join(" - ")
+      : sliderValue.value
+  })
+
+  const sliderProps = computed(() => {
+    const { value, className, formItemProps, ...rest } = props
+    return { ...attrs, ...rest }
+  })
 
   /**
    * 处理值变化事件
    */
   const handleChange = (value: SliderValue): void => {
-    if (finalDisabled.value || finalReadonly.value) return
+    if (props.readonly || props.disabled) return
     sliderValue.value = value
     props.onChange?.(value)
-  }
-
-  /**
-   * 格式化显示值
-   */
-  const formatDisplayValue = (value?: SliderValue): string => {
-    if (value === null || value === undefined) {
-      return props.readonlyPlaceholder
-    }
-
-    if (Array.isArray(value)) {
-      return value.join(" - ")
-    }
-
-    return String(value)
   }
 </script>

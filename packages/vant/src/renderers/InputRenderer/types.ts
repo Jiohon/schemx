@@ -6,42 +6,18 @@
 
 import type { FieldProps } from "vant"
 
-import type { SchemxBaseComponentProps } from "@schemx/vue"
+import type { InputValue } from "@/components/Input"
+import type { SchemxFormItemProps } from "@schemx/vue"
 
-export type InputValue = FieldProps["modelValue"]
+export type { InputValue }
+export { cutString, formatNumber, getStringLength } from "@/components/Input"
 
 /**
  * 输入渲染器 Props
  *
- * 定义输入组件的所有可配置属性。
+ * 这里保持为显式接口，避免 Vue SFC 编译器解析跨文件 extends 时失败。
  */
-export interface InputRendererProps
-  extends
-    Omit<SchemxBaseComponentProps, "onChange" | "onBlur" | "value" | "onUpdate:value">,
-    /* @vue-ignore */
-    Partial<
-      Omit<
-        FieldProps,
-        | "modelValue"
-        | "value"
-        | "onUpdate:modelValue"
-        | "onChange"
-        | "onBlur"
-        | "onFocus"
-        | "autosize"
-        | "formatter"
-        | "formatTrigger"
-        | "clearable"
-        | "clearIcon"
-        | "clearTrigger"
-        | "leftIcon"
-        | "rightIcon"
-        | "showWordLimit"
-        | "enterkeyhint"
-        | "spellcheck"
-        | "inputmode"
-      >
-    > {
+export interface InputRendererProps {
   /** 当前值 */
   value?: InputValue
   /** 值变化回调 */
@@ -56,6 +32,8 @@ export interface InputRendererProps
   readonly?: boolean
   /** 是否禁用 */
   disabled?: boolean
+  /** 占位提示文本 */
+  placeholder?: string
   /** 是否自动聚焦 */
   autofocus?: boolean
   /** 最大输入长度 */
@@ -88,6 +66,8 @@ export interface InputRendererProps
   className?: string
   /** 只读时的占位文本 */
   readonlyPlaceholder?: string
+  /** FormItem 组件 Props */
+  formItemProps?: SchemxFormItemProps
   /** 自动完成属性 */
   autocomplete?: string
   /** 自动大写属性 */
@@ -101,63 +81,5 @@ export interface InputRendererProps
   /** 输入模式 */
   inputmode?: FieldProps["inputmode"]
   /** 文本对齐方式 */
-  align?: FieldProps["inputAlign"]
-}
-
-/**
- * 格式化数字输入
- *
- * @param value - 输入值
- * @param allowDot - 是否允许小数点
- * @param allowMinus - 是否允许负号
- * @returns 格式化后的值
- */
-export function formatNumber(value: string, allowDot = true, allowMinus = true): string {
-  if (allowDot) {
-    value = value.replace(/[^-0-9.]/g, "")
-    // 只保留第一个小数点
-    const dotIndex = value.indexOf(".")
-
-    if (dotIndex !== -1) {
-      value = value.slice(0, dotIndex + 1) + value.slice(dotIndex + 1).replace(/\./g, "")
-    }
-  } else {
-    value = value.replace(/[^-0-9]/g, "")
-  }
-
-  if (allowMinus) {
-    // 负号只能在开头
-    const minusIndex = value.indexOf("-")
-
-    if (minusIndex > 0) {
-      value = value.replace(/-/g, "")
-    } else if (minusIndex === 0) {
-      value = "-" + value.slice(1).replace(/-/g, "")
-    }
-  } else {
-    value = value.replace(/-/g, "")
-  }
-
-  return value
-}
-
-/**
- * 获取字符串长度（考虑 emoji 等特殊字符）
- *
- * @param str - 字符串
- * @returns 字符串长度
- */
-export function getStringLength(str: string): number {
-  return [...String(str)].length
-}
-
-/**
- * 截取字符串
- *
- * @param str - 字符串
- * @param maxLength - 最大长度
- * @returns 截取后的字符串
- */
-export function cutString(str: string, maxLength: number): string {
-  return [...String(str)].slice(0, maxLength).join("")
+  align?: "left" | "right" | "center"
 }

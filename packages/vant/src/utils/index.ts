@@ -31,6 +31,54 @@ export function getFieldProps<T extends Record<string, any>>(
 }
 
 /**
+ * 判断值是否应按空值展示。
+ */
+export function isEmptyDisplayValue(value: unknown): boolean {
+  return (
+    value === undefined ||
+    value === null ||
+    value === "" ||
+    (Array.isArray(value) && value.length === 0)
+  )
+}
+
+/**
+ * 获取只读态展示值。
+ *
+ * 只在值为空时回退到 readonlyPlaceholder，保留 0、false 等有效值。
+ */
+export function getReadonlyDisplayValue<T>(
+  value: T,
+  readonlyPlaceholder = "-"
+): T | string {
+  return isEmptyDisplayValue(value) ? readonlyPlaceholder : value
+}
+
+export type RendererMode = "editable" | "disabled" | "readonly"
+
+/**
+ * 解析渲染器当前呈现模式。
+ *
+ * disabled/readonly 仍会阻止交互。
+ */
+export function resolveRendererMode(options: {
+  disabled?: boolean
+  readonly?: boolean
+}): RendererMode {
+  if (options.disabled) return "disabled"
+  if (options.readonly) return "readonly"
+
+  return "editable"
+}
+
+/**
+ * 判断当前状态是否允许用户交互。
+ */
+export function isRendererInteractive(mode: RendererMode): boolean {
+  return mode === "editable"
+}
+
+/**
  * 树形查找结果
  */
 export interface FindTreeItemResult {

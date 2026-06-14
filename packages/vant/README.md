@@ -7,7 +7,7 @@ Vant renderers for schemx.
 ## 特性
 
 - 开箱即用的 Vue 3 + Vant 表单渲染。
-- 内置 16 种常用 renderer，覆盖输入、选择、日期、评分、上传等场景。
+- 内置 17 种常用 renderer，覆盖输入、选择、日期、评分、上传等场景。
 - 支持 `v-model`、`initialValues`、校验、表单实例方法和字段联动。
 - 支持同步或异步 dictionary，可用于远程选项加载。
 - 继承 `@schemx/vue` 和 `@schemx/core` 的公开 API。
@@ -82,30 +82,31 @@ pnpm add @schemx/vant vant vue
     @finish="handleFinish"
   />
 
-  <button @click="formRef?.submit()">提交</button>
+  <button @click="formRef?.submit()">提交</Button>
 </template>
 ```
 
 ## 内置 Renderer
 
-| `componentType` | 说明 |
-| --- | --- |
-| `text` | 文本展示 |
-| `input` | 单行文本输入 |
-| `textarea` | 多行文本输入 |
-| `number` | 数字输入 |
-| `switch` | 开关 |
-| `radio` | 单选 |
-| `checkbox` | 多选 |
-| `date` | 日期选择 |
-| `calendar` | 日历选择 |
-| `picker` | Picker 选择 |
-| `selector` | 选项选择 |
-| `rate` | 评分 |
-| `slider` | 滑块 |
-| `stepper` | 步进器 |
-| `upload` | 文件上传 |
-| `cascader` | 级联选择 |
+| `componentType` | 说明          |
+| --------------- | ------------- |
+| `text`          | 文本展示      |
+| `input`         | 单行文本输入  |
+| `textarea`      | 多行文本输入  |
+| `number`        | 数字输入      |
+| `switch`        | 开关          |
+| `radio`         | 单选          |
+| `checkbox`      | 多选          |
+| `date`          | 日期选择      |
+| `calendar`      | 日历选择      |
+| `picker`        | Picker 选择   |
+| `selectPicker`  | 弹窗单选/多选 |
+| `selector`      | 选项选择      |
+| `rate`          | 评分          |
+| `slider`        | 滑块          |
+| `stepper`       | 步进器        |
+| `upload`        | 文件上传      |
+| `cascader`      | 级联选择      |
 
 ## 字段联动
 
@@ -141,14 +142,14 @@ const schemas: SchemxField[] = [
 
 通过组件 `ref` 可以调用常用实例方法：
 
-| 方法 | 说明 |
-| --- | --- |
-| `submit()` | 校验并提交表单 |
-| `validate()` | 校验整张表单 |
-| `reset()` | 恢复初始值 |
-| `setFieldValue(name, value)` | 设置单个字段值 |
-| `setFieldsValue(values)` | 批量设置字段值 |
-| `getFieldsSnapshot()` | 获取当前表单快照 |
+| 方法                         | 说明             |
+| ---------------------------- | ---------------- |
+| `submit()`                   | 校验并提交表单   |
+| `validate()`                 | 校验整张表单     |
+| `reset()`                    | 恢复初始值       |
+| `setFieldValue(name, value)` | 设置单个字段值   |
+| `setFieldsValue(values)`     | 批量设置字段值   |
+| `getFieldsSnapshot()`        | 获取当前表单快照 |
 
 ## 相关包
 

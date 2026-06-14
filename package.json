@@ -31,7 +31,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "dev:vant": "pnpm --filter vant-demo dev",
+    "dev:vant": "pnpm --filter vant dev",
     "build": "pnpm -r run build",
     "preview": "vite preview",
     "type-check": "tsc --noEmit",
