@@ -6,6 +6,7 @@ import {
   flushRuntimeGraph,
 } from "./dependencyRuntimeTestUtils"
 import * as fieldModule from "../index"
+import { buildViewSchemas } from "../../view"
 
 describe("dependency effect", () => {
   it("只导出 createDependencyEffect 作为 dependency effect 创建入口", () => {
@@ -90,7 +91,9 @@ describe("dependency effect", () => {
 
     expect(root.childNodes[0]?.type).toBe("dependency")
     if (root.childNodes[0]?.type !== "dependency") return
-    expect(root.childNodes[0].dynamicChildNodes.map((child) => child.key)).toEqual(["stable"])
+    expect(root.childNodes[0].dynamicChildNodes.map((child) => child.key)).toEqual([
+      "stable",
+    ])
   })
 
   it("旧 renderer 晚于新 renderer 完成时不会覆盖最新 dependency children", async () => {
@@ -129,6 +132,8 @@ describe("dependency effect", () => {
 
     expect(root.childNodes[0]?.type).toBe("dependency")
     if (root.childNodes[0]?.type !== "dependency") return
-    expect(root.childNodes[0].dynamicChildNodes.map((child) => child.key)).toEqual(["latest"])
+    expect(root.childNodes[0].dynamicChildNodes.map((child) => child.key)).toEqual([
+      "latest",
+    ])
   })
 })

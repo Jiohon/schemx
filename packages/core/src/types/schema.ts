@@ -65,6 +65,14 @@ export interface SchemxBaseComponentProps<
    */
   placeholder?: string
   /**
+   * 只读并且值为空时的占位符
+   */
+  readonlyPlaceholder?: string
+  /**
+   * 内容区域对齐方式
+   */
+  align?: "left" | "center" | "right"
+  /**
    * FormItem 组件 Props
    */
   formItemProps?: SchemxFormItemProps<TValues>

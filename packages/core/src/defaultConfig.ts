@@ -57,11 +57,6 @@ export const defaultConfig = {
   labelWidth: "auto",
 
   /**
-   * 内容区域对齐方式
-   */
-  contentAlign: "right",
-
-  /**
    * 校验触发时机
    *
    * 支持单个或多个触发时机组合，如 `'change'`、`'blur'`、`['change', 'blur']`。

@@ -78,9 +78,7 @@ describe("compileToDescriptors", () => {
       {
         componentType: "dependency",
         to: [["user", "type"]],
-        renderer: () => [
-          { name: "extra", label: "Extra", componentType: "input" },
-        ],
+        renderer: () => [{ name: "extra", label: "Extra", componentType: "input" }],
       },
     ]
 
@@ -143,7 +141,6 @@ describe("compileToDescriptors", () => {
         labelAlign: "left",
         labelPosition: "top",
         labelWidth: "96px",
-        contentAlign: "right",
         colon: false,
       },
     ]
@@ -237,9 +234,7 @@ describe("compileToDescriptors", () => {
           {
             label: "内层",
             componentType: "group",
-            children: [
-              { name: "deep", label: "Deep", componentType: "input" },
-            ],
+            children: [{ name: "deep", label: "Deep", componentType: "input" }],
           },
         ],
       },
@@ -262,9 +257,7 @@ describe("compileToDescriptors", () => {
       {
         label: "详情",
         componentType: "group",
-        children: [
-          { name: "email", label: "邮箱", componentType: "input" },
-        ],
+        children: [{ name: "email", label: "邮箱", componentType: "input" }],
       },
     ]
 
@@ -298,9 +291,7 @@ describe("compileToDescriptors", () => {
   })
 
   it("应该使用全局 readonly/disabled 默认值", () => {
-    const schemas: SchemxField[] = [
-      { name: "f1", label: "F1", componentType: "input" },
-    ]
+    const schemas: SchemxField[] = [{ name: "f1", label: "F1", componentType: "input" }]
 
     const descriptors = compileToDescriptors(schemas, {
       readonly: true,

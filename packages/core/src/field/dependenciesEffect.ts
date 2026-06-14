@@ -178,6 +178,7 @@ async function resolveDependenciesProps<TValues extends Values>(
         formApi,
         defaultValue: base.required,
       }),
+
       resolveDependenciesProp({
         condition: dependencies.readonly,
         values,
