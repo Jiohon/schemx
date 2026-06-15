@@ -94,6 +94,23 @@ pnpm type-check
 pnpm lint
 ```
 
+## 发布通道
+
+| 类型 | 用途 |
+| --- | --- |
+| `dev` | 日常开发测试，不稳定 |
+| `alpha` | 内部预览，API 可能还会变 |
+| `beta` | 外部测试，功能基本完整 |
+| `rc` | release candidate，候选正式版 |
+| `stable` | 正式版 |
+
+开发测试版本可发布到 `dev` dist-tag：
+
+```bash
+pnpm release:publish:dev
+pnpm release:publish:dev core
+```
+
 ## 相关文档
 
 - [core 使用说明](./packages/core)

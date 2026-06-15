@@ -264,10 +264,7 @@ function buildNormalizedFieldSchema<TValues extends Values>(
   }
 
   if (Object.hasOwn(schema, "initialValue")) {
-    return {
-      ...normalizedSchema,
-      initialValue: rest.initialValue,
-    }
+    normalizedSchema.initialValue = rest.initialValue
   }
 
   if (mergedReadonly) {
