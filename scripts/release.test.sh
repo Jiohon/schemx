@@ -218,10 +218,12 @@ test_help_lists_channel_commands_without_package_shortcuts() {
   output="$(run_release help)"
 
   assert_contains "$output" "pnpm release:publish:alpha"
+  assert_contains "$output" "pnpm release:publish:dev"
   assert_contains "$output" "pnpm release:publish:next"
   assert_not_contains "$output" "pnpm release:publish:core"
   assert_not_contains "$output" "pnpm release:publish:wot"
   assert_contains "$output" "bash scripts/release.sh publish-alpha [all|core|vue|vant]"
+  assert_contains "$output" "bash scripts/release.sh publish-dev [all|core|vue|vant]"
 }
 
 test_package_scripts_keep_only_publish_channels() {
@@ -232,6 +234,7 @@ console.log(Object.keys(pkg.scripts).filter((name) => name.startsWith('release:p
 ")"
 
   assert_contains "$scripts" "release:publish"
+  assert_contains "$scripts" "release:publish:dev"
   assert_contains "$scripts" "release:publish:alpha"
   assert_contains "$scripts" "release:publish:beta"
   assert_contains "$scripts" "release:publish:rc"
@@ -240,6 +243,32 @@ console.log(Object.keys(pkg.scripts).filter((name) => name.startsWith('release:p
   assert_not_contains "$scripts" "release:publish:vue"
   assert_not_contains "$scripts" "release:publish:vant"
   assert_not_contains "$scripts" "release:publish:wot"
+}
+
+test_dev_publish_uses_dev_tag_and_restores_version() {
+  local before after output
+
+  before="$(node -p "require('$ROOT_DIR/packages/core/package.json').version")"
+  : >"$COMMAND_LOG"
+
+  export MOCK_BRANCH="feature/demo"
+  output="$(run_release publish-dev core)"
+  unset MOCK_BRANCH
+
+  after="$(node -p "require('$ROOT_DIR/packages/core/package.json').version")"
+
+  if [[ "$before" != "$after" ]]; then
+    printf 'dev 发布后应恢复 package.json 版本：%s != %s\n' "$before" "$after" >&2
+    exit 1
+  fi
+
+  assert_contains "$output" "发布模式：dev"
+  assert_contains "$output" "发布目标：core"
+  assert_log_contains "pnpm --dir packages/core publish --access public --registry https://registry.npmjs.org/ --tag dev --no-git-checks"
+  assert_log_not_contains "gh auth status"
+  assert_log_not_contains "gh release create"
+  assert_log_not_contains "git tag"
+  assert_log_not_contains "git push"
 }
 
 test_latest_publish_is_main_only() {
@@ -431,6 +460,17 @@ test_selector_rejects_unknown_channel() {
   assert_contains "$output" "未知发布模式"
 }
 
+test_selector_accepts_dev_channel() {
+  local output
+
+  output="$(SCHEMX_RELEASE_TARGET=core node "$ROOT_DIR/scripts/select-release-target.mjs" --channel dev all core vue)"
+
+  if [[ "$output" != "core" ]]; then
+    printf 'dev 发布模式应允许自动化目标选择。\n实际输出：%s\n' "$output" >&2
+    exit 1
+  fi
+}
+
 test_cancelled_selector_exits_without_lifecycle_failure() {
   local output status
 
@@ -465,6 +505,7 @@ test_latest_publish_all_creates_package_scoped_tags_and_releases
 test_selector_rejects_unknown_environment_target
 test_selector_requires_tty_or_automation_target
 test_selector_rejects_unknown_channel
+test_selector_accepts_dev_channel
 test_cancelled_selector_exits_without_lifecycle_failure
 
 printf 'release script tests passed\n'

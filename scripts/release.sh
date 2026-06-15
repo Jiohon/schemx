@@ -17,6 +17,7 @@ usage() {
   pnpm release:check
   pnpm release:pack
   pnpm release:publish
+  pnpm release:publish:dev
   pnpm release:publish:alpha
   pnpm release:publish:beta
   pnpm release:publish:rc
@@ -29,6 +30,7 @@ usage() {
   bash scripts/release.sh check
   bash scripts/release.sh pack
   bash scripts/release.sh publish [all|core|vue|vant]
+  bash scripts/release.sh publish-dev [all|core|vue|vant]
   bash scripts/release.sh publish-alpha [all|core|vue|vant]
   bash scripts/release.sh publish-beta [all|core|vue|vant]
   bash scripts/release.sh publish-rc [all|core|vue|vant]
@@ -120,8 +122,8 @@ assert_prerelease_channel() {
   local channel="$1"
 
   case "$channel" in
-    alpha | beta | rc | next) ;;
-    *) die "预发布 tag 只能是 alpha、beta、rc 或 next" ;;
+    dev | alpha | beta | rc | next) ;;
+    *) die "预发布 tag 只能是 dev、alpha、beta、rc 或 next" ;;
   esac
 }
 
@@ -360,6 +362,9 @@ main() {
       ;;
     publish)
       run_publish "${2:-}"
+      ;;
+    publish-dev)
+      run_prerelease_publish dev "${2:-}"
       ;;
     publish-alpha)
       run_prerelease_publish alpha "${2:-}"
