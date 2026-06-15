@@ -153,8 +153,52 @@ describe("compileToDescriptors", () => {
       expect(descriptors[0].schema.labelAlign).toBe("left")
       expect(descriptors[0].schema.labelPosition).toBe("top")
       expect(descriptors[0].schema.labelWidth).toBe("96px")
-      expect(descriptors[0].schema.contentAlign).toBe("right")
+      expect(descriptors[0].schema).not.toHaveProperty("contentAlign")
       expect(descriptors[0].schema.colon).toBe(false)
+    }
+  })
+
+  it("应该将 contentAlign 编译为组件 align", () => {
+    const schemas: SchemxField[] = [
+      {
+        name: "nickname",
+        label: "昵称",
+        componentType: "input",
+        contentAlign: "center",
+      },
+    ]
+
+    const descriptors = compileToDescriptors(schemas)
+
+    if (descriptors[0].type === "field") {
+      expect(descriptors[0].schema.contentAlign).toBe("center")
+      expect(descriptors[0].schema.componentProps?.align).toBe("center")
+    }
+  })
+
+  it("应该在只读态强制使用详情展示布局", () => {
+    const schemas: SchemxField[] = [
+      {
+        name: "nickname",
+        label: "昵称",
+        componentType: "input",
+        initialValue: "Schemx",
+        readonly: true,
+        labelPosition: "top",
+        contentAlign: "left",
+        componentProps: {
+          align: "left",
+        },
+      },
+    ]
+
+    const descriptors = compileToDescriptors(schemas)
+
+    if (descriptors[0].type === "field") {
+      expect(descriptors[0].schema.initialValue).toBe("Schemx")
+      expect(descriptors[0].schema.labelPosition).toBe("left")
+      expect(descriptors[0].schema.contentAlign).toBe("right")
+      expect(descriptors[0].schema.componentProps?.align).toBe("right")
     }
   })
 
