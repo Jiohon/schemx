@@ -15,11 +15,11 @@ import { mount } from "@vue/test-utils"
 import { describe, expect, it, vi } from "vitest"
 
 import { FORM_CONTEXT_KEY } from "@/hooks/useContext"
+import type { FormContextProps } from "@/hooks/useContext"
 import { FORM_INSTANCE_KEY } from "@/hooks/useForm"
 
 import FormItem from "../index"
 
-import type { FormContextProps } from "@/hooks/useContext"
 import type { SchemxBaseField, SchemxInstance } from "@schemx/core"
 
 /**
@@ -87,7 +87,6 @@ const ProbeRenderer = defineComponent({
   name: "ProbeRenderer",
   props: {
     value: String,
-    view: Boolean,
     readonly: Boolean,
     disabled: Boolean,
     onChange: Function,
@@ -97,7 +96,6 @@ const ProbeRenderer = defineComponent({
     return () =>
       h("input", {
         "data-testid": "probe-renderer",
-        "data-view": String(props.view),
         "data-readonly": String(props.readonly),
         "data-disabled": String(props.disabled),
         value: props.value,
@@ -297,12 +295,13 @@ describe("FormItem 集成测试", () => {
     form.destroy()
   })
 
-  it("view=true 时下发给 renderer、隐藏 required 星号并跳过校验", async () => {
+  it("readonly=true 时下发给 renderer、隐藏 required 星号并跳过校验", async () => {
     const schema: SchemxBaseField = {
       name: "title",
       label: "标题",
       componentType: "probe" as any,
-      view: true,
+      readonly: true,
+      required: true,
       rules: "required",
     }
 
@@ -328,9 +327,10 @@ describe("FormItem 集成测试", () => {
 
     const input = wrapper.get('[data-testid="probe-renderer"]')
 
-    expect(input.attributes("data-view")).toBe("true")
+    expect(input.attributes("data-readonly")).toBe("true")
+    expect(input.attributes("data-disabled")).toBe("false")
     expect(wrapper.find(".schemx-item__required").exists()).toBe(false)
-    expect(wrapper.find(".schemx-item-wrapper--view").exists()).toBe(true)
+    expect(wrapper.find(".schemx-item.is-readonly").exists()).toBe(true)
 
     await input.setValue("")
     await input.trigger("blur")
