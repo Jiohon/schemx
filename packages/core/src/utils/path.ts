@@ -33,6 +33,34 @@ type RuntimePath = string | number | readonly (string | number)[]
  * @param obj - 要获取值的源对象
  * @param path - NamePath 路径（string / number / array）
  * @returns 路径对应的值，如果路径不存在则返回 undefined
+ *
+ * @example
+ * ```ts
+ * const obj = {
+ *   user: {
+ *     name: 'John',
+ *     address: {
+ *       city: 'Beijing',
+ *       zip: '100000'
+ *     }
+ *   },
+ *   tags: ['a', 'b', 'c']
+ * }
+ *
+ * // 字符串路径（点号分隔）
+ * getByPath(obj, 'user.name')           // => 'John'
+ * getByPath(obj, 'user.address.city')   // => 'Beijing'
+ *
+ * // 数组路径
+ * getByPath(obj, ['user', 'name'])      // => 'John'
+ * getByPath(obj, ['user', 'address', 'city']) // => 'Beijing'
+ *
+ * // 数组索引
+ * getByPath(obj, ['tags', 0])           // => 'a'
+ *
+ * // 路径不存在
+ * getByPath(obj, 'user.age')            // => undefined
+ * ```
  */
 export function getByPath<
   TValues extends Values = Values,
@@ -52,6 +80,26 @@ export function getByPath<
  * @param obj - 要设置值的目标对象
  * @param path - NamePath 路径（string / number / array）
  * @param value - 要设置的值
+ *
+ * @example
+ * ```ts
+ * const obj = { user: { name: 'John' } }
+ *
+ * // 字符串路径
+ * setByPath(obj, 'user.name', 'Jane')
+ * // obj => { user: { name: 'Jane' } }
+ *
+ * // 自动创建中间对象
+ * setByPath(obj, 'user.address.city', 'Beijing')
+ * // obj => { user: { name: 'Jane', address: { city: 'Beijing' } } }
+ *
+ * // 数组路径
+ * setByPath(obj, ['user', 'address', 'zip'], '100000')
+ *
+ * // 空路径或对象为 null/undefined 时不做操作
+ * setByPath(null, 'path', 'value')  // 无操作
+ * setByPath(undefined, 'path', 'value')  // 无操作
+ * ```
  */
 export function setByPath<
   TValues extends Values = Values,

@@ -2,7 +2,10 @@ import { defineConfig } from "vite"
 import vue from "@vitejs/plugin-vue"
 import vueJsx from "@vitejs/plugin-vue-jsx"
 import dts from "vite-plugin-dts"
+import { visualizer } from "rollup-plugin-visualizer"
 import { resolve } from "path"
+
+const analyze = process.env.ANALYZE === "true"
 
 export default defineConfig({
   resolve: {
@@ -18,6 +21,15 @@ export default defineConfig({
       outDir: "dist",
       rollupTypes: true,
     }),
+    analyze &&
+      visualizer({
+        filename: resolve(__dirname, "dist/analyze.html"),
+        gzipSize: true,
+        brotliSize: true,
+        open: false,
+        template: "treemap",
+        title: "@schemx/core bundle analysis",
+      }),
   ],
   build: {
     lib: {
