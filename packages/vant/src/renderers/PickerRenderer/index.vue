@@ -2,7 +2,7 @@
   <div :class="['schemx-renderer', 'schemx-picker-renderer', props.className]">
     <SchemxCell
       :placeholder="placeholder"
-      :readonlyPlaceholder="props.readonlyPlaceholder"
+      :readonly-placeholder="props.readonlyPlaceholder"
       :readonly="props.readonly"
       :disabled="props.disabled"
       :value="fieldValue"
@@ -43,12 +43,12 @@
   import { computed, ref, useAttrs } from "vue"
 
   import { Picker, Popup } from "vant"
-  import type { FieldTextAlign, PickerConfirmEventParams } from "vant"
+  import type { PickerConfirmEventParams } from "vant"
 
   import classNames from "classnames"
 
   import SchemxCell from "@/components/Cell/index.vue"
-  import { findTreeItem, getFieldProps } from "@/utils"
+  import { findTreeItem } from "@/utils"
 
   import type { PickerFieldNames, PickerRendererProps, PickerValue } from "./types"
 
@@ -83,10 +83,6 @@
   const showPicker = ref(false)
 
   const placeholder = computed(() => props?.placeholder || "请选择")
-
-  const contentAlign = computed(
-    () => getFieldProps(props, "contentAlign", "right") as FieldTextAlign
-  )
 
   const title = computed(() => props.title || placeholder.value)
 

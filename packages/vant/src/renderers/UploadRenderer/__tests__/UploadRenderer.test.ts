@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
 /* eslint-disable vue/multi-word-component-names */
 
-import { mount } from "@vue/test-utils"
 import { defineComponent, h } from "vue"
+
+import { mount } from "@vue/test-utils"
 import { describe, expect, it, vi } from "vitest"
 
 vi.mock("@schemx/vue", () => ({

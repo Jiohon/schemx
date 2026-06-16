@@ -2,7 +2,7 @@
   <div class="example-container">
     <h2>基础表单示例</h2>
     <p class="description">
-      演示全部 16 种 ComponentType、initialValues 初始值、布局配置、实例方法调用、
+      演示全部 17 种 ComponentType、initialValues 初始值、布局配置、实例方法调用、
       事件监听和实时数据预览
     </p>
 
@@ -58,10 +58,11 @@
   /**
    * 表单初始值
    *
-   * 设置 username、age、notification 的默认值，演示 initialValues 用法。
+   * 设置 username、phone、age、notification 的默认值，演示 initialValues 用法。
    */
   const initialValues = {
     username: "张三",
+    phone: "13812348899",
     age: 25,
     notification: true,
   }
@@ -83,8 +84,8 @@
   /**
    * 表单 Schema 配置
    *
-   * 覆盖全部 16 种 ComponentType：
-   * text、input、textarea、number、switch、radio、checkbox、
+   * 覆盖全部 17 种 ComponentType：
+   * text、input、sensitiveInput、textarea、number、switch、radio、checkbox、
    * date、calendar、picker、selector、rate、slider、stepper、upload、cascader
    */
   const schemas = computed((): SchemxField<BasicFormValues>[] => [
@@ -112,6 +113,18 @@
             clearable: true,
             maxlength: 100,
             showWordLimit: true,
+          },
+        },
+        {
+          name: "phone",
+          label: "手机号",
+          componentType: "sensitiveInput",
+          componentProps: {
+            placeholder: "请输入手机号",
+            clearable: true,
+            hideOnBlur: false,
+            maskFormatter: (value) => value.replace(/^(\d{3})\d{4}(\d+)$/, "$1****$2"),
+            formatter: (value) => value.replace(/^(\d{3})(\d{4})(\d+)$/, "$1 $2 $3"),
           },
         },
         {
@@ -348,6 +361,7 @@
   const handleSetValues = () => {
     formRef.value?.setFieldsValue({
       username: "李四",
+      phone: "13900001111",
       age: 30,
       gender: "female",
       notification: false,

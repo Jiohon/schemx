@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
 /* eslint-disable vue/multi-word-component-names */
 
-import { mount } from "@vue/test-utils"
 import { defineComponent, h } from "vue"
+
+import { mount } from "@vue/test-utils"
 import { describe, expect, it, vi } from "vitest"
 
 vi.mock("vant", () => ({
@@ -26,10 +27,10 @@ vi.mock("vant", () => ({
 import RadioRenderer from "../index.vue"
 
 describe("RadioRenderer", () => {
-  it("view 状态展示选中项文本且不渲染 RadioGroup", () => {
+  it("readonly 状态展示选中项文本且不渲染 RadioGroup", () => {
     const wrapper = mount(RadioRenderer, {
       props: {
-        view: true,
+        readonly: true,
         value: "female",
         options: [{ label: "女", value: "female" }],
       },

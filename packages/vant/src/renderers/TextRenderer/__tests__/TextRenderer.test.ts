@@ -19,10 +19,10 @@ describe("TextRenderer", () => {
     wrapper.unmount()
   })
 
-  it("view 状态只渲染详情文本，不渲染底层输入组件", () => {
+  it("readonly 状态只渲染详情文本，不渲染底层输入组件", () => {
     const wrapper = mount(TextRenderer, {
       props: {
-        view: true,
+        readonly: true,
         value: "文本详情",
         clearable: true,
         rightIcon: "arrow",
@@ -30,7 +30,7 @@ describe("TextRenderer", () => {
     })
 
     expect(wrapper.findComponent({ name: "SchemxInput" }).exists()).toBe(false)
-    expect(wrapper.find(".schemx-display-text").text()).toBe("文本详情")
+    expect(wrapper.findComponent({ name: "SchemxCell" }).exists()).toBe(true)
     expect(wrapper.find("input").exists()).toBe(false)
 
     wrapper.unmount()

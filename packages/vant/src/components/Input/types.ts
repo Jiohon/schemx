@@ -4,7 +4,7 @@
  * @module components/Input/types
  */
 
-import type { FieldProps } from "vant"
+import type { FieldProps, FieldAutosizeConfig } from "vant"
 
 import type { SchemxBaseComponentProps } from "@schemx/vue"
 
@@ -17,31 +17,7 @@ export type InputValue = FieldProps["modelValue"]
  */
 export interface SchemxInputProps
   extends
-    Omit<SchemxBaseComponentProps, "onChange" | "onBlur" | "value" | "onUpdate:value">,
-    /* @vue-ignore */
-    Partial<
-      Omit<
-        FieldProps,
-        | "modelValue"
-        | "value"
-        | "onUpdate:modelValue"
-        | "onChange"
-        | "onBlur"
-        | "onFocus"
-        | "autosize"
-        | "formatter"
-        | "formatTrigger"
-        | "clearable"
-        | "clearIcon"
-        | "clearTrigger"
-        | "leftIcon"
-        | "rightIcon"
-        | "showWordLimit"
-        | "enterkeyhint"
-        | "spellcheck"
-        | "inputmode"
-      >
-    > {
+    Omit<SchemxBaseComponentProps, "onChange" | "onBlur" | "value" | "onUpdate:value"> {
   /** 当前值 */
   value?: InputValue
   /** 值变化回调 */
@@ -67,7 +43,7 @@ export interface SchemxInputProps
   /** 文本域默认行数 */
   rows?: number | string
   /** 文本域自适应高度配置 */
-  autosize?: boolean | { minRows?: number; maxRows?: number }
+  autosize?: boolean | FieldAutosizeConfig
   /** 自定义格式化函数 */
   formatter?: FieldProps["formatter"]
   /** 格式化触发时机 */

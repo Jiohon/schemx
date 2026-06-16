@@ -3,7 +3,7 @@
     <SchemxCell
       :value="fieldValue"
       :placeholder="placeholder"
-      :readonlyPlaceholder="props.readonlyPlaceholder"
+      :readonly-placeholder="props.readonlyPlaceholder"
       :readonly="props.readonly"
       :disabled="props.disabled"
       @click="handleClick"
@@ -38,13 +38,13 @@
   import { computed, ref, useAttrs } from "vue"
 
   import { Cascader, Popup } from "vant"
-  import type { FieldTextAlign, PopupProps } from "vant"
+  import type { PopupProps } from "vant"
 
   import classNames from "classnames"
   import { omitBy } from "es-toolkit"
 
   import SchemxCell from "@/components/Cell/index.vue"
-  import { findTreeItem, getFieldProps } from "@/utils"
+  import { findTreeItem } from "@/utils"
 
   import type { CascaderFieldNames, CascaderRendererProps, CascaderValue } from "./types"
 
@@ -83,10 +83,6 @@
   // ==================== 计算属性 ====================
 
   const placeholder = computed(() => props.placeholder || "请选择")
-
-  const contentAlign = computed(
-    () => getFieldProps(props, "contentAlign", "right") as FieldTextAlign
-  )
 
   const fieldNames = computed<CascaderFieldNames>(() => props.fieldNames)
   const title = computed(() => props.title ?? placeholder.value)

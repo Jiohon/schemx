@@ -48,7 +48,6 @@
   import { Radio, RadioGroup } from "vant"
 
   import SchemxCell from "@/components/Cell/index.vue"
-
   import { getFieldProps } from "@/utils"
 
   import type { RadioRendererProps, RadioValue } from "./types"
@@ -97,6 +96,7 @@
       justifyContent: contentAlign.value,
       ...(attrs?.style || {}),
     }
+
     return { ...attrs, ...rest, style }
   })
 

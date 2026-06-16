@@ -4,7 +4,7 @@
       v-if="props.readonly"
       :value="displayValue"
       :placeholder="placeholder"
-      :readonlyPlaceholder="props.readonlyPlaceholder"
+      :readonly-placeholder="props.readonlyPlaceholder"
       :readonly="props.readonly"
       :disabled="props.disabled"
     />
@@ -68,6 +68,7 @@
 
   const sliderProps = computed(() => {
     const { value, className, formItemProps, ...rest } = props
+
     return { ...attrs, ...rest }
   })
 

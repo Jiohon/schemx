@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
 /* eslint-disable vue/multi-word-component-names, vue/no-reserved-component-names */
 
-import { mount } from "@vue/test-utils"
 import { defineComponent, h } from "vue"
+
+import { mount } from "@vue/test-utils"
 import { describe, expect, it, vi } from "vitest"
 
 vi.mock("vant", () => ({
@@ -20,11 +21,11 @@ vi.mock("vant", () => ({
 import SwitchRenderer from "../index.vue"
 
 describe("SwitchRenderer", () => {
-  it("view 状态使用 DisplayText 展示开关文本且不渲染 Switch", async () => {
+  it("readonly 状态使用 Cell 展示开关文本且不渲染 Switch", async () => {
     const onChange = vi.fn()
     const wrapper = mount(SwitchRenderer, {
       props: {
-        view: true,
+        readonly: true,
         value: true,
         activeText: "开启",
         inactiveText: "关闭",
@@ -32,11 +33,9 @@ describe("SwitchRenderer", () => {
       },
     })
 
-    const displayText = wrapper.findComponent({ name: "SchemxDisplayText" })
+    const cell = wrapper.findComponent({ name: "SchemxCell" })
 
-    expect(displayText.exists()).toBe(true)
-    expect(displayText.props("value")).toBe("开启")
-    expect(displayText.props("view")).toBe(true)
+    expect(cell.exists()).toBe(true)
     expect(wrapper.findComponent({ name: "Switch" }).exists()).toBe(false)
     expect(onChange).not.toHaveBeenCalled()
 

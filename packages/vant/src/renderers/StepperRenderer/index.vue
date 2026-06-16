@@ -4,7 +4,7 @@
       v-if="props.readonly"
       :value="stepperValue"
       :placeholder="placeholder"
-      :readonlyPlaceholder="props.readonlyPlaceholder"
+      :readonly-placeholder="props.readonlyPlaceholder"
       :readonly="props.readonly"
       :disabled="props.disabled"
     />

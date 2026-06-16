@@ -52,8 +52,8 @@
    */
   import { computed, ref, useSlots } from "vue"
 
-  import SchemxInput from "@/components/Input"
   import SchemxCell from "@/components/Cell/index.vue"
+  import SchemxInput from "@/components/Input"
 
   import type { NumberRendererProps, NumberValue } from "./types"
 

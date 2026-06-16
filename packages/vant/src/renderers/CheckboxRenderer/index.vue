@@ -49,7 +49,6 @@
   import { Checkbox, CheckboxGroup } from "vant"
 
   import SchemxCell from "@/components/Cell/index.vue"
-
   import { getFieldProps } from "@/utils"
 
   import type { CheckboxRendererProps, CheckboxValue } from "./types"

@@ -21,10 +21,10 @@ describe("InputRenderer 容器聚焦", () => {
     wrapper.unmount()
   })
 
-  it("view 状态只渲染详情文本，不渲染输入控件和辅助交互", () => {
+  it("readonly 状态只渲染详情文本，不渲染输入控件和辅助交互", () => {
     const wrapper = mount(InputRenderer, {
       props: {
-        view: true,
+        readonly: true,
         value: "详情内容",
         clearable: true,
         showWordLimit: true,
@@ -36,9 +36,9 @@ describe("InputRenderer 容器聚焦", () => {
 
     expect(wrapper.find("input").exists()).toBe(false)
     expect(wrapper.find("textarea").exists()).toBe(false)
-    expect(wrapper.find(".schemx-display-text").text()).toBe("详情内容")
-    expect(wrapper.find(".schemx-input__clear").exists()).toBe(false)
-    expect(wrapper.find(".schemx-input__word-limit").exists()).toBe(false)
+    expect(wrapper.findComponent({ name: "SchemxCell" }).exists()).toBe(true)
+    expect(wrapper.find(".van-field__clear").exists()).toBe(false)
+    expect(wrapper.find(".van-field__word-limit").exists()).toBe(false)
 
     wrapper.unmount()
   })
@@ -52,7 +52,7 @@ describe("InputRenderer 容器聚焦", () => {
       },
     })
 
-    await wrapper.get(".schemx-input__word-limit").trigger("click")
+    await wrapper.get(".van-field__word-limit").trigger("click")
 
     expect(document.activeElement).toBe(wrapper.get("input").element)
 

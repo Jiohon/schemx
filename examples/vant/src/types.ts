@@ -11,6 +11,7 @@
  */
 export interface BasicFormValues {
   username?: string
+  phone?: string
   website?: string
   bio?: string
   age?: number

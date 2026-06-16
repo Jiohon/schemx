@@ -13,7 +13,7 @@
       v-if="props.readonly"
       :value="fieldValue"
       :placeholder="placeholder"
-      :readonlyPlaceholder="props.readonlyPlaceholder"
+      :readonly-placeholder="props.readonlyPlaceholder"
       :readonly="props.readonly"
       :disabled="props.disabled"
     />
@@ -46,9 +46,9 @@
    * @module renderers/SelectorRenderer
    */
   import { computed, useAttrs } from "vue"
-  import SchemxCell from "@/components/Cell/index.vue"
 
-  import { getFieldProps, getReadonlyDisplayValue } from "@/utils"
+  import SchemxCell from "@/components/Cell/index.vue"
+  import { getFieldProps } from "@/utils"
 
   import Selector from "./Selector.vue"
 
