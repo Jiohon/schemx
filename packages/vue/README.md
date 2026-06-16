@@ -41,6 +41,7 @@ rendererRegistry.register("input", markRaw(InputRenderer))
   import { ref } from "vue"
 
   import Schemx from "@schemx/vue"
+  import "@schemx/vue/style.css"
 
   import type { SchemxField } from "@schemx/vue"
 
