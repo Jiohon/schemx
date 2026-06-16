@@ -77,7 +77,7 @@ describe("compileToDescriptors", () => {
     const schemas: SchemxField[] = [
       {
         componentType: "dependency",
-        to: [["user", "type"]],
+        to: ["user", "type"],
         renderer: () => [{ name: "extra", label: "Extra", componentType: "input" }],
       },
     ]
@@ -87,7 +87,7 @@ describe("compileToDescriptors", () => {
     expect(descriptors).toHaveLength(1)
     expect(descriptors[0].type).toBe("dependency")
     if (descriptors[0].type === "dependency") {
-      expect(descriptors[0].trigger).toEqual([["user", "type"]])
+      expect(descriptors[0].trigger).toEqual(["user", "type"])
     }
   })
 
@@ -215,11 +215,16 @@ describe("compileToDescriptors", () => {
 
     const descriptors = compileToDescriptors(schemas)
 
-    if (descriptors[0].type === "field") {
-      expect(descriptors[0].schema.tooltip).toBe("公开显示的昵称")
-      expect(descriptors[0].schema.layout).toEqual({ span: 12 })
-      expect(Object.isFrozen(descriptors[0].schema.layout)).toBe(false)
+    const [descriptor] = descriptors
+    expect(descriptor?.type).toBe("field")
+
+    if (descriptor?.type !== "field") {
+      throw new Error("期望编译为 field descriptor")
     }
+
+    expect(descriptor.schema.tooltip).toBe("公开显示的昵称")
+    expect(descriptor.schema.layout).toEqual({ span: 12 })
+    expect(Object.isFrozen(descriptor.schema.layout)).toBe(false)
   })
 
   it("不应该在分组 descriptor 中保留扩展 meta", () => {

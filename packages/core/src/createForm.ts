@@ -18,6 +18,11 @@ import { defaultConfigKey } from "./defaultConfig"
 import { compileToDescriptors } from "./descriptor"
 import { createFieldRegistry, type FieldRegistry } from "./field"
 import {
+  createLifecycleBus,
+  type LifecycleBus,
+  type SchemxLifecycleHooks,
+} from "./lifecycle/lifecycle"
+import {
   type ContainerRuntimeNode,
   createReconciler,
   createScope,
@@ -29,11 +34,6 @@ import {
   type Scope,
 } from "./node"
 import { createRuntimeNodeManager } from "./node/runtimeNodeManager"
-import {
-  createLifecycleBus,
-  type LifecycleBus,
-  type SchemxLifecycleHooks,
-} from "./lifecycle/lifecycle"
 import { batchUpdates, createSignalEffect } from "./reactivity"
 import {
   createRendererRegistry,

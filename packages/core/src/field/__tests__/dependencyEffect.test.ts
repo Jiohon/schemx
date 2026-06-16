@@ -57,7 +57,9 @@ describe("dependency effect", () => {
     await flushRuntimeGraph(scheduler)
 
     expect(root.childNodes[0]?.type).toBe("dependency")
-    if (root.childNodes[0]?.type !== "dependency") return
+    if (root.childNodes[0]?.type !== "dependency") {
+      throw new Error("expected dependency node")
+    }
     expect(root.childNodes[0].dynamicChildNodes).toHaveLength(1)
 
     formApi.setValue("mode" as any, "b")
@@ -90,7 +92,9 @@ describe("dependency effect", () => {
     await flushRuntimeGraph(scheduler)
 
     expect(root.childNodes[0]?.type).toBe("dependency")
-    if (root.childNodes[0]?.type !== "dependency") return
+    if (root.childNodes[0]?.type !== "dependency") {
+      throw new Error("expected dependency node")
+    }
     expect(root.childNodes[0].dynamicChildNodes.map((child) => child.key)).toEqual([
       "stable",
     ])
@@ -131,7 +135,9 @@ describe("dependency effect", () => {
     await flushRuntimeGraph(scheduler)
 
     expect(root.childNodes[0]?.type).toBe("dependency")
-    if (root.childNodes[0]?.type !== "dependency") return
+    if (root.childNodes[0]?.type !== "dependency") {
+      throw new Error("expected dependency node")
+    }
     expect(root.childNodes[0].dynamicChildNodes.map((child) => child.key)).toEqual([
       "latest",
     ])
