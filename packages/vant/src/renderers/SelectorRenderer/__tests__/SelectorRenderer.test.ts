@@ -6,10 +6,10 @@ import { describe, expect, it } from "vitest"
 import SelectorRenderer from "../index.vue"
 
 describe("SelectorRenderer", () => {
-  it("view 状态展示选中项文本且不渲染 Selector", () => {
+  it("readonly 状态展示选中项文本且不渲染 Selector", () => {
     const wrapper = mount(SelectorRenderer, {
       props: {
-        view: true,
+        readonly: true,
         value: "college",
         options: [{ label: "大专", value: "college" }],
       },

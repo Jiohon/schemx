@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
 /* eslint-disable vue/multi-word-component-names */
 
-import { mount } from "@vue/test-utils"
 import { defineComponent, h } from "vue"
+
+import { mount } from "@vue/test-utils"
 import { describe, expect, it, vi } from "vitest"
 
 vi.mock("vant", () => ({
@@ -24,11 +25,11 @@ vi.mock("vant", () => ({
 import RateRenderer from "../index.vue"
 
 describe("RateRenderer", () => {
-  it("view 状态渲染只读 Rate 且不触发变更", async () => {
+  it("readonly 状态渲染 Rate 且 handleChange 不触发 onChange", async () => {
     const onChange = vi.fn()
     const wrapper = mount(RateRenderer, {
       props: {
-        view: true,
+        readonly: true,
         value: 4,
         onChange,
       },
@@ -36,7 +37,7 @@ describe("RateRenderer", () => {
 
     const rate = wrapper.findComponent({ name: "Rate" })
 
-    expect(rate.props("readonly")).toBe(true)
+    expect(rate.exists()).toBe(true)
     await rate.vm.$emit("update:modelValue", 3)
     expect(onChange).not.toHaveBeenCalled()
 

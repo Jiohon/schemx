@@ -15,6 +15,7 @@ export { default as UploadRenderer } from "./UploadRenderer"
 export { default as CascaderRenderer } from "./CascaderRenderer"
 export { default as SelectorRenderer } from "./SelectorRenderer"
 export { default as SelectPickerRenderer } from "./SelectPickerRenderer"
+export { default as SensitiveInputRenderer } from "./SensitiveInputRenderer"
 
 export type { InputRendererProps, InputValue } from "./InputRenderer"
 export type { TextRendererProps, TextValue } from "./TextRenderer"
@@ -55,6 +56,10 @@ export type {
   SelectPickerRendererProps,
   SelectPickerValue,
 } from "./SelectPickerRenderer"
+export type {
+  SensitiveInputRendererProps,
+  SensitiveInputValue,
+} from "./SensitiveInputRenderer"
 
 /**
  * 默认渲染器类型列表
@@ -72,6 +77,7 @@ export const DEFAULT_RENDERER_TYPES = [
   "picker",
   "selectPicker",
   "selector",
+  "sensitiveInput",
   "rate",
   "slider",
   "stepper",

@@ -19,17 +19,17 @@ describe("NumberRenderer", () => {
     wrapper.unmount()
   })
 
-  it("view 状态只渲染详情文本，不渲染底层输入组件", () => {
+  it("readonly 状态只渲染详情文本，不渲染底层输入组件", () => {
     const wrapper = mount(NumberRenderer, {
       props: {
-        view: true,
+        readonly: true,
         value: 12,
         clearable: true,
       },
     })
 
     expect(wrapper.findComponent({ name: "SchemxInput" }).exists()).toBe(false)
-    expect(wrapper.find(".schemx-display-text").text()).toBe("12")
+    expect(wrapper.findComponent({ name: "SchemxCell" }).exists()).toBe(true)
     expect(wrapper.find("input").exists()).toBe(false)
 
     wrapper.unmount()

@@ -2,7 +2,7 @@
   <div :class="['schemx-renderer', 'schemx-calendar-renderer', props.className]">
     <SchemxCell
       :placeholder="placeholder"
-      :readonlyPlaceholder="props.readonlyPlaceholder"
+      :readonly-placeholder="props.readonlyPlaceholder"
       :readonly="isReadonly"
       :disabled="props.disabled"
       :value="modelValue"

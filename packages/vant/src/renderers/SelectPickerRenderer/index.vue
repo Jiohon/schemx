@@ -3,7 +3,7 @@
     <SchemxCell
       :value="fieldValue"
       :placeholder="placeholder"
-      :readonlyPlaceholder="props.readonlyPlaceholder"
+      :readonly-placeholder="props.readonlyPlaceholder"
       :readonly="isReadonly"
       :disabled="props.disabled"
       @click="handleClick"
@@ -33,8 +33,8 @@
             >
               <Checkbox
                 v-for="option in columns"
-                shape="square"
                 :key="option[valueName]"
+                shape="square"
                 :name="option[valueName]"
                 :disabled="disabled || option[disabledName]"
                 v-bind="option"
@@ -82,14 +82,12 @@
   import { computed, ref } from "vue"
 
   import { Button, Checkbox, CheckboxGroup, Popup, Radio, RadioGroup } from "vant"
-  import type { FieldTextAlign } from "vant"
-
-  import classNames from "classnames"
+  
+import classNames from "classnames"
 
   import SchemxCell from "@/components/Cell/index.vue"
-  import { getFieldProps } from "@/utils"
-
-  import type {
+  
+import type {
     SelectPickerConfirmEventParams,
     SelectPickerOption,
     SelectPickerRendererProps,

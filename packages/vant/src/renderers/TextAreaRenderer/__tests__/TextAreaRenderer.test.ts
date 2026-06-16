@@ -19,10 +19,10 @@ describe("TextAreaRenderer", () => {
     wrapper.unmount()
   })
 
-  it("view 状态只渲染详情文本，不渲染底层输入组件", () => {
+  it("readonly 状态只渲染详情文本，不渲染底层输入组件", () => {
     const wrapper = mount(TextAreaRenderer, {
       props: {
-        view: true,
+        readonly: true,
         value: "多行详情",
         showWordLimit: true,
         maxlength: 20,
@@ -30,7 +30,7 @@ describe("TextAreaRenderer", () => {
     })
 
     expect(wrapper.findComponent({ name: "SchemxInput" }).exists()).toBe(false)
-    expect(wrapper.find(".schemx-display-text").text()).toBe("多行详情")
+    expect(wrapper.findComponent({ name: "SchemxCell" }).exists()).toBe(true)
     expect(wrapper.find("textarea").exists()).toBe(false)
 
     wrapper.unmount()

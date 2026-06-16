@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 
-import { mount } from "@vue/test-utils"
 import { defineComponent, h } from "vue"
+
+import { mount } from "@vue/test-utils"
 import { describe, expect, it, vi } from "vitest"
 
 vi.mock("vant", () => {
@@ -36,10 +37,10 @@ vi.mock("vant", () => {
 import CascaderRenderer from "../index.vue"
 
 describe("CascaderRenderer", () => {
-  it("view 状态展示级联 label 且不渲染弹窗", async () => {
+  it("readonly 状态展示级联 label 且不渲染弹窗", async () => {
     const wrapper = mount(CascaderRenderer, {
       props: {
-        view: true,
+        readonly: true,
         value: ["gd", "gz"],
         options: [
           {

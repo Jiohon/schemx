@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 
-import { mount } from "@vue/test-utils"
 import { defineComponent, h } from "vue"
+
+import { mount } from "@vue/test-utils"
 import { describe, expect, it, vi } from "vitest"
 
 vi.mock("vant", () => {
@@ -36,10 +37,10 @@ vi.mock("vant", () => {
 import DateRenderer from "../index.vue"
 
 describe("DateRenderer", () => {
-  it("view 状态展示格式化日期且不渲染弹窗", async () => {
+  it("readonly 状态展示格式化日期且不渲染弹窗", async () => {
     const wrapper = mount(DateRenderer, {
       props: {
-        view: true,
+        readonly: true,
         value: "2026-06-11",
         format: "YYYY/MM/DD",
       },

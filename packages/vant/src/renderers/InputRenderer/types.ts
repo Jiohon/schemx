@@ -7,6 +7,7 @@
 import type { FieldProps } from "vant"
 
 import type { InputValue } from "@/components/Input"
+
 import type { SchemxFormItemProps } from "@schemx/vue"
 
 export type { InputValue }

@@ -11,7 +11,7 @@
       v-if="props.readonly"
       :value="textValue"
       :placeholder="placeholder"
-      :readonlyPlaceholder="props.readonlyPlaceholder"
+      :readonly-placeholder="props.readonlyPlaceholder"
       :readonly="props.readonly"
       :disabled="props.disabled"
     />

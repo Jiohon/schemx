@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
 /* eslint-disable vue/multi-word-component-names */
 
-import { mount } from "@vue/test-utils"
 import { defineComponent, h } from "vue"
+
+import { mount } from "@vue/test-utils"
 import { describe, expect, it, vi } from "vitest"
 
 vi.mock("vant", () => ({
@@ -26,10 +27,10 @@ vi.mock("vant", () => ({
 import CheckboxRenderer from "../index.vue"
 
 describe("CheckboxRenderer", () => {
-  it("view 状态展示选中项文本且不渲染 CheckboxGroup", () => {
+  it("readonly 状态展示选中项文本且不渲染 CheckboxGroup", () => {
     const wrapper = mount(CheckboxRenderer, {
       props: {
-        view: true,
+        readonly: true,
         value: ["reading", "music"],
         options: [
           { label: "阅读", value: "reading" },

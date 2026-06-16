@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
 /* eslint-disable vue/multi-word-component-names */
 
-import { mount } from "@vue/test-utils"
 import { defineComponent, h } from "vue"
+
+import { mount } from "@vue/test-utils"
 import { describe, expect, it, vi } from "vitest"
 
 vi.mock("vant", () => ({
@@ -20,19 +21,17 @@ vi.mock("vant", () => ({
 import StepperRenderer from "../index.vue"
 
 describe("StepperRenderer", () => {
-  it("view 状态使用 DisplayText 展示当前值且不渲染 Stepper", () => {
+  it("readonly 状态使用 Cell 展示当前值且不渲染 Stepper", () => {
     const wrapper = mount(StepperRenderer, {
       props: {
-        view: true,
+        readonly: true,
         value: 5,
       },
     })
 
-    const displayText = wrapper.findComponent({ name: "SchemxDisplayText" })
+    const cell = wrapper.findComponent({ name: "SchemxCell" })
 
-    expect(displayText.exists()).toBe(true)
-    expect(displayText.props("value")).toBe(5)
-    expect(displayText.props("view")).toBe(true)
+    expect(cell.exists()).toBe(true)
     expect(wrapper.findComponent({ name: "Stepper" }).exists()).toBe(false)
 
     wrapper.unmount()

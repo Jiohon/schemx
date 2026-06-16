@@ -35,9 +35,9 @@
   import { computed, ref, useAttrs } from "vue"
 
   import { Switch } from "vant"
-  import SchemxCell from "@/components/Cell/index.vue"
 
-  import { getFieldProps, getReadonlyDisplayValue } from "@/utils"
+  import SchemxCell from "@/components/Cell/index.vue"
+  import { getFieldProps } from "@/utils"
 
   import type { SwitchRendererProps, SwitchValue } from "./types"
 
