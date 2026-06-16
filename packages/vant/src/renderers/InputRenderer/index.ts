@@ -5,5 +5,5 @@
  */
 
 export { default } from "./index.vue"
-export type { InputRendererProps, InputValue } from "./types.js"
-export { cutString, formatNumber, getStringLength } from "./types.js"
+export type { InputRendererProps, InputValue } from "./types"
+export { cutString, formatNumber, getStringLength } from "./types"

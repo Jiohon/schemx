@@ -5,5 +5,10 @@
  */
 
 export { default } from "./index.vue"
-export type { InputRendererProps, InputValue, SchemxInputProps } from "./types.js"
-export { cutString, formatNumber, getStringLength } from "./types.js"
+export type {
+  InputRendererProps,
+  InputValue,
+  SchemxInputProps,
+  TextAreaAutosize,
+} from "./types"
+export { cutString, formatNumber, getStringLength } from "./types"

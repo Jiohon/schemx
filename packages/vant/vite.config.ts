@@ -54,6 +54,9 @@ export default defineConfig({
       output: {
         exports: "named",
       },
+      treeshake: {
+        moduleSideEffects: "no-external",
+      },
     },
     sourcemap: true,
     minify: "terser",

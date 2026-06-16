@@ -43,7 +43,9 @@
   ],
   "sideEffects": [
     "**/*.css",
-    "**/*.scss"
+    "**/*.scss",
+    "**/defaultRenderers.*",
+    "**/index.ts"
   ],
   "peerDependencies": {
     "vant": "^4.0.0",
