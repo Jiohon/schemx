@@ -53,10 +53,11 @@
     "classnames": "^2.5.1",
     "csstype": "^3.2.3",
     "dayjs": "^1.11.19",
-    "es-toolkit": "^1.45.1"
+    "es-toolkit": "catalog:"
   },
   "scripts": {
     "build": "vite build",
+    "build:analyze": "ANALYZE=true vite build",
     "test": "vitest run",
     "lint": "eslint \"src/**/*.{ts,tsx,vue,js,jsx}\"",
     "type-check": "tsc -p tsconfig.json --noEmit",
@@ -65,7 +66,7 @@
   "license": "MIT",
   "devDependencies": {
     "@vue/test-utils": "^2.4.6",
-    "vue": "^3.4.0",
+    "vue": "catalog:",
     "zod": "^4.3.6"
   }
 }

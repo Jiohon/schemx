@@ -1,6 +1,11 @@
 packages:
   - "packages/*"
   - "examples/*"
+
+catalog:
+  es-toolkit: ^1.47.0
+  vue: ^3.4.0
+
 allowBuilds:
   '@parcel/watcher': false
   esbuild: false

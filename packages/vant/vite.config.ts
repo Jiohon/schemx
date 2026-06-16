@@ -2,12 +2,22 @@ import { defineConfig } from "vite"
 import vue from "@vitejs/plugin-vue"
 import vueJsx from "@vitejs/plugin-vue-jsx"
 import dts from "vite-plugin-dts"
+import { visualizer } from "rollup-plugin-visualizer"
 import { resolve } from "path"
+
+const useSource = process.env.VITE_USE_SOURCE === "true"
+const analyze = process.env.ANALYZE === "true"
 
 export default defineConfig({
   resolve: {
     alias: {
       "@": resolve(__dirname, "src"),
+      ...(useSource
+        ? {
+            "@schemx/core": resolve(__dirname, "../core/src/index.ts"),
+            "@schemx/vue": resolve(__dirname, "../vue/src/index.ts"),
+          }
+        : {}),
     },
   },
   plugins: [
@@ -19,7 +29,16 @@ export default defineConfig({
       tsconfigPath: "tsconfig.build.json",
       rollupTypes: true,
     }),
-  ],
+    analyze &&
+      visualizer({
+        filename: resolve(__dirname, "dist/analyze.html"),
+        gzipSize: true,
+        brotliSize: true,
+        open: false,
+        template: "treemap",
+        title: "@schemx/vant bundle analysis",
+      }),
+  ].filter(Boolean),
   build: {
     lib: {
       entry: resolve(__dirname, "src/index.ts"),
@@ -31,13 +50,8 @@ export default defineConfig({
       },
     },
     rollupOptions: {
-      external: ["vue", "vant", "@schemx/core", "@schemx/vue", "classnames", "dayjs"],
+      external: ["vue", "vant", "classnames", "dayjs"],
       output: {
-        globals: {
-          vue: "Vue",
-          vant: "Vant",
-          "@schemx/core": "schemxCore",
-        },
         exports: "named",
       },
     },

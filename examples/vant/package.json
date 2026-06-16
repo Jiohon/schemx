@@ -11,7 +11,7 @@
     "@schemx/vant": "workspace:*",
     "@schemx/vue": "workspace:*",
     "vant": "^4.9.24",
-    "vue": "^3.4.0",
+    "vue": "catalog:",
     "zod": "^3.24.0"
   },
   "devDependencies": {
