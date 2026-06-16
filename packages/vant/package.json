@@ -34,11 +34,16 @@
         "types": "./dist/index.d.ts",
         "default": "./dist/index.cjs"
       }
-    }
+    },
+    "./style.css": "./dist/style.css"
   },
   "files": [
     "dist",
     "README.md"
+  ],
+  "sideEffects": [
+    "**/*.css",
+    "**/*.scss"
   ],
   "peerDependencies": {
     "vant": "^4.0.0",

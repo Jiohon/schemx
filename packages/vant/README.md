@@ -23,8 +23,10 @@ pnpm add @schemx/vant vant vue
 ```vue
 <script setup lang="ts">
   import { ref } from "vue"
+  import "vant/lib/index.css"
 
   import Schemx from "@schemx/vant"
+  import "@schemx/vant/style.css"
 
   import type { SchemxField, SchemxInstance } from "@schemx/vant"
 
