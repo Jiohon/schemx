@@ -14,8 +14,9 @@ import type {
   PickerRendererProps,
   RadioRendererProps,
   RateRendererProps,
-  SelectPickerRendererProps,
   SelectorRendererProps,
+  SensitiveInputRendererProps,
+  SelectPickerRendererProps,
   SliderRendererProps,
   StepperRendererProps,
   SwitchRendererProps,
@@ -39,6 +40,7 @@ declare module "@schemx/core" {
     picker: SchemxWithDictionary<PickerRendererProps, T>
     selectPicker: SchemxWithDictionary<SelectPickerRendererProps, T>
     selector: SchemxWithDictionary<SelectorRendererProps, T>
+    sensitiveInput: SensitiveInputRendererProps
     rate: RateRendererProps
     slider: SliderRendererProps
     stepper: StepperRendererProps
