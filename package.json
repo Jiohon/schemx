@@ -12,6 +12,7 @@
     "@typescript-eslint/parser": "^7.18.0",
     "@vitejs/plugin-vue": "^5.0.0",
     "@vitejs/plugin-vue-jsx": "^4.0.0",
+    "@plugins/injectStyleCss": "workspace:*",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^9.1.2",
     "eslint-import-resolver-typescript": "^4.4.4",
@@ -28,7 +29,7 @@
     "typescript-eslint": "^7.18.0",
     "vite": "^5.0.0",
     "vite-plugin-dts": "^3.0.0",
-    "vitest": "^4.0.18"
+    "vitest": "^2.1.8"
   },
   "scripts": {
     "dev": "vite",
@@ -53,7 +54,7 @@
     "release:version:patch": "bash scripts/release.sh version patch",
     "release:version:minor": "bash scripts/release.sh version minor",
     "release:version:major": "bash scripts/release.sh version major",
-    "release:test": "bash scripts/release.test.sh && bash scripts/bump-version.test.sh"
+    "release:test": "bash scripts/release.test.sh"
   },
   "repository": {
     "type": "git",

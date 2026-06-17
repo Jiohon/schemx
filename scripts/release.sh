@@ -7,10 +7,9 @@ cd "$ROOT_DIR"
 
 source "$ROOT_DIR/scripts/release/common.sh"
 
-PACKAGES=(core vue vant)
-NPM_REGISTRY="${NPM_REGISTRY:-https://registry.npmjs.org/}"
 PRERELEASE_BACKUP_DIR=""
 PRERELEASE_TARGETS=()
+# 选择器通过 stdout 返回结果，取消操作也需要一个可识别值，避免误当成包名继续发布。
 RELEASE_CANCELLED_TARGET="__SCHEMX_RELEASE_CANCELLED__"
 
 usage() {
@@ -30,62 +29,15 @@ usage() {
 
 也可以直接调用：
   bash scripts/release.sh check
-  bash scripts/release.sh pack
+  bash scripts/release.sh pack [all|core|vue|vant]
   bash scripts/release.sh publish [all|core|vue|vant]
   bash scripts/release.sh publish-dev [all|core|vue|vant]
   bash scripts/release.sh publish-alpha [all|core|vue|vant]
   bash scripts/release.sh publish-beta [all|core|vue|vant]
   bash scripts/release.sh publish-rc [all|core|vue|vant]
   bash scripts/release.sh publish-next [all|core|vue|vant]
-  bash scripts/release.sh version [patch|minor|major]
+  bash scripts/release.sh version [patch|minor|major] [all|core|vue|vant]
 USAGE
-}
-
-info() {
-  printf '\n==> %s\n' "$1"
-}
-
-die() {
-  printf '错误：%s\n' "$1" >&2
-  exit 1
-}
-
-package_choices() {
-  local IFS="、"
-  printf '%s' "${PACKAGES[*]}"
-}
-
-package_path() {
-  printf 'packages/%s' "$1"
-}
-
-package_json_value() {
-  local pkg="$1"
-  local field="$2"
-
-  node -p "const pkg=require('./$(package_path "$pkg")/package.json'); pkg['$field']"
-}
-
-assert_package() {
-  local pkg="$1"
-
-  for item in "${PACKAGES[@]}"; do
-    if [[ "$item" == "$pkg" ]]; then
-      return
-    fi
-  done
-
-  die "未知包：$pkg，可选值为 $(package_choices)"
-}
-
-assert_publish_target() {
-  local target="$1"
-
-  if [[ "$target" == "all" ]]; then
-    return
-  fi
-
-  assert_package "$target"
 }
 
 SELECTED_TARGET=""
@@ -102,7 +54,7 @@ select_publish_target() {
     return
   fi
 
-  SELECTED_TARGET="$(node "$ROOT_DIR/scripts/select-release-target.mjs" --channel "$channel" all "${PACKAGES[@]}")"
+  SELECTED_TARGET="$(node "$ROOT_DIR/scripts/select-release-target.mjs" --channel "$channel" all "${RELEASE_PACKAGES[@]}")"
   if [[ "$SELECTED_TARGET" == "$RELEASE_CANCELLED_TARGET" ]]; then
     exit 0
   fi
@@ -142,7 +94,6 @@ assert_prerelease_version_files_clean() {
 }
 
 assert_npm_auth() {
-  configure_npm_token_auth
   bash "$ROOT_DIR/scripts/release/check-npm-auth.sh"
 }
 
@@ -155,13 +106,13 @@ assert_npm_registry() {
 }
 
 run_quality_checks() {
-  bash "$ROOT_DIR/scripts/release/run-quality-checks.sh"
+  bash "$ROOT_DIR/scripts/release/run-quality-checks.sh" "$@"
 }
 
 pack_packages() {
   info "检查发布包内容"
 
-  pack_target_packages "${PACKAGES[@]}"
+  pack_target_packages "${RELEASE_PACKAGES[@]}"
 }
 
 pack_target_packages() {
@@ -174,9 +125,14 @@ run_check() {
 }
 
 run_pack() {
+  local target="${1:-all}"
+  local targets=()
+  local pkg
+
+  targets=($(resolve_targets "$target"))
   info "生成本地 tarball"
 
-  for pkg in "${PACKAGES[@]}"; do
+  for pkg in "${targets[@]}"; do
     pnpm --filter "@schemx/$pkg" pack --pack-destination "$ROOT_DIR"
   done
 }
@@ -189,53 +145,8 @@ publish_one() {
   bash "$ROOT_DIR/scripts/release/publish-package.sh" "$pkg" "$tag"
 }
 
-resolve_targets() {
-  local target="${1:-all}"
-
-  if [[ "$target" == "all" ]]; then
-    printf '%s\n' "${PACKAGES[@]}"
-    return
-  fi
-
-  assert_package "$target"
-  printf '%s\n' "$target"
-}
-
 check_target_versions_available() {
   bash "$ROOT_DIR/scripts/release/check-versions-available.sh" "$@"
-}
-
-set_package_version() {
-  local pkg_json="$1"
-  local version="$2"
-
-  node -e "
-const fs = require('node:fs');
-const pkgPath = process.argv[1];
-const version = process.argv[2];
-const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-pkg.version = version;
-fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
-" "$pkg_json" "$version"
-}
-
-next_prerelease_version() {
-  local current_version="$1"
-  local channel="$2"
-  local base major minor patch timestamp sha
-
-  base="${current_version%%-*}"
-  IFS=. read -r major minor patch <<<"$base"
-
-  if [[ -z "${major:-}" || -z "${minor:-}" || -z "${patch:-}" ]]; then
-    die "无法解析版本号：$current_version"
-  fi
-
-  patch=$((patch + 1))
-  timestamp="${SCHEMX_RELEASE_TIMESTAMP:-$(date +%Y%m%d%H%M%S)}"
-  sha="${SCHEMX_RELEASE_SHA:-$(git rev-parse --short HEAD 2>/dev/null || printf 'local')}"
-
-  printf '%s.%s.%s-%s.%s.%s' "$major" "$minor" "$patch" "$channel" "$timestamp" "$sha"
 }
 
 prepare_prerelease_versions() {
@@ -246,6 +157,7 @@ prepare_prerelease_versions() {
   PRERELEASE_BACKUP_DIR="$(mktemp -d)"
   PRERELEASE_TARGETS=("$@")
 
+  # 预发布需要真实 npm semver，但不应把临时版本写回开发分支。
   info "生成临时 ${channel} 预发布版本"
   for pkg in "${PRERELEASE_TARGETS[@]}"; do
     pkg_json="$(package_path "$pkg")/package.json"
@@ -293,7 +205,7 @@ run_publish() {
 
   targets=($(resolve_targets "$target"))
   check_target_versions_available "${targets[@]}"
-  run_quality_checks
+  run_quality_checks "${targets[@]}"
   pack_target_packages "${targets[@]}"
 
   for pkg in "${targets[@]}"; do
@@ -322,7 +234,7 @@ run_prerelease_publish() {
   assert_npm_registry
   assert_npm_auth
   check_target_versions_available "${targets[@]}"
-  run_quality_checks
+  run_quality_checks "${targets[@]}"
   pack_target_packages "${targets[@]}"
 
   for pkg in "${targets[@]}"; do
@@ -335,6 +247,9 @@ run_prerelease_publish() {
 
 run_version() {
   local level="${1:-patch}"
+  local target="${2:-all}"
+  local targets=()
+  local pkg
 
   case "$level" in
     patch | minor | major) ;;
@@ -344,8 +259,11 @@ run_version() {
   assert_main_branch
   assert_clean_git
 
-  info "提升 packages 版本：$level"
-  for pkg in "${PACKAGES[@]}"; do
+  targets=($(resolve_targets "$target"))
+
+  # 正式发布必须显式提升版本，publish 只发布当前 package.json 中的版本。
+  info "提升 packages 版本：${level}（$(target_summary "${targets[@]}")）"
+  for pkg in "${targets[@]}"; do
     npm --prefix "$(package_path "$pkg")" version "$level" --no-git-tag-version
   done
 
@@ -361,7 +279,7 @@ main() {
       run_check
       ;;
     pack)
-      run_pack
+      run_pack "${2:-all}"
       ;;
     publish)
       run_publish "${2:-}"
@@ -382,7 +300,7 @@ main() {
       run_prerelease_publish next "${2:-}"
       ;;
     version)
-      run_version "${2:-patch}"
+      run_version "${2:-patch}" "${3:-all}"
       ;;
     -h | --help | help | "")
       usage
