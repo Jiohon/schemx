@@ -1,6 +1,7 @@
 packages:
   - "packages/*"
   - "examples/*"
+  - "plugins/*"
 
 catalog:
   es-toolkit: ^1.47.0

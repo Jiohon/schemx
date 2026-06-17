@@ -4,6 +4,7 @@ import vueJsx from "@vitejs/plugin-vue-jsx"
 import dts from "vite-plugin-dts"
 import { visualizer } from "rollup-plugin-visualizer"
 import { resolve } from "path"
+import { injectStyleCss } from "@plugins/injectStyleCss"
 
 const useSource = process.env.VITE_USE_SOURCE === "true"
 const analyze = process.env.ANALYZE === "true"
@@ -23,6 +24,7 @@ export default defineConfig({
   plugins: [
     vue(),
     vueJsx(),
+    injectStyleCss(),
     dts({
       include: ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"],
       outDir: "dist",
