@@ -87,6 +87,10 @@ case "$1" in
     printf 'mock-user\n'
     ;;
   view)
+    if [[ -n "${MOCK_PNPM_VIEW_EXISTS:-}" && "$*" == *"${MOCK_PNPM_VIEW_EXISTS}"* ]]; then
+      printf '0.0.0\n'
+      exit 0
+    fi
     exit 1
     ;;
   *)
@@ -245,6 +249,16 @@ console.log(Object.keys(pkg.scripts).filter((name) => name.startsWith('release:p
   assert_not_contains "$scripts" "release:publish:wot"
 }
 
+test_release_test_runs_only_release_script_tests() {
+  local script
+  script="$(node -p "require('$ROOT_DIR/package.json').scripts['release:test']")"
+
+  if [[ "$script" != "bash scripts/release.test.sh" ]]; then
+    printf 'release:test 应只运行 release.test.sh。\n实际脚本：%s\n' "$script" >&2
+    exit 1
+  fi
+}
+
 test_dev_publish_uses_dev_tag_and_restores_version() {
   local before after output
 
@@ -357,6 +371,27 @@ test_publish_without_github_auth_stops_before_publish() {
   assert_log_not_contains "pnpm --dir packages/core publish"
 }
 
+test_publish_existing_version_suggests_release_version() {
+  local output status
+
+  export MOCK_PNPM_VIEW_EXISTS="@schemx/vue@"
+  set +e
+  output="$(run_release publish vue 2>&1)"
+  status=$?
+  set -e
+  unset MOCK_PNPM_VIEW_EXISTS
+
+  if [[ "$status" -eq 0 ]]; then
+    printf '已存在的正式版本应阻止发布。\n' >&2
+    exit 1
+  fi
+
+  assert_contains "$output" "@schemx/vue@"
+  assert_contains "$output" "已存在"
+  assert_contains "$output" "pnpm release:version:patch vue"
+  assert_log_not_contains "pnpm --dir packages/vue publish"
+}
+
 test_alpha_publish_uses_alpha_tag_and_restores_version() {
   local before after
 
@@ -387,6 +422,38 @@ test_alpha_publish_uses_alpha_tag_and_restores_version() {
   assert_log_not_contains "git push"
 }
 
+test_pack_accepts_target() {
+  : >"$COMMAND_LOG"
+
+  run_release pack vant >/dev/null
+
+  assert_log_contains "pnpm --filter @schemx/vant pack --pack-destination $ROOT_DIR"
+  assert_log_not_contains "pnpm --filter @schemx/core pack --pack-destination $ROOT_DIR"
+  assert_log_not_contains "pnpm --filter @schemx/vue pack --pack-destination $ROOT_DIR"
+}
+
+test_version_accepts_target() {
+  : >"$COMMAND_LOG"
+
+  run_release version patch vue >/dev/null
+
+  assert_log_contains "npm --prefix packages/vue version patch --no-git-tag-version"
+  assert_log_not_contains "npm --prefix packages/core version patch --no-git-tag-version"
+  assert_log_not_contains "npm --prefix packages/vant version patch --no-git-tag-version"
+  assert_log_contains "pnpm install --lockfile-only"
+}
+
+test_version_defaults_to_all_packages() {
+  : >"$COMMAND_LOG"
+
+  run_release version patch >/dev/null
+
+  assert_log_contains "npm --prefix packages/core version patch --no-git-tag-version"
+  assert_log_contains "npm --prefix packages/vue version patch --no-git-tag-version"
+  assert_log_contains "npm --prefix packages/vant version patch --no-git-tag-version"
+  assert_log_contains "pnpm install --lockfile-only"
+}
+
 test_publish_checks_only_target_dependency_chain() {
   local output
 
@@ -406,6 +473,64 @@ test_publish_checks_only_target_dependency_chain() {
   assert_log_not_contains "pnpm lint"
   assert_log_not_contains "pnpm build"
   assert_log_contains "pnpm --dir packages/vant publish --access public --registry https://registry.npmjs.org/ --tag alpha --no-git-checks"
+}
+
+test_release_output_uses_colors_when_forced() {
+  local output error_output status
+  local cyan green yellow red reset
+
+  cyan=$'\033[36m'
+  green=$'\033[32m'
+  yellow=$'\033[33m'
+  red=$'\033[31m'
+  reset=$'\033[0m'
+
+  : >"$COMMAND_LOG"
+
+  export MOCK_BRANCH="feature/demo"
+  unset NO_COLOR
+  export FORCE_COLOR=1
+  output="$(run_release publish-alpha core 2>&1)"
+  unset FORCE_COLOR
+  unset MOCK_BRANCH
+
+  assert_contains "$output" "${cyan}==> 发布 @schemx/core${reset}"
+  assert_contains "$output" "${green}@schemx/core@"
+  assert_contains "$output" "可发布${reset}"
+  assert_contains "$output" "${yellow}如果 npm 要求网页登录、二维码确认或 OTP"
+
+  export MOCK_BRANCH="feature/demo"
+  unset NO_COLOR
+  export FORCE_COLOR=1
+  set +e
+  error_output="$(run_release publish core 2>&1)"
+  status=$?
+  set -e
+  unset FORCE_COLOR
+  unset MOCK_BRANCH
+
+  if [[ "$status" -eq 0 ]]; then
+    printf '非 main 分支正式发布应失败。\n' >&2
+    exit 1
+  fi
+
+  assert_contains "$error_output" "${red}错误：正式发布只能在 main 分支执行。当前分支：feature/demo${reset}"
+}
+
+test_release_output_omits_colors_without_tty() {
+  local output
+
+  : >"$COMMAND_LOG"
+
+  export MOCK_BRANCH="feature/demo"
+  export NO_COLOR=1
+  export FORCE_COLOR=1
+  output="$(run_release publish-alpha core 2>&1)"
+  unset NO_COLOR
+  unset FORCE_COLOR
+  unset MOCK_BRANCH
+
+  assert_not_contains "$output" $'\033['
 }
 
 test_publish_without_target_prompts_for_package_selection() {
@@ -545,12 +670,19 @@ test_cancelled_selector_exits_without_lifecycle_failure() {
 
 test_help_lists_channel_commands_without_package_shortcuts
 test_package_scripts_keep_only_publish_channels
+test_release_test_runs_only_release_script_tests
 test_latest_publish_is_main_only
 test_publish_without_npm_auth_shows_clear_message
 test_publish_accepts_npm_token_auth
 test_publish_without_github_auth_stops_before_publish
+test_publish_existing_version_suggests_release_version
 test_alpha_publish_uses_alpha_tag_and_restores_version
 test_publish_checks_only_target_dependency_chain
+test_release_output_uses_colors_when_forced
+test_release_output_omits_colors_without_tty
+test_pack_accepts_target
+test_version_accepts_target
+test_version_defaults_to_all_packages
 test_publish_without_target_prompts_for_package_selection
 test_latest_publish_tags_and_pushes_after_publish
 test_latest_publish_all_creates_package_scoped_tags_and_releases

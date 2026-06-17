@@ -11,14 +11,10 @@ target_filters=()
 
 if [[ "$#" -gt 0 ]]; then
   for pkg in "$@"; do
+    # 发布单包时仍检查依赖链，避免下游包在本地工作区引用到未通过验证的变更。
     target_filters+=(--filter "@schemx/$pkg...")
   done
 fi
-
-target_summary() {
-  local IFS="、"
-  printf '%s' "$*"
-}
 
 info "安装依赖一致性检查"
 pnpm install --frozen-lockfile
