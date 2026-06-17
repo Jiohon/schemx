@@ -44,7 +44,7 @@
   import { computed, ref } from "vue"
   import { Button } from "vant"
 
-  import Schemx from "@schemx/vant"
+  import Schemx, { createSchemas } from "@schemx/vant"
 
   import type { BasicFormValues } from "../types"
   import type { SchemxField, SchemxInstance } from "@schemx/vant"

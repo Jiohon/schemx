@@ -6,7 +6,7 @@
 
 import type { FieldProps } from "vant"
 
-import type { InputValue } from "@/components/Input"
+import type { InputValue, TextAreaAutosize } from "@/components/Input"
 
 import type { SchemxFormItemProps } from "@schemx/vue"
 
@@ -46,7 +46,7 @@ export interface InputRendererProps {
   /** 文本域默认行数 */
   rows?: number | string
   /** 文本域自适应高度配置 */
-  autosize?: boolean | { minRows?: number; maxRows?: number }
+  autosize?: boolean | TextAreaAutosize
   /** 自定义格式化函数 */
   formatter?: FieldProps["formatter"]
   /** 格式化触发时机 */

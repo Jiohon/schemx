@@ -65,7 +65,7 @@
 
   import { formatNumber } from "./types"
 
-  import type { SchemxInputProps } from "./types"
+  import type { SchemxInputProps, TextAreaAutosize } from "./types"
 
   import "./index.scss"
 
@@ -170,7 +170,27 @@
   /** 计算 autosize 配置 */
   const computedAutosize = computed(() => {
     if (props.type !== "textarea") return false
-    return props.autosize
+    if (!props.autosize || typeof props.autosize === "boolean") {
+      return props.autosize
+    }
+
+    // Convert minRows/maxRows to minHeight/maxHeight (estimated 22px per row)
+    const { minRows, maxRows, minHeight, maxHeight } = props.autosize as TextAreaAutosize
+    const result: { minHeight?: number; maxHeight?: number } = {}
+
+    if (minHeight !== undefined) {
+      result.minHeight = minHeight
+    } else if (minRows !== undefined) {
+      result.minHeight = minRows * 22
+    }
+
+    if (maxHeight !== undefined) {
+      result.maxHeight = maxHeight
+    } else if (maxRows !== undefined) {
+      result.maxHeight = maxRows * 22
+    }
+
+    return Object.keys(result).length > 0 ? result : props.autosize
   })
 
   /** Field 组件的 formatter */

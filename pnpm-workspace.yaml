@@ -1,7 +1,15 @@
 packages:
   - "packages/*"
   - "examples/*"
+
+catalog:
+  es-toolkit: ^1.47.0
+  vue: ^3.4.0
+
 allowBuilds:
   '@parcel/watcher': false
   esbuild: false
   unrs-resolver: false
+
+minimumReleaseAgeExclude:
+  - '@schemx/vant@0.1.11-alpha.20260616215132.4f3ffde'

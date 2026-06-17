@@ -12,12 +12,19 @@ export type TextAreaValue = InputValue
  * 文本域自适应高度配置
  *
  * 配置文本域根据内容自动调整高度的行为。
+ * 支持两种格式：
+ * 1. 基于行数：minRows / maxRows
+ * 2. 基于像素：minHeight / maxHeight
  */
 export interface TextAreaAutosize {
   /** 最小行数 */
   minRows?: number
   /** 最大行数 */
   maxRows?: number
+  /** 最小高度（像素） */
+  minHeight?: number
+  /** 最大高度（像素） */
+  maxHeight?: number
 }
 
 /**

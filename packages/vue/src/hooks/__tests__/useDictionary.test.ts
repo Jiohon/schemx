@@ -173,6 +173,7 @@ describe("useDictionary 集成测试", () => {
       const mockApi = vi.fn(() => {
         callCount++
         if (callCount === 1) return Promise.reject(new Error("first fail"))
+
         return Promise.resolve([{ label: "B", value: 2 }])
       })
 
