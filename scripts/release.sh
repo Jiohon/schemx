@@ -155,7 +155,7 @@ assert_npm_registry() {
 }
 
 run_quality_checks() {
-  bash "$ROOT_DIR/scripts/release/run-quality-checks.sh"
+  bash "$ROOT_DIR/scripts/release/run-quality-checks.sh" "$@"
 }
 
 pack_packages() {
@@ -293,7 +293,7 @@ run_publish() {
 
   targets=($(resolve_targets "$target"))
   check_target_versions_available "${targets[@]}"
-  run_quality_checks
+  run_quality_checks "${targets[@]}"
   pack_target_packages "${targets[@]}"
 
   for pkg in "${targets[@]}"; do
@@ -322,7 +322,7 @@ run_prerelease_publish() {
   assert_npm_registry
   assert_npm_auth
   check_target_versions_available "${targets[@]}"
-  run_quality_checks
+  run_quality_checks "${targets[@]}"
   pack_target_packages "${targets[@]}"
 
   for pkg in "${targets[@]}"; do

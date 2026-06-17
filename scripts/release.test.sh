@@ -306,6 +306,9 @@ test_publish_without_npm_auth_shows_clear_message() {
 
   assert_contains "$output" "检查 npm 登录状态"
   assert_contains "$output" "npm 未登录或当前 registry 无权限"
+  assert_contains "$output" "设置 NPM_TOKEN 后重新执行发布命令"
+  assert_contains "$output" "pnpm login --registry \"https://registry.npmjs.org/\""
+  assert_contains "$output" "完成浏览器确认后，请回到终端等待命令继续"
   assert_not_contains "$output" "ELIFECYCLE"
 }
 
@@ -373,11 +376,36 @@ test_alpha_publish_uses_alpha_tag_and_restores_version() {
 
   assert_contains "$output" "发布模式：alpha"
   assert_contains "$output" "发布目标：core"
+  assert_contains "$output" "发布 registry：https://registry.npmjs.org/"
+  assert_contains "$output" "发布 tag：alpha"
+  assert_contains "$output" "终端可能会停在认证提示处"
+  assert_contains "$output" "完成后回到这里等待发布继续"
   assert_log_contains "pnpm --dir packages/core publish --access public --registry https://registry.npmjs.org/ --tag alpha --no-git-checks"
   assert_log_not_contains "gh auth status"
   assert_log_not_contains "gh release create"
   assert_log_not_contains "git tag"
   assert_log_not_contains "git push"
+}
+
+test_publish_checks_only_target_dependency_chain() {
+  local output
+
+  : >"$COMMAND_LOG"
+
+  export MOCK_BRANCH="feature/demo"
+  output="$(run_release publish-alpha vant)"
+  unset MOCK_BRANCH
+
+  assert_contains "$output" "运行目标依赖链测试：vant"
+  assert_contains "$output" "运行目标依赖链 lint：vant"
+  assert_contains "$output" "构建目标依赖链发布产物：vant"
+  assert_log_contains "pnpm --filter @schemx/vant... test"
+  assert_log_contains "pnpm --filter @schemx/vant... lint"
+  assert_log_contains "pnpm --filter @schemx/vant... build"
+  assert_log_not_contains "pnpm test"
+  assert_log_not_contains "pnpm lint"
+  assert_log_not_contains "pnpm build"
+  assert_log_contains "pnpm --dir packages/vant publish --access public --registry https://registry.npmjs.org/ --tag alpha --no-git-checks"
 }
 
 test_publish_without_target_prompts_for_package_selection() {
@@ -522,6 +550,7 @@ test_publish_without_npm_auth_shows_clear_message
 test_publish_accepts_npm_token_auth
 test_publish_without_github_auth_stops_before_publish
 test_alpha_publish_uses_alpha_tag_and_restores_version
+test_publish_checks_only_target_dependency_chain
 test_publish_without_target_prompts_for_package_selection
 test_latest_publish_tags_and_pushes_after_publish
 test_latest_publish_all_creates_package_scoped_tags_and_releases
