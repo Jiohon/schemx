@@ -80,7 +80,7 @@ case "$1" in
     printf 'https://registry.npmjs.org/\n'
     ;;
   whoami)
-    if [[ "${MOCK_NPM_AUTH_FAIL:-0}" == "1" ]]; then
+    if [[ "${MOCK_NPM_AUTH_FAIL:-0}" == "1" && -z "${NPM_CONFIG_USERCONFIG:-}" ]]; then
       printf 'npm whoami failed\n' >&2
       exit 1
     fi
@@ -309,6 +309,28 @@ test_publish_without_npm_auth_shows_clear_message() {
   assert_not_contains "$output" "ELIFECYCLE"
 }
 
+test_publish_accepts_npm_token_auth() {
+  local output status
+
+  export MOCK_NPM_AUTH_FAIL=1
+  export NPM_TOKEN=mock-token
+  set +e
+  output="$(run_release publish-alpha core 2>&1)"
+  status=$?
+  set -e
+  unset MOCK_NPM_AUTH_FAIL
+  unset NPM_TOKEN
+
+  if [[ "$status" -ne 0 ]]; then
+    printf '设置 NPM_TOKEN 后，npm auth 检查应通过。\n%s\n' "$output" >&2
+    exit 1
+  fi
+
+  assert_contains "$output" "检查 npm 登录状态"
+  assert_not_contains "$output" "npm 未登录或当前 registry 无权限"
+  assert_log_contains "pnpm --dir packages/core publish --access public --registry https://registry.npmjs.org/ --tag alpha --no-git-checks"
+}
+
 test_publish_without_github_auth_stops_before_publish() {
   local output status
 
@@ -497,6 +519,7 @@ test_help_lists_channel_commands_without_package_shortcuts
 test_package_scripts_keep_only_publish_channels
 test_latest_publish_is_main_only
 test_publish_without_npm_auth_shows_clear_message
+test_publish_accepts_npm_token_auth
 test_publish_without_github_auth_stops_before_publish
 test_alpha_publish_uses_alpha_tag_and_restores_version
 test_publish_without_target_prompts_for_package_selection
