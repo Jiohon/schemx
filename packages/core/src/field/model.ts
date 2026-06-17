@@ -103,8 +103,7 @@ function createFieldModelSnapshot<TValues extends Values = Values>(
     required: resolved?.required ?? schema.required ?? defaultConfig.required,
     label: schema.label || "",
     rules: (resolved?.rules ?? schema.rules) || [],
-    placeholder:
-      resolved?.placeholder ?? schema.placeholder ?? getPlaceholder(schema),
+    placeholder: resolved?.placeholder ?? schema.placeholder ?? getPlaceholder(schema),
     componentProps: (resolved?.componentProps ?? schema.componentProps) || {},
   }
 }
@@ -149,10 +148,7 @@ function isSameArrayOrValue(current: unknown, next: unknown): boolean {
 /**
  * 浅比较对象配置。
  */
-function isShallowEqualRecord(
-  current: object,
-  next: object
-): boolean {
+function isShallowEqualRecord(current: object, next: object): boolean {
   if (current === next) {
     return true
   }

@@ -2,6 +2,27 @@
  * 异步工具函数
  *
  * @module utils/async
+ *
+ * @example
+ * ```ts
+ * import { withLock, waitAll } from '@schemx/core'
+ *
+ * // 使用 withLock 防止重复提交
+ * const submit = withLock(async (data) => {
+ *   await api.post('/submit', data)
+ * })
+ *
+ * // 多次调用只会执行一次
+ * submit(data1)
+ * submit(data2) // 复用第一个 Promise
+ *
+ * // 使用 waitAll 等待多个 Promise，带超时
+ * const promises = [fetch('/a'), fetch('/b'), fetch('/c')]
+ * const result = await waitAll(promises, 5000)
+ *
+ * console.log('已完成:', result.results)
+ * console.log('未完成:', result.remaining)
+ * ```
  */
 
 /**
@@ -13,6 +34,30 @@
  * @param promises - Promise 数组
  * @param timeout - 超时时间（毫秒），默认 10000
  * @returns 包含结果和剩余未完成数的对象
+ *
+ * @example
+ * ```ts
+ * // 正常情况：所有都完成
+ * const promises = [
+ *   Promise.resolve(1),
+ *   Promise.resolve(2),
+ *   Promise.resolve(3)
+ * ]
+ * const result = await waitAll(promises)
+ * // result => { results: [1, 2, 3], remaining: 0 }
+ *
+ * // 超时情况：部分完成
+ * const slowPromises = [
+ *   Promise.resolve('fast'),
+ *   new Promise(resolve => setTimeout(() => resolve('slow'), 2000))
+ * ]
+ * const result2 = await waitAll(slowPromises, 1000)
+ * // result2 => { results: ['fast', undefined], remaining: 1 }
+ *
+ * // 空数组
+ * const result3 = await waitAll([])
+ * // result3 => { results: [], remaining: 0 }
+ * ```
  */
 export async function waitAll<T>(
   promises: Promise<T>[],

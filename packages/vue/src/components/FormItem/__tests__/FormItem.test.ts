@@ -12,14 +12,14 @@ import { defineComponent, h, nextTick } from "vue"
 
 import { createFormInstance } from "@schemx/core"
 import { mount } from "@vue/test-utils"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import { FORM_CONTEXT_KEY } from "@/hooks/useContext"
+import type { FormContextProps } from "@/hooks/useContext"
 import { FORM_INSTANCE_KEY } from "@/hooks/useForm"
 
 import FormItem from "../index"
 
-import type { FormContextProps } from "@/hooks/useContext"
 import type { SchemxBaseField, SchemxInstance } from "@schemx/core"
 
 /**
@@ -78,6 +78,32 @@ const ChangeRenderer = defineComponent({
         value: props.value,
         onInput: (event: Event) => {
           props.onChange?.((event.target as HTMLInputElement).value)
+        },
+      })
+  },
+})
+
+const ProbeRenderer = defineComponent({
+  name: "ProbeRenderer",
+  props: {
+    value: String,
+    readonly: Boolean,
+    disabled: Boolean,
+    onChange: Function,
+    onBlur: Function,
+  },
+  setup(props) {
+    return () =>
+      h("input", {
+        "data-testid": "probe-renderer",
+        "data-readonly": String(props.readonly),
+        "data-disabled": String(props.disabled),
+        value: props.value,
+        onInput: (event: Event) => {
+          props.onChange?.((event.target as HTMLInputElement).value)
+        },
+        onBlur: (event: FocusEvent) => {
+          props.onBlur?.(event)
         },
       })
   },
@@ -264,6 +290,53 @@ describe("FormItem 集成测试", () => {
     await wrapper.get('[data-testid="change-renderer"]').setValue("新的简介")
 
     expect(form.getFieldValue("bio")).toBe("新的简介")
+
+    wrapper.unmount()
+    form.destroy()
+  })
+
+  it("readonly=true 时下发给 renderer、隐藏 required 星号并跳过校验", async () => {
+    const schema: SchemxBaseField = {
+      name: "title",
+      label: "标题",
+      componentType: "probe" as any,
+      readonly: true,
+      required: true,
+      rules: "required",
+    }
+
+    const form: SchemxInstance = createFormInstance({
+      initialValues: { title: "旧标题" },
+      schemas: [schema as any],
+    })
+
+    form.registerRenderer("probe" as any, ProbeRenderer)
+    const validateSpy = vi.spyOn(form, "validateField")
+
+    const wrapper = mount(FormItem, {
+      props: { schema: form.getViewSchemas()[0] },
+      global: {
+        provide: {
+          [FORM_INSTANCE_KEY]: form,
+          [FORM_CONTEXT_KEY]: createFormContext(),
+        },
+      },
+    })
+
+    await nextTick()
+
+    const input = wrapper.get('[data-testid="probe-renderer"]')
+
+    expect(input.attributes("data-readonly")).toBe("true")
+    expect(input.attributes("data-disabled")).toBe("false")
+    expect(wrapper.find(".schemx-item__required").exists()).toBe(false)
+    expect(wrapper.find(".schemx-item.is-readonly").exists()).toBe(true)
+
+    await input.setValue("")
+    await input.trigger("blur")
+
+    expect(form.getFieldValue("title")).toBe("")
+    expect(validateSpy).not.toHaveBeenCalled()
 
     wrapper.unmount()
     form.destroy()

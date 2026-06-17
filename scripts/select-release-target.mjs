@@ -10,7 +10,8 @@ const targets = args
 
 const channelLabels = {
   latest: "正式版发布",
-  dev: "开发版预发布",
+  dev: "Dev 开发测试发布",
+  alpha: "Alpha 预发布",
   beta: "Beta 预发布",
   rc: "RC 候选发布",
   next: "Next 预发布",
@@ -18,7 +19,8 @@ const channelLabels = {
 
 const channelDescriptions = {
   latest: `发布到 npm latest，仅允许 main 分支。`,
-  dev: `发布到 npm dev tag，用于开发分支临时验证。`,
+  dev: `发布到 npm dev tag，用于日常开发测试，不保证稳定。`,
+  alpha: `发布到 npm alpha tag，用于早期实验和开发分支临时验证。`,
   beta: `发布到 npm beta tag，用于公开测试。`,
   rc: `发布到 npm rc tag，用于正式版前的候选验证。`,
   next: `发布到 npm next tag，用于下一版本预览。`,

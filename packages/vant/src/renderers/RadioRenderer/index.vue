@@ -1,33 +1,25 @@
 <template>
   <div
-    v-if="readonly"
-    class="schemx-radio-renderer"
-    :class="className"
-    :style="{ textAlign: align }"
-  >
-    {{ readonly ? readonlyPlaceholder : fieldValue }}
-  </div>
-  <div
-    v-else
-    class="schemx-renderer schemx-radio-renderer"
     :class="[
+      'schemx-renderer',
+      'schemx-radio-renderer',
       className,
-      {
-        'schemx-renderer-readonly': readonly,
-        'schemx-renderer-disabled': disabled,
-      },
+      { 'schemx-renderer-readonly': props.readonly },
     ]"
+    :style="{ textAlign: contentAlign }"
   >
+    <SchemxCell
+      v-if="props.readonly"
+      :value="fieldValue"
+      :placeholder="placeholder"
+      :readonly-placeholder="props.readonlyPlaceholder"
+      :readonly="props.readonly"
+      :disabled="props.disabled"
+    />
     <RadioGroup
-      v-bind="attrs"
+      v-else
+      v-bind="radioProps"
       :model-value="radioValue"
-      :style="{
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '8px 12px',
-        justifyContent: align,
-        ...(attrs?.style || {}),
-      }"
       @update:model-value="handleChange"
     >
       <Radio
@@ -55,6 +47,7 @@
 
   import { Radio, RadioGroup } from "vant"
 
+  import SchemxCell from "@/components/Cell/index.vue"
   import { getFieldProps } from "@/utils"
 
   import type { RadioRendererProps, RadioValue } from "./types"
@@ -72,6 +65,7 @@
     options: () => [],
     className: "",
     fieldNames: () => ({}),
+    view: false,
     readonly: false,
     readonlyPlaceholder: "-",
     disabled: false,
@@ -85,15 +79,30 @@
   const valueName = computed(() => props.fieldNames?.value || "value")
   const disabledName = computed(() => props.fieldNames?.disabled || "disabled")
 
-  const disabled = computed(() => props.disabled || props.formItemProps?.disabled)
-  const readonly = computed(() => props.readonly || props.formItemProps?.readonly)
-  const align = computed(() => getFieldProps(attrs, "align", "right"))
+  const placeholder = computed(() => props.placeholder || "请选择")
+
+  const contentAlign = computed(() => getFieldProps(attrs, "align", "right"))
 
   const fieldValue = computed(() => {
-    return getOption(radioValue.value, labelName.value)
+    return getOption(radioValue.value ?? props.value, labelName.value)
+  })
+
+  const radioProps = computed(() => {
+    const { value, className, formItemProps, ...rest } = props
+    const style = {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: "8px 12px",
+      justifyContent: contentAlign.value,
+      ...(attrs?.style || {}),
+    }
+
+    return { ...attrs, ...rest, style }
   })
 
   const handleChange = (value: RadioValue): void => {
+    if (props.readonly || props.disabled) return
+
     radioValue.value = value
     props.onChange?.(value)
   }

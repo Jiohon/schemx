@@ -23,7 +23,7 @@ import { inject, type InjectionKey, provide } from "vue"
 
 import { Values } from "@schemx/core"
 
-import { FieldInstance } from "@/types/field"
+import { FieldInstance } from "../types/field"
 
 import type { useField } from "./useField"
 

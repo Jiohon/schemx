@@ -4,7 +4,7 @@
  * @module renderers/NumberRenderer/types
  */
 
-import type { InputRendererProps, InputValue } from "../InputRenderer"
+import type { InputValue, SchemxInputProps } from "@/components/Input"
 
 export type NumberValue = InputValue
 
@@ -13,8 +13,10 @@ export type NumberValue = InputValue
  *
  * 定义数字输入组件的所有可配置属性。
  */
-export interface NumberRendererProps
-  extends Omit<InputRendererProps, "value" | "type" | "onChange"> {
+export interface NumberRendererProps extends Omit<
+  SchemxInputProps,
+  "value" | "type" | "onChange"
+> {
   /** 当前值 */
   value?: NumberValue
   /** 值变化回调 */

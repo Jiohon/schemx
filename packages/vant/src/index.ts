@@ -7,8 +7,13 @@
  * @module @schemx/vant
  */
 
+import "@/styles/index.scss"
+
 /** 声明合并 side-effect：注册 Vant 渲染器类型到 SchemxRendererDefinition */
 import "./types/schemx"
+
+/** side-effect：聚合 @schemx/vue 基础表单样式到 @schemx/vant/style.css */
+import "@schemx/vue/style.css"
 
 /** side-effect：将 Vant 渲染器注册到全局 rendererRegistry */
 import "./renderers/defaultRenderers"
@@ -32,6 +37,8 @@ export * from "@schemx/core"
 
 /** 渲染器组件 */
 export * from "./renderers"
+
+export { default as Cell } from "@/components/Cell/index.vue"
 
 /** 工具函数 */
 export { getFieldProps, findTreeItem, getFileName } from "./utils"

@@ -50,22 +50,6 @@
       text-align: right;
     }
 
-    // 禁用状态
-    &--disabled {
-      color: var(--van-field-input-disabled-text-color, var(--van-text-color-3, #c8c9cc));
-      cursor: not-allowed;
-      opacity: 1;
-      -webkit-text-fill-color: var(
-        --van-field-input-disabled-text-color,
-        var(--van-text-color-3, #c8c9cc)
-      );
-    }
-
-    // 只读状态
-    &--readonly {
-      cursor: default;
-    }
-
     // textarea 最小高度
     &--min-height {
       min-height: 60px;

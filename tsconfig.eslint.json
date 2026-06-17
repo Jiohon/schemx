@@ -4,6 +4,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["packages/vue/src/*", "packages/vant/src/*"],
+      "@plugins/*": ["plugins/*/index.mjs"],
       "@schemx/core": ["packages/core/src/index.ts"],
       "@schemx/core/*": ["packages/core/src/*"],
       "@schemx/vue": ["packages/vue/src/index.ts"],

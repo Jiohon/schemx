@@ -5,6 +5,51 @@
  * 用于替代直接依赖 Zod 等第三方库构造必填规则。
  *
  * @module core/validator/defaultRules
+ *
+ * @example
+ * ```ts
+ * import {
+ *   createRequiredRule,
+ *   createSelectRequiredRule,
+ *   createUploadRequiredRule
+ * } from '@schemx/core'
+ *
+ * // 在 validatorRegistry 中注册
+ * const registry = createValidatorsRegistry()
+ * registry.registerAll({
+ *   required: createRequiredRule,
+ *   selectRequired: createSelectRequiredRule,
+ *   uploadRequired: createUploadRequiredRule
+ * })
+ *
+ * // 在 schemas 中使用（通过名称引用）
+ * const schemas = [
+ *   {
+ *     name: 'username',
+ *     label: '用户名',
+ *     componentType: 'input',
+ *     rules: ['required'] // 使用内置规则
+ *   },
+ *   {
+ *     name: 'city',
+ *     label: '城市',
+ *     componentType: 'select',
+ *     rules: ['selectRequired']
+ *   },
+ *   {
+ *     name: 'avatar',
+ *     label: '头像',
+ *     componentType: 'upload',
+ *     rules: ['uploadRequired']
+ *   }
+ * ]
+ *
+ * // 直接使用（不通过 registry）
+ * const schema = { name: 'username', label: '用户名', componentType: 'input' }
+ * const rule = createRequiredRule(schema)
+ * const result = rule['~standard'].validate('')
+ * // result => { issues: [{ message: '请输入用户名' }] }
+ * ```
  */
 
 import type { SchemxBaseField, StandardSchemaV1, Values } from "../types"

@@ -29,6 +29,10 @@ export interface CalendarRendererProps
   onChange?: (value: CalendarFormattedValue) => void
   /** 自定义 CSS 类名 */
   className?: string
+  /** 弹层 CSS 类名 */
+  popupClassName?: string
+  /** 详情展示模式 */
+  view?: boolean
   /** 是否只读 */
   readonly?: boolean
   /** 只读时的占位文本 */

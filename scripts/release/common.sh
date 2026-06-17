@@ -25,6 +25,22 @@ package_json_value() {
   node -p "const pkg=require('./$(package_path "$pkg")/package.json'); pkg['$field']"
 }
 
+release_tag_name() {
+  local pkg="$1"
+  local version
+
+  version="$(package_json_value "$pkg" version)"
+  printf '@schemx/%s@%s' "$pkg" "$version"
+}
+
+release_title() {
+  local pkg="$1"
+  local version
+
+  version="$(package_json_value "$pkg" version)"
+  printf '@schemx/%s@%s' "$pkg" "$version"
+}
+
 github_repository() {
   local repo="${GITHUB_REPOSITORY:-}"
 
@@ -54,4 +70,40 @@ github_repository() {
   fi
 
   printf '%s' "$repo"
+}
+
+npm_registry_auth_key() {
+  local registry="$1"
+
+  registry="${registry#http://}"
+  registry="${registry#https://}"
+  registry="${registry%/}/"
+
+  printf '//%s:_authToken' "$registry"
+}
+
+configure_npm_token_auth() {
+  local npm_token="${NPM_TOKEN:-}"
+  local auth_key user_config
+
+  if [[ -z "$npm_token" ]]; then
+    return 0
+  fi
+
+  if [[ -n "${SCHEMX_NPM_TOKEN_USERCONFIG:-}" ]]; then
+    export NPM_CONFIG_USERCONFIG="$SCHEMX_NPM_TOKEN_USERCONFIG"
+    return 0
+  fi
+
+  auth_key="$(npm_registry_auth_key "$NPM_REGISTRY")"
+  user_config="$(mktemp "${TMPDIR:-/tmp}/schemx-npmrc.XXXXXX")"
+
+  {
+    printf 'registry=%s\n' "$NPM_REGISTRY"
+    printf '%s=%s\n' "$auth_key" "$npm_token"
+    printf 'always-auth=true\n'
+  } >"$user_config"
+
+  export SCHEMX_NPM_TOKEN_USERCONFIG="$user_config"
+  export NPM_CONFIG_USERCONFIG="$user_config"
 }

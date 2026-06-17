@@ -15,6 +15,8 @@ import type {
   RadioRendererProps,
   RateRendererProps,
   SelectorRendererProps,
+  SensitiveInputRendererProps,
+  SelectPickerRendererProps,
   SliderRendererProps,
   StepperRendererProps,
   SwitchRendererProps,
@@ -36,7 +38,9 @@ declare module "@schemx/core" {
     date: DateRendererProps
     calendar: CalendarRendererProps
     picker: SchemxWithDictionary<PickerRendererProps, T>
+    selectPicker: SchemxWithDictionary<SelectPickerRendererProps, T>
     selector: SchemxWithDictionary<SelectorRendererProps, T>
+    sensitiveInput: SensitiveInputRendererProps
     rate: RateRendererProps
     slider: SliderRendererProps
     stepper: StepperRendererProps

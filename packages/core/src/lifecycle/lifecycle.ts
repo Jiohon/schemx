@@ -5,6 +5,62 @@
  * RuntimeNode 的生命周期动作。LifecycleBus 只观察 RuntimeNode 生命周期，不参与内部资源挂载。
  *
  * @module core/lifecycle
+ *
+ * @example
+ * ```ts
+ * import { createLifecycleBus, createLifecycle } from '@schemx/core'
+ *
+ * // 创建生命周期总线
+ * const bus = createLifecycleBus()
+ *
+ * // 订阅生命周期事件
+ * const dispose = bus.on({
+ *   // 旧版兼容接口
+ *   mount: (node) => console.log('挂载:', node),
+ *   update: (node, prev) => console.log('更新:', node),
+ *   unmount: (node) => console.log('卸载:', node),
+ *
+ *   // 新版详细接口
+ *   beforeMount: (node) => console.log('即将挂载:', node),
+ *   mounted: (node) => console.log('已挂载:', node),
+ *   beforeUpdate: (node, prev) => console.log('即将更新:', node),
+ *   updated: (node, prev) => console.log('已更新:', node),
+ *   beforeUnmount: (node) => console.log('即将卸载:', node),
+ *   unmounted: (node) => console.log('已卸载:', node)
+ * })
+ *
+ * // 发布事件（通常由内部调用）
+ * bus.emitMount(someNode)
+ * bus.emitBeforeMount(someNode)
+ * bus.emitUpdate(someNode, prevNode)
+ * bus.emitBeforeUpdate(someNode, prevNode)
+ * bus.emitUpdated(someNode, prevNode)
+ * bus.emitBeforeUnmount(someNode)
+ * bus.emitUnmount(someNode)
+ *
+ * // 检查是否有监听器
+ * // 清理所有监听器
+ * bus.clear()
+ *
+ * // 取消订阅
+ * dispose()
+ * ```
+ *
+ * @example
+ * ```ts
+ * // 在 createForm 中使用
+ * const form = createForm({
+ *   schemas: [...],
+ *   lifecycleHooks: {
+ *     mounted: (node) => {
+ *       console.log('字段已挂载:', node.descriptor.name)
+ *     },
+ *     unmounted: (node) => {
+ *       console.log('字段已卸载:', node.descriptor.name)
+ *     }
+ *   }
+ * })
+ * ```
  */
 
 import type { RuntimeNode } from "../node"
@@ -98,6 +154,30 @@ export type LifecycleListener<TNode> = Partial<
 
 /**
  * 生命周期事件总线。
+ *
+ * @example
+ * ```ts
+ * const bus: LifecycleBus<MyNode> = createLifecycleBus()
+ *
+ * // 订阅
+ * const dispose = bus.on({
+ *   mounted: (node) => console.log('Mounted:', node),
+ *   unmounted: (node) => console.log('Unmounted:', node)
+ * })
+ *
+ * // 发布
+ * bus.emitMount(node)
+ * bus.emitBeforeMount(node)
+ * bus.emitUpdate(node, prev)
+ * bus.emitBeforeUpdate(node, prev)
+ * bus.emitUpdated(node, prev)
+ * bus.emitBeforeUnmount(node)
+ * bus.emitUnmount(node)
+ *
+ * // 清理
+ * bus.clear()
+ * dispose()
+ * ```
  */
 export interface LifecycleBus<TNode> {
   /**
@@ -184,6 +264,22 @@ export type SchemxLifecycleHooks<TValues extends Values = Values> = LifecycleLis
  *
  * @param initialListener - 可选的初始监听器。
  * @returns 新的生命周期事件总线。
+ *
+ * @example
+ * ```ts
+ * // 创建空总线
+ * const bus = createLifecycleBus()
+ *
+ * // 创建并立即订阅
+ * const bus = createLifecycleBus({
+ *   mounted: (node) => console.log('Node mounted:', node)
+ * })
+ *
+ * // 后续再订阅
+ * const dispose = bus.on({
+ *   unmounted: (node) => console.log('Node unmounted:', node)
+ * })
+ * ```
  */
 export function createLifecycleBus<TNode>(
   initialListener?: LifecycleListener<TNode>

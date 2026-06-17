@@ -45,7 +45,9 @@ case "$1" in
     ;;
   tag)
     if [[ "${2:-}" == "--sort=-creatordate" ]]; then
-      printf 'v0.1.22\n'
+      printf '@schemx/core@0.1.22\n'
+      printf '@schemx/vue@0.1.19\n'
+      printf '@schemx/vant@0.1.9\n'
       exit 0
     fi
     exit 0
@@ -78,7 +80,7 @@ case "$1" in
     printf 'https://registry.npmjs.org/\n'
     ;;
   whoami)
-    if [[ "${MOCK_NPM_AUTH_FAIL:-0}" == "1" ]]; then
+    if [[ "${MOCK_NPM_AUTH_FAIL:-0}" == "1" && -z "${NPM_CONFIG_USERCONFIG:-}" ]]; then
       printf 'npm whoami failed\n' >&2
       exit 1
     fi
@@ -117,7 +119,12 @@ case "$1" in
     ;;
   release)
     if [[ "${2:-}" == "create" ]]; then
+      tag_name="${3:-}"
+      pkg="${tag_name#@schemx/}"
+      pkg="${pkg%%@*}"
+      version="${tag_name#@schemx/${pkg}@}"
       notes_file=""
+
       while [[ "$#" -gt 0 ]]; do
         if [[ "$1" == "--notes-file" ]]; then
           notes_file="${2:-}"
@@ -131,8 +138,8 @@ case "$1" in
         exit 1
       fi
 
-      grep -Fq '## v0.1.23' "$notes_file"
-      grep -Fq '@schemx/core@0.1.23' "$notes_file"
+      grep -Fq "## @schemx/${pkg}@${version}" "$notes_file"
+      grep -Fq "@schemx/${pkg}@${version}" "$notes_file"
       grep -Fq 'feat(core): 支持动态 schema 更新' "$notes_file"
       exit 0
     fi
@@ -210,10 +217,12 @@ test_help_lists_channel_commands_without_package_shortcuts() {
   local output
   output="$(run_release help)"
 
+  assert_contains "$output" "pnpm release:publish:alpha"
   assert_contains "$output" "pnpm release:publish:dev"
   assert_contains "$output" "pnpm release:publish:next"
   assert_not_contains "$output" "pnpm release:publish:core"
   assert_not_contains "$output" "pnpm release:publish:wot"
+  assert_contains "$output" "bash scripts/release.sh publish-alpha [all|core|vue|vant]"
   assert_contains "$output" "bash scripts/release.sh publish-dev [all|core|vue|vant]"
 }
 
@@ -226,6 +235,7 @@ console.log(Object.keys(pkg.scripts).filter((name) => name.startsWith('release:p
 
   assert_contains "$scripts" "release:publish"
   assert_contains "$scripts" "release:publish:dev"
+  assert_contains "$scripts" "release:publish:alpha"
   assert_contains "$scripts" "release:publish:beta"
   assert_contains "$scripts" "release:publish:rc"
   assert_contains "$scripts" "release:publish:next"
@@ -233,6 +243,32 @@ console.log(Object.keys(pkg.scripts).filter((name) => name.startsWith('release:p
   assert_not_contains "$scripts" "release:publish:vue"
   assert_not_contains "$scripts" "release:publish:vant"
   assert_not_contains "$scripts" "release:publish:wot"
+}
+
+test_dev_publish_uses_dev_tag_and_restores_version() {
+  local before after output
+
+  before="$(node -p "require('$ROOT_DIR/packages/core/package.json').version")"
+  : >"$COMMAND_LOG"
+
+  export MOCK_BRANCH="feature/demo"
+  output="$(run_release publish-dev core)"
+  unset MOCK_BRANCH
+
+  after="$(node -p "require('$ROOT_DIR/packages/core/package.json').version")"
+
+  if [[ "$before" != "$after" ]]; then
+    printf 'dev 发布后应恢复 package.json 版本：%s != %s\n' "$before" "$after" >&2
+    exit 1
+  fi
+
+  assert_contains "$output" "发布模式：dev"
+  assert_contains "$output" "发布目标：core"
+  assert_log_contains "pnpm --dir packages/core publish --access public --registry https://registry.npmjs.org/ --tag dev --no-git-checks"
+  assert_log_not_contains "gh auth status"
+  assert_log_not_contains "gh release create"
+  assert_log_not_contains "git tag"
+  assert_log_not_contains "git push"
 }
 
 test_latest_publish_is_main_only() {
@@ -270,7 +306,32 @@ test_publish_without_npm_auth_shows_clear_message() {
 
   assert_contains "$output" "检查 npm 登录状态"
   assert_contains "$output" "npm 未登录或当前 registry 无权限"
+  assert_contains "$output" "设置 NPM_TOKEN 后重新执行发布命令"
+  assert_contains "$output" "pnpm login --registry \"https://registry.npmjs.org/\""
+  assert_contains "$output" "完成浏览器确认后，请回到终端等待命令继续"
   assert_not_contains "$output" "ELIFECYCLE"
+}
+
+test_publish_accepts_npm_token_auth() {
+  local output status
+
+  export MOCK_NPM_AUTH_FAIL=1
+  export NPM_TOKEN=mock-token
+  set +e
+  output="$(run_release publish-alpha core 2>&1)"
+  status=$?
+  set -e
+  unset MOCK_NPM_AUTH_FAIL
+  unset NPM_TOKEN
+
+  if [[ "$status" -ne 0 ]]; then
+    printf '设置 NPM_TOKEN 后，npm auth 检查应通过。\n%s\n' "$output" >&2
+    exit 1
+  fi
+
+  assert_contains "$output" "检查 npm 登录状态"
+  assert_not_contains "$output" "npm 未登录或当前 registry 无权限"
+  assert_log_contains "pnpm --dir packages/core publish --access public --registry https://registry.npmjs.org/ --tag alpha --no-git-checks"
 }
 
 test_publish_without_github_auth_stops_before_publish() {
@@ -296,30 +357,55 @@ test_publish_without_github_auth_stops_before_publish() {
   assert_log_not_contains "pnpm --dir packages/core publish"
 }
 
-test_dev_publish_uses_dev_tag_and_restores_version() {
+test_alpha_publish_uses_alpha_tag_and_restores_version() {
   local before after
 
   before="$(node -p "require('$ROOT_DIR/packages/core/package.json').version")"
   : >"$COMMAND_LOG"
 
   export MOCK_BRANCH="feature/demo"
-  output="$(run_release publish-dev core)"
+  output="$(run_release publish-alpha core)"
   unset MOCK_BRANCH
 
   after="$(node -p "require('$ROOT_DIR/packages/core/package.json').version")"
 
   if [[ "$before" != "$after" ]]; then
-    printf 'dev 发布后应恢复 package.json 版本：%s != %s\n' "$before" "$after" >&2
+    printf 'alpha 发布后应恢复 package.json 版本：%s != %s\n' "$before" "$after" >&2
     exit 1
   fi
 
-  assert_contains "$output" "发布模式：dev"
+  assert_contains "$output" "发布模式：alpha"
   assert_contains "$output" "发布目标：core"
-  assert_log_contains "pnpm --dir packages/core publish --access public --registry https://registry.npmjs.org/ --tag dev --no-git-checks"
+  assert_contains "$output" "发布 registry：https://registry.npmjs.org/"
+  assert_contains "$output" "发布 tag：alpha"
+  assert_contains "$output" "终端可能会停在认证提示处"
+  assert_contains "$output" "完成后回到这里等待发布继续"
+  assert_log_contains "pnpm --dir packages/core publish --access public --registry https://registry.npmjs.org/ --tag alpha --no-git-checks"
   assert_log_not_contains "gh auth status"
   assert_log_not_contains "gh release create"
   assert_log_not_contains "git tag"
   assert_log_not_contains "git push"
+}
+
+test_publish_checks_only_target_dependency_chain() {
+  local output
+
+  : >"$COMMAND_LOG"
+
+  export MOCK_BRANCH="feature/demo"
+  output="$(run_release publish-alpha vant)"
+  unset MOCK_BRANCH
+
+  assert_contains "$output" "运行目标依赖链测试：vant"
+  assert_contains "$output" "运行目标依赖链 lint：vant"
+  assert_contains "$output" "构建目标依赖链发布产物：vant"
+  assert_log_contains "pnpm --filter @schemx/vant... test"
+  assert_log_contains "pnpm --filter @schemx/vant... lint"
+  assert_log_contains "pnpm --filter @schemx/vant... build"
+  assert_log_not_contains "pnpm test"
+  assert_log_not_contains "pnpm lint"
+  assert_log_not_contains "pnpm build"
+  assert_log_contains "pnpm --dir packages/vant publish --access public --registry https://registry.npmjs.org/ --tag alpha --no-git-checks"
 }
 
 test_publish_without_target_prompts_for_package_selection() {
@@ -345,11 +431,35 @@ test_latest_publish_tags_and_pushes_after_publish() {
   SCHEMX_RELEASE_TARGET=core run_release publish
 
   assert_log_contains "pnpm --dir packages/core publish --access public --registry https://registry.npmjs.org/"
-  assert_log_contains "git tag -a v${version} -m release: v${version}"
+  assert_log_contains "git tag -a @schemx/core@${version} -m release: @schemx/core@${version}"
   assert_log_contains "git push origin main"
-  assert_log_contains "git push origin v${version}"
+  assert_log_contains "git push origin @schemx/core@${version}"
   assert_log_contains "gh auth status"
-  assert_log_contains "gh release create v${version} --repo Jiohon/schemx --title v${version} --notes-file"
+  assert_log_contains "gh release create @schemx/core@${version} --repo Jiohon/schemx --title @schemx/core@${version} --notes-file"
+}
+
+test_latest_publish_all_creates_package_scoped_tags_and_releases() {
+  local core_version vue_version vant_version
+
+  core_version="$(node -p "require('$ROOT_DIR/packages/core/package.json').version")"
+  vue_version="$(node -p "require('$ROOT_DIR/packages/vue/package.json').version")"
+  vant_version="$(node -p "require('$ROOT_DIR/packages/vant/package.json').version")"
+  : >"$COMMAND_LOG"
+
+  SCHEMX_RELEASE_TARGET=all run_release publish
+
+  assert_log_contains "pnpm --dir packages/core publish --access public --registry https://registry.npmjs.org/"
+  assert_log_contains "pnpm --dir packages/vue publish --access public --registry https://registry.npmjs.org/"
+  assert_log_contains "pnpm --dir packages/vant publish --access public --registry https://registry.npmjs.org/"
+  assert_log_contains "git tag -a @schemx/core@${core_version} -m release: @schemx/core@${core_version}"
+  assert_log_contains "git tag -a @schemx/vue@${vue_version} -m release: @schemx/vue@${vue_version}"
+  assert_log_contains "git tag -a @schemx/vant@${vant_version} -m release: @schemx/vant@${vant_version}"
+  assert_log_contains "git push origin @schemx/core@${core_version}"
+  assert_log_contains "git push origin @schemx/vue@${vue_version}"
+  assert_log_contains "git push origin @schemx/vant@${vant_version}"
+  assert_log_contains "gh release create @schemx/core@${core_version} --repo Jiohon/schemx --title @schemx/core@${core_version} --notes-file"
+  assert_log_contains "gh release create @schemx/vue@${vue_version} --repo Jiohon/schemx --title @schemx/vue@${vue_version} --notes-file"
+  assert_log_contains "gh release create @schemx/vant@${vant_version} --repo Jiohon/schemx --title @schemx/vant@${vant_version} --notes-file"
 }
 
 test_selector_rejects_unknown_environment_target() {
@@ -400,6 +510,17 @@ test_selector_rejects_unknown_channel() {
   assert_contains "$output" "未知发布模式"
 }
 
+test_selector_accepts_dev_channel() {
+  local output
+
+  output="$(SCHEMX_RELEASE_TARGET=core node "$ROOT_DIR/scripts/select-release-target.mjs" --channel dev all core vue)"
+
+  if [[ "$output" != "core" ]]; then
+    printf 'dev 发布模式应允许自动化目标选择。\n实际输出：%s\n' "$output" >&2
+    exit 1
+  fi
+}
+
 test_cancelled_selector_exits_without_lifecycle_failure() {
   local output status
 
@@ -426,13 +547,17 @@ test_help_lists_channel_commands_without_package_shortcuts
 test_package_scripts_keep_only_publish_channels
 test_latest_publish_is_main_only
 test_publish_without_npm_auth_shows_clear_message
+test_publish_accepts_npm_token_auth
 test_publish_without_github_auth_stops_before_publish
-test_dev_publish_uses_dev_tag_and_restores_version
+test_alpha_publish_uses_alpha_tag_and_restores_version
+test_publish_checks_only_target_dependency_chain
 test_publish_without_target_prompts_for_package_selection
 test_latest_publish_tags_and_pushes_after_publish
+test_latest_publish_all_creates_package_scoped_tags_and_releases
 test_selector_rejects_unknown_environment_target
 test_selector_requires_tty_or_automation_target
 test_selector_rejects_unknown_channel
+test_selector_accepts_dev_channel
 test_cancelled_selector_exits_without_lifecycle_failure
 
 printf 'release script tests passed\n'

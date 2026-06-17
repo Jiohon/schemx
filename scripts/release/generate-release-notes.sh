@@ -11,20 +11,18 @@ if [[ "$#" -eq 0 ]]; then
   die "缺少用于生成 Release notes 的包名。"
 fi
 
-first_pkg="$1"
-version="$(package_json_value "$first_pkg" version)"
-tag_name="v${version}"
+if [[ "$#" -ne 1 ]]; then
+  die "Release notes 需要按单个包生成。"
+fi
+
+pkg="$1"
+version="$(package_json_value "$pkg" version)"
+tag_name="$(release_tag_name "$pkg")"
+title="$(release_title "$pkg")"
 previous_tag=""
 
-for pkg in "$@"; do
-  current_version="$(package_json_value "$pkg" version)"
-  if [[ "$current_version" != "$version" ]]; then
-    die "发布目标版本不一致，无法生成统一 Release notes：$first_pkg=$version，$pkg=$current_version"
-  fi
-done
-
 while IFS= read -r candidate_tag; do
-  if [[ "$candidate_tag" != "$tag_name" ]]; then
+  if [[ "$candidate_tag" != "$tag_name" && "$candidate_tag" == "@schemx/$pkg@"* ]]; then
     previous_tag="$candidate_tag"
     break
   fi
@@ -37,14 +35,10 @@ else
 fi
 
 cat <<NOTES
-## ${tag_name}
+## ${title}
 
-本次发布包含以下包：
+- \`@schemx/${pkg}@${version}\`
 NOTES
-
-for pkg in "$@"; do
-  printf -- '- `@schemx/%s@%s`\n' "$pkg" "$(package_json_value "$pkg" version)"
-done
 
 cat <<'NOTES'
 

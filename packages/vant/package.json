@@ -34,11 +34,18 @@
         "types": "./dist/index.d.ts",
         "default": "./dist/index.cjs"
       }
-    }
+    },
+    "./style.css": "./dist/style.css"
   },
   "files": [
     "dist",
     "README.md"
+  ],
+  "sideEffects": [
+    "**/*.css",
+    "**/*.scss",
+    "**/defaultRenderers.*",
+    "**/index.ts"
   ],
   "peerDependencies": {
     "vant": "^4.0.0",
@@ -49,13 +56,19 @@
     "@schemx/vue": "workspace:*",
     "classnames": "^2.5.1",
     "dayjs": "^1.11.19",
-    "es-toolkit": "^1.47.0"
+    "es-toolkit": "catalog:"
   },
   "scripts": {
     "build": "vite build",
+    "build:analyze": "ANALYZE=true vite build",
     "test": "vitest run --passWithNoTests",
     "lint": "eslint \"src/**/*.{ts,tsx,vue,js,jsx}\"",
     "prepublishOnly": "pnpm run build"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "@vue/test-utils": "^2.4.6",
+    "vant": "^4.9.0",
+    "vue": "catalog:"
+  }
 }

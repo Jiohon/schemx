@@ -5,6 +5,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+source "$ROOT_DIR/scripts/release/common.sh"
+
 PACKAGES=(core vue vant)
 NPM_REGISTRY="${NPM_REGISTRY:-https://registry.npmjs.org/}"
 PRERELEASE_BACKUP_DIR=""
@@ -18,6 +20,7 @@ usage() {
   pnpm release:pack
   pnpm release:publish
   pnpm release:publish:dev
+  pnpm release:publish:alpha
   pnpm release:publish:beta
   pnpm release:publish:rc
   pnpm release:publish:next
@@ -30,6 +33,7 @@ usage() {
   bash scripts/release.sh pack
   bash scripts/release.sh publish [all|core|vue|vant]
   bash scripts/release.sh publish-dev [all|core|vue|vant]
+  bash scripts/release.sh publish-alpha [all|core|vue|vant]
   bash scripts/release.sh publish-beta [all|core|vue|vant]
   bash scripts/release.sh publish-rc [all|core|vue|vant]
   bash scripts/release.sh publish-next [all|core|vue|vant]
@@ -120,8 +124,8 @@ assert_prerelease_channel() {
   local channel="$1"
 
   case "$channel" in
-    dev | beta | rc | next) ;;
-    *) die "预发布 tag 只能是 dev、beta、rc 或 next" ;;
+    dev | alpha | beta | rc | next) ;;
+    *) die "预发布 tag 只能是 dev、alpha、beta、rc 或 next" ;;
   esac
 }
 
@@ -138,6 +142,7 @@ assert_prerelease_version_files_clean() {
 }
 
 assert_npm_auth() {
+  configure_npm_token_auth
   bash "$ROOT_DIR/scripts/release/check-npm-auth.sh"
 }
 
@@ -150,7 +155,7 @@ assert_npm_registry() {
 }
 
 run_quality_checks() {
-  bash "$ROOT_DIR/scripts/release/run-quality-checks.sh"
+  bash "$ROOT_DIR/scripts/release/run-quality-checks.sh" "$@"
 }
 
 pack_packages() {
@@ -288,7 +293,7 @@ run_publish() {
 
   targets=($(resolve_targets "$target"))
   check_target_versions_available "${targets[@]}"
-  run_quality_checks
+  run_quality_checks "${targets[@]}"
   pack_target_packages "${targets[@]}"
 
   for pkg in "${targets[@]}"; do
@@ -317,7 +322,7 @@ run_prerelease_publish() {
   assert_npm_registry
   assert_npm_auth
   check_target_versions_available "${targets[@]}"
-  run_quality_checks
+  run_quality_checks "${targets[@]}"
   pack_target_packages "${targets[@]}"
 
   for pkg in "${targets[@]}"; do
@@ -363,6 +368,9 @@ main() {
       ;;
     publish-dev)
       run_prerelease_publish dev "${2:-}"
+      ;;
+    publish-alpha)
+      run_prerelease_publish alpha "${2:-}"
       ;;
     publish-beta)
       run_prerelease_publish beta "${2:-}"

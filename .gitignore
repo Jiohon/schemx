@@ -153,6 +153,7 @@ Desktop.ini
 .claude
 /specs
 .specify
+.superpowers
 
 .kiro
 .tasks
@@ -173,3 +174,6 @@ bower_components
 
 # Typescript v1 declaration files
 # typings/
+
+*test*.ts
+*test*.js
