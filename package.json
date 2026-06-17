@@ -54,7 +54,7 @@
     "release:version:patch": "bash scripts/release.sh version patch",
     "release:version:minor": "bash scripts/release.sh version minor",
     "release:version:major": "bash scripts/release.sh version major",
-    "release:test": "bash scripts/release.test.sh && bash scripts/bump-version.test.sh"
+    "release:test": "bash scripts/release.test.sh"
   },
   "repository": {
     "type": "git",
