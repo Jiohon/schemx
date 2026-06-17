@@ -94,7 +94,46 @@ pnpm type-check
 pnpm lint
 ```
 
-## 发布通道
+## 发布脚本
+
+发布脚本统一通过 `pnpm release:*` 执行。涉及包目标的命令都支持 `all`、`core`、`vue`、`vant`：
+
+- `release:version:*` 和 `release:pack` 默认目标为 `all`。
+- `release:publish*` 不传目标时会进入交互选择；在 CI 或非交互环境中建议显式传入目标。
+
+正式发布只发布当前 `package.json` 中的版本，不会自动提升版本号。推荐流程：
+
+```bash
+pnpm release:version:patch vue
+git add packages/vue/package.json pnpm-lock.yaml
+git commit -m "chore(发布): 提升 vue 版本"
+pnpm release:publish vue
+```
+
+预发布会临时生成 `0.1.x-alpha.<timestamp>.<sha>` 这类版本号，发布完成后恢复本地 `package.json`：
+
+```bash
+pnpm release:publish:alpha vue
+```
+
+### 常用命令
+
+| 命令 | 作用 | 使用 |
+| --- | --- | --- |
+| `pnpm release:check` | 执行完整发布前检查：安装一致性、测试、lint、构建和发布包内容检查。 | 发布前本地自检：`pnpm release:check` |
+| `pnpm release:pack [target]` | 生成本地 tarball，用于检查实际发布包内容。 | 全部包：`pnpm release:pack`；单包：`pnpm release:pack vant` |
+| `pnpm release:publish [target]` | 发布正式版到 npm，并创建 Git tag 和 GitHub Release。正式发布前需要先执行 `release:version:*` 并提交版本变更。 | 交互选择：`pnpm release:publish`；单包：`pnpm release:publish vue` |
+| `pnpm release:publish:dev [target]` | 发布 `dev` 预发布版本，适合日常联调验证。 | `pnpm release:publish:dev core` |
+| `pnpm release:publish:alpha [target]` | 发布 `alpha` 预发布版本，适合内部预览。 | `pnpm release:publish:alpha vue` |
+| `pnpm release:publish:beta [target]` | 发布 `beta` 预发布版本，适合外部测试。 | `pnpm release:publish:beta vant` |
+| `pnpm release:publish:rc [target]` | 发布 `rc` 预发布版本，适合正式发布前候选验证。 | `pnpm release:publish:rc all` |
+| `pnpm release:publish:next [target]` | 发布 `next` 预发布版本，适合下一版本线验证。 | `pnpm release:publish:next all` |
+| `pnpm release:version:patch [target]` | 提升 patch 版本，并同步 `pnpm-lock.yaml`。 | 全部包：`pnpm release:version:patch`；单包：`pnpm release:version:patch vue` |
+| `pnpm release:version:minor [target]` | 提升 minor 版本，并同步 `pnpm-lock.yaml`。 | `pnpm release:version:minor core` |
+| `pnpm release:version:major [target]` | 提升 major 版本，并同步 `pnpm-lock.yaml`。 | `pnpm release:version:major all` |
+| `pnpm release:test` | 运行发布脚本自身的测试，不发布、不改版本。 | 修改发布脚本后执行：`pnpm release:test` |
+
+### 发布通道
 
 | 类型 | 用途 |
 | --- | --- |
@@ -103,13 +142,6 @@ pnpm lint
 | `beta` | 外部测试，功能基本完整 |
 | `rc` | release candidate，候选正式版 |
 | `stable` | 正式版 |
-
-开发测试版本可发布到 `dev` dist-tag：
-
-```bash
-pnpm release:publish:dev
-pnpm release:publish:dev core
-```
 
 ## 相关文档
 
