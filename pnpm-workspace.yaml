@@ -13,3 +13,4 @@ allowBuilds:
 
 minimumReleaseAgeExclude:
   - '@schemx/vant@0.1.11-alpha.20260616215132.4f3ffde'
+  - '@schemx/vant@0.1.11-alpha.20260616230724.c7d7626'
