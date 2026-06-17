@@ -5,6 +5,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+source "$ROOT_DIR/scripts/release/common.sh"
+
 PACKAGES=(core vue vant)
 NPM_REGISTRY="${NPM_REGISTRY:-https://registry.npmjs.org/}"
 PRERELEASE_BACKUP_DIR=""
@@ -140,6 +142,7 @@ assert_prerelease_version_files_clean() {
 }
 
 assert_npm_auth() {
+  configure_npm_token_auth
   bash "$ROOT_DIR/scripts/release/check-npm-auth.sh"
 }
 

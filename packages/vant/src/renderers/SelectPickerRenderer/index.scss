@@ -9,7 +9,7 @@
 }
 
 .schemx-select-picker-popup-renderer {
-  max-height: 65vh;
+  max-height: 60vh;
   border-radius: var(--van-popup-round-radius) var(--van-popup-round-radius) 0 0;
 
   .schemx-select-picker {
@@ -34,7 +34,8 @@
     }
 
     .schemx-select-picker-options {
-      min-height: calc(100% - 195px);
+      flex: 1;
+      // min-height: calc(100% - 195px);
       overflow-y: auto;
       padding: var(--schemx-padding-xs) var(--schemx-padding-md);
       -webkit-overflow-scrolling: touch;
