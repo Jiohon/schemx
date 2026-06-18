@@ -24,6 +24,22 @@ import type {
  *
  * @param schema - 列配置
  * @returns 是否为基础字段
+ *
+ * @example
+ * ```ts
+ * const schemas = [
+ *   { name: 'username', label: '用户名', componentType: 'input' },
+ *   { name: 'group', componentType: 'group', children: [...] },
+ *   { name: 'dep', componentType: 'dependency', render: () => [...] }
+ * ]
+ *
+ * schemas.forEach(schema => {
+ *   if (isBaseSchema(schema)) {
+ *     // TypeScript 现在知道这是 SchemxBaseField
+ *     console.log('基础字段:', schema.name)
+ *   }
+ * })
+ * ```
  */
 export function isBaseSchema<T extends Values = Values>(
   schema: SchemxField<T>
@@ -36,6 +52,25 @@ export function isBaseSchema<T extends Values = Values>(
  *
  * @param schema - 列配置
  * @returns 是否为 `componentType === "group"` 的分组列
+ *
+ * @example
+ * ```ts
+ * const schema = {
+ *   name: 'profile',
+ *   componentType: 'group',
+ *   children: [
+ *     { name: 'name', label: '姓名', componentType: 'input' },
+ *     { name: 'age', label: '年龄', componentType: 'number' }
+ *   ]
+ * }
+ *
+ * if (isGroupSchema(schema)) {
+ *   // TypeScript 现在知道这是 SchemxGroupField
+ *   schema.children.forEach(child => {
+ *     console.log('子字段:', child)
+ *   })
+ * }
+ * ```
  */
 export function isGroupSchema<T extends Values = Values>(
   schema: SchemxField<T>
@@ -48,6 +83,25 @@ export function isGroupSchema<T extends Values = Values>(
  *
  * @param schema - 列配置
  * @returns 是否为 `componentType === "dependency"` 的依赖列
+ *
+ * @example
+ * ```ts
+ * const schema = {
+ *   name: 'dynamic',
+ *   componentType: 'dependency',
+ *   render: ({ values }) => {
+ *     if (values.type === 'A') {
+ *       return [{ name: 'fieldA', componentType: 'input' }]
+ *     }
+ *     return [{ name: 'fieldB', componentType: 'input' }]
+ *   }
+ * }
+ *
+ * if (isDependencySchema(schema)) {
+ *   // TypeScript 现在知道这是 SchemxDependencyField
+ *   const dynamicSchemas = schema.render({ values: {} })
+ * }
+ * ```
  */
 export function isDependencySchema<T extends Values = Values>(
   schema: SchemxField<T>
@@ -67,7 +121,28 @@ export function isDependencySchema<T extends Values = Values>(
  *
  * @example
  * ```ts
- * const schema = findSchema(schemas, 'email')
+ * const schemas = [
+ *   { name: 'username', label: '用户名', componentType: 'input' },
+ *   {
+ *     name: 'profile',
+ *     componentType: 'group',
+ *     children: [
+ *       { name: 'email', label: '邮箱', componentType: 'input' }
+ *     ]
+ *   }
+ * ]
+ *
+ * // 在顶层找到
+ * const usernameSchema = findSchema(schemas, 'username')
+ * console.log(usernameSchema?.label) // => '用户名'
+ *
+ * // 在 group 中递归找到
+ * const emailSchema = findSchema(schemas, 'email')
+ * console.log(emailSchema?.label) // => '邮箱'
+ *
+ * // 未找到
+ * const notFound = findSchema(schemas, 'nonexistent')
+ * console.log(notFound) // => undefined
  * ```
  */
 export function findSchema<T extends Values = Values>(
@@ -96,6 +171,18 @@ export function findSchema<T extends Values = Values>(
  *
  * @param schema - 列配置
  * @returns 是否为基础字段
+ *
+ * @example
+ * ```ts
+ * // 在处理 getViewSchemas 返回的解析后 schemas 时使用
+ * const viewSchemas = form.getViewSchemas()
+ *
+ * viewSchemas.forEach(schema => {
+ *   if (isBaseResolvedSchema(schema)) {
+ *     console.log('基础字段:', schema.name)
+ *   }
+ * })
+ * ```
  */
 export function isBaseResolvedSchema<T extends Values = Values>(
   schema: SchemxResolvedField<T>
@@ -108,6 +195,20 @@ export function isBaseResolvedSchema<T extends Values = Values>(
  *
  * @param schema - 列配置
  * @returns 是否为 `componentType === "group"` 的分组列
+ *
+ * @example
+ * ```ts
+ * const viewSchemas = form.getViewSchemas()
+ *
+ * viewSchemas.forEach(schema => {
+ *   if (isGroupResolvedSchema(schema)) {
+ *     // 递归处理子字段
+ *     schema.children.forEach(child => {
+ *       console.log('子字段:', child)
+ *     })
+ *   }
+ * })
+ * ```
  */
 export function isGroupResolvedSchema<T extends Values = Values>(
   schema: SchemxResolvedField<T>
@@ -120,6 +221,17 @@ export function isGroupResolvedSchema<T extends Values = Values>(
  *
  * @param schema - 解析后的字段配置。
  * @returns componentType 为 dependency 时返回 true。
+ *
+ * @example
+ * ```ts
+ * const viewSchemas = form.getViewSchemas()
+ *
+ * viewSchemas.forEach(schema => {
+ *   if (isDependencyResolvedSchema(schema)) {
+ *     console.log('依赖字段:', schema.name)
+ *   }
+ * })
+ * ```
  */
 export function isDependencyResolvedSchema<T extends Values = Values>(
   schema: SchemxResolvedField<T>

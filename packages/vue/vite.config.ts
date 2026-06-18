@@ -2,9 +2,12 @@ import { defineConfig } from "vite"
 import vue from "@vitejs/plugin-vue"
 import vueJsx from "@vitejs/plugin-vue-jsx"
 import dts from "vite-plugin-dts"
+import { visualizer } from "rollup-plugin-visualizer"
 import { resolve } from "path"
+import { injectStyleCss } from "@plugins/injectStyleCss"
 
 const useSource = process.env.VITE_USE_SOURCE === "true"
+const analyze = process.env.ANALYZE === "true"
 
 export default defineConfig({
   resolve: {
@@ -18,14 +21,23 @@ export default defineConfig({
   plugins: [
     vue(),
     vueJsx(),
+    injectStyleCss(),
     dts({
       include: ["src/**/*.ts", "src/**/*.tsx"],
       outDir: "dist",
       tsconfigPath: "tsconfig.build.json",
-      logDiagnostics: false,
       // rollupTypes: true,
     }),
-  ],
+    analyze &&
+      visualizer({
+        filename: resolve(__dirname, "dist/analyze.html"),
+        gzipSize: true,
+        brotliSize: true,
+        open: false,
+        template: "treemap",
+        title: "@schemx/vue bundle analysis",
+      }),
+  ].filter(Boolean),
   build: {
     lib: {
       entry: resolve(__dirname, "src/index.ts"),
@@ -38,13 +50,10 @@ export default defineConfig({
       },
     },
     rollupOptions: {
-      external: useSource
-        ? ["vue", "classnames", "dayjs", "es-toolkit", "@preact/signals-core"]
-        : ["vue", "@schemx/core", "classnames", "dayjs", "es-toolkit"],
+      external: ["vue", "classnames", "dayjs", "es-toolkit", "@preact/signals-core"],
       output: {
         globals: {
           vue: "Vue",
-          "@schemx/core": "schemxCore",
         },
         exports: "named",
         assetFileNames: (assetInfo) => {

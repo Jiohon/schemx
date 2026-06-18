@@ -43,10 +43,11 @@
   "dependencies": {
     "@preact/signals-core": "^1.14.0",
     "csstype": "^3.2.3",
-    "es-toolkit": "^1.44.0"
+    "es-toolkit": "catalog:"
   },
   "scripts": {
     "build": "vite build",
+    "build:analyze": "ANALYZE=true vite build",
     "test": "vitest run",
     "lint": "eslint \"src/**/*.{ts,tsx,vue,js,jsx}\" --ignore-pattern \"**/__tests__/**\" --ignore-pattern \"**/*.test.*\" --ignore-pattern \"**/*.spec.*\"",
     "type-check": "tsc -p tsconfig.json --noEmit",
@@ -55,6 +56,6 @@
   "license": "MIT",
   "devDependencies": {
     "fast-check": "^4.6.0",
-    "vue": "^3.4.0"
+    "vue": "catalog:"
   }
 }

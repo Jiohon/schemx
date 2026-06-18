@@ -8,20 +8,60 @@
  *
  * @example
  * ```typescript
- * import { createValidatorsRegistry } from '@schemx/core'
+ * import { createValidatorsRegistry, type ValidatorsEntryMap } from '@schemx/core'
  * import { z } from 'zod'
  *
  * const validatorRegistry = createValidatorsRegistry()
  *
- * // 注册自定义 validators
+ * // 注册固定的 Standard Schema
  * validatorRegistry.register('phone', z.string().regex(/^1\d{10}$/))
  * validatorRegistry.register('email', z.string().email())
  *
- * // 在 validators 中使用名称
- * const validators = [
- *   { name: 'phone', componentType: 'input', validators: 'phone' },
- *   { name: 'email', componentType: 'input', validators: 'email' },
- * ]
+ * // 注册工厂函数（接收 schema 参数）
+ * validatorRegistry.register('required', (schema) => {
+ *   return z.string().min(1, `${schema?.label}为必填项`)
+ * })
+ *
+ * // 批量注册
+ * const validators: ValidatorsEntryMap = {
+ *   min10: z.string().min(10),
+ *   max100: z.string().max(100)
+ * }
+ * validatorRegistry.registerAll(validators)
+ *
+ * // 获取原始注册项
+ * const phoneValidator = validatorRegistry.get('phone')
+ *
+ * // 检查是否存在
+ * validatorRegistry.has('email') // => true
+ *
+ * // 获取所有名称
+ * validatorRegistry.getNames() // => ['phone', 'email', 'required', 'min10', 'max100']
+ *
+ * // 解析 schema（将字符串规则转换为 Standard Schema）
+ * const schema = { name: 'phone', label: '手机号', componentType: 'input', rules: ['phone'] }
+ * const resolved = validatorRegistry.resolveValidatorsBySchema(schema)
+ * // resolved => [z.string().regex(...)]
+ *
+ * // 取消注册
+ * validatorRegistry.unregister('max100')
+ *
+ * // 清空所有
+ * validatorRegistry.clear()
+ * ```
+ *
+ * @example
+ * ```ts
+ * // 在 createForm 中使用
+ * const validatorRegistry = createValidatorsRegistry()
+ * validatorRegistry.registerAll(customValidators)
+ *
+ * const form = createForm({
+ *   schemas: [
+ *     { name: 'phone', label: '手机号', componentType: 'input', rules: ['phone'] }
+ *   ],
+ *   validatorRegistry // 使用自定义校验规则注册中心
+ * })
  * ```
  */
 

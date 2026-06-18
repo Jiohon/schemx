@@ -1,20 +1,22 @@
 <template>
-  <Uploader
-    v-bind="$attrs"
-    ref="uploadRef"
-    result-type="file"
-    :multiple="true"
-    :class="rootClass"
-    :model-value="innerFileList"
-    :show-upload="showUploadComputed"
-    :deletable="deletableComputed"
-    :disabled="disabledComputed"
-    :readonly="readonlyComputed"
-    :before-read="handleBeforeRead"
-    :after-read="afterRead"
-    :accept="accept"
-    @delete="onDelete"
-  />
+  <div :class="['schemx-renderer', 'schemx-upload-renderer', props.className]">
+    <Uploader
+      v-bind="$attrs"
+      ref="uploadRef"
+      result-type="file"
+      :multiple="true"
+      :class="rootClass"
+      :model-value="innerFileList"
+      :show-upload="showUploadComputed"
+      :deletable="deletableComputed"
+      :disabled="disabledComputed"
+      :readonly="uploaderReadonlyComputed"
+      :before-read="handleBeforeRead"
+      :after-read="afterRead"
+      :accept="accept"
+      @delete="onDelete"
+    />
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -52,6 +54,7 @@
     showUpload: true,
     disableUpload: false,
     deletable: true,
+    view: false,
     readonly: false,
     readonlyPlaceholder: "-",
     disabled: false,
@@ -100,9 +103,8 @@
    * 合并 props.value 和上传中的文件，去重
    */
   const innerFileList = computed(() => {
-    const propsFiles = (Array.isArray(uploadValue.value)
-      ? uploadValue.value
-      : [uploadValue.value]
+    const propsFiles = (
+      Array.isArray(uploadValue.value) ? uploadValue.value : [uploadValue.value]
     )
       .filter(Boolean)
       .map(normalizeFile)
@@ -136,13 +138,17 @@
     { deep: true }
   )
 
-  const readonlyComputed = computed(() => props.readonly || props.formItemProps?.readonly)
-  const disabledComputed = computed(() => props.disabled || props.formItemProps?.disabled)
+  const viewComputed = computed(() => props.view)
+  const readonlyComputed = computed(() => props.readonly)
+  const disabledComputed = computed(() => props.disabled)
   const deletableComputed = computed(() =>
-    readonlyComputed.value ? false : props.deletable
+    viewComputed.value || readonlyComputed.value ? false : props.deletable
   )
   const showUploadComputed = computed(() =>
-    readonlyComputed.value ? false : props.showUpload
+    viewComputed.value || readonlyComputed.value ? false : props.showUpload
+  )
+  const uploaderReadonlyComputed = computed(
+    () => viewComputed.value || readonlyComputed.value
   )
 
   const rootClass = computed(() =>

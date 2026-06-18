@@ -178,32 +178,37 @@ describe("createEffect 属性测试", () => {
   // **Validates: Requirements 4.1, 4.2**
   it("Property 7: batch 合并触发且读取最新值", () => {
     fc.assert(
-      fc.property(fc.integer(), fc.integer(), (valA, valB) => {
-        const a = signal(0)
-        const b = signal(0)
-        let callCount = 0
-        let lastA: number | undefined
-        let lastB: number | undefined
+      fc.property(
+        fc
+          .tuple(fc.integer(), fc.integer())
+          .filter(([valA, valB]) => valA !== 0 || valB !== 0),
+        ([valA, valB]) => {
+          const a = signal(0)
+          const b = signal(0)
+          let callCount = 0
+          let lastA: number | undefined
+          let lastB: number | undefined
 
-        const dispose = createEffect(() => {
-          lastA = a.value
-          lastB = b.value
-          callCount++
-        })
+          const dispose = createEffect(() => {
+            lastA = a.value
+            lastB = b.value
+            callCount++
+          })
 
-        expect(callCount).toBe(1)
+          expect(callCount).toBe(1)
 
-        batch(() => {
-          a.value = valA
-          b.value = valB
-        })
+          batch(() => {
+            a.value = valA
+            b.value = valB
+          })
 
-        expect(callCount).toBe(2)
-        expect(lastA).toBe(valA)
-        expect(lastB).toBe(valB)
+          expect(callCount).toBe(2)
+          expect(lastA).toBe(valA)
+          expect(lastB).toBe(valB)
 
-        dispose()
-      }),
+          dispose()
+        }
+      ),
       { numRuns: 100 }
     )
   })
@@ -284,6 +289,27 @@ describe("createEffect 单元测试", () => {
 
     expect(callCount).toBe(1)
     expect(cleanupCalls).toEqual([])
+
+    dispose()
+  })
+
+  it("batch 内写入相同值时不重新触发 effect", () => {
+    const a = signal(0)
+    const b = signal(0)
+    let callCount = 0
+
+    const dispose = createEffect(() => {
+      void a.value
+      void b.value
+      callCount++
+    })
+
+    batch(() => {
+      a.value = 0
+      b.value = 0
+    })
+
+    expect(callCount).toBe(1)
 
     dispose()
   })

@@ -221,10 +221,9 @@ function buildNormalizedFieldSchema<TValues extends Values>(
 
   const mergedVisible = visible ?? defaultConfig.visible
 
-  const mergedReadonly =
-    cp?.readonly ?? readonly ?? options.readonly ?? defaultConfig.readonly
-  const mergedDisabled =
-    cp?.disabled ?? disabled ?? options.disabled ?? defaultConfig.disabled
+  const mergedReadonly = readonly ?? options.readonly ?? defaultConfig.readonly
+  const mergedDisabled = disabled ?? options.disabled ?? defaultConfig.disabled
+  const mergedAlign = mergedReadonly ? "right" : (cp?.align ?? rest.contentAlign)
 
   const mergedPlaceholder = getPlaceholder(schema)
 
@@ -233,13 +232,14 @@ function buildNormalizedFieldSchema<TValues extends Values>(
     readonly: mergedReadonly,
     disabled: mergedDisabled,
     placeholder: mergedPlaceholder,
+    align: mergedAlign,
   }
 
   const rulesArray = (Array.isArray(rules) ? rules : [rules]).filter(Boolean)
 
   const mergedRequired = required ?? (rulesArray.length > 0 || defaultConfig.required)
 
-  const normalizedSchema = {
+  const normalizedSchema: SchemxResolvedBaseField<TValues> = {
     ...(rest ?? {}),
     key: rest.key,
     name: rest.name,
@@ -257,7 +257,6 @@ function buildNormalizedFieldSchema<TValues extends Values>(
     labelAlign: rest.labelAlign || defaultConfig.labelAlign,
     labelPosition: rest.labelPosition || defaultConfig.labelPosition,
     labelWidth: rest.labelWidth || defaultConfig.labelWidth,
-    contentAlign: rest.contentAlign || defaultConfig.contentAlign,
     colon: rest.colon ?? defaultConfig.colon,
 
     rules: rules,
@@ -265,10 +264,12 @@ function buildNormalizedFieldSchema<TValues extends Values>(
   }
 
   if (Object.hasOwn(schema, "initialValue")) {
-    return {
-      ...normalizedSchema,
-      initialValue: rest.initialValue,
-    }
+    normalizedSchema.initialValue = rest.initialValue
+  }
+
+  if (mergedReadonly) {
+    normalizedSchema.contentAlign = "right"
+    normalizedSchema.labelPosition = "left"
   }
 
   return normalizedSchema

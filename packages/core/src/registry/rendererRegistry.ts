@@ -4,6 +4,63 @@
  * 纯粹的注册/查询中心，不负责渲染逻辑。
  *
  * @module core/registry/rendererRegistry
+ *
+ * @example
+ * ```ts
+ * import { createRendererRegistry, type RendererMap } from '@schemx/core'
+ *
+ * // 定义渲染器组件
+ * const InputRenderer = (props) => <input {...props} />
+ * const SelectRenderer = (props) => <select {...props} />
+ * const TextRenderer = (props) => <span>{props.value}</span>
+ *
+ * // 创建注册中心，带默认渲染器
+ * const registry = createRendererRegistry('text')
+ *
+ * // 单个注册
+ * registry.register('input', InputRenderer)
+ * registry.register('select', SelectRenderer)
+ *
+ * // 批量注册
+ * const renderers: RendererMap = {
+ *   text: TextRenderer,
+ *   number: InputRenderer,
+ *   date: InputRenderer
+ * }
+ * registry.registerAll(renderers)
+ *
+ * // 获取渲染器
+ * const inputRenderer = registry.getRenderer('input')
+ * const fallback = registry.getRenderer('unknown') // 返回默认的 'text'
+ *
+ * // 检查是否存在
+ * registry.hasRenderer('input') // => true
+ *
+ * // 获取所有类型
+ * registry.getTypes() // => ['input', 'select', 'text', 'number', 'date']
+ *
+ * // 设置默认渲染器
+ * registry.setDefault('input')
+ * registry.getDefault() // => 'input'
+ *
+ * // 取消注册
+ * registry.unregister('date')
+ *
+ * // 清空所有
+ * registry.clear()
+ * ```
+ *
+ * @example
+ * ```ts
+ * // 在 createForm 中使用
+ * const rendererRegistry = createRendererRegistry()
+ * rendererRegistry.registerAll(customRenderers)
+ *
+ * const form = createForm({
+ *   schemas: [...],
+ *   rendererRegistry // 使用自定义渲染器注册中心
+ * })
+ * ```
  */
 
 import type { SchemxRendererKey } from "../types"

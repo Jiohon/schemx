@@ -11,16 +11,16 @@
 
   import { omit } from "es-toolkit"
 
-  import type { SchemxFormProps } from "@/types"
-
   import FormItem from "./components/FormItem"
   import { createContext } from "./hooks/useContext"
   import { useForm } from "./hooks/useForm"
   import { useViewSchemas } from "./hooks/useViewSchemas"
 
+  import type { SchemxFormProps } from "./types/index"
   import type { SchemxViewSchema, Values } from "@schemx/core"
 
   import "./styles/index.css"
+  import { getSectionPosition } from "./utils/helpers"
 
   defineOptions({ name: "SchemxForm" })
 
@@ -105,6 +105,18 @@
 
   const viewSchemas = useViewSchemas(form)
 
+  const getFormItemClass = (schema: SchemxViewSchema<T>) => {
+    const { isFirst, isLast } = getSectionPosition(
+      viewSchemas.value as SchemxViewSchema[],
+      schema.key
+    )
+
+    return {
+      "schemx-item-wrapper--first": isFirst,
+      "schemx-item-wrapper--last": isLast,
+    }
+  }
+
   watchEffect(() => {
     form.updateDefaultProps(props)
   })
@@ -120,6 +132,7 @@
       v-for="schema in viewSchemas"
       :key="schema.key"
       :schema="schema as SchemxViewSchema"
+      :class="getFormItemClass(schema as SchemxViewSchema<T>)"
     >
       <template v-for="(_, slotName) in $slots" #[slotName]="slotProps">
         <slot :name="slotName" v-bind="slotProps ?? {}" />

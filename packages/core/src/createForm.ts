@@ -4,6 +4,62 @@
  * createForm 是表单内核的唯一公开装配入口。
  *
  * @module core/createForm
+ *
+ * @example
+ * ```ts
+ * import { createForm } from '@schemx/core'
+ *
+ * // 创建基础表单
+ * const form = createForm({
+ *   initialValues: { username: '', email: '' }
+ * })
+ *
+ * // 设置字段值
+ * form.setFieldValue('username', 'John')
+ *
+ * // 获取字段值
+ * const username = form.getFieldValue('username')
+ *
+ * // 校验并提交
+ * const result = await form.validate()
+ * if (result.ok) {
+ *   console.log('提交数据:', result.values)
+ * }
+ * ```
+ *
+ * @example
+ * ```ts
+ * // 带 schemas 和回调的完整表单
+ * const form = createForm({
+ *   schemas: [
+ *     { name: 'username', label: '用户名', componentType: 'input' },
+ *     { name: 'email', label: '邮箱', componentType: 'input' }
+ *   ],
+ *   initialValues: { username: '', email: '' },
+ *   onValuesChange: (changed, latest) => {
+ *     console.log('字段变化:', changed)
+ *   },
+ *   onFinish: (values) => {
+ *     console.log('提交:', values)
+ *   },
+ *   onFinishFailed: (error) => {
+ *     console.log('校验失败:', error.errors)
+ *   }
+ * })
+ *
+ * // 使用 effect 监听值变化
+ * const dispose = form.effect(() => {
+ *   console.log('当前值:', form.getFieldsValue())
+ *   console.log('错误:', form.getFieldError('email'))
+ * })
+ *
+ * // 提交表单
+ * await form.submit()
+ *
+ * // 清理
+ * dispose()
+ * form.destroy()
+ * ```
  */
 
 import { pick } from "es-toolkit"
@@ -18,6 +74,11 @@ import { defaultConfigKey } from "./defaultConfig"
 import { compileToDescriptors } from "./descriptor"
 import { createFieldRegistry, type FieldRegistry } from "./field"
 import {
+  createLifecycleBus,
+  type LifecycleBus,
+  type SchemxLifecycleHooks,
+} from "./lifecycle/lifecycle"
+import {
   type ContainerRuntimeNode,
   createReconciler,
   createScope,
@@ -29,11 +90,6 @@ import {
   type Scope,
 } from "./node"
 import { createRuntimeNodeManager } from "./node/runtimeNodeManager"
-import {
-  createLifecycleBus,
-  type LifecycleBus,
-  type SchemxLifecycleHooks,
-} from "./lifecycle/lifecycle"
 import { batchUpdates, createSignalEffect } from "./reactivity"
 import {
   createRendererRegistry,
@@ -136,6 +192,46 @@ export interface SchemxFormContext<TValues extends Values = Values> {
  *
  * @typeParam TValues - 表单值类型
  * @typeParam TName - 字段路径类型
+ *
+ * @example
+ * ```ts
+ * const options: CreateFormOptions = {
+ *   // 静态 schema 数组
+ *   schemas: [
+ *     { name: 'username', label: '用户名', componentType: 'input' }
+ *   ],
+ *
+ *   // 初始值
+ *   initialValues: { username: '' },
+ *
+ *   // 受控值（可选）
+ *   modelValue: { username: 'test' },
+ *
+ *   // 自定义渲染器注册中心
+ *   rendererRegistry: createRendererRegistry(),
+ *
+ *   // 回调函数
+ *   onValuesChange: (changed, latest) => {},
+ *   onFinish: (values) => {},
+ *   onFinishFailed: (error) => {},
+ *   onFieldsChange: (changed, all) => {}
+ * }
+ *
+ * const form = createForm(options)
+ * ```
+ *
+ * @example
+ * ```ts
+ * // 使用 createSchemas 创建响应式 schemas
+ * const schemas = createSchemas([
+ *   { name: 'username', label: '用户名', componentType: 'input' }
+ * ])
+ *
+ * const form = createForm({ schemas })
+ *
+ * // 后续可动态更新 schemas
+ * schemas.update(prev => [...prev, newSchema])
+ * ```
  */
 export interface CreateFormOptions<
   TValues extends Values = Values,
@@ -687,6 +783,28 @@ class CreateForm<
  *
  * @param options - 表单配置项
  * @returns 表单实例
+ *
+ * @example
+ * ```ts
+ * // 基础用法
+ * const form = createForm({
+ *   initialValues: { name: '', age: 0 }
+ * })
+ *
+ * // 完整配置
+ * const form = createForm({
+ *   schemas: [
+ *     { name: 'name', label: '姓名', componentType: 'input' },
+ *     { name: 'age', label: '年龄', componentType: 'number' }
+ *   ],
+ *   initialValues: { name: '', age: 0 },
+ *   onValuesChange: (changed, latest) => {
+ *     console.log('变化:', changed)
+ *   },
+ *   onFinish: (values) => submit(values),
+ *   onFinishFailed: (error) => showErrors(error)
+ * })
+ * ```
  */
 export function createForm<TValues extends Values>(
   options: CreateFormOptions<TValues> = {}

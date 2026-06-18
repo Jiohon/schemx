@@ -77,10 +77,8 @@ describe("compileToDescriptors", () => {
     const schemas: SchemxField[] = [
       {
         componentType: "dependency",
-        to: [["user", "type"]],
-        renderer: () => [
-          { name: "extra", label: "Extra", componentType: "input" },
-        ],
+        to: ["user", "type"],
+        renderer: () => [{ name: "extra", label: "Extra", componentType: "input" }],
       },
     ]
 
@@ -89,7 +87,7 @@ describe("compileToDescriptors", () => {
     expect(descriptors).toHaveLength(1)
     expect(descriptors[0].type).toBe("dependency")
     if (descriptors[0].type === "dependency") {
-      expect(descriptors[0].trigger).toEqual([["user", "type"]])
+      expect(descriptors[0].trigger).toEqual(["user", "type"])
     }
   })
 
@@ -143,7 +141,6 @@ describe("compileToDescriptors", () => {
         labelAlign: "left",
         labelPosition: "top",
         labelWidth: "96px",
-        contentAlign: "right",
         colon: false,
       },
     ]
@@ -156,8 +153,52 @@ describe("compileToDescriptors", () => {
       expect(descriptors[0].schema.labelAlign).toBe("left")
       expect(descriptors[0].schema.labelPosition).toBe("top")
       expect(descriptors[0].schema.labelWidth).toBe("96px")
-      expect(descriptors[0].schema.contentAlign).toBe("right")
+      expect(descriptors[0].schema).not.toHaveProperty("contentAlign")
       expect(descriptors[0].schema.colon).toBe(false)
+    }
+  })
+
+  it("应该将 contentAlign 编译为组件 align", () => {
+    const schemas: SchemxField[] = [
+      {
+        name: "nickname",
+        label: "昵称",
+        componentType: "input",
+        contentAlign: "center",
+      },
+    ]
+
+    const descriptors = compileToDescriptors(schemas)
+
+    if (descriptors[0].type === "field") {
+      expect(descriptors[0].schema.contentAlign).toBe("center")
+      expect(descriptors[0].schema.componentProps?.align).toBe("center")
+    }
+  })
+
+  it("应该在只读态强制使用详情展示布局", () => {
+    const schemas: SchemxField[] = [
+      {
+        name: "nickname",
+        label: "昵称",
+        componentType: "input",
+        initialValue: "Schemx",
+        readonly: true,
+        labelPosition: "top",
+        contentAlign: "left",
+        componentProps: {
+          align: "left",
+        },
+      },
+    ]
+
+    const descriptors = compileToDescriptors(schemas)
+
+    if (descriptors[0].type === "field") {
+      expect(descriptors[0].schema.initialValue).toBe("Schemx")
+      expect(descriptors[0].schema.labelPosition).toBe("left")
+      expect(descriptors[0].schema.contentAlign).toBe("right")
+      expect(descriptors[0].schema.componentProps?.align).toBe("right")
     }
   })
 
@@ -174,11 +215,16 @@ describe("compileToDescriptors", () => {
 
     const descriptors = compileToDescriptors(schemas)
 
-    if (descriptors[0].type === "field") {
-      expect(descriptors[0].schema.tooltip).toBe("公开显示的昵称")
-      expect(descriptors[0].schema.layout).toEqual({ span: 12 })
-      expect(Object.isFrozen(descriptors[0].schema.layout)).toBe(false)
+    const [descriptor] = descriptors
+    expect(descriptor?.type).toBe("field")
+
+    if (descriptor?.type !== "field") {
+      throw new Error("期望编译为 field descriptor")
     }
+
+    expect(descriptor.schema.tooltip).toBe("公开显示的昵称")
+    expect(descriptor.schema.layout).toEqual({ span: 12 })
+    expect(Object.isFrozen(descriptor.schema.layout)).toBe(false)
   })
 
   it("不应该在分组 descriptor 中保留扩展 meta", () => {
@@ -237,9 +283,7 @@ describe("compileToDescriptors", () => {
           {
             label: "内层",
             componentType: "group",
-            children: [
-              { name: "deep", label: "Deep", componentType: "input" },
-            ],
+            children: [{ name: "deep", label: "Deep", componentType: "input" }],
           },
         ],
       },
@@ -262,9 +306,7 @@ describe("compileToDescriptors", () => {
       {
         label: "详情",
         componentType: "group",
-        children: [
-          { name: "email", label: "邮箱", componentType: "input" },
-        ],
+        children: [{ name: "email", label: "邮箱", componentType: "input" }],
       },
     ]
 
@@ -298,9 +340,7 @@ describe("compileToDescriptors", () => {
   })
 
   it("应该使用全局 readonly/disabled 默认值", () => {
-    const schemas: SchemxField[] = [
-      { name: "f1", label: "F1", componentType: "input" },
-    ]
+    const schemas: SchemxField[] = [{ name: "f1", label: "F1", componentType: "input" }]
 
     const descriptors = compileToDescriptors(schemas, {
       readonly: true,

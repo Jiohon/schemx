@@ -68,6 +68,8 @@ rendererRegistry.register("input", markRaw(InputRenderer))
 </template>
 ```
 
+`@schemx/vue` 的基础样式会随包入口自动加载，常规 Vite / Vue 项目不需要再手动引入 `@schemx/vue/style.css`。
+
 ## 自定义 Renderer
 
 renderer 会接收到 `value`、`onUpdate:value`、`onChange`、`onBlur`、`readonly`、`disabled` 和 `placeholder` 等公共属性。可以使用标准 Vue 事件更新字段值：
@@ -126,6 +128,7 @@ rendererRegistry.register("input", InputRenderer)
 | `useWatchFields()`  | 监听多个字段                                  |
 | `useWatchAll()`     | 监听整张表单                                  |
 | `useDictionary()`   | 管理依赖字段的远程或本地选项                  |
+| `useContext()`      | 获取表单上下文                                |
 | `useEffect()`       | 创建字段依赖追踪 effect                       |
 | `useFieldContext()` | 获取当前字段上下文                            |
 

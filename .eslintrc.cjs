@@ -22,7 +22,7 @@ module.exports = {
       "./packages/core/tsconfig.json",
       "./packages/vue/tsconfig.json",
       "./packages/vant/tsconfig.json",
-      "./examples/vant-demo/tsconfig.json",
+      "./examples/vant/tsconfig.json",
     ],
   },
   plugins: ["@typescript-eslint", "import", "unused-imports", "jsx-a11y"],
