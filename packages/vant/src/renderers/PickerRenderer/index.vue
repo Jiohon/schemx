@@ -1,34 +1,26 @@
 <template>
-  <div
-    :class="
-      classNames('schemx-renderer', 'schemx-picker-renderer', props.className, {
-        'schemx-renderer-readonly': readonly,
-        'schemx-renderer-disabled': disabled,
-      })
-    "
-  >
-    <Field
-      :placeholder="readonly ? props.readonlyPlaceholder : displayPlaceholder"
-      :readonly="true"
-      :disabled="disabled"
-      :model-value="fieldValue as string"
-      right-icon="arrow"
-      :input-align="contentAlign"
+  <div :class="['schemx-renderer', 'schemx-picker-renderer', props.className]">
+    <SchemxCell
+      :placeholder="placeholder"
+      :readonly-placeholder="props.readonlyPlaceholder"
+      :readonly="props.readonly"
+      :disabled="props.disabled"
+      :value="fieldValue"
       @click="handleClick"
     />
 
     <Popup
-      v-if="!readonly && !disabled"
+      v-if="!props.readonly && !props.disabled"
       v-model:show="showPicker"
       :class="classNames('schemx-picker-popup-renderer', props.popupClassName)"
       v-bind="popupProps"
+      safe-area-inset-bottom
     >
       <Picker
         :model-value="modelValue"
-        :title="props.title || displayPlaceholder"
         :columns="columns"
         :columns-field-names="fieldNames"
-        v-bind="attrs"
+        v-bind="pickerProps"
         @confirm="handleConfirm"
         @cancel="handleCancel"
       >
@@ -44,18 +36,19 @@
   /**
    * 选择渲染器组件
    *
-   * 使用 Vant Picker + Popup + Field 组合实现。
+   * 使用 Vant Picker + Popup + Cell 组合实现。
    *
    * @module renderers/PickerRenderer
    */
   import { computed, ref, useAttrs } from "vue"
 
-  import { Field, Picker, Popup } from "vant"
-  import type { FieldTextAlign, PickerConfirmEventParams } from "vant"
+  import { Picker, Popup } from "vant"
+  import type { PickerConfirmEventParams } from "vant"
 
   import classNames from "classnames"
 
-  import { findTreeItem, getFieldProps } from "@/utils"
+  import SchemxCell from "@/components/Cell/index.vue"
+  import { findTreeItem } from "@/utils"
 
   import type { PickerFieldNames, PickerRendererProps, PickerValue } from "./types"
 
@@ -89,15 +82,34 @@
 
   const showPicker = ref(false)
 
-  const displayPlaceholder = computed(() => props?.placeholder || "请选择")
+  const placeholder = computed(() => props?.placeholder || "请选择")
 
-  const readonly = computed(() => props?.readonly || props.formItemProps?.readonly)
+  const title = computed(() => props.title || placeholder.value)
 
-  const disabled = computed(() => props?.disabled || props.formItemProps?.disabled)
+  const pickerProps = computed(() => {
+    const {
+      value: _value,
+      onChange: _onChange,
+      onConfirm: _onConfirm,
+      className: _className,
+      popupClassName: _popupClassName,
+      readonlyPlaceholder: _readonlyPlaceholder,
+      separator: _separator,
+      showAllLevels: _showAllLevels,
+      emitPath: _emitPath,
+      options: _options,
+      columns: _columns,
+      columnsFieldNames: _columnsFieldNames,
+      fieldNames: _fieldNames,
+      contentAlign: _contentAlign,
+      formItemProps: _formItemProps,
+      popupProps: _popupProps,
+      title: _title,
+      ...rest
+    } = props
 
-  const contentAlign = computed(
-    () => getFieldProps(props, "contentAlign", "right") as FieldTextAlign
-  )
+    return { ...attrs, ...rest, title: title.value }
+  })
 
   const popupProps = computed(() => ({
     round: true,
@@ -131,7 +143,9 @@
 
     const label = props.showAllLevels ? result?.labels : result?.labels.slice(-1)
 
-    return result.labels.length ? label?.join(props.separator) : pickerValue.value
+    return result.labels.length
+      ? label?.join(props.separator)
+      : pickerValue.value?.toString()
   })
 
   const modelValue = computed(() => {
@@ -166,7 +180,7 @@
 
   /** 处理点击 */
   const handleClick = (): void => {
-    if (readonly.value || disabled.value) return
+    if (props.readonly || props.disabled) return
     showPicker.value = true
   }
 </script>

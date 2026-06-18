@@ -59,6 +59,8 @@ export interface CheckboxRendererProps
   className?: string
   /** 是否只读 */
   readonly?: boolean
+  /** 是否详情展示 */
+  view?: boolean
   /** 只读时的占位文本 */
   readonlyPlaceholder?: string
   /** 是否禁用 */

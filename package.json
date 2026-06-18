@@ -12,6 +12,7 @@
     "@typescript-eslint/parser": "^7.18.0",
     "@vitejs/plugin-vue": "^5.0.0",
     "@vitejs/plugin-vue-jsx": "^4.0.0",
+    "@plugins/injectStyleCss": "workspace:*",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^9.1.2",
     "eslint-import-resolver-typescript": "^4.4.4",
@@ -21,19 +22,21 @@
     "eslint-plugin-vue": "^9.33.0",
     "happy-dom": "^20.3.9",
     "prettier": "^3.8.1",
+    "rollup-plugin-visualizer": "^6.0.11",
     "sass": "^1.70.0",
     "terser": "^5.46.0",
     "typescript": "^5.0.0",
     "typescript-eslint": "^7.18.0",
     "vite": "^5.0.0",
     "vite-plugin-dts": "^3.0.0",
-    "vitest": "^4.0.18"
+    "vitest": "^2.1.8"
   },
   "scripts": {
     "dev": "vite",
-    "dev:vant": "pnpm --filter vant-demo dev",
     "dev:wot": "pnpm --filter wot-demo dev:h5",
+    "dev:vant": "pnpm --filter vant dev",
     "build": "pnpm -r run build",
+    "build:analyze": "pnpm -r --filter @schemx/core --filter @schemx/vue --filter @schemx/vant run build:analyze",
     "preview": "vite preview",
     "type-check": "tsc --noEmit",
     "test": "pnpm -r run test",
@@ -44,6 +47,7 @@
     "release:check": "bash scripts/release.sh check",
     "release:pack": "bash scripts/release.sh pack",
     "release:publish": "bash scripts/release.sh publish",
+    "release:publish:dev": "bash scripts/release.sh publish-dev",
     "release:publish:alpha": "bash scripts/release.sh publish-alpha",
     "release:publish:beta": "bash scripts/release.sh publish-beta",
     "release:publish:rc": "bash scripts/release.sh publish-rc",
@@ -51,7 +55,7 @@
     "release:version:patch": "bash scripts/release.sh version patch",
     "release:version:minor": "bash scripts/release.sh version minor",
     "release:version:major": "bash scripts/release.sh version major",
-    "release:test": "bash scripts/release.test.sh && bash scripts/bump-version.test.sh"
+    "release:test": "bash scripts/release.test.sh"
   },
   "repository": {
     "type": "git",

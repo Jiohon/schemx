@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@schemx/vue",
-  "version": "0.1.20",
+  "version": "0.1.21",
   "description": "基于 JSON Schema 配置的 Vue 3 动态表单引擎（UI 无关核心）",
   "keywords": [
     "schemx",
@@ -43,7 +43,8 @@
   ],
   "sideEffects": [
     "**/*.css",
-    "**/*.scss"
+    "**/*.scss",
+    "**/index.ts"
   ],
   "peerDependencies": {
     "vue": "^3.0.0"
@@ -53,18 +54,20 @@
     "classnames": "^2.5.1",
     "csstype": "^3.2.3",
     "dayjs": "^1.11.19",
-    "es-toolkit": "^1.45.1"
+    "es-toolkit": "catalog:"
   },
   "scripts": {
     "build": "vite build",
+    "build:analyze": "ANALYZE=true vite build",
     "test": "vitest run",
     "lint": "eslint \"src/**/*.{ts,tsx,vue,js,jsx}\"",
+    "type-check": "tsc -p tsconfig.json --noEmit",
     "prepublishOnly": "pnpm run build"
   },
   "license": "MIT",
   "devDependencies": {
     "@vue/test-utils": "^2.4.6",
-    "vue": "^3.4.0",
+    "vue": "catalog:",
     "zod": "^4.3.6"
   }
 }

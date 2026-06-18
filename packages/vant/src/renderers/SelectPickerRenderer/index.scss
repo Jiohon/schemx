@@ -1,0 +1,88 @@
+.schemx-select-picker-renderer {
+  .van-field {
+    padding-inline: 0;
+
+    &::after {
+      display: none;
+    }
+  }
+}
+
+.schemx-select-picker-popup-renderer {
+  max-height: 60vh;
+  border-radius: var(--van-popup-round-radius) var(--van-popup-round-radius) 0 0;
+
+  .schemx-select-picker {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 50vh;
+
+    .schemx-select-picker-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--van-border-color, #ebedf0);
+
+      .schemx-select-picker-title {
+        padding: var(--schemx-padding-md);
+        text-align: center;
+        font-size: 16px;
+        font-weight: 500;
+        line-height: 24px;
+      }
+    }
+
+    .schemx-select-picker-options {
+      flex: 1;
+      // min-height: calc(100% - 195px);
+      overflow-y: auto;
+      padding: var(--schemx-padding-xs) var(--schemx-padding-md);
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .schemx-select-picker-footer {
+      flex-shrink: 0;
+      border-top: 1px solid var(--van-border-color, #ebedf0);
+      padding: var(--schemx-padding-sm) var(--schemx-padding-md) var(--schemx-padding-md);
+
+      .van-button {
+        --van-button-default-height: 40px;
+
+        border-radius: var(--schemx-border-radius-md);
+      }
+    }
+
+    .schemx-select-picker-empty {
+      padding: 40px 0;
+      text-align: center;
+      color: var(--van-text-color-3, #c8c9cc);
+      font-size: 14px;
+    }
+
+    .van-checkbox-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+
+      .van-radio,
+      .van-checkbox {
+        padding: 10px 0;
+        justify-content: space-between;
+        flex-direction: row-reverse;
+      }
+
+      .van-icon-success {
+        display: flex;
+        align-items: center;
+        border: 2px solid #e5e6eb;
+      }
+
+      .van-checkbox__icon--checked {
+        .van-icon-success {
+          border: 2px solid var(--van-checkbox-checked-icon-color);
+        }
+      }
+    }
+  }
+}

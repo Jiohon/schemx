@@ -460,6 +460,7 @@ schemas.update((current) => [
 | 提交与重置 | `submit`、`reset`、`resetFields`                                                                  |
 | 响应式     | `effect`、`batch`                                                                                 |
 | schema     | `setSchemas`、`updateSchemas`                                                                     |
+| 默认配置   | `updateDefaultProps`                                                                              |
 | view       | `getViewSchemas`、`subscribeViewSchemas`、`getViewRevision`、`waitForDependencies`                |
 | renderer   | `getRenderer`、`registerRenderer`、`hasRenderer`                                                  |
 | validator  | `getValidator`、`registerValidator`、`hasValidator`                                               |
