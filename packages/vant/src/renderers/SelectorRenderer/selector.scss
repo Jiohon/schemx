@@ -1,24 +1,28 @@
 .selector {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px 12px;
+  color: var(--schemx-text-color);
+
+  .option {
+    position: relative;
+    min-width: 70px;
+    padding: 4px 14px;
+    border-radius: 8px;
+    background: var(--schemx-background-color-light);
+    color: inherit;
+    font-size: 14px;
+    text-align: center;
+    line-height: 20px;
+    box-sizing: border-box;
+    cursor: pointer;
+  }
+  .active {
+    background: var(--schemx-primary-color-light);
+    color: var(--schemx-primary-color);
+  }
 }
 
-.option {
-  position: relative;
-  min-width: 70px;
-  padding: 4px 14px;
-  border-radius: 8px;
-  background: #f3f4f6;
-  color: #333333;
-  font-size: 14px;
-  text-align: center;
-  line-height: 20px;
-  box-sizing: border-box;
-  cursor: pointer;
-}
-
-.option.active {
-  background: #eaf2ff;
-  color: #2f6bff;
+.selector-disabled {
+  color: var(--schemx-disabled-color);
 }
