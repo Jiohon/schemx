@@ -1,14 +1,5 @@
 <template>
-  <div
-    :class="[
-      'schemx-renderer',
-      'schemx-selector-renderer',
-      className,
-      {
-        'schemx-renderer-readonly': readonly,
-      },
-    ]"
-  >
+  <div :class="['schemx-renderer', 'schemx-selector-renderer', className]">
     <SchemxCell
       v-if="props.readonly"
       :value="fieldValue"
@@ -26,9 +17,6 @@
       :disabled="props.disabled"
       :model-value="selectorValue"
       :style="{
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '8px 12px',
         justifyContent: contentAlign,
         ...(attrs?.style || {}),
       }"
@@ -89,7 +77,7 @@
   const selectorProps = computed(() => {
     const { value, className: _className, formItemProps: _formItemProps, ...rest } = props
 
-    return { ...attrs, rest }
+    return { ...attrs, ...rest }
   })
 
   const handleChange = (value: SelectValue): void => {
