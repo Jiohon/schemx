@@ -1,5 +1,5 @@
 <template>
-  <div class="selector">
+  <div class="selector" :class="{ 'selector-disabled': props.disabled }">
     <div
       v-for="item in options"
       :key="item[valueKey]"
