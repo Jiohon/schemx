@@ -46,14 +46,6 @@
     "release:check": "bash scripts/release.sh check",
     "release:pack": "bash scripts/release.sh pack",
     "release:publish": "bash scripts/release.sh publish",
-    "release:publish:dev": "bash scripts/release.sh publish-dev",
-    "release:publish:alpha": "bash scripts/release.sh publish-alpha",
-    "release:publish:beta": "bash scripts/release.sh publish-beta",
-    "release:publish:rc": "bash scripts/release.sh publish-rc",
-    "release:publish:next": "bash scripts/release.sh publish-next",
-    "release:version:patch": "bash scripts/release.sh version patch",
-    "release:version:minor": "bash scripts/release.sh version minor",
-    "release:version:major": "bash scripts/release.sh version major",
     "release:test": "bash scripts/release.test.sh"
   },
   "repository": {
