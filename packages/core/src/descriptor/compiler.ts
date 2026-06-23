@@ -8,7 +8,12 @@
  */
 
 import { defaultConfig } from "../defaultConfig"
-import { isDependencySchema, isGroupSchema, normalizeSchemas } from "../utils"
+import {
+  isDependencySchema,
+  isGroupSchema,
+  NormalizedTrigger,
+  normalizeSchemas,
+} from "../utils"
 
 import type {
   DependencyDescriptor,
@@ -20,8 +25,10 @@ import type {
 import type {
   NamePath,
   SchemxDefaultProps,
+  SchemxInstance,
   SchemxResolvedBaseField,
   SchemxResolvedGroupField,
+  ValidationTrigger,
   Values,
 } from "../types"
 import type {
@@ -30,11 +37,23 @@ import type {
   SchemxField,
   SchemxGroupField,
 } from "../types/schema"
+import { omit } from "es-toolkit"
 
 /**
  * 编译器选项。
  */
-export interface CompileOptions extends SchemxDefaultProps {}
+export interface CompileOptions<TValues extends Values> {
+  /**
+   * 表单级默认配置。
+   *
+   * 这些配置会作为 schema 编译和字段呈现态的默认值，字段自身配置优先级更高。
+   */
+  defaultProps: SchemxDefaultProps
+  /**
+   * Form 表单实例方法
+   */
+  formInstance: SchemxInstance<TValues>
+}
 
 /**
  * 编译错误。
@@ -85,7 +104,7 @@ export const CompileError = CompileErrorImpl
  */
 export function compileToDescriptors<TValues extends Values>(
   schemas: SchemxField<TValues>[],
-  options: CompileOptions = {},
+  options: CompileOptions<TValues>,
   parentKey = ""
 ): FormDescriptor<TValues>[] {
   const descriptors: FormDescriptor<TValues>[] = []
@@ -117,7 +136,7 @@ export function compileToDescriptors<TValues extends Values>(
 function compileField<TValues extends Values>(
   schema: SchemxBaseField<TValues>,
   index: number,
-  options: CompileOptions = {},
+  options: CompileOptions<TValues>,
   parentKey = ""
 ): FieldDescriptor<TValues> {
   const key =
@@ -143,7 +162,7 @@ function compileField<TValues extends Values>(
 function compileGroup<TValues extends Values>(
   schema: SchemxGroupField<TValues>,
   index: number,
-  options: CompileOptions = {},
+  options: CompileOptions<TValues>,
   parentKey = ""
 ): GroupDescriptor<TValues> {
   const key = schema.key ?? (parentKey ? `group:${parentKey}/${index}` : `group:${index}`)
@@ -204,8 +223,10 @@ function compileDependencySlot<TValues extends Values>(
  */
 function buildNormalizedFieldSchema<TValues extends Values>(
   schema: SchemxBaseField<TValues>,
-  options: CompileOptions = {}
+  options: CompileOptions<TValues>
 ): SchemxResolvedBaseField<TValues> {
+  const { defaultProps, formInstance } = options
+
   const {
     componentProps: cp,
     visible,
@@ -221,19 +242,13 @@ function buildNormalizedFieldSchema<TValues extends Values>(
 
   const mergedVisible = visible ?? defaultConfig.visible
 
-  const mergedReadonly = readonly ?? options.readonly ?? defaultConfig.readonly
-  const mergedDisabled = disabled ?? options.disabled ?? defaultConfig.disabled
+  const mergedReadonly = readonly ?? defaultProps.readonly ?? defaultConfig.readonly
+  const mergedDisabled = disabled ?? defaultProps.disabled ?? defaultConfig.disabled
   const mergedAlign = mergedReadonly ? "right" : (cp?.align ?? rest.contentAlign)
+  const mergedValidationTrigger =
+    validationTrigger ?? defaultProps.validationTrigger ?? defaultConfig.validationTrigger
 
   const mergedPlaceholder = getPlaceholder(schema)
-
-  const componentProps: SchemxBaseField<TValues>["componentProps"] = {
-    ...cp,
-    readonly: mergedReadonly,
-    disabled: mergedDisabled,
-    placeholder: mergedPlaceholder,
-    align: mergedAlign,
-  }
 
   const rulesArray = (Array.isArray(rules) ? rules : [rules]).filter(Boolean)
 
@@ -251,7 +266,6 @@ function buildNormalizedFieldSchema<TValues extends Values>(
     disabled: mergedDisabled,
     required: mergedRequired,
     placeholder: mergedPlaceholder,
-    componentProps: componentProps,
 
     labelIcon: rest.labelIcon || defaultConfig.labelIcon,
     labelAlign: rest.labelAlign || defaultConfig.labelAlign,
@@ -259,8 +273,8 @@ function buildNormalizedFieldSchema<TValues extends Values>(
     labelWidth: rest.labelWidth || defaultConfig.labelWidth,
     colon: rest.colon ?? defaultConfig.colon,
 
-    rules: rules,
-    validationTrigger: validationTrigger || defaultConfig.validationTrigger,
+    rules,
+    validationTrigger: normalizeTrigger(mergedValidationTrigger),
   }
 
   if (Object.hasOwn(schema, "initialValue")) {
@@ -271,6 +285,18 @@ function buildNormalizedFieldSchema<TValues extends Values>(
     normalizedSchema.contentAlign = "right"
     normalizedSchema.labelPosition = "left"
   }
+
+  const componentProps: SchemxBaseField<TValues>["componentProps"] = {
+    ...cp,
+    align: mergedAlign,
+    readonly: mergedReadonly,
+    disabled: mergedDisabled,
+    placeholder: mergedPlaceholder,
+    formItemProps: normalizedSchema,
+    formInstance,
+  }
+
+  normalizedSchema.componentProps = componentProps
 
   return normalizedSchema
 }
@@ -291,4 +317,31 @@ export function getPlaceholder<TValues extends Values>(
   }
 
   return existingplaceholder
+}
+
+/**
+ * 归一化触发类型字符串。
+ *
+ * 将带 `on` 前缀的格式统一为短格式：
+ * `"onBlur"` → `"blur"`、`"onChange"` → `"change"`、`"onSubmit"` → `"submit"`。
+ *
+ * @param t - 原始触发类型
+ *
+ * @returns 归一化后的触发类型
+ */
+function normalizeTrigger(
+  trigger: ValidationTrigger | ValidationTrigger[]
+): NormalizedTrigger | NormalizedTrigger[] {
+  const map: Record<ValidationTrigger, NormalizedTrigger> = {
+    onBlur: "blur",
+    onChange: "change",
+    onSubmit: "submit",
+    blur: "blur",
+    change: "change",
+    submit: "submit",
+  }
+
+  const TArray = Array.isArray(trigger) ? trigger : [trigger]
+
+  return TArray.map((t) => map[t] ?? "submit")
 }

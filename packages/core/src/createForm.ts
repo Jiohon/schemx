@@ -710,7 +710,10 @@ class CreateForm<
     }
 
     const previousRevision = this.viewRevision.revision.value
-    const descriptors = compileToDescriptors([...schemas], this.context.defaultProps)
+    const descriptors = compileToDescriptors([...schemas], {
+      defaultProps: this.context.defaultProps,
+      formInstance: this.getFormInstance(),
+    })
 
     this.commitChildren(this.root as ContainerRuntimeNode<TValues>, descriptors)
 

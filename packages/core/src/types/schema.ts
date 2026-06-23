@@ -77,6 +77,10 @@ export interface SchemxBaseComponentProps<
    */
   formItemProps?: SchemxFormItemProps<TValues>
   /**
+   * Form 表单实例方法
+   */
+  formInstance?: SchemxInstance<TValues>
+  /**
    * 字段值
    */
   value?: TValue
