@@ -5,7 +5,7 @@
  */
 
 /** useForm - 表单状态管理 */
-export { useForm } from "./useForm"
+export { useForm, useFormContext } from "./useForm"
 
 /** useField - 单字段控制 */
 export { useField } from "./useField"

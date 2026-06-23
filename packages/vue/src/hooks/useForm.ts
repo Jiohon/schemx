@@ -72,7 +72,7 @@ export interface UseFormOptions<TValues extends Values> extends CreateFormOption
  * ```
  */
 export function useForm<TValues extends Values = Values>(
-  options: UseFormOptions<TValues>
+  options: UseFormOptions<TValues> = {}
 ): SchemxInstance<TValues> {
   const { ...formOptions } = options
 
@@ -106,17 +106,17 @@ export function useForm<TValues extends Values = Values>(
  *
  * @example
  * ```ts
- * const form = useFormInstance()
+ * const form = useFormContext()
  * form.setFieldValue('name', 'hello')
  * ```
  */
-export function useFormInstance<
+export function useFormContext<
   TValues extends Values = Values,
 >(): SchemxInstance<TValues> {
   const instance = inject<SchemxInstance<TValues>>(SCHEMX_INSTANCE_KEY)
 
   if (!instance) {
-    throw new Error("useFormInstance must be used within a Form")
+    throw new Error("useFormContext must be used within a Form")
   }
 
   return instance

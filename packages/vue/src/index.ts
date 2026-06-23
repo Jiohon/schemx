@@ -20,7 +20,9 @@ export { validatorRegistry } from "./utils/rulesProvider"
 /** Hooks */
 export {
   useForm,
+  useFormContext,
   useField,
+  useFieldContext,
   useWatch,
   useWatchField,
   useWatchFields,
@@ -28,7 +30,6 @@ export {
   useDictionary,
   useContext,
   useEffect,
-  useFieldContext,
   type UseDictOptionsReturn,
   type FormContextProps,
 } from "./hooks"

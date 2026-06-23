@@ -10,7 +10,7 @@
 
 import { onMounted, Ref, ref } from "vue"
 
-import { useFormInstance } from "./useForm"
+import { useFormContext } from "./useForm"
 import { useWatchFields } from "./useWatch"
 
 import type { NamePath, SchemxDictionary, Values } from "@schemx/core"
@@ -86,7 +86,7 @@ export const useDictionary = <
   options: SchemxDictionary<TValues>,
   fieldName?: TName
 ): UseDictOptionsReturn => {
-  const instance = useFormInstance<TValues>()
+  const instance = useFormContext<TValues>()
 
   const list = ref<any[]>([])
   const loading = ref<boolean>(false)

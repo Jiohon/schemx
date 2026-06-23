@@ -22,7 +22,7 @@ import { createField } from "@schemx/core"
 
 import { FieldInstance } from "../types/field"
 
-import { useFormInstance } from "./useForm"
+import { useFormContext } from "./useForm"
 
 import type { NamePath, SchemxInstance, Values } from "@schemx/core"
 
@@ -127,7 +127,7 @@ function createFieldHook<TValues extends Values = Values>(
 export const useField = <TValues extends Values = Values>(
   name: NamePath<TValues>
 ): FieldInstance<TValues> => {
-  const form = useFormInstance<TValues>()
+  const form = useFormContext<TValues>()
 
   const key = name
 
