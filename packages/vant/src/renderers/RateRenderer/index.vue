@@ -58,15 +58,31 @@
   const rateValue = defineModel<RateValue>("value")
 
   const rateProps = computed(() => {
+    const rendererProps = props as typeof props & { formInstance?: unknown }
     const {
       value: _value,
       onChange: _onChange,
       className: _className,
+      readonlyPlaceholder: _readonlyPlaceholder,
+      placeholder: _placeholder,
+      align: _align,
       formItemProps: _formItemProps,
+      formInstance: _formInstance,
       ...rest
-    } = props
+    } = rendererProps
+    const {
+      value: _attrsValue,
+      onChange: _attrsOnChange,
+      className: _attrsClassName,
+      readonlyPlaceholder: _attrsReadonlyPlaceholder,
+      placeholder: _attrsPlaceholder,
+      align: _attrsAlign,
+      formItemProps: _attrsFormItemProps,
+      formInstance: _attrsFormInstance,
+      ...attrsRest
+    } = attrs
 
-    return { ...attrs, rest }
+    return { ...attrsRest, ...rest }
   })
 
   const handleChange = (value: RateValue): void => {

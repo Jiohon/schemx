@@ -136,9 +136,12 @@
   const showInput = computed(() => isRevealed.value && !props.readonly && !props.disabled)
 
   const inputProps = computed(() => {
+    const rendererProps = props as typeof props & { formInstance?: unknown }
     const {
       value: _value,
       onChange: _onChange,
+      onBlur: _onBlur,
+      className: _className,
       revealed: _revealed,
       onRevealChange: _onRevealChange,
       defaultRevealed: _defaultRevealed,
@@ -151,8 +154,10 @@
       hideOnBlur: _hideOnBlur,
       revealWhenReadonly: _revealWhenReadonly,
       maskFormatter: _maskFormatter,
+      formItemProps: _formItemProps,
+      formInstance: _formInstance,
       ...rest
-    } = props
+    } = rendererProps
 
     return rest
   })

@@ -6,13 +6,20 @@ import { defineComponent, h } from "vue"
 import { mount } from "@vue/test-utils"
 import { describe, expect, it, vi } from "vitest"
 
+let checkboxGroupAttrs: Record<string, unknown> = {}
+
 vi.mock("vant", () => ({
   CheckboxGroup: defineComponent({
     name: "CheckboxGroup",
+    inheritAttrs: false,
     props: ["modelValue", "disabled"],
     emits: ["update:modelValue"],
-    setup(_, { slots }) {
-      return () => h("div", slots.default?.())
+    setup(_, { attrs, slots }) {
+      return () => {
+        checkboxGroupAttrs = attrs
+
+        return h("div", slots.default?.())
+      }
     },
   }),
   Checkbox: defineComponent({
@@ -41,6 +48,31 @@ describe("CheckboxRenderer", () => {
 
     expect(wrapper.text()).toContain("阅读、音乐")
     expect(wrapper.findComponent({ name: "CheckboxGroup" }).exists()).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it("只向 CheckboxGroup 透传组件相关属性", () => {
+    const wrapper = mount(CheckboxRenderer, {
+      props: {
+        value: ["reading"],
+        options: [{ label: "阅读", value: "reading" }],
+        fieldNames: { label: "label", value: "value" },
+        view: true,
+        readonlyPlaceholder: "-",
+        onChange: vi.fn(),
+        formItemProps: { name: "hobbies" } as any,
+        formInstance: {} as any,
+      },
+    })
+
+    expect(checkboxGroupAttrs).not.toHaveProperty("options")
+    expect(checkboxGroupAttrs).not.toHaveProperty("fieldNames")
+    expect(checkboxGroupAttrs).not.toHaveProperty("view")
+    expect(checkboxGroupAttrs).not.toHaveProperty("readonlyPlaceholder")
+    expect(checkboxGroupAttrs).not.toHaveProperty("onChange")
+    expect(checkboxGroupAttrs).not.toHaveProperty("formItemProps")
+    expect(checkboxGroupAttrs).not.toHaveProperty("formInstance")
 
     wrapper.unmount()
   })

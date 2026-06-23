@@ -83,6 +83,7 @@
   const title = computed(() => props.title || placeholder.value)
 
   const datePickerProps = computed(() => {
+    const rendererProps = props as typeof props & { formInstance?: unknown }
     const {
       value: _value,
       onChange: _onChange,
@@ -92,14 +93,36 @@
       className: _className,
       popupClassName: _popupClassName,
       readonlyPlaceholder: _readonlyPlaceholder,
+      readonly: _readonly,
+      disabled: _disabled,
+      placeholder: _placeholder,
       contentAlign: _contentAlign,
       formItemProps: _formItemProps,
       popupProps: _popupProps,
       title: _title,
+      formInstance: _formInstance,
       ...rest
-    } = props
+    } = rendererProps
+    const {
+      value: _attrsValue,
+      onChange: _attrsOnChange,
+      onConfirm: _attrsOnConfirm,
+      onClose: _attrsOnClose,
+      format: _attrsFormat,
+      className: _attrsClassName,
+      popupClassName: _attrsPopupClassName,
+      readonly: _attrsReadonly,
+      readonlyPlaceholder: _attrsReadonlyPlaceholder,
+      disabled: _attrsDisabled,
+      placeholder: _attrsPlaceholder,
+      contentAlign: _attrsContentAlign,
+      formItemProps: _attrsFormItemProps,
+      popupProps: _attrsPopupProps,
+      formInstance: _attrsFormInstance,
+      ...attrsRest
+    } = attrs
 
-    return { ...attrs, ...rest, title: title.value }
+    return { ...attrsRest, ...rest, title: title.value }
   })
 
   const popupProps = computed(() => ({

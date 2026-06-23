@@ -13,8 +13,8 @@
     />
     <Switch
       v-else
+      v-bind="switchProps"
       size="22px"
-      v-bind="attrs"
       :model-value="switchValue"
       :loading="switchLoading"
       :disabled="disabled"
@@ -79,6 +79,40 @@
     return (switchValue.value ?? props.value) === props.activeValue
       ? props.activeText
       : props.inactiveText
+  })
+
+  const switchProps = computed(() => {
+    const rendererProps = props as typeof props & { formInstance?: unknown }
+    const {
+      value: _value,
+      onChange: _onChange,
+      className: _className,
+      activeText: _activeText,
+      inactiveText: _inactiveText,
+      readonly: _readonly,
+      readonlyPlaceholder: _readonlyPlaceholder,
+      placeholder: _placeholder,
+      align: _align,
+      formItemProps: _formItemProps,
+      formInstance: _formInstance,
+      ...rest
+    } = rendererProps
+    const {
+      value: _attrsValue,
+      onChange: _attrsOnChange,
+      className: _attrsClassName,
+      activeText: _attrsActiveText,
+      inactiveText: _attrsInactiveText,
+      readonly: _attrsReadonly,
+      readonlyPlaceholder: _attrsReadonlyPlaceholder,
+      placeholder: _attrsPlaceholder,
+      align: _attrsAlign,
+      formItemProps: _attrsFormItemProps,
+      formInstance: _attrsFormInstance,
+      ...attrsRest
+    } = attrs
+
+    return { ...attrsRest, ...rest }
   })
 
   /**

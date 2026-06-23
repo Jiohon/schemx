@@ -88,6 +88,7 @@
   const title = computed(() => props.title ?? placeholder.value)
 
   const cascaderProps = computed(() => {
+    const rendererProps = props as typeof props & { formInstance?: unknown }
     const {
       value: _value,
       onChange: _onChange,
@@ -99,13 +100,36 @@
       separator: _separator,
       contentAlign: _contentAlign,
       placeholder: _placeholder,
+      readonly: _readonly,
+      disabled: _disabled,
+      options: _options,
       formItemProps: _formItemProps,
       popupProps: _popupProps,
       title: _title,
+      formInstance: _formInstance,
       ...rest
-    } = props
+    } = rendererProps
+    const {
+      value: _attrsValue,
+      onChange: _attrsOnChange,
+      onConfirm: _attrsOnConfirm,
+      className: _attrsClassName,
+      readonly: _attrsReadonly,
+      readonlyPlaceholder: _attrsReadonlyPlaceholder,
+      showAllLevels: _attrsShowAllLevels,
+      emitPath: _attrsEmitPath,
+      separator: _attrsSeparator,
+      contentAlign: _attrsContentAlign,
+      placeholder: _attrsPlaceholder,
+      disabled: _attrsDisabled,
+      options: _attrsOptions,
+      formItemProps: _attrsFormItemProps,
+      popupProps: _attrsPopupProps,
+      formInstance: _attrsFormInstance,
+      ...attrsRest
+    } = attrs
 
-    return { ...attrs, ...rest, placeholder: placeholder.value, title: title.value }
+    return { ...attrsRest, ...rest, placeholder: placeholder.value, title: title.value }
   })
 
   /** 数据源：优先使用 props.options，回退到 attrs.columns */

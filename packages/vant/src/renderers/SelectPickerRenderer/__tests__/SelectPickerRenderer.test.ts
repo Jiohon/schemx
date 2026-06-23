@@ -5,14 +5,25 @@ import { defineComponent, h } from "vue"
 import { mount } from "@vue/test-utils"
 import { describe, expect, it, vi } from "vitest"
 
+let checkboxAttrs: Record<string, unknown> = {}
+let popupAttrs: Record<string, unknown> = {}
+let radioAttrs: Record<string, unknown> = {}
+
 vi.mock("vant", () => {
   const component = (name: string, props: string[], emits: string[] = []) =>
     defineComponent({
       name,
+      inheritAttrs: false,
       props,
       emits,
-      setup(_props, { slots }) {
-        return () => h("div", slots.default?.())
+      setup(_props, { attrs, slots }) {
+        return () => {
+          if (name === "Checkbox") checkboxAttrs = attrs
+          if (name === "Popup") popupAttrs = attrs
+          if (name === "Radio") radioAttrs = attrs
+
+          return h("div", slots.default?.())
+        }
       },
     })
 
@@ -25,7 +36,7 @@ vi.mock("vant", () => {
     ),
     Checkbox: component("Checkbox", ["name", "disabled"]),
     CheckboxGroup: component("CheckboxGroup", ["modelValue"], ["update:modelValue"]),
-    Popup: component("Popup", ["show"], ["update:show"]),
+    Popup: component("Popup", ["show", "zIndex"], ["update:show"]),
     Radio: component("Radio", ["name", "disabled"]),
     RadioGroup: component("RadioGroup", ["modelValue"], ["update:modelValue"]),
   }
@@ -129,6 +140,67 @@ describe("SelectPickerRenderer", () => {
     await cell.vm.$emit("click")
 
     expect(wrapper.findComponent({ name: "Popup" }).exists()).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it("过滤 Popup 和 Checkbox 子组件无关属性", async () => {
+    const wrapper = mount(SelectPickerRenderer, {
+      props: {
+        value: [],
+        options: [
+          {
+            label: "选项 A",
+            value: "a",
+            disabled: false,
+            iconSize: "18px",
+          },
+        ],
+        popupProps: {
+          zIndex: 3000,
+          show: false,
+        } as any,
+        formItemProps: { name: "tags" } as any,
+        formInstance: {} as any,
+      },
+    })
+
+    await wrapper.findComponent({ name: "SchemxCell" }).vm.$emit("click")
+
+    expect(popupAttrs).not.toHaveProperty("show")
+    expect(popupAttrs).not.toHaveProperty("formItemProps")
+    expect(popupAttrs).not.toHaveProperty("formInstance")
+    expect(wrapper.findComponent({ name: "Popup" }).props("zIndex")).toBe(3000)
+    expect(checkboxAttrs).not.toHaveProperty("label")
+    expect(checkboxAttrs).not.toHaveProperty("value")
+    expect(checkboxAttrs).not.toHaveProperty("disabled")
+    expect(checkboxAttrs).toHaveProperty("iconSize", "18px")
+
+    wrapper.unmount()
+  })
+
+  it("过滤 Radio 选项数据字段", async () => {
+    const wrapper = mount(SelectPickerRenderer, {
+      props: {
+        type: "radio",
+        value: "a",
+        options: [
+          {
+            label: "选项 A",
+            value: "a",
+            disabled: false,
+            iconSize: "18px",
+          },
+        ],
+      },
+    })
+
+    await wrapper.findComponent({ name: "SchemxCell" }).vm.$emit("click")
+
+    expect(radioAttrs).not.toHaveProperty("label")
+    expect(radioAttrs).not.toHaveProperty("value")
+    expect(radioAttrs).not.toHaveProperty("disabled")
+    expect(radioAttrs).toHaveProperty("iconSize", "18px")
 
     wrapper.unmount()
   })

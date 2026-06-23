@@ -13,6 +13,7 @@ vi.mock("vant", () => ({
       modelValue: Number,
       readonly: Boolean,
       disabled: Boolean,
+      color: String,
     },
     emits: ["update:modelValue"],
     setup(props, { emit }) {
@@ -40,6 +41,27 @@ describe("RateRenderer", () => {
     expect(rate.exists()).toBe(true)
     await rate.vm.$emit("update:modelValue", 3)
     expect(onChange).not.toHaveBeenCalled()
+
+    wrapper.unmount()
+  })
+
+  it("只向 Rate 透传组件相关属性", () => {
+    const wrapper = mount(RateRenderer, {
+      props: {
+        value: 2,
+        color: "#ee0a24",
+        readonlyPlaceholder: "-",
+        formItemProps: { name: "score" } as any,
+        formInstance: {} as any,
+      },
+    })
+
+    const rate = wrapper.findComponent({ name: "Rate" })
+
+    expect(rate.props("color")).toBe("#ee0a24")
+    expect(rate.attributes("readonly-placeholder")).toBeUndefined()
+    expect(rate.attributes("form-item-props")).toBeUndefined()
+    expect(rate.attributes("form-instance")).toBeUndefined()
 
     wrapper.unmount()
   })

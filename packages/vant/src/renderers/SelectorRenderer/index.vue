@@ -75,9 +75,38 @@
   })
 
   const selectorProps = computed(() => {
-    const { value, className: _className, formItemProps: _formItemProps, ...rest } = props
+    const rendererProps = props as typeof props & { formInstance?: unknown }
+    const {
+      value: _value,
+      onChange: _onChange,
+      options: _options,
+      fieldNames: _fieldNames,
+      className: _className,
+      view: _view,
+      readonly: _readonly,
+      readonlyPlaceholder: _readonlyPlaceholder,
+      placeholder: _placeholder,
+      formItemProps: _formItemProps,
+      formInstance: _formInstance,
+      ...rest
+    } = rendererProps
+    const {
+      style: _attrsStyle,
+      value: _attrsValue,
+      onChange: _attrsOnChange,
+      options: _attrsOptions,
+      fieldNames: _attrsFieldNames,
+      className: _attrsClassName,
+      view: _attrsView,
+      readonly: _attrsReadonly,
+      readonlyPlaceholder: _attrsReadonlyPlaceholder,
+      placeholder: _attrsPlaceholder,
+      formItemProps: _attrsFormItemProps,
+      formInstance: _attrsFormInstance,
+      ...attrsRest
+    } = attrs
 
-    return { ...attrs, ...rest }
+    return { ...attrsRest, ...rest }
   })
 
   const handleChange = (value: SelectValue): void => {

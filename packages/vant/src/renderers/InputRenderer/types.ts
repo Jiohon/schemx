@@ -8,7 +8,7 @@ import type { FieldProps } from "vant"
 
 import type { InputValue, TextAreaAutosize } from "@/components/Input"
 
-import type { SchemxFormItemProps } from "@schemx/vue"
+import type { SchemxBaseComponentProps } from "@schemx/vue"
 
 export type { InputValue }
 export { cutString, formatNumber, getStringLength } from "@/components/Input"
@@ -18,7 +18,10 @@ export { cutString, formatNumber, getStringLength } from "@/components/Input"
  *
  * 这里保持为显式接口，避免 Vue SFC 编译器解析跨文件 extends 时失败。
  */
-export interface InputRendererProps {
+export interface InputRendererProps extends Omit<
+  SchemxBaseComponentProps,
+  "onChange" | "onBlur" | "value" | "onUpdate:value"
+> {
   /** 当前值 */
   value?: InputValue
   /** 值变化回调 */
@@ -67,8 +70,6 @@ export interface InputRendererProps {
   className?: string
   /** 只读时的占位文本 */
   readonlyPlaceholder?: string
-  /** FormItem 组件 Props */
-  formItemProps?: SchemxFormItemProps
   /** 自动完成属性 */
   autocomplete?: string
   /** 自动大写属性 */

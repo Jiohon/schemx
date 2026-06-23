@@ -1,7 +1,7 @@
 <template>
   <div :class="['schemx-renderer', 'schemx-upload-renderer', props.className]">
     <Uploader
-      v-bind="$attrs"
+      v-bind="uploadProps"
       ref="uploadRef"
       result-type="file"
       :multiple="true"
@@ -151,6 +151,53 @@
     () => viewComputed.value || readonlyComputed.value
   )
 
+  const uploadProps = computed(() => {
+    const rendererProps = props as typeof props & { formInstance?: unknown }
+    const {
+      value: _value,
+      onChange: _onChange,
+      className: _className,
+      showUpload: _showUpload,
+      disableUpload: _disableUpload,
+      deletable: _deletable,
+      view: _view,
+      readonly: _readonly,
+      readonlyPlaceholder: _readonlyPlaceholder,
+      disabled: _disabled,
+      uploader: _uploader,
+      propsHttp: _propsHttp,
+      accept: _accept,
+      beforeRead: _beforeRead,
+      afterRead: _afterRead,
+      formItemProps: _formItemProps,
+      formInstance: _formInstance,
+      ...rest
+    } = rendererProps
+    const {
+      value: _attrsValue,
+      onChange: _attrsOnChange,
+      className: _attrsClassName,
+      showUpload: _attrsShowUpload,
+      disableUpload: _attrsDisableUpload,
+      deletable: _attrsDeletable,
+      view: _attrsView,
+      readonly: _attrsReadonly,
+      readonlyPlaceholder: _attrsReadonlyPlaceholder,
+      disabled: _attrsDisabled,
+      uploader: _attrsUploader,
+      propsHttp: _attrsPropsHttp,
+      accept: _attrsAccept,
+      beforeRead: _attrsBeforeRead,
+      afterRead: _attrsAfterRead,
+      onDelete: _attrsOnDelete,
+      formItemProps: _attrsFormItemProps,
+      formInstance: _attrsFormInstance,
+      ...attrsRest
+    } = attrs
+
+    return { ...attrsRest, ...rest }
+  })
+
   const rootClass = computed(() =>
     classNames("schemx-renderer", "schemx-upload-renderer", props.className)
   )
@@ -215,19 +262,27 @@
   }
 
   const handleBeforeRead = (
-    file: File | File[]
+    file: File | File[],
+    detail: { name: string | number; index: number }
   ): boolean | Promise<File | File[] | undefined> | undefined => {
-    if (uploadAttrs.beforeRead) {
-      return uploadAttrs.beforeRead(file)
+    const beforeRead = props.beforeRead || uploadAttrs.beforeRead
+
+    if (beforeRead) {
+      return beforeRead(file, detail)
     }
 
     return true
   }
 
-  const afterRead = async (files: any | any[]): Promise<void> => {
+  const afterRead = async (
+    files: any | any[],
+    detail: { name: string | number; index: number }
+  ): Promise<void> => {
     try {
-      if (uploadAttrs.afterRead) {
-        return uploadAttrs.afterRead(files)
+      const customAfterRead = props.afterRead || uploadAttrs.afterRead
+
+      if (customAfterRead) {
+        return customAfterRead(files, detail)
       }
 
       const _fileList = Array.isArray(files) ? files : [files]

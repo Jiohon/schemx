@@ -82,6 +82,7 @@
 
   // 剔除 Schemx 契约字段，避免内部事件和表单元信息透传给 Vant 组件。
   const calendarProps = computed(() => {
+    const rendererProps = props as typeof props & { formInstance?: unknown }
     const {
       value: _value,
       onChange: _onChange,
@@ -91,15 +92,38 @@
       format: _format,
       separator: _separator,
       contentAlign: _contentAlign,
-      type: _type,
+      readonly: _readonly,
+      readonlyPlaceholder: _readonlyPlaceholder,
+      disabled: _disabled,
+      placeholder: _placeholder,
+      view: _view,
       formItemProps: _formItemProps,
       minDate = minSelectableDate,
       maxDate = maxSelectableDate,
+      formInstance: _formInstance,
       ...rest
-    } = props
+    } = rendererProps
+    const {
+      value: _attrsValue,
+      onChange: _attrsOnChange,
+      onConfirm: _attrsOnConfirm,
+      className: _attrsClassName,
+      popupClassName: _attrsPopupClassName,
+      format: _attrsFormat,
+      separator: _attrsSeparator,
+      contentAlign: _attrsContentAlign,
+      readonly: _attrsReadonly,
+      readonlyPlaceholder: _attrsReadonlyPlaceholder,
+      disabled: _attrsDisabled,
+      placeholder: _attrsPlaceholder,
+      view: _attrsView,
+      formItemProps: _attrsFormItemProps,
+      formInstance: _attrsFormInstance,
+      ...attrsRest
+    } = attrs
 
     return {
-      ...attrs,
+      ...attrsRest,
       ...rest,
       class: classNames("schemx-calendar-popup-renderer", props.popupClassName),
       minDate,
