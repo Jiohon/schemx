@@ -9,6 +9,7 @@
  * - 生命周期（disposed）
  * - 表单内部资源（descriptor, fieldModel, dependencySlot）
  * - 领域资源作用域（fieldResourceScope, fieldDependenciesScope, dependencyResourceScope）
+ * - Signal Graph 运行态（runtimeState, viewState, childrenState）
  *
  * @module core/node/node
  */
@@ -24,13 +25,28 @@ import type {
 } from "../descriptor/descriptor"
 import type { DependencyEffectSlot } from "../field/dependencyEffect"
 import type { FieldModel } from "../field/model"
+import type { FieldRuntimeState } from "../field/runtimeState"
 import type { Signal } from "../reactivity"
 import type { NamePath } from "../types"
+import type {
+  DependencyViewState,
+  FieldNodeViewState,
+  GroupViewState,
+  RootViewState,
+} from "../view/viewGraph"
 
 /**
  * Runtime node 支持的节点类型。
  */
 export type RuntimeNodeType = "root" | "field" | "group" | "dependency"
+
+/**
+ * 容器节点 children 响应式状态。
+ */
+export interface RuntimeChildrenState<TValues extends Values = Values> {
+  /** children signal，容器子节点变化时写入 */
+  readonly children: Signal<readonly DescribedRuntimeNode<TValues>[]>
+}
 
 /**
  * 所有 RuntimeNode 共享的结构字段。
@@ -89,6 +105,16 @@ export interface RootRuntimeNode<
    * 顶层 runtime 子节点列表。
    */
   childNodes: DescribedRuntimeNode<TValues>[]
+
+  /**
+   * 容器 children 响应式状态（Signal Graph 阶段接入）。
+   */
+  childrenState: RuntimeChildrenState<TValues> | null
+
+  /**
+   * Root 视图状态（Signal Graph 阶段接入）。
+   */
+  viewState: RootViewState<TValues> | null
 }
 
 /**
@@ -123,6 +149,16 @@ export interface FieldRuntimeNode<
    * 字段 `dependencies` effect 的独立生命周期边界。
    */
   fieldDependenciesScope: Scope | null
+
+  /**
+   * 字段运行态（Signal Graph 阶段接入）。
+   */
+  runtimeState: FieldRuntimeState<TValues> | null
+
+  /**
+   * 字段视图状态（Signal Graph 阶段接入）。
+   */
+  viewState: FieldNodeViewState<TValues> | null
 }
 
 /**
@@ -147,6 +183,16 @@ export interface GroupRuntimeNode<
    * 分组下的 runtime 子节点列表。
    */
   childNodes: DescribedRuntimeNode<TValues>[]
+
+  /**
+   * 容器 children 响应式状态（Signal Graph 阶段接入）。
+   */
+  childrenState: RuntimeChildrenState<TValues> | null
+
+  /**
+   * 分组视图状态（Signal Graph 阶段接入）。
+   */
+  viewState: GroupViewState<TValues> | null
 }
 
 /**
@@ -185,6 +231,16 @@ export interface DependencyRuntimeNode<
    * dependency renderer 产出的 runtime 子树。
    */
   dynamicChildNodes: DescribedRuntimeNode<TValues>[]
+
+  /**
+   * 容器 children 响应式状态（Signal Graph 阶段接入）。
+   */
+  childrenState: RuntimeChildrenState<TValues> | null
+
+  /**
+   * Dependency 视图状态（Signal Graph 阶段接入）。
+   */
+  viewState: DependencyViewState<TValues> | null
 }
 
 /**
@@ -322,6 +378,7 @@ export function getChildRuntimeNodes<TValues extends Values = Values>(
  *
  * @remarks
  * 仅用于 reconcile 提交结构结果；字段 RuntimeNode 没有 runtime 子节点。
+ * 如果节点已安装 childrenState，会同步写入 children signal。
  *
  * @param node - 容器节点。
  * @param children - 下一组 runtime 子节点。
@@ -333,11 +390,21 @@ export function setChildRuntimeNodes<TValues extends Values = Values>(
   if (isRootRuntimeNode(node) || isGroupRuntimeNode(node)) {
     node.childNodes = children
 
+    // 同步写入 children signal（Signal Graph 阶段）
+    if (node.childrenState) {
+      node.childrenState.children.value = children
+    }
+
     return
   }
 
   if (isDependencyRuntimeNode(node)) {
     node.dynamicChildNodes = children
+
+    // 同步写入 children signal（Signal Graph 阶段）
+    if (node.childrenState) {
+      node.childrenState.children.value = children
+    }
 
     return
   }

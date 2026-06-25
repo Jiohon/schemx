@@ -110,8 +110,9 @@ import {
   type Validator,
 } from "./validator"
 import {
-  buildViewSchemas,
+  createRootViewState,
   createViewRevision,
+  readRootViewSchemas,
   type SchemxViewSchema,
   subscribeViewSchemas,
   type ViewRevision,
@@ -403,6 +404,14 @@ class CreateForm<
     this.reconciler = createReconciler(this.runtimeNodeManager)
 
     this.root = this.runtimeNodeManager.createRoot()
+
+    const rootChildrenState = this.root.childrenState
+
+    if (!rootChildrenState) {
+      throw new Error("[schemx] root childrenState is required")
+    }
+
+    this.root.viewState = createRootViewState<TValues>(rootChildrenState.children)
 
     if (options.lifecycleHooks) {
       this.lifecycleBus.on(options.lifecycleHooks)
@@ -761,7 +770,7 @@ class CreateForm<
    * 获取当前 ViewSchemas。
    */
   private getViewSchemas(): readonly SchemxViewSchema<TValues>[] {
-    return buildViewSchemas<TValues>(this.root)
+    return readRootViewSchemas<TValues>(this.root.viewState!)
   }
 
   /**

@@ -10,10 +10,12 @@
 import { defaultConfig } from "../defaultConfig"
 import { type FieldDescriptor, getPlaceholder } from "../descriptor"
 import { createSignal } from "../reactivity"
+import { createComputed } from "../reactivity/computed"
 
-import type { Signal } from "../reactivity"
+import type { ReadonlySignal, Signal } from "../reactivity"
 import type { SchemxComponentProps, SchemxRules, Values } from "../types"
 import type { DependenciesResolvedProps } from "./dependenciesEffect"
+import type { FieldRuntimeState } from "./runtimeState"
 
 /**
  * 字段呈现态快照。
@@ -46,10 +48,12 @@ export interface FieldModelSnapshot<TValues extends Values = Values> {
 
 /**
  * 字段呈现态模型。
+ *
+ * @deprecated 已迁移至 FieldRuntimeState，此接口仅作为兼容 facade 保留
  */
 export interface FieldModel<TValues extends Values = Values> {
   /** 当前字段呈现态快照 */
-  snapshot: Signal<FieldModelSnapshot<TValues>>
+  readonly snapshot: ReadonlySignal<FieldModelSnapshot<TValues>>
 }
 
 /**
@@ -79,12 +83,13 @@ export function updateFieldModel<TValues extends Values = Values>(
   resolved?: DependenciesResolvedProps<TValues>
 ): void {
   const nextSnapshot = createFieldModelSnapshot(descriptor, resolved)
+  const snapshot = model.snapshot as Signal<FieldModelSnapshot<TValues>>
 
-  if (isSameFieldModelSnapshot(model.snapshot.peek(), nextSnapshot)) {
+  if (isSameFieldModelSnapshot(snapshot.peek(), nextSnapshot)) {
     return
   }
 
-  model.snapshot.value = nextSnapshot
+  snapshot.value = nextSnapshot
 }
 
 /**
@@ -162,4 +167,34 @@ function isShallowEqualRecord(current: object, next: object): boolean {
     currentKeys.length === nextKeys.length &&
     currentKeys.every((key) => currentRecord[key] === nextRecord[key])
   )
+}
+
+/**
+ * 从 FieldRuntimeState 创建兼容的 FieldModel。
+ *
+ * 桥接函数：让旧代码可以继续通过 FieldModel.snapshot 读取字段呈现态，
+ * 而实际数据源来自 FieldRuntimeState.effectiveSchema。
+ *
+ * @param runtimeState - 字段运行态
+ * @returns 兼容的 FieldModel
+ */
+export function createFieldModelFromRuntimeState<TValues extends Values = Values>(
+  runtimeState: FieldRuntimeState<TValues>
+): FieldModel<TValues> {
+  return {
+    snapshot: createComputed(() => {
+      const effective = runtimeState.effectiveSchema.value
+
+      return {
+        visible: effective.visible,
+        disabled: effective.disabled,
+        readonly: effective.readonly,
+        required: effective.required,
+        label: effective.label,
+        rules: effective.rules,
+        placeholder: effective.placeholder,
+        componentProps: effective.componentProps,
+      }
+    }),
+  }
 }

@@ -19,12 +19,22 @@ import {
 import {
   createDependenciesEffect,
   createDependencyEffect,
-  createFieldModel,
+  createFieldModelFromRuntimeState,
   createValidationEffect,
-  updateFieldModel,
 } from "../field"
+import {
+  createFieldRuntimeState,
+  resetFieldDynamicOverrides,
+  setFieldStaticSchema,
+} from "../field/runtimeState"
 import { createSignal } from "../reactivity"
 import { setByPath } from "../utils"
+import {
+  createChildrenViewState,
+  createDependencyViewState,
+  createFieldNodeViewState,
+  createGroupViewState,
+} from "../view/viewGraph"
 
 import {
   getChildRuntimeNodes,
@@ -100,6 +110,8 @@ class DefaultRuntimeNodeManager<TValues extends Values = Values> {
       disposed: createSignal(false),
       mounted: createSignal(false),
       childNodes: [],
+      childrenState: { children: createSignal<readonly DescribedRuntimeNode<TValues>[]>([]) },
+      viewState: null,
     }
   }
 
@@ -293,10 +305,27 @@ class DefaultRuntimeNodeManager<TValues extends Values = Values> {
     descriptor: FieldDescriptor<TValues>,
     parent: ContainerRuntimeNode<TValues>
   ): FieldRuntimeNode<TValues> {
-    const fieldModel = createFieldModel(descriptor)
+    const nodeId = this.nextId++
+
+    const runtimeState = createFieldRuntimeState<TValues>({
+      nodeId,
+      key: descriptor.key,
+      descriptor: {
+        name: descriptor.name,
+        schema: descriptor.schema,
+      },
+    })
+    const fieldModel = createFieldModelFromRuntimeState(runtimeState)
+
+    const viewState = createFieldNodeViewState<TValues>(
+      runtimeState.viewSchema,
+      descriptor.key,
+      nodeId,
+      runtimeState.diagnostics
+    )
 
     const node: FieldRuntimeNode<TValues> = {
-      id: this.nextId++,
+      id: nodeId,
       key: descriptor.key,
       type: descriptor.type,
       parent,
@@ -307,6 +336,8 @@ class DefaultRuntimeNodeManager<TValues extends Values = Values> {
       fieldModel,
       fieldResourceScope: null,
       fieldDependenciesScope: null,
+      runtimeState,
+      viewState,
     }
 
     return node
@@ -316,8 +347,18 @@ class DefaultRuntimeNodeManager<TValues extends Values = Values> {
     descriptor: GroupDescriptor<TValues>,
     parent: ContainerRuntimeNode<TValues>
   ): GroupRuntimeNode<TValues> {
+    const nodeId = this.nextId++
+    const childrenState = { children: createSignal<readonly DescribedRuntimeNode<TValues>[]>([]) }
+    const childrenView = createChildrenViewState<TValues>(childrenState.children)
+    const viewState = createGroupViewState<TValues>(
+      descriptor.schema,
+      childrenView,
+      descriptor.key,
+      nodeId
+    )
+
     const node: GroupRuntimeNode<TValues> = {
-      id: this.nextId++,
+      id: nodeId,
       key: descriptor.key,
       type: descriptor.type,
       parent,
@@ -326,6 +367,8 @@ class DefaultRuntimeNodeManager<TValues extends Values = Values> {
       mounted: createSignal(false),
       descriptor,
       childNodes: [],
+      childrenState,
+      viewState,
     }
 
     return node
@@ -335,8 +378,13 @@ class DefaultRuntimeNodeManager<TValues extends Values = Values> {
     descriptor: DependencyDescriptor<TValues>,
     parent: ContainerRuntimeNode<TValues>
   ): DependencyRuntimeNode<TValues> {
+    const nodeId = this.nextId++
+    const childrenState = { children: createSignal<readonly DescribedRuntimeNode<TValues>[]>([]) }
+    const childrenView = createChildrenViewState<TValues>(childrenState.children)
+    const viewState = createDependencyViewState<TValues>(childrenView)
+
     const node: DependencyRuntimeNode<TValues> = {
-      id: this.nextId++,
+      id: nodeId,
       key: descriptor.key,
       type: descriptor.type,
       parent,
@@ -347,6 +395,8 @@ class DefaultRuntimeNodeManager<TValues extends Values = Values> {
       dependencySlot: null,
       dependencyResourceScope: null,
       dynamicChildNodes: [],
+      childrenState,
+      viewState,
     }
 
     return node
@@ -363,22 +413,23 @@ class DefaultRuntimeNodeManager<TValues extends Values = Values> {
     this.initializeFieldValue(node)
 
     node.fieldResourceScope = resourceScope
+    const registeredName = node.descriptor.name // 捕获当前 name，用于 cleanup
     this.fieldRegistry.register({
-      name: node.descriptor.name,
+      name: registeredName,
       node: node,
       model,
     })
 
     resourceScope.add(() => {
-      this.fieldRegistry.unregister(node.descriptor.name, node)
+      this.fieldRegistry.unregister(registeredName, node) // 使用捕获的 name，而不是从 node.descriptor 读取
 
       if (node.fieldResourceScope === resourceScope) {
         node.fieldResourceScope = null
       }
     })
 
-    this.mountFieldValidation(node, model, resourceScope)
-    this.mountOrRestartFieldDependencies(node, model)
+    this.mountFieldValidation(node, resourceScope)
+    this.mountOrRestartFieldDependencies(node)
   }
 
   private initializeFieldValue(node: FieldRuntimeNode<TValues>): void {
@@ -416,14 +467,20 @@ class DefaultRuntimeNodeManager<TValues extends Values = Values> {
   ): void {
     const model = node.fieldModel
 
+    if (node.runtimeState) {
+      setFieldStaticSchema(node.runtimeState, {
+        name: node.descriptor.name,
+        schema: node.descriptor.schema,
+      })
+    }
+
     if (model && previousNode && previousNode.descriptor.name === node.descriptor.name) {
-      updateFieldModel(model, node.descriptor)
       this.fieldRegistry.register({
         name: node.descriptor.name,
         node: node,
         model,
       })
-      this.mountOrRestartFieldDependencies(node, model)
+      this.restartFieldDependenciesIfNeeded(node, previousNode)
 
       return
     }
@@ -433,10 +490,19 @@ class DefaultRuntimeNodeManager<TValues extends Values = Values> {
   }
 
   private updateGroup(
-    _node: GroupRuntimeNode<TValues>,
+    node: GroupRuntimeNode<TValues>,
     _descriptor: GroupDescriptor<TValues>
   ): void {
-    // group 没有领域资源，descriptor 快照已由 update() 写入。
+    if (!node.childrenState) {
+      return
+    }
+
+    node.viewState = createGroupViewState<TValues>(
+      node.descriptor.schema,
+      createChildrenViewState<TValues>(node.childrenState.children),
+      node.key,
+      node.id
+    )
   }
 
   private updateDependency(
@@ -451,33 +517,43 @@ class DefaultRuntimeNodeManager<TValues extends Values = Values> {
     ) {
       this.unmountDependency(node)
       this.mountDependency(node)
+
+      return
+    }
+
+    // renderer 变化时，重新运行 slot 而不是完全重启
+    if (node.descriptor.renderer !== previousNode.descriptor.renderer) {
+      node.dependencySlot?.run()
     }
   }
 
   private mountFieldValidation(
     node: FieldRuntimeNode<TValues>,
-    model = node.fieldModel,
     scope = node.fieldResourceScope
   ): void {
-    if (!model || !scope) {
+    if (!node.runtimeState || !scope) {
       return
     }
 
     createValidationEffect<TValues>({
       name: node.descriptor.name,
-      fieldModel: model,
+      effectiveSchema: node.runtimeState.effectiveSchema,
       context: this.context,
       scope,
     })
   }
 
   private mountOrRestartFieldDependencies(
-    node: FieldRuntimeNode<TValues>,
-    model = node.fieldModel
+    node: FieldRuntimeNode<TValues>
   ): void {
     node.fieldDependenciesScope?.dispose()
 
-    if (!model || !node.descriptor.dependencies) {
+    if (!node.runtimeState || !node.descriptor.dependencies) {
+      // dependencies 被删除时，重置动态覆盖
+      if (node.runtimeState) {
+        resetFieldDynamicOverrides(node.runtimeState, "reset")
+      }
+
       node.fieldDependenciesScope = null
 
       return
@@ -493,10 +569,21 @@ class DefaultRuntimeNodeManager<TValues extends Values = Values> {
 
     createDependenciesEffect<TValues>({
       descriptor: node.descriptor,
-      fieldModel: model,
+      runtimeState: node.runtimeState,
       context: this.context,
       scope: dependenciesScope,
     })
+  }
+
+  private restartFieldDependenciesIfNeeded(
+    node: FieldRuntimeNode<TValues>,
+    previousNode: FieldRuntimeNode<TValues>
+  ): void {
+    if (!shouldRestartFieldDependencies(node, previousNode)) {
+      return
+    }
+
+    this.mountOrRestartFieldDependencies(node)
   }
 
   private unmountField(node: FieldRuntimeNode<TValues>): void {
@@ -542,6 +629,13 @@ function isSameNamePathList(a: NamePath[], b: NamePath[]): boolean {
   }
 
   return a.every((name, index) => name === b[index])
+}
+
+function shouldRestartFieldDependencies<TValues extends Values>(
+  current: FieldRuntimeNode<TValues>,
+  previous: FieldRuntimeNode<TValues>
+): boolean {
+  return current.descriptor.dependencies !== previous.descriptor.dependencies
 }
 
 function createPreviousRuntimeNodeSnapshot<TNode extends DescribedRuntimeNode<any>>(

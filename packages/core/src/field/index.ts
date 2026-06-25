@@ -1,7 +1,7 @@
 /**
  * Field 模块统一导出。
  *
- * 提供字段模型、字段索引、动态依赖和 dependency slot。
+ * 提供字段模型、字段索引、动态依赖、dependency slot 和字段运行态。
  *
  * @module core/field
  */
@@ -22,6 +22,7 @@ export {
 
 export {
   createFieldModel,
+  createFieldModelFromRuntimeState,
   updateFieldModel,
   type FieldModel,
   type FieldModelSnapshot,
@@ -38,3 +39,17 @@ export {
   type CreateValidationEffectOptions,
   type ValidationModel,
 } from "./validationEffect"
+
+export {
+  createFieldRuntimeState,
+  setFieldStaticSchema,
+  setFieldDynamicOverrides,
+  resetFieldDynamicOverrides,
+  type CreateFieldRuntimeStateOptions,
+  type DynamicOverrideMeta,
+  type FieldDynamicOverrideKey,
+  type FieldDynamicOverrides,
+  type FieldEffectiveSchema,
+  type FieldRuntimeDiagnostics,
+  type FieldRuntimeState,
+} from "./runtimeState"

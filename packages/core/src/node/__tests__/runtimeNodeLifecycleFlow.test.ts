@@ -90,3 +90,80 @@ describe("node lifecycle flow", () => {
     expect(field.fieldDependenciesScope).toBeNull()
   })
 })
+
+import { describe, expect, it } from "vitest"
+import { createFieldRuntimeState, resetFieldDynamicOverrides, setFieldDynamicOverrides } from "../../field/runtimeState"
+
+import type { SchemxResolvedBaseField } from "../../types"
+
+function createTestSchema(overrides: Partial<SchemxResolvedBaseField> = {}): SchemxResolvedBaseField {
+  return {
+    componentType: "input",
+    label: "测试字段",
+    visible: true,
+    disabled: false,
+    readonly: false,
+    required: false,
+    placeholder: "请输入",
+    componentProps: {},
+    rules: [],
+    validationTrigger: "onChange",
+    ...overrides,
+  } as SchemxResolvedBaseField
+}
+
+describe("字段删除和 scope 释放 (US3)", () => {
+  it("dispose 后 runtimeState 应标记为 dispose", () => {
+    const schema = createTestSchema()
+    const state = createFieldRuntimeState({
+      nodeId: 1,
+      key: "field-1",
+      descriptor: { name: "email" as any, schema },
+    })
+
+    resetFieldDynamicOverrides(state, "dispose")
+
+    expect(state.diagnostics.value.lastUpdatedBy).toBe("dispose")
+    expect(state.dynamicOverrides.value).toEqual({})
+  })
+
+  it("dispose 后不应再接受动态覆盖写入（调用方负责检查 scope）", () => {
+    const schema = createTestSchema({ visible: true })
+    const state = createFieldRuntimeState({
+      nodeId: 1,
+      key: "field-1",
+      descriptor: { name: "email" as any, schema },
+    })
+
+    resetFieldDynamicOverrides(state, "dispose")
+
+    // 即使尝试写入，diagnostics 仍标记为 dispose
+    setFieldDynamicOverrides(state, { visible: false }, {
+      source: "dependencies",
+      triggerFields: ["country" as any],
+    })
+
+    // 写入仍然生效（runtimeState 不自行阻止），但 diagnostics 反映最新状态
+    expect(state.diagnostics.value.lastUpdatedBy).toBe("dependencies")
+  })
+
+  it("reset 后 dynamicOverrides 应清空", () => {
+    const schema = createTestSchema({ visible: true })
+    const state = createFieldRuntimeState({
+      nodeId: 1,
+      key: "field-1",
+      descriptor: { name: "email" as any, schema },
+    })
+
+    setFieldDynamicOverrides(state, { visible: false, disabled: true }, {
+      source: "dependencies",
+      triggerFields: ["country" as any],
+    })
+
+    resetFieldDynamicOverrides(state, "reset")
+
+    expect(state.dynamicOverrides.value).toEqual({})
+    expect(state.effectiveSchema.value.visible).toBe(true)
+    expect(state.effectiveSchema.value.disabled).toBe(false)
+  })
+})

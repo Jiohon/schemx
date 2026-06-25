@@ -31,6 +31,8 @@ export function createTestRootRuntimeNode(
     disposed: createSignal(false),
     mounted: createSignal(false),
     childNodes: [],
+    childrenState: null,
+    viewState: null,
   }
 }
 
@@ -53,6 +55,8 @@ export function createTestFieldRuntimeNode(options: {
     fieldModel: null,
     fieldResourceScope: null,
     fieldDependenciesScope: null,
+    runtimeState: null,
+    viewState: null,
   }
 }
 
@@ -73,6 +77,8 @@ export function createTestGroupRuntimeNode(options: {
     mounted: createSignal(false),
     descriptor: options.descriptor,
     childNodes: [],
+    childrenState: null,
+    viewState: null,
   }
 }
 
@@ -95,5 +101,7 @@ export function createTestDependencyRuntimeNode(options: {
     dependencySlot: null,
     dependencyResourceScope: null,
     dynamicChildNodes: [],
+    childrenState: null,
+    viewState: null,
   }
 }

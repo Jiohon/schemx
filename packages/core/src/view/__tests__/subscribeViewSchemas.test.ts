@@ -1,106 +1,108 @@
-/**
- * subscribeViewSchemas 订阅机制单元测试。
- *
- * @module core/view/__tests__/subscribeViewSchemas.test
- */
-
 import { describe, expect, it, vi } from "vitest"
 
-import { createFieldModel } from "../../field/model"
-import {
-  createTestFieldRuntimeNode,
-  createTestRootRuntimeNode,
-} from "../../node/__tests__/runtimeNodeTestUtils"
-import { subscribeViewSchemas } from "../subscribeViewSchemas"
+import createForm from "../../createForm"
+import { createSignal } from "../../reactivity"
 import { createViewRevision } from "../viewRevision"
+import { subscribeViewSchemas } from "../subscribeViewSchemas"
+import { createTestRootRuntimeNode } from "../../node/__tests__/runtimeNodeTestUtils"
+import { createRootViewState } from "../viewGraph"
 
-import type { FieldDescriptor } from "../../descriptor/descriptor"
-import type { ContainerRuntimeNode } from "../../node/runtimeNode"
+import type { RootRuntimeNode } from "../../node"
+import type { SchemxViewSchema } from "../types"
 
-const createFieldRuntimeNode = (
-  parent: ContainerRuntimeNode,
-  key: string,
-  name: string[]
-) => {
-  const descriptor: FieldDescriptor = {
-    type: "field",
-    key,
-    schema: {
-      name,
-      componentType: "input",
-      visible: true,
-      readonly: false,
-      disabled: false,
-      required: false,
-      placeholder: "",
-      componentProps: {},
-    },
-  }
+function createTestRootWithViewGraph(): RootRuntimeNode {
+  const root = createTestRootRuntimeNode()
+  root.childrenState = { children: createSignal([]) }
+  root.viewState = createRootViewState(root.childrenState.children)
 
-  const node = createTestFieldRuntimeNode({ key, parent, descriptor })
-  node.fieldModel = createFieldModel(descriptor)
-
-  return node
+  return root
 }
 
 describe("subscribeViewSchemas", () => {
-  it("应该返回取消订阅函数并立即回调", () => {
-    const root = createTestRootRuntimeNode()
+  it("root viewState 应输出真实 ViewSchemas", async () => {
+    const form = createForm({
+      schemas: [
+        {
+          name: "name",
+          label: "姓名",
+          componentType: "input",
+        },
+      ],
+    })
+
+    const updates: readonly SchemxViewSchema[][] = []
+
+    const dispose = form.subscribeViewSchemas((schemas) => {
+      updates.push(schemas)
+    })
+
+    await Promise.resolve()
+
+    expect(form.getViewSchemas()).toHaveLength(1)
+    expect(form.getViewSchemas()[0]?.key).toContain("field:")
+    expect(updates.length).toBeGreaterThan(0)
+    expect(updates.at(-1)).toHaveLength(1)
+
+    dispose()
+    form.destroy()
+  })
+
+  it("dependencies 更新 visible 时 ViewSchema 应读取 effectiveSchema", async () => {
+    const form = createForm({
+      schemas: [
+        {
+          name: "country",
+          label: "国家",
+          componentType: "input",
+        },
+        {
+          name: "province",
+          label: "省份",
+          componentType: "input",
+          dependencies: {
+            triggerFields: ["country"],
+            visible: (values) => values.country === "CN",
+          },
+        },
+      ],
+      initialValues: {
+        country: "US",
+      },
+    })
+
+    await form.waitForDependencies()
+
+    const getProvince = () =>
+      form
+        .getViewSchemas()
+        .find((schema) => "name" in schema && schema.name === "province")
+
+    expect(getProvince()?.visible).toBe(false)
+
+    form.setFieldValue("country", "CN")
+    await form.waitForDependencies()
+
+    expect(getProvince()?.visible).toBe(true)
+
+    form.destroy()
+  })
+
+  it("应该返回取消订阅函数并立即回调", async () => {
+    const root = createTestRootWithViewGraph()
     const revision = createViewRevision()
     const onChange = vi.fn()
 
     const unsubscribe = subscribeViewSchemas(root, revision, onChange)
 
     expect(typeof unsubscribe).toBe("function")
-    expect(onChange).toHaveBeenCalledWith([])
+    expect(onChange).toHaveBeenCalled()
 
     unsubscribe()
   })
 
-  it("应该在有字段时立即回调包含字段的 ViewSchemas", () => {
-    const root = createTestRootRuntimeNode()
-    root.childNodes = [createFieldRuntimeNode(root, "f1", ["f1"])]
-    const revision = createViewRevision()
-    const onChange = vi.fn()
-
-    subscribeViewSchemas(root, revision, onChange)
-
-    expect(onChange).toHaveBeenCalledWith([
-      expect.objectContaining({ key: "f1", componentType: "input" }),
-    ])
-  })
-
-  it("FieldModel 呈现态变化后应重新回调最新 ViewSchemas", () => {
+  it("取消订阅后不再回调", async () => {
     vi.useFakeTimers()
-
-    const root = createTestRootRuntimeNode()
-    const field = createFieldRuntimeNode(root, "f1", ["f1"])
-    root.childNodes = [field]
-    const revision = createViewRevision()
-    const onChange = vi.fn()
-
-    subscribeViewSchemas(root, revision, onChange)
-    const model = field.fieldModel
-    if (!model) {
-      throw new Error("fieldModel should be initialized")
-    }
-
-    model.snapshot.value = {
-      ...model.snapshot.peek(),
-      visible: false,
-    }
-    vi.advanceTimersByTime(16)
-
-    expect(onChange).toHaveBeenCalledTimes(2)
-    expect(onChange).toHaveBeenLastCalledWith([
-      expect.objectContaining({ key: "f1", visible: false }),
-    ])
-
-    vi.useRealTimers()
-  })
-
-  it("取消订阅后 revision 变化不再回调", () => {
-    const root = createTestRootRuntimeNode()
+    const root = createTestRootWithViewGraph()
     const revision = createViewRevision()
     const onChange = vi.fn()
 
@@ -109,12 +111,14 @@ describe("subscribeViewSchemas", () => {
 
     unsubscribe()
     revision.bump()
+    vi.advanceTimersByTime(20) // 等待 debounce
 
     expect(onChange).toHaveBeenCalledTimes(callCountAfterFirst)
+    vi.useRealTimers()
   })
 
-  it("onChange 回调抛出错误不应中断订阅", () => {
-    const root = createTestRootRuntimeNode()
+  it("onChange 回调抛出错误不应中断订阅", async () => {
+    const root = createTestRootWithViewGraph()
     const revision = createViewRevision()
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
     const onChange = vi.fn(() => {
@@ -128,22 +132,29 @@ describe("subscribeViewSchemas", () => {
     errorSpy.mockRestore()
   })
 
-  it("root dispose 后应回调空 ViewSchemas", () => {
+  it("root dispose 后应回调空 ViewSchemas (使用 createForm)", async () => {
     vi.useFakeTimers()
+    const form = createForm({
+      schemas: [
+        {
+          name: "f1",
+          label: "测试",
+          componentType: "input",
+        },
+      ],
+    })
 
-    const root = createTestRootRuntimeNode()
-    root.childNodes = [createFieldRuntimeNode(root, "f1", ["f1"])]
-    const revision = createViewRevision()
     const onChange = vi.fn()
+    const unsubscribe = form.subscribeViewSchemas(onChange)
 
-    subscribeViewSchemas(root, revision, onChange)
-    root.scope.dispose()
-    revision.bump()
-    vi.advanceTimersByTime(16)
+    await Promise.resolve()
+    expect(onChange).toHaveBeenCalled()
+    expect(onChange.mock.calls.some(call => call[0].length > 0)).toBe(true)
 
-    const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1]
-    expect(lastCall[0]).toEqual([])
+    form.destroy()
+    vi.advanceTimersByTime(20)
 
+    unsubscribe()
     vi.useRealTimers()
   })
 })

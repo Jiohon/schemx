@@ -2,14 +2,15 @@
  * Field dependencies - 字段级动态呈现态派生。
  *
  * 根据 descriptor.dependencies 监听 triggerFields，并把解析结果写入
- * FieldModel snapshot signal。该模块不修改 descriptor/schema。
+ * FieldRuntimeState.dynamicOverrides。
+ * 该模块不修改 descriptor/schema。
  *
  * @module core/field/dependencies
  */
 
 import { createSignalEffect } from "../reactivity"
 
-import { type FieldModel, updateFieldModel } from "./model"
+import { type FieldRuntimeState, setFieldDynamicOverrides } from "./runtimeState"
 
 import type { SchemxFormContext } from "../createForm"
 import type { FieldDescriptor } from "../descriptor"
@@ -54,9 +55,9 @@ export interface CreateDependenciesEffectOptions<TValues extends Values = Values
    */
   descriptor: Readonly<FieldDescriptor<TValues>>
   /**
-   * 被 dependencies 动态写入的字段呈现态模型。
+   * 字段运行态（Signal Graph 阶段），dependencies 结果会写入 dynamicOverrides。
    */
-  fieldModel: FieldModel<TValues>
+  runtimeState: FieldRuntimeState<TValues>
   /**
    * form 内部运行时上下文。
    */
@@ -70,13 +71,12 @@ export interface CreateDependenciesEffectOptions<TValues extends Values = Values
 /**
  * 创建字段级 dependencies effect。
  *
- * @param options - dependencies effect 所需的字段模型、descriptor 和运行时上下文。
+ * @param options - dependencies effect 所需的 descriptor、runtimeState 和运行时上下文。
  */
 export function createDependenciesEffect<TValues extends Values = Values>(
   options: CreateDependenciesEffectOptions<TValues>
 ): void {
-  const { descriptor, fieldModel, context, scope } = options
-  const base = descriptor.schema
+  const { descriptor, runtimeState, context, scope } = options
   const dependencies = descriptor.dependencies
 
   if (
@@ -96,12 +96,15 @@ export function createDependenciesEffect<TValues extends Values = Values>(
     void context.formApi.getValues(dependencies.triggerFields)
 
     void context.scheduler.track(
-      resolveDependencies(dependencies, base, context.formApi).then((resolvedProps) => {
+      resolveDependencies(dependencies, context.formApi).then((resolvedProps) => {
         if (scope.disposed || currentVersion !== version) {
           return
         }
 
-        updateFieldModel(fieldModel, descriptor, resolvedProps)
+        setFieldDynamicOverrides(runtimeState, resolvedProps, {
+          source: "dependencies",
+          triggerFields: dependencies.triggerFields,
+        })
       })
     )
   })
@@ -117,13 +120,12 @@ export function createDependenciesEffect<TValues extends Values = Values>(
  */
 async function resolveDependencies<TValues extends Values>(
   dependencies: SchemxDependencies<TValues>,
-  base: Readonly<SchemxResolvedBaseField<TValues>>,
   formApi: SchemxFormApi<TValues>
 ): Promise<DependenciesResolvedProps<TValues>> {
   const values = formApi.getValues() as TValues
 
   const [resolvedProps] = await Promise.all([
-    resolveDependenciesProps(dependencies, base, values, formApi),
+    resolveDependenciesProps(dependencies, values, formApi),
     runDependenciesTrigger(dependencies, values, formApi),
   ])
 
@@ -154,84 +156,21 @@ async function runDependenciesTrigger<TValues extends Values>(
  */
 async function resolveDependenciesProps<TValues extends Values>(
   dependencies: SchemxDependencies<TValues>,
-  base: Readonly<SchemxResolvedBaseField<TValues>>,
   values: TValues,
   formApi: SchemxFormApi<TValues>
 ): Promise<DependenciesResolvedProps<TValues>> {
-  const [componentProps, placeholder, required, readonly, disabled, visible, rules] =
-    await Promise.all([
-      resolveDependenciesProp({
-        condition: dependencies.componentProps,
-        values,
-        formApi,
-        defaultValue: base.componentProps,
-      }),
-      resolveDependenciesProp({
-        condition: dependencies.placeholder,
-        values,
-        formApi,
-        defaultValue: base.placeholder,
-      }),
-      resolveDependenciesProp({
-        condition: dependencies.required,
-        values,
-        formApi,
-        defaultValue: base.required,
-      }),
+  const entries = await Promise.all(
+    FIELD_DEPENDENCIES_PROP_KEYS.filter((key) => dependencies[key] != null).map(
+      async (key) => {
+        const condition = dependencies[key] as SchemxConditionFn<TValues, unknown>
+        const value = await resolveCondition(formApi, condition, values, undefined)
 
-      resolveDependenciesProp({
-        condition: dependencies.readonly,
-        values,
-        formApi,
-        defaultValue: base.readonly,
-      }),
-      resolveDependenciesProp({
-        condition: dependencies.disabled,
-        values,
-        formApi,
-        defaultValue: base.disabled,
-      }),
-      resolveDependenciesProp({
-        condition: dependencies.visible,
-        values,
-        formApi,
-        defaultValue: base.visible,
-      }),
-      resolveDependenciesProp({
-        condition: dependencies.rules,
-        values,
-        formApi,
-        defaultValue: base.rules,
-      }),
-    ])
+        return [key, value] as const
+      }
+    )
+  )
 
-  return {
-    componentProps,
-    placeholder,
-    required,
-    readonly,
-    disabled,
-    visible,
-    rules,
-  }
-}
-
-/**
- * 解析单个动态属性；未配置时返回静态默认值。
- */
-async function resolveDependenciesProp<TValues extends Values, TValue>(options: {
-  condition?: SchemxConditionFn<TValues, TValue>
-  values: TValues
-  formApi: SchemxFormApi<TValues>
-  defaultValue: TValue | undefined
-}): Promise<TValue | undefined> {
-  const { condition, values, formApi, defaultValue } = options
-
-  if (condition == null) {
-    return defaultValue
-  }
-
-  return resolveCondition(formApi, condition, values, defaultValue)
+  return Object.fromEntries(entries) as DependenciesResolvedProps<TValues>
 }
 
 /**

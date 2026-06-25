@@ -6,7 +6,7 @@
 
 import { describe, expect, it } from "vitest"
 
-import { createFieldModel } from "../../field/model"
+import { createFieldModel, updateFieldModel } from "../../field/model"
 import {
   createTestDependencyRuntimeNode,
   createTestFieldRuntimeNode,
@@ -81,12 +81,11 @@ describe("buildViewSchemas", () => {
       throw new Error("fieldModel should be initialized")
     }
 
-    model.snapshot.value = {
-      ...model.snapshot.peek(),
+    updateFieldModel(model, field.descriptor, {
       required: true,
       placeholder: "dynamic",
       componentProps: { clearable: true },
-    }
+    })
     root.childNodes = [field]
 
     const [schema] = buildViewSchemas(root)
@@ -110,10 +109,9 @@ describe("buildViewSchemas", () => {
       throw new Error("fieldModel should be initialized")
     }
 
-    model.snapshot.value = {
-      ...model.snapshot.peek(),
+    updateFieldModel(model, field.descriptor, {
       rules: ["email"],
-    }
+    })
     root.childNodes = [field]
 
     const [schema] = buildViewSchemas(root)

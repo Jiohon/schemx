@@ -1,3 +1,4 @@
+import { setFieldDynamicOverrides } from "../../field/runtimeState"
 import { describe, expect, it, vi } from "vitest"
 
 import { compileToDescriptors } from "../../descriptor"
@@ -218,5 +219,63 @@ describe("RuntimeReconciler + DefaultRuntimeNodeManager", () => {
       createFieldDescriptor("f2", "f2"),
     ])
     expect(viewRevision.revision.value).toBe(2)
+  })
+})
+
+import { describe, expect, it } from "vitest"
+import { createFieldRuntimeState } from "../../field/runtimeState"
+
+import type { SchemxResolvedBaseField } from "../../types"
+
+function createTestSchema(overrides: Partial<SchemxResolvedBaseField> = {}): SchemxResolvedBaseField {
+  return {
+    componentType: "input",
+    label: "测试字段",
+    visible: true,
+    disabled: false,
+    readonly: false,
+    required: false,
+    placeholder: "请输入",
+    componentProps: {},
+    rules: [],
+    validationTrigger: "onChange",
+    ...overrides,
+  } as SchemxResolvedBaseField
+}
+
+describe("RuntimeNodeManager 创建 field 节点时挂载 FieldRuntimeState (US1)", () => {
+  it("createFieldRuntimeState 应该能基于 descriptor 创建运行态", () => {
+    const schema = createTestSchema({ label: "用户名" })
+    const state = createFieldRuntimeState({
+      nodeId: 1,
+      key: "field-1",
+      descriptor: { name: "username" as any, schema },
+    })
+
+    expect(state).toBeDefined()
+    expect(state.staticSchema.value.label).toBe("用户名")
+    expect(state.effectiveSchema.value.label).toBe("用户名")
+  })
+
+  it("runtimeState 应该持有独立的 staticSchema 和 dynamicOverrides", () => {
+    const schema = createTestSchema({ visible: true })
+    const state = createFieldRuntimeState({
+      nodeId: 1,
+      key: "field-1",
+      descriptor: { name: "username" as any, schema },
+    })
+
+    // 验证两个 signal 独立
+    expect(state.staticSchema.value.visible).toBe(true)
+    expect(state.dynamicOverrides.value).toEqual({})
+
+    // 修改 dynamicOverrides 不影响 staticSchema
+    setFieldDynamicOverrides(state, { visible: false }, {
+      source: "dependencies",
+      triggerFields: [],
+    })
+
+    expect(state.staticSchema.value.visible).toBe(true)
+    expect(state.dynamicOverrides.value.visible).toBe(false)
   })
 })

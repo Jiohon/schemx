@@ -8,6 +8,7 @@
  * @module core/view/types
  */
 
+import type { FieldDynamicOverrideKey } from "../field/runtimeState"
 import type { SchemxResolvedBaseField, SchemxResolvedGroupField, Values } from "../types"
 
 /**
@@ -34,6 +35,12 @@ export interface SchemxViewDebugMeta {
   readonly runtimeNodeType: string
   readonly hasFieldModel: boolean
   readonly hasDependencySlot: boolean
+  /** 最近一次动态覆盖来源 */
+  readonly lastUpdatedBy?: "static-schema" | "dependencies" | "reset" | "dispose"
+  /** 最近一次动态覆盖涉及的 key */
+  readonly overriddenKeys?: readonly FieldDynamicOverrideKey[]
+  /** 最近一次解析错误 */
+  readonly error?: string | null
 }
 
 /**

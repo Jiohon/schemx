@@ -2,12 +2,11 @@
  * subscribeViewSchemas - ViewSchemas 订阅机制。
  *
  * 使用 createSignalEffect 追踪依赖变化，自动重新构建 ViewSchemas。
+ * 读取 root view computed 作为唯一 ViewSchemas 来源。
  *
  * @module core/view/subscribeViewSchemas
  */
 import { createDebouncedSignalEffect } from "../reactivity"
-
-import { buildViewSchemas } from "./buildViewSchemas"
 
 import type { RootRuntimeNode } from "../node"
 import type { Values } from "../types"
@@ -27,6 +26,8 @@ export function subscribeViewSchemas<TValues extends Values = Values>(
   revision: ViewRevision,
   onChange: (schemas: readonly SchemxViewSchema<TValues>[]) => void
 ): () => void {
+  void revision
+
   let rootDisposed = false
 
   const rootScope = root.scope
@@ -36,9 +37,11 @@ export function subscribeViewSchemas<TValues extends Values = Values>(
 
   const disposeEffect = createDebouncedSignalEffect(
     () => {
-      void revision.revision.value
+      if (rootDisposed) {
+        return []
+      }
 
-      return rootDisposed ? [] : buildViewSchemas<TValues>(root)
+      return root.viewState!.viewSchemas.value
     },
     (viewSchemas) => {
       try {

@@ -119,23 +119,17 @@ select_version_action() {
 }
 
 print_publish_selection_summary() {
-  local border="----------------------------------------"
-
-  printf '\n%s%s%s\n' "$RELEASE_COLOR_SUCCESS" "$border" "$RELEASE_COLOR_RESET"
-  printf '%s发布信息%s\n' "$RELEASE_COLOR_SUCCESS" "$RELEASE_COLOR_RESET"
-  printf '%s%s%s\n' "$RELEASE_COLOR_SUCCESS" "$border" "$RELEASE_COLOR_RESET"
-  printf '发布通道：%s - %s\n' "$SELECTED_CHANNEL" "$(release_channel_label "$SELECTED_CHANNEL")"
-  printf '发布说明：%s\n' "$(release_channel_description "$SELECTED_CHANNEL")"
-  printf '发布目标：%s\n' "$SELECTED_TARGET"
+  info "发布计划"
+  release_kv "通道" "$SELECTED_CHANNEL - $(release_channel_label "$SELECTED_CHANNEL")"
+  release_kv "说明" "$(release_channel_description "$SELECTED_CHANNEL")"
+  release_kv "目标" "$SELECTED_TARGET"
 
   if [[ "$SELECTED_CHANNEL" == "latest" ]]; then
-    printf '版本处理：%s - %s\n' "$SELECTED_VERSION_ACTION" "$(version_action_label "$SELECTED_VERSION_ACTION")"
-    printf '%s%s%s\n' "$RELEASE_COLOR_SUCCESS" "$border" "$RELEASE_COLOR_RESET"
+    release_kv "版本" "$SELECTED_VERSION_ACTION - $(version_action_label "$SELECTED_VERSION_ACTION")"
     return
   fi
 
-  printf '发布 tag：%s\n' "$SELECTED_CHANNEL"
-  printf '%s%s%s\n' "$RELEASE_COLOR_SUCCESS" "$border" "$RELEASE_COLOR_RESET"
+  release_kv "tag" "$SELECTED_CHANNEL"
 }
 
 assert_main_branch() {

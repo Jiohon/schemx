@@ -726,7 +726,7 @@ describe("动态 schemas", () => {
     form.destroy()
   })
 
-  it("setSchemas 仅修改 group 属性时通知 ViewSchemas 订阅", () => {
+  it("setSchemas 仅修改 group 属性时通知 ViewSchemas 订阅", async () => {
     const form = createForm({
       schemas: [
         { componentType: "group", label: "旧分组", children: [] },
@@ -740,6 +740,8 @@ describe("动态 schemas", () => {
     form.setSchemas([
       { componentType: "group", label: "新分组", children: [] },
     ] as any)
+
+    await new Promise((resolve) => setTimeout(resolve, 25))
 
     expect(calls.at(-1)).toMatchObject([{ label: "新分组" }])
 

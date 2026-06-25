@@ -9,5 +9,5 @@ source "$ROOT_DIR/scripts/release/common.sh"
 
 info "检查 npm registry"
 configured_registry="$(pnpm config get registry)"
-printf '当前 registry：%s\n' "$configured_registry"
-printf '发布 registry：%s\n' "$NPM_REGISTRY"
+release_kv "current" "$configured_registry" 10
+release_kv "registry" "$NPM_REGISTRY" 10

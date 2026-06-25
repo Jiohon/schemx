@@ -37,7 +37,6 @@ import type {
   SchemxField,
   SchemxGroupField,
 } from "../types/schema"
-import { omit } from "es-toolkit"
 
 /**
  * 编译器选项。
@@ -104,9 +103,15 @@ export const CompileError = CompileErrorImpl
  */
 export function compileToDescriptors<TValues extends Values>(
   schemas: SchemxField<TValues>[],
-  options: CompileOptions<TValues>,
+  options?: Partial<CompileOptions<TValues>>,
   parentKey = ""
 ): FormDescriptor<TValues>[] {
+  // 向后兼容性：如果 options 直接包含 defaultProps 属性，将其视为 defaultProps
+  const isLegacyOptions = options && !('defaultProps' in options) && ('readonly' in options || 'disabled' in options)
+  const safeOptions: CompileOptions<TValues> = {
+    defaultProps: isLegacyOptions ? (options as any) : (options?.defaultProps ?? {}),
+    formInstance: options?.formInstance as any,
+  }
   const descriptors: FormDescriptor<TValues>[] = []
 
   const normalized = normalizeSchemas(schemas)
@@ -117,11 +122,11 @@ export function compileToDescriptors<TValues extends Values>(
     let descriptor = undefined
 
     if (isGroupSchema(schema)) {
-      descriptor = compileGroup<TValues>(schema, i, options, parentKey)
+      descriptor = compileGroup<TValues>(schema, i, safeOptions, parentKey)
     } else if (isDependencySchema(schema)) {
       descriptor = compileDependencySlot<TValues>(schema, i, parentKey)
     } else {
-      descriptor = compileField<TValues>(schema, i, options, parentKey)
+      descriptor = compileField<TValues>(schema, i, safeOptions, parentKey)
     }
 
     descriptors.push(descriptor)

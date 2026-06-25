@@ -147,7 +147,10 @@ export function createDependencyEffect<TValues extends Values = Values>(
 
           const descriptors = compileToDescriptors<TValues>(
             childSchemas,
-            context.defaultProps
+            {
+              defaultProps: context.defaultProps,
+              formInstance: context.instance,
+            }
           )
 
           context.commitChildren(node, descriptors)

@@ -12,9 +12,19 @@ import {
 } from "../../node/__tests__/runtimeNodeTestUtils"
 import { createRuntimeScope } from "../../node/scope"
 import { createSignalEffect } from "../../reactivity"
-import { createFieldModel, updateFieldModel } from "../model"
+import {
+  createFieldModel,
+  createFieldModelFromRuntimeState,
+  updateFieldModel,
+} from "../model"
+import {
+  createFieldRuntimeState,
+  setFieldDynamicOverrides,
+  setFieldStaticSchema,
+} from "../runtimeState"
 
 import type { FieldDescriptor } from "../../descriptor/descriptor"
+import type { SchemxResolvedBaseField } from "../../types"
 
 const createDescriptor = (
   name: string[],
@@ -35,7 +45,25 @@ const createDescriptor = (
   },
 })
 
-describe("mountFieldModel", () => {
+function createTestSchema(
+  overrides: Partial<SchemxResolvedBaseField> = {}
+): SchemxResolvedBaseField {
+  return {
+    componentType: "input",
+    label: "测试字段",
+    visible: true,
+    disabled: false,
+    readonly: false,
+    required: false,
+    placeholder: "请输入",
+    componentProps: {},
+    rules: [],
+    validationTrigger: "onChange",
+    ...overrides,
+  } as SchemxResolvedBaseField
+}
+
+describe("FieldModel", () => {
   it("应该创建纯呈现态 FieldModel 并挂载到 RuntimeNode", () => {
     const scope = createRuntimeScope()
     const descriptor = createDescriptor(["user", "name"], {
@@ -72,6 +100,27 @@ describe("mountFieldModel", () => {
     expect("state" in model).toBe(false)
     expect("props" in model).toBe(false)
     expect("scope" in model).toBe(false)
+  })
+
+  it("snapshot 应该是只读信号", () => {
+    const descriptor = createDescriptor(["field"])
+    const model = createFieldModel(descriptor)
+
+    if (false) {
+      // @ts-expect-error snapshot 是只读信号，不能直接写入
+      model.snapshot.value = {
+        visible: false,
+        disabled: true,
+        readonly: true,
+        required: true,
+        label: "",
+        rules: [],
+        placeholder: "updated",
+        componentProps: {},
+      }
+    }
+
+    expect(model.snapshot.value.visible).toBe(true)
   })
 
   it("resource scope dispose 后应保留 RuntimeNode 上的 FieldModel 快照", () => {
@@ -127,9 +176,7 @@ describe("updateFieldModel", () => {
       componentProps: { size: "large" },
     })
   })
-})
 
-describe("updateFieldModel", () => {
   it("应该保留 dependencies 解析得到的 false 和空字符串", () => {
     const descriptor = createDescriptor(["field"], {
       visible: true,
@@ -194,5 +241,50 @@ describe("updateFieldModel", () => {
     expect(effectRuns).toBe(1)
 
     dispose()
+  })
+})
+
+describe("createFieldModelFromRuntimeState", () => {
+  it("应该从 runtimeState 派生兼容 facade", () => {
+    const schema = createTestSchema({ label: "用户名" })
+    const state = createFieldRuntimeState({
+      nodeId: 1,
+      key: "field-1",
+      descriptor: {
+        name: "username" as any,
+        schema,
+      },
+    })
+    const model = createFieldModelFromRuntimeState(state)
+
+    expect(model.snapshot.value.label).toBe("用户名")
+    expect(model.snapshot.value.visible).toBe(true)
+
+    setFieldStaticSchema(state, {
+      name: "username" as any,
+      schema: {
+        ...schema,
+        label: "邮箱",
+        visible: false,
+      },
+    })
+
+    expect(model.snapshot.value.label).toBe("邮箱")
+    expect(model.snapshot.value.visible).toBe(false)
+
+    setFieldDynamicOverrides(
+      state,
+      {
+        visible: true,
+        placeholder: "",
+      },
+      {
+        source: "dependencies",
+        triggerFields: [["profile", "enabled"] as any],
+      }
+    )
+
+    expect(model.snapshot.value.visible).toBe(true)
+    expect(model.snapshot.value.placeholder).toBe("")
   })
 })

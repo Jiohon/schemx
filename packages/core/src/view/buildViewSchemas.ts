@@ -2,6 +2,10 @@
  * buildViewSchemas - 渲染 schema 构建算法。
  *
  * 从 RuntimeNode Tree 生成处理后的 SchemxField 风格 schema。
+ *
+ * @remarks
+ * Fine-grained Signal Graph 主路径应读取 `root.viewState.viewSchemas`。
+ * 本函数仅作为未安装 view graph 时的兼容 fallback 和测试工具。
  * 核心原则：
  * - dependency RuntimeNode 透明展开
  * - group 保留 children 结构
@@ -53,8 +57,6 @@ export function buildViewSchemas<TValues extends Values = Values>(
     return []
   }
 
-  // TODO: 按脏 RuntimeNode 缓存 ViewSchema，复用未变化字段的构建结果；
-  // node 结构变化时需要使受影响的 group 和 dependency 子树缓存失效。
   return buildRuntimeNodeChildren<TValues>(getChildRuntimeNodes(root), 1)
 }
 
