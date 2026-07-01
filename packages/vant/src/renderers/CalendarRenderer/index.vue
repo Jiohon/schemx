@@ -15,6 +15,7 @@
       v-bind="calendarProps"
       v-model:show="showCalendar"
       @confirm="handleConfirm"
+      @close="handleClose"
     />
   </div>
 </template>
@@ -86,6 +87,7 @@
     const {
       value: _value,
       onChange: _onChange,
+      onBlur: _onBlur,
       onConfirm: _onConfirm,
       className: _className,
       popupClassName: _popupClassName,
@@ -106,6 +108,7 @@
     const {
       value: _attrsValue,
       onChange: _attrsOnChange,
+      onBlur: _attrsOnBlur,
       onConfirm: _attrsOnConfirm,
       className: _attrsClassName,
       popupClassName: _attrsPopupClassName,
@@ -169,5 +172,10 @@
   const handleClick = (): void => {
     if (isReadonly.value || props.disabled) return
     showCalendar.value = true
+  }
+
+  /** 弹窗关闭（确认/遮罩）统一出口，触发 blur 校验 */
+  const handleClose = (): void => {
+    props.onBlur?.()
   }
 </script>

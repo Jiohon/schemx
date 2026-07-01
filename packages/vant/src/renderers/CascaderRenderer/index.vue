@@ -92,6 +92,7 @@
     const {
       value: _value,
       onChange: _onChange,
+      onBlur: _onBlur,
       onConfirm: _onConfirm,
       className: _className,
       readonlyPlaceholder: _readonlyPlaceholder,
@@ -112,6 +113,7 @@
     const {
       value: _attrsValue,
       onChange: _attrsOnChange,
+      onBlur: _attrsOnBlur,
       onConfirm: _attrsOnConfirm,
       className: _attrsClassName,
       readonly: _attrsReadonly,
@@ -210,6 +212,6 @@
 
   const handleClose = (): void => {
     showCascader.value = false
-    // onClose 由 watch(showCascader) 统一触发，避免重复
+    props.onBlur?.()
   }
 </script>

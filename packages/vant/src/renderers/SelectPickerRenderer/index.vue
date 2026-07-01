@@ -133,6 +133,7 @@
     const {
       value: _value,
       onChange: _onChange,
+      onBlur: _onBlur,
       onConfirm: _onConfirm,
       className: _className,
       popupClassName: _popupClassName,
@@ -257,6 +258,7 @@
   const handleClose = (): void => {
     pendingValue.value = undefined
     showPicker.value = false
+    props.onBlur?.()
   }
 
   const handleConfirm = (): void => {

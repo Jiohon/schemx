@@ -15,6 +15,7 @@
       :class="classNames('schemx-picker-popup-renderer', props.popupClassName)"
       v-bind="popupProps"
       safe-area-inset-bottom
+      @close="handleClose"
     >
       <Picker
         :model-value="modelValue"
@@ -91,6 +92,7 @@
     const {
       value: _value,
       onChange: _onChange,
+      onBlur: _onBlur,
       onConfirm: _onConfirm,
       className: _className,
       popupClassName: _popupClassName,
@@ -115,6 +117,7 @@
     const {
       value: _attrsValue,
       onChange: _attrsOnChange,
+      onBlur: _attrsOnBlur,
       onConfirm: _attrsOnConfirm,
       className: _attrsClassName,
       popupClassName: _attrsPopupClassName,
@@ -210,5 +213,10 @@
   const handleClick = (): void => {
     if (props.readonly || props.disabled) return
     showPicker.value = true
+  }
+
+  /** 弹窗关闭（确认/取消/遮罩）统一出口，触发 blur 校验 */
+  const handleClose = (): void => {
+    props.onBlur?.()
   }
 </script>

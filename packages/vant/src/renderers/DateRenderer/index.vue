@@ -16,6 +16,7 @@
       :class="classNames('schemx-date-popup-renderer', props.popupClassName)"
       v-bind="popupProps"
       safe-area-inset-bottom
+      @close="handleClose"
     >
       <DatePicker
         :model-value="modelValue"
@@ -87,6 +88,7 @@
     const {
       value: _value,
       onChange: _onChange,
+      onBlur: _onBlur,
       onConfirm: _onConfirm,
       onClose: _onClose,
       format: _format,
@@ -106,6 +108,7 @@
     const {
       value: _attrsValue,
       onChange: _attrsOnChange,
+      onBlur: _attrsOnBlur,
       onConfirm: _attrsOnConfirm,
       onClose: _attrsOnClose,
       format: _attrsFormat,
@@ -180,6 +183,11 @@
 
   const handleCancel = (): void => {
     showPicker.value = false
+  }
+
+  /** 弹窗关闭（确认/取消/遮罩）统一出口，触发 blur 校验 */
+  const handleClose = (): void => {
+    props.onBlur?.()
   }
 
   const handleClick = (): void => {
