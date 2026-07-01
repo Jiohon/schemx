@@ -342,14 +342,20 @@ class CreateForm<
 
     this.nodeResources = createRuntimeResources<TValues>()
 
+    // defaultProps 必须在 compiler options 与 context 间共享同一引用：
+    // applySchemas 走 compiler fallback 时读取的是 compileOptions.defaultProps，
+    // updateDefaultProps 直接 mutate context.defaultProps，若两者是不同对象，
+    // 变更将无法被编译器感知，reconcile 后字段值不变、effect 也不会重算。
+    const defaultProps = pick(restOptions, defaultConfigKey)
+
     this.compile = createCompile({
-      defaultProps: pick(restOptions, defaultConfigKey),
+      defaultProps,
       formInstance: this.getFormInstance(),
     })
 
     // dependency renderer 运行时需要回写 node，因此上下文在首次编译前准备好。
     this.context = {
-      defaultProps: pick(restOptions, defaultConfigKey),
+      defaultProps,
       instance: this.getFormInstance(),
       formApi: this.getFormApi(),
       compile: this.compile,
