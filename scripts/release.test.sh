@@ -748,31 +748,85 @@ test_cancelled_selector_exits_without_lifecycle_failure() {
   assert_log_not_contains "pnpm --dir packages/vue publish"
 }
 
-test_help_lists_channel_commands_without_package_shortcuts
-test_package_scripts_keep_single_publish_entry
-test_release_channel_choices_put_latest_last
-test_release_test_runs_only_release_script_tests
-test_latest_publish_is_main_only
-test_publish_without_npm_auth_shows_clear_message
-test_publish_accepts_npm_token_auth
-test_publish_without_github_auth_stops_before_publish
-test_publish_existing_version_suggests_release_version
-test_alpha_publish_uses_alpha_tag_and_restores_version
-test_publish_checks_only_target_dependency_chain
-test_release_output_uses_colors_when_forced
-test_release_output_omits_colors_without_tty
-test_pack_accepts_target
-test_latest_publish_patch_bumps_commits_and_publishes_target
-test_latest_publish_patch_all_bumps_and_commits_all_packages
-test_latest_publish_explicit_version_requires_single_target
-test_publish_without_args_uses_channel_target_and_version_env_selection
-test_selector_does_not_print_confirmation_line_after_enter
-test_latest_publish_tags_and_pushes_after_publish
-test_latest_publish_all_creates_package_scoped_tags_and_releases
-test_selector_rejects_unknown_environment_target
-test_selector_requires_tty_or_automation_target
-test_selector_rejects_unknown_channel
-test_selector_accepts_dev_channel
-test_cancelled_selector_exits_without_lifecycle_failure
+release_test_name() {
+  local name="$1"
+  name="${name#test_}"
+  printf '%s' "${name//_/ }"
+}
 
-printf 'release script tests passed\n'
+now_ms() {
+  node -e 'process.stdout.write(String(Date.now()))'
+}
+
+format_duration() {
+  local ms="$1"
+  local centiseconds
+  local seconds
+  local fraction
+
+  centiseconds=$(((ms + 5) / 10))
+  seconds=$((centiseconds / 100))
+  fraction=$((centiseconds % 100))
+
+  if [[ "$fraction" -eq 0 ]]; then
+    printf '%ss' "$seconds"
+  elif [[ $((fraction % 10)) -eq 0 ]]; then
+    printf '%s.%ss' "$seconds" "$((fraction / 10))"
+  else
+    printf '%s.%02ds' "$seconds" "$fraction"
+  fi
+}
+
+run_release_test() {
+  local index="$1"
+  local total="$2"
+  local test_name="$3"
+  local label
+  local started_at
+  local elapsed
+
+  label="$(release_test_name "$test_name")"
+  started_at="$(now_ms)"
+  printf '\n◆ release:test [%02d/%02d] RUNNING %s\n' "$index" "$total" "$label" >&2
+  "$test_name"
+  elapsed=$(($(now_ms) - started_at))
+  printf '✓ release:test [%02d/%02d] SUCCESS %s (%s)\n' "$index" "$total" "$label" "$(format_duration "$elapsed")" >&2
+}
+
+RELEASE_TESTS=(
+  test_help_lists_channel_commands_without_package_shortcuts
+  test_package_scripts_keep_single_publish_entry
+  test_release_channel_choices_put_latest_last
+  test_release_test_runs_only_release_script_tests
+  test_latest_publish_is_main_only
+  test_publish_without_npm_auth_shows_clear_message
+  test_publish_accepts_npm_token_auth
+  test_publish_without_github_auth_stops_before_publish
+  test_publish_existing_version_suggests_release_version
+  test_alpha_publish_uses_alpha_tag_and_restores_version
+  test_publish_checks_only_target_dependency_chain
+  test_release_output_uses_colors_when_forced
+  test_release_output_omits_colors_without_tty
+  test_pack_accepts_target
+  test_latest_publish_patch_bumps_commits_and_publishes_target
+  test_latest_publish_patch_all_bumps_and_commits_all_packages
+  test_latest_publish_explicit_version_requires_single_target
+  test_publish_without_args_uses_channel_target_and_version_env_selection
+  test_selector_does_not_print_confirmation_line_after_enter
+  test_latest_publish_tags_and_pushes_after_publish
+  test_latest_publish_all_creates_package_scoped_tags_and_releases
+  test_selector_rejects_unknown_environment_target
+  test_selector_requires_tty_or_automation_target
+  test_selector_rejects_unknown_channel
+  test_selector_accepts_dev_channel
+  test_cancelled_selector_exits_without_lifecycle_failure
+)
+
+total_release_tests="${#RELEASE_TESTS[@]}"
+release_tests_started_at="$(now_ms)"
+for i in "${!RELEASE_TESTS[@]}"; do
+  run_release_test "$((i + 1))" "$total_release_tests" "${RELEASE_TESTS[$i]}"
+done
+
+release_tests_elapsed=$(($(now_ms) - release_tests_started_at))
+printf '\n✓ release:test SUCCESS %d/%d passed (%s)\n' "$total_release_tests" "$total_release_tests" "$(format_duration "$release_tests_elapsed")"
