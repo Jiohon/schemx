@@ -27,12 +27,12 @@ describe("ViewGraph 性能边界 (US3)", () => {
     const state1 = createFieldRuntimeState({
       nodeId: 1,
       key: "field-a",
-      descriptor: { name: "fieldA" as any, schema: schema1 },
+      descriptor: { name: "fieldA" as any, staticSchema: schema1 },
     })
     const state2 = createFieldRuntimeState({
       nodeId: 2,
       key: "field-b",
-      descriptor: { name: "fieldB" as any, schema: schema2 },
+      descriptor: { name: "fieldB" as any, staticSchema: schema2 },
     })
 
     // 记录初始 viewSchema
@@ -62,7 +62,7 @@ describe("ViewGraph 性能边界 (US3)", () => {
     const state = createFieldRuntimeState({
       nodeId: 1,
       key: "field-1",
-      descriptor: { name: "field" as any, schema },
+      descriptor: { name: "field" as any, staticSchema: schema },
     })
 
     // 多次写入
@@ -83,7 +83,7 @@ describe("ViewGraph 性能边界 (US3)", () => {
     const state = createFieldRuntimeState({
       nodeId: 1,
       key: "field-1",
-      descriptor: { name: "field" as any, schema },
+      descriptor: { name: "field" as any, staticSchema: schema },
     })
 
     const versions: number[] = []

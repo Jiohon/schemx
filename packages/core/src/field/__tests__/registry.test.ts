@@ -10,15 +10,17 @@ import {
   createTestFieldRuntimeNode,
   createTestRootRuntimeNode,
 } from "../../node/__tests__/runtimeNodeTestUtils"
-import { createFieldModel } from "../model"
+import { createFieldRuntimeState } from "../runtimeState"
 import { createFieldRegistry } from "../registry"
 
-import type { FieldDescriptor } from "../../descriptor/descriptor"
+import type { FieldDescriptor } from "../../descriptor/types"
 
 const createDescriptor = (name: string): FieldDescriptor => ({
   type: "field",
   key: `field-${name}`,
-  schema: {
+  name,
+  componentType: "input",
+  staticSchema: {
     name,
     componentType: "input",
   },
@@ -32,9 +34,13 @@ const createEntry = (name: string) => {
     parent: root,
     descriptor,
   })
-  const model = createFieldModel(descriptor)
+  const runtimeState = createFieldRuntimeState({
+    nodeId: node.id,
+    key: node.key,
+    descriptor: { name: descriptor.name, staticSchema: descriptor.staticSchema },
+  })
 
-  return { name, node, descriptor, model }
+  return { name, node, descriptor, runtimeState }
 }
 
 describe("createFieldRegistry", () => {
@@ -50,7 +56,20 @@ describe("createFieldRegistry", () => {
 
     registry.register(entry)
 
-    expect(registry.get("field1" as any)).toBe(entry)
+    expect(registry.get("field1" as any)?.node).toBe(entry.node)
+  })
+
+  it("Registry entry 只保存字段索引和 RuntimeNode", () => {
+    const registry = createFieldRegistry()
+    const entry = createEntry("field1")
+
+    registry.register(entry)
+
+    expect(registry.get("field1" as any)).toEqual({
+      name: "field1",
+      node: entry.node,
+    })
+    expect("runtimeState" in registry.get("field1" as any)!).toBe(false)
   })
 
   it("应该支持嵌套与字符串 name path 查询", () => {
@@ -59,7 +78,7 @@ describe("createFieldRegistry", () => {
 
     registry.register(entry)
 
-    expect(registry.get("user.name" as any)).toBe(entry)
+    expect(registry.get("user.name" as any)?.node).toBe(entry.node)
     expect(registry.get("not-exist" as any)).toBeUndefined()
   })
 })
@@ -73,7 +92,10 @@ describe("list and unregister", () => {
     registry.register(entry1)
     registry.register(entry2)
 
-    expect(registry.list()).toEqual([entry1, entry2])
+    expect(registry.list()).toEqual([
+      { name: "field1", node: entry1.node },
+      { name: "field2", node: entry2.node },
+    ])
   })
 
   it("应该按 name 注销字段 entry", () => {
@@ -106,6 +128,9 @@ describe("list and unregister", () => {
     registry.register(newEntry)
     registry.unregister("user.name" as any, oldEntry.node)
 
-    expect(registry.get("user.name" as any)).toBe(newEntry)
+    expect(registry.get("user.name" as any)).toEqual({
+      name: "user.name",
+      node: newEntry.node,
+    })
   })
 })

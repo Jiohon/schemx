@@ -1,21 +1,30 @@
 import { describe, expect, it, vi } from "vitest"
 
 import createForm from "../../createForm"
+import { createRuntimeResources } from "../../node/resources"
+import { createRootRuntimeNode } from "../../node/runtimeNode"
+import { createScope } from "../../node/scope"
 import { createSignal } from "../../reactivity"
-import { createViewRevision } from "../viewRevision"
+import { createRootRuntimeViewState } from "../createViewState"
 import { subscribeViewSchemas } from "../subscribeViewSchemas"
-import { createTestRootRuntimeNode } from "../../node/__tests__/runtimeNodeTestUtils"
-import { createRootViewState } from "../viewGraph"
 
-import type { RootRuntimeNode } from "../../node"
+import type { DescribedRuntimeNode, RootRuntimeNode } from "../../node"
+import type { RuntimeNodeResourceContext } from "../../node/types"
 import type { SchemxViewSchema } from "../types"
 
-function createTestRootWithViewGraph(): RootRuntimeNode {
-  const root = createTestRootRuntimeNode()
-  root.childrenState = { children: createSignal([]) }
-  root.viewState = createRootViewState(root.childrenState.children)
+function createRootWithViewState(): {
+  root: RootRuntimeNode
+  resources: RuntimeNodeResourceContext
+  children: ReturnType<typeof createSignal<readonly DescribedRuntimeNode[]>>
+} {
+  const root = createRootRuntimeNode({ scope: createScope() })
+  const resources = createRuntimeResources()
+  const children = createSignal<readonly DescribedRuntimeNode[]>([])
 
-  return root
+  resources.childrenStates.set(root.id, { children })
+  createRootRuntimeViewState(root, resources)
+
+  return { root, resources, children }
 }
 
 describe("subscribeViewSchemas", () => {
@@ -88,11 +97,10 @@ describe("subscribeViewSchemas", () => {
   })
 
   it("应该返回取消订阅函数并立即回调", async () => {
-    const root = createTestRootWithViewGraph()
-    const revision = createViewRevision()
+    const { root, resources } = createRootWithViewState()
     const onChange = vi.fn()
 
-    const unsubscribe = subscribeViewSchemas(root, revision, onChange)
+    const unsubscribe = subscribeViewSchemas(root, resources, onChange)
 
     expect(typeof unsubscribe).toBe("function")
     expect(onChange).toHaveBeenCalled()
@@ -102,31 +110,29 @@ describe("subscribeViewSchemas", () => {
 
   it("取消订阅后不再回调", async () => {
     vi.useFakeTimers()
-    const root = createTestRootWithViewGraph()
-    const revision = createViewRevision()
+    const { root, resources, children } = createRootWithViewState()
     const onChange = vi.fn()
 
-    const unsubscribe = subscribeViewSchemas(root, revision, onChange)
+    const unsubscribe = subscribeViewSchemas(root, resources, onChange)
     const callCountAfterFirst = onChange.mock.calls.length
 
     unsubscribe()
-    revision.bump()
-    vi.advanceTimersByTime(20) // 等待 debounce
+    children.value = [...children.value]
+    vi.advanceTimersByTime(20)
 
     expect(onChange).toHaveBeenCalledTimes(callCountAfterFirst)
     vi.useRealTimers()
   })
 
   it("onChange 回调抛出错误不应中断订阅", async () => {
-    const root = createTestRootWithViewGraph()
-    const revision = createViewRevision()
+    const { root, resources } = createRootWithViewState()
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
     const onChange = vi.fn(() => {
       throw new Error("onChange error")
     })
 
     expect(() => {
-      subscribeViewSchemas(root, revision, onChange)
+      subscribeViewSchemas(root, resources, onChange)
     }).not.toThrow()
 
     errorSpy.mockRestore()
@@ -149,7 +155,7 @@ describe("subscribeViewSchemas", () => {
 
     await Promise.resolve()
     expect(onChange).toHaveBeenCalled()
-    expect(onChange.mock.calls.some(call => call[0].length > 0)).toBe(true)
+    expect(onChange.mock.calls.some((call) => call[0].length > 0)).toBe(true)
 
     form.destroy()
     vi.advanceTimersByTime(20)

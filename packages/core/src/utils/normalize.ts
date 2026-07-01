@@ -84,7 +84,8 @@ function getDependencyFieldMissing<T extends Values>(
 
   if (!isLegalComponentType(schema)) missing.push("componentType")
 
-  if (!Object.hasOwn(schema, "to") || !Array.isArray(schema.to)) missing.push("to")
+  if (!Object.hasOwn(schema, "to") || !Array.isArray(schema.to) || schema.to.length === 0)
+    missing.push("to")
 
   if (typeof schema.renderer !== "function") missing.push("renderer")
 
@@ -138,6 +139,7 @@ export function normalizeSchemas<T extends Values = Values>(
 ): SchemxField<T>[] {
   const result: SchemxField<T>[] = []
   const missings: string[] = []
+  let changed = false
 
   for (let i = 0; i < schemas.length; i++) {
     const schema = schemas[i]
@@ -148,19 +150,26 @@ export function normalizeSchemas<T extends Values = Values>(
 
       if (missing.length > 0) {
         missings.push(buildWarnMessage(i, schema, missing))
+        changed = true
         continue
       }
 
-      // 递归过滤 children
-      result.push({
-        ...schema,
-        children: normalizeSchemas<T>(schema.children as SchemxField<T>[]),
-      })
+      // 递归过滤 children；children 引用不变时保留原 group 引用，
+      // 让下游引用缓存能在 schemas 未变时命中。
+      const normalizedChildren = normalizeSchemas<T>(schema.children as SchemxField<T>[])
+
+      if (normalizedChildren === schema.children) {
+        result.push(schema)
+      } else {
+        result.push({ ...schema, children: normalizedChildren })
+        changed = true
+      }
     } else if (isDependencySchema(schema)) {
       missing = getDependencyFieldMissing(schema)
 
       if (missing.length > 0) {
         missings.push(buildWarnMessage(i, schema, missing))
+        changed = true
         continue
       }
 
@@ -170,14 +179,19 @@ export function normalizeSchemas<T extends Values = Values>(
 
       if (missing.length > 0) {
         missings.push(buildWarnMessage(i, schema, missing))
+        changed = true
         continue
       }
 
       result.push(schema)
+    } else {
+      // 未知 schema 类型，跳过
+      changed = true
     }
   }
 
   if (missings.length) console.warn(missings.join("\n"))
 
-  return result
+  // 无任何元素被过滤或重建时返回原数组引用，保证引用稳定。
+  return changed ? result : schemas
 }

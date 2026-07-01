@@ -120,6 +120,31 @@ describe("flush", () => {
 
     expect(executed).toBe(true)
   })
+
+  it("应该继续执行 flush 期间新调度的任务", async () => {
+    const scheduler = createScheduler()
+    const order: string[] = []
+
+    scheduler.schedule({
+      id: "task-1",
+      priority: "normal",
+      run: () => {
+        order.push("task-1")
+        scheduler.schedule({
+          id: "task-2",
+          priority: "post",
+          run: () => {
+            order.push("task-2")
+          },
+        })
+      },
+    })
+
+    const result = await scheduler.whenIdle(50)
+
+    expect(result).toBe(true)
+    expect(order).toEqual(["task-1", "task-2"])
+  })
 })
 
 describe("whenIdle", () => {

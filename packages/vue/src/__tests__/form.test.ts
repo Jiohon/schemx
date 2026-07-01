@@ -13,6 +13,22 @@ const InputRenderer = defineComponent({
   },
 })
 
+const SelectorRenderer = defineComponent({
+  name: "SelectorRenderer",
+  props: {
+    value: String,
+    onChange: Function,
+  },
+  setup(props) {
+    return () =>
+      h("button", {
+        "data-testid": "selector-renderer",
+        type: "button",
+        onClick: () => props.onChange?.("express"),
+      })
+  },
+})
+
 describe("SchemxForm 动态 schemas", () => {
   it("外部 schemas prop 更新后同步 ViewSchemas", async () => {
     const rendererRegistry = createRendererRegistry()
@@ -43,6 +59,115 @@ describe("SchemxForm 动态 schemas", () => {
 
     expect(wrapper.text()).toContain("姓名")
     expect(wrapper.text()).toContain("年龄")
+
+    wrapper.unmount()
+  })
+
+  it("dependency 切换到嵌套 group 分支后渲染新增 children", async () => {
+    const rendererRegistry = createRendererRegistry()
+    rendererRegistry.register("selector", markRaw(SelectorRenderer))
+    rendererRegistry.register("stepper", markRaw(InputRenderer))
+    rendererRegistry.register("slider", markRaw(InputRenderer))
+    let dependencyCalls = 0
+
+    const wrapper = mount(SchemxForm, {
+      props: {
+        rendererRegistry,
+        initialValues: { orderType: "standard" },
+        schemas: [
+          {
+            name: "orderType",
+            label: "订单类型",
+            componentType: "selector",
+          },
+          {
+            componentType: "dependency",
+            to: ["orderType"],
+            renderer: (values: any) => {
+              dependencyCalls += 1
+
+              if (values.orderType === "standard") {
+                return [
+                  {
+                    label: "标准订单配置",
+                    componentType: "group",
+                    children: [
+                      {
+                        name: "quantity",
+                        label: "数量",
+                        componentType: "stepper",
+                      },
+                    ],
+                  },
+                ]
+              }
+
+              if (values.orderType !== "express") {
+                return []
+              }
+
+              return [
+                {
+                  label: "加急订单配置",
+                  componentType: "group",
+                  children: [
+                    {
+                      name: "expressLevel",
+                      label: "加急等级",
+                      componentType: "selector",
+                      initialValue: "priority",
+                    },
+                    {
+                      componentType: "dependency",
+                      to: ["expressLevel"],
+                      renderer: (expressValues: any) => {
+                        if (expressValues.expressLevel !== "priority") {
+                          return []
+                        }
+
+                        return [
+                          {
+                            name: "expressFee",
+                            label: "加急费用",
+                            componentType: "slider",
+                          },
+                        ]
+                      },
+                    },
+                  ],
+                },
+              ]
+            },
+          },
+        ],
+      },
+    })
+
+    await nextTick()
+    await (wrapper.vm as any).waitForDependencies()
+    await new Promise((resolve) => setTimeout(resolve, 30))
+
+    expect((wrapper.vm as any).getFieldValue("orderType")).toBe("standard")
+    expect(dependencyCalls).toBeGreaterThan(0)
+    expect((wrapper.vm as any).getViewSchemas()).toMatchObject([
+      { name: "orderType" },
+      {
+        componentType: "group",
+        label: "标准订单配置",
+        children: [{ name: "quantity" }],
+      },
+    ])
+    expect(wrapper.text()).toContain("标准订单配置")
+    expect(wrapper.text()).toContain("数量")
+
+    await wrapper.get('[data-testid="selector-renderer"]').trigger("click")
+    await (wrapper.vm as any).waitForDependencies()
+    await new Promise((resolve) => setTimeout(resolve, 30))
+    await nextTick()
+
+    expect(wrapper.text()).toContain("加急订单配置")
+    expect(wrapper.text()).toContain("加急等级")
+    expect(wrapper.text()).toContain("加急费用")
 
     wrapper.unmount()
   })

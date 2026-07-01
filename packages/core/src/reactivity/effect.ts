@@ -18,14 +18,42 @@ import type { DebounceOptions } from "es-toolkit"
 export type SignalEffectDispose = () => void
 
 /**
+ * reactive effect 的配置。
+ */
+export interface SignalEffectOptions {
+  /**
+   * 是否只调用一次。
+   *
+   * 为 `true` 时，首次执行后会自动释放该 effect，后续 signal 变化将不再触发。
+   *
+   * @default false
+   */
+  once?: boolean
+}
+
+/**
  * 创建 reactive effect，但不暴露具体 reactivity 后端。
  *
  * @param fn - effect 回调，执行期间读取的 signal 会被追踪。
+ * @param options - reactive effect 的配置。
  *
  * @returns 释放该 effect 的函数。
  */
-export function createSignalEffect(fn: () => void): SignalEffectDispose {
-  return effect(fn)
+export function createSignalEffect(
+  fn: () => void,
+  options: SignalEffectOptions = {}
+): SignalEffectDispose {
+  if (!options.once) {
+    return effect(fn)
+  }
+
+  let dispose: SignalEffectDispose | undefined
+  dispose = effect(() => {
+    fn()
+    dispose?.()
+  })
+
+  return () => dispose?.()
 }
 
 /**
@@ -47,6 +75,16 @@ export interface DebouncedSignalEffectOptions {
    * @default ["trailing"]
    */
   edges?: DebounceOptions["edges"]
+
+  /**
+   * 是否只调用一次副作用。
+   *
+   * 为 `true` 时，`run` 首次执行（无论立即还是 debounce 后）后会自动释放
+   * effect 并取消后续待执行回调，signal 变化将不再触发。默认为 `false`。
+   *
+   * @default false
+   */
+  once?: boolean
 }
 
 /**
@@ -74,15 +112,27 @@ export function createDebouncedSignalEffect<T>(
   wait = 16,
   options: DebouncedSignalEffectOptions = {}
 ): SignalEffectDispose {
-  const debouncedRun = debounce(run, wait, { edges: options.edges })
   let initialized = false
+
+  // 用包装后的 run 创建 debounce，使得无论是立即执行还是 debounce 回调，
+  // 在 `once` 模式下首次执行后都能通过 teardown 释放 effect 并取消后续
+  // 待执行回调。
+  const wrappedRun = (value: T) => {
+    run(value)
+
+    if (options.once) {
+      teardown()
+    }
+  }
+
+  const debouncedRun = debounce(wrappedRun, wait, { edges: options.edges })
 
   const disposeEffect = createSignalEffect(() => {
     const value = collect()
 
     if (!initialized && options.immediate) {
       initialized = true
-      run(value)
+      wrappedRun(value)
 
       return
     }
@@ -91,8 +141,24 @@ export function createDebouncedSignalEffect<T>(
     debouncedRun(value)
   })
 
-  return () => {
+  const teardown = () => {
     disposeEffect()
     debouncedRun.cancel()
   }
+
+  return teardown
+}
+
+/**
+ * 创建只调用一次的 reactive effect。
+ *
+ * 等价于 `createSignalEffect(fn, { once: true })`：首次执行后会自动释放该
+ * effect，后续 signal 变化将不再触发。
+ *
+ * @param fn - effect 回调，执行期间读取的 signal 会被追踪。
+ *
+ * @returns 释放该 effect 的函数。
+ */
+export function createOnceSignalEffect(fn: () => void): SignalEffectDispose {
+  return createSignalEffect(fn, { once: true })
 }

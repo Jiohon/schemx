@@ -8,9 +8,10 @@
  */
 
 import { createComputed } from "../reactivity/computed"
+import { maybeUseSchemxContext } from "../schemxContext"
 
 import type { FieldRuntimeDiagnostics } from "../field/runtimeState"
-import type { DescribedRuntimeNode } from "../node"
+import type { DescribedRuntimeNode, RuntimeNodeResourceContext } from "../node"
 import type { ComputedSignal } from "../reactivity/computed"
 import type { Signal } from "../reactivity/signal"
 import type {
@@ -57,6 +58,12 @@ export interface RootViewState<TValues extends Values = Values> {
   /** 顶层 ViewSchemas computed */
   readonly viewSchemas: ComputedSignal<readonly SchemxViewSchema<TValues>[]>
 }
+
+export type RuntimeViewState<TValues extends Values = Values> =
+  | FieldNodeViewState<TValues>
+  | GroupViewState<TValues>
+  | DependencyViewState<TValues>
+  | RootViewState<TValues>
 
 /**
  * 创建字段节点视图状态。
@@ -139,13 +146,14 @@ export function createDependencyViewState<TValues extends Values = Values>(
  * @returns children ViewSchemas computed
  */
 export function createChildrenViewState<TValues extends Values = Values>(
-  childrenSignal: Signal<readonly DescribedRuntimeNode<TValues>[]>
+  childrenSignal: Signal<readonly DescribedRuntimeNode<TValues>[]>,
+  resources?: RuntimeNodeResourceContext<TValues>
 ): ComputedSignal<readonly SchemxViewSchema<TValues>[]> {
   return createComputed(() => {
     const result: SchemxViewSchema<TValues>[] = []
 
     for (const child of childrenSignal.value) {
-      const view = readRuntimeNodeView(child)
+      const view = readRuntimeNodeView(child, resources)
 
       if (view == null) {
         continue
@@ -169,25 +177,41 @@ export function createChildrenViewState<TValues extends Values = Values>(
  * @returns 对应的 ViewSchema、ViewSchema 列表或 null
  */
 export function readRuntimeNodeView<TValues extends Values = Values>(
-  node: DescribedRuntimeNode<TValues>
+  node: DescribedRuntimeNode<TValues>,
+  resources = maybeUseSchemxContext<TValues>()?.nodeResources
 ): SchemxViewSchema<TValues> | readonly SchemxViewSchema<TValues>[] | null {
   if (node.disposed.value) {
     return null
   }
 
+  if (!resources) {
+    return null
+  }
+
+  const viewState = resources.viewStates.get(node.id)
+
   if (node.type === "field") {
-    return node.viewState?.view.value ?? null
+    return hasNodeView(viewState) ? viewState.view.value ?? null : null
   }
 
   if (node.type === "group") {
-    return node.viewState?.view.value ?? null
+    return hasNodeView(viewState) ? viewState.view.value ?? null : null
   }
 
   if (node.type === "dependency") {
-    return node.viewState?.view.value ?? []
+    return hasNodeView(viewState) ? viewState.view.value ?? [] : []
   }
 
   return null
+}
+
+function hasNodeView<TValues extends Values>(
+  viewState: RuntimeViewState<TValues> | undefined
+): viewState is
+  | FieldNodeViewState<TValues>
+  | GroupViewState<TValues>
+  | DependencyViewState<TValues> {
+  return viewState != null && "view" in viewState
 }
 
 /**
@@ -199,10 +223,11 @@ export function readRuntimeNodeView<TValues extends Values = Values>(
  * @returns root 节点视图状态
  */
 export function createRootViewState<TValues extends Values = Values>(
-  childrenSignal: Signal<readonly DescribedRuntimeNode<TValues>[]>
+  childrenSignal: Signal<readonly DescribedRuntimeNode<TValues>[]>,
+  resources?: RuntimeNodeResourceContext<TValues>
 ): RootViewState<TValues> {
   return {
-    viewSchemas: createChildrenViewState(childrenSignal),
+    viewSchemas: createChildrenViewState(childrenSignal, resources),
   }
 }
 
@@ -225,8 +250,8 @@ function buildFieldDebugMeta<TValues extends Values = Values>(
   return {
     runtimeNodeId: nodeId ?? 0,
     runtimeNodeType: "field",
-    hasFieldModel: true,
-    hasDependencySlot: false,
+    hasRuntimeState: true,
+    hasDependencyEffect: false,
     lastUpdatedBy: diagnostics?.lastUpdatedBy,
     overriddenKeys: diagnostics?.overriddenKeys,
     error: diagnostics?.error?.message ?? null,
@@ -236,14 +261,14 @@ function buildFieldDebugMeta<TValues extends Values = Values>(
 function buildNodeDebugMeta(
   nodeId: number | undefined,
   runtimeNodeType: string,
-  hasFieldModel: boolean,
-  hasDependencySlot: boolean
+  hasRuntimeState: boolean,
+  hasDependencyEffect: boolean
 ): Readonly<SchemxViewDebugMeta> {
   return {
     runtimeNodeId: nodeId ?? 0,
     runtimeNodeType,
-    hasFieldModel,
-    hasDependencySlot,
+    hasRuntimeState,
+    hasDependencyEffect,
   }
 }
 

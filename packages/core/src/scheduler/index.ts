@@ -7,9 +7,9 @@
  */
 
 export {
-  createAsyncComputation,
-  type AsyncComputation,
-  type AsyncComputationOptions,
-} from "./asyncComputation"
+  createAbortableTaskRunner,
+  type AbortableTaskRunner,
+  type AbortableTaskRunnerOptions,
+} from "./abortableTaskRunner"
 
 export { createScheduler, type Scheduler, type ScheduledTask } from "./scheduler"

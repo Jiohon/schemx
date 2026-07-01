@@ -1,7 +1,7 @@
 /**
  * Field dependencies - 字段级动态呈现态派生。
  *
- * 根据 descriptor.dependencies 监听 triggerFields，并把解析结果写入
+ * 根据 descriptor.dynamicProps 监听 triggerFields，并把解析结果写入
  * FieldRuntimeState.dynamicOverrides。
  * 该模块不修改 descriptor/schema。
  *
@@ -9,12 +9,13 @@
  */
 
 import { createSignalEffect } from "../reactivity"
+import { createAbortableTaskRunner } from "../scheduler/abortableTaskRunner"
 
 import { type FieldRuntimeState, setFieldDynamicOverrides } from "./runtimeState"
 
-import type { SchemxFormContext } from "../createForm"
 import type { FieldDescriptor } from "../descriptor"
 import type { Scope } from "../node"
+import type { SchemxContext } from "../schemxContext"
 import type {
   SchemxConditionFn,
   SchemxDependencies,
@@ -51,6 +52,10 @@ export type DependenciesResolvedProps<TValues extends Values> = Partial<
  */
 export interface CreateDependenciesEffectOptions<TValues extends Values = Values> {
   /**
+   * 当前 form 实例运行时上下文。
+   */
+  context: SchemxContext<TValues>
+  /**
    * 字段 descriptor，提供静态 schema、validation 和 dependencies 配置。
    */
   descriptor: Readonly<FieldDescriptor<TValues>>
@@ -58,10 +63,6 @@ export interface CreateDependenciesEffectOptions<TValues extends Values = Values
    * 字段运行态（Signal Graph 阶段），dependencies 结果会写入 dynamicOverrides。
    */
   runtimeState: FieldRuntimeState<TValues>
-  /**
-   * form 内部运行时上下文。
-   */
-  context: SchemxFormContext<TValues>
   /**
    * 当前 effect 所属的资源作用域。
    */
@@ -76,41 +77,43 @@ export interface CreateDependenciesEffectOptions<TValues extends Values = Values
 export function createDependenciesEffect<TValues extends Values = Values>(
   options: CreateDependenciesEffectOptions<TValues>
 ): void {
-  const { descriptor, runtimeState, context, scope } = options
-  const dependencies = descriptor.dependencies
+  const { context, descriptor, runtimeState, scope } = options
 
-  if (
-    dependencies == null ||
-    dependencies.triggerFields == null ||
-    dependencies.triggerFields.length === 0
-  ) {
+  const { formApi, scheduler } = context
+
+  const dynamicProps = descriptor.dynamicProps
+
+  const dependencies = dynamicProps?.dependencies
+
+  const triggerFields = dynamicProps?.triggerFields
+
+  if (dependencies == null || triggerFields == null || triggerFields.length === 0) {
     return
   }
 
-  let version = 0
+  const taskRunner = createAbortableTaskRunner<DependenciesResolvedProps<TValues>>({
+    scope,
+    scheduler,
+    run: () => resolveDependencies(dependencies, formApi),
+    onSuccess: (resolvedProps) => {
+      setFieldDynamicOverrides(runtimeState, resolvedProps, {
+        source: "dependencies",
+        triggerFields,
+      })
+    },
+    onError: (error) => {
+      console.error("[schemx] dependencies 执行错误:", error)
+    },
+  })
 
   const dispose = createSignalEffect(() => {
-    const currentVersion = ++version
-
     // 读取 trigger 字段值以建立响应式依赖；字段值变化时 effect 会重新执行。
-    void context.formApi.getValues(dependencies.triggerFields)
+    void formApi.getValues([...triggerFields])
 
-    void context.scheduler.track(
-      resolveDependencies(dependencies, context.formApi).then((resolvedProps) => {
-        if (scope.disposed || currentVersion !== version) {
-          return
-        }
-
-        setFieldDynamicOverrides(runtimeState, resolvedProps, {
-          source: "dependencies",
-          triggerFields: dependencies.triggerFields,
-        })
-      })
-    )
+    void taskRunner.run()
   })
 
   scope.add(() => {
-    version += 1
     dispose()
   })
 }

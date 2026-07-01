@@ -5,10 +5,14 @@
  *
  * @module core/view
  */
-
-export { buildViewSchemas } from "./buildViewSchemas"
-
 export { subscribeViewSchemas } from "./subscribeViewSchemas"
+
+export {
+  createRuntimeViewState,
+  createRootRuntimeViewState,
+  updateRuntimeViewState,
+  deleteRuntimeViewState,
+} from "./createViewState"
 
 export {
   createChildrenViewState,
@@ -31,5 +35,3 @@ export type {
   SchemxViewSchema,
   SchemxRendererKey as ViewRendererKey,
 } from "./types"
-
-export { createViewRevision, type ViewRevision } from "./viewRevision"

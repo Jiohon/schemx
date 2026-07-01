@@ -164,23 +164,29 @@ export function createScheduler(): Scheduler {
    * 单次 flush 执行。
    */
   const flushOnce = async (): Promise<void> => {
-    const batch = takeBatch()
+    while (!disposed) {
+      const batch = takeBatch()
 
-    for (const task of batch) {
-      // 跳过已 disposed 的任务
-      if (disposed || task.scope?.disposed) {
-        continue
+      if (batch.length === 0) {
+        return
       }
 
-      try {
-        const result = task.run()
-
-        // 跟踪异步任务
-        if (isPromiseLike(result)) {
-          await track(result)
+      for (const task of batch) {
+        // 跳过已 disposed 的任务
+        if (disposed || task.scope?.disposed) {
+          continue
         }
-      } catch (error) {
-        task.onError?.(error)
+
+        try {
+          const result = task.run()
+
+          // 跟踪异步任务
+          if (isPromiseLike(result)) {
+            await track(result)
+          }
+        } catch (error) {
+          task.onError?.(error)
+        }
       }
     }
   }

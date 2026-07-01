@@ -8,7 +8,7 @@
  * 适用边界：
  * - Store 可用它作为字段状态的最小存储单元。
  * - View 可通过 Store 或 FormApi 间接消费这些状态。
- * - FieldModel 不应使用它；FieldModel 只保存字段呈现态。
+ * - FieldRuntimeState 不应使用它；FieldRuntimeState 只保存字段呈现态。
  *
  * @module core/reactivity/fieldSignal
  */

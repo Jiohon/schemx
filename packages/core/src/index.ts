@@ -22,7 +22,16 @@ export {
 } from "./registry"
 
 export { createForm, type CreateFormOptions } from "./createForm"
-export { createForm as createFormInstance } from "./createForm"
+
+export {
+  ContextNotProvidedError,
+  createContext,
+  isContext,
+  type Context,
+} from "./context"
+
+export { type SchemxContext } from "./schemxContext"
+
 export {
   createSchemas,
   isSchemxSchemas,
@@ -119,6 +128,4 @@ export type {
   SchemxDependencies,
   SchemxConditionFn,
   SchemxDependenciesStaticProps,
-  SchemxDictionary,
-  SchemxWithDictionary,
 } from "./types"

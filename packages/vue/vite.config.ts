@@ -42,15 +42,21 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, "src/index.ts"),
       name: "schemxCore",
-      formats: ["es", "cjs", "umd"],
+      formats: ["es", "cjs"],
       fileName: (format) => {
         if (format === "es") return "index.mjs"
-        if (format === "cjs") return "index.cjs"
-        return "index.umd.js"
+        return "index.cjs"
       },
     },
     rollupOptions: {
-      external: ["vue", "classnames", "dayjs", "es-toolkit", "@preact/signals-core"],
+      external: [
+        "vue",
+        "@schemx/core",
+        "classnames",
+        "dayjs",
+        "es-toolkit",
+        "@preact/signals-core",
+      ],
       output: {
         globals: {
           vue: "Vue",

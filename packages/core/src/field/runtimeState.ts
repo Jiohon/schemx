@@ -84,6 +84,8 @@ export interface FieldEffectiveSchema<TValues extends Values = Values> {
  * 拆分静态 schema、动态覆盖、有效状态和视图状态，让不同模块按需读取。
  */
 export interface FieldRuntimeState<TValues extends Values = Values> {
+  /** 字段当前 name path */
+  readonly name: Signal<NamePath<TValues>>
   /** 来自 descriptor 的规范化静态字段 schema */
   readonly staticSchema: Signal<SchemxResolvedBaseField<TValues>>
   /** 来自 dependencies 的动态覆盖 */
@@ -107,7 +109,7 @@ export interface CreateFieldRuntimeStateOptions<TValues extends Values = Values>
   /** 字段 descriptor */
   readonly descriptor: {
     readonly name: NamePath<TValues>
-    readonly schema: SchemxResolvedBaseField<TValues>
+    readonly staticSchema: SchemxResolvedBaseField<TValues>
   }
 }
 
@@ -121,7 +123,7 @@ export function createFieldRuntimeState<TValues extends Values>(
   options: CreateFieldRuntimeStateOptions<TValues>
 ): FieldRuntimeState<TValues> {
   const { key, descriptor } = options
-  const schema = descriptor.schema
+  const schema = descriptor.staticSchema
 
   const staticSchema = createSignal<SchemxResolvedBaseField<TValues>>(schema, {
     name: `field:${String(descriptor.name)}:staticSchema`,
@@ -137,19 +139,17 @@ export function createFieldRuntimeState<TValues extends Values>(
     { name: `field:${String(descriptor.name)}:diagnostics` }
   )
 
-  // 添加响应式 name signal
-  const currentName = createSignal<NamePath<TValues>>(descriptor.name, {
+  const name = createSignal<NamePath<TValues>>(descriptor.name, {
     name: `field:${String(descriptor.name)}:name`,
   })
 
   const effectiveSchema = createComputed<FieldEffectiveSchema<TValues>>(() => {
     const base = staticSchema.value
     const overrides = dynamicOverrides.value
-    const name = currentName.value // 读取响应式 name
 
     return {
       key,
-      name, // 使用响应式 name
+      name: name.value,
       componentType: base.componentType,
       label: base.label || "",
       visible: overrides.visible ?? base.visible ?? true,
@@ -180,14 +180,13 @@ export function createFieldRuntimeState<TValues extends Values>(
   })
 
   return {
+    name,
     staticSchema,
     dynamicOverrides,
     effectiveSchema,
     viewSchema,
     diagnostics,
-    // 内部使用的 name signal
-    _currentName: currentName,
-  } as FieldRuntimeState<TValues> & { _currentName?: typeof currentName }
+  }
 }
 
 /**
@@ -202,18 +201,11 @@ export function setFieldStaticSchema<TValues extends Values>(
   state: FieldRuntimeState<TValues>,
   descriptor: {
     readonly name: NamePath<TValues>
-    readonly schema: SchemxResolvedBaseField<TValues>
+    readonly staticSchema: SchemxResolvedBaseField<TValues>
   }
 ): void {
-  state.staticSchema.value = descriptor.schema
-
-  // 更新响应式 name
-  const stateWithName = state as FieldRuntimeState<TValues> & {
-    _currentName?: Signal<NamePath<TValues>>
-  }
-  if (stateWithName._currentName) {
-    stateWithName._currentName.value = descriptor.name
-  }
+  state.staticSchema.value = descriptor.staticSchema
+  state.name.value = descriptor.name
 
   const prev = state.diagnostics.peek()
   state.diagnostics.value = {

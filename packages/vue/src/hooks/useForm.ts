@@ -32,6 +32,7 @@ import type { CreateFormOptions, NamePath, SchemxInstance, Values } from "@schem
 
 /** SchemxInstance 在 Vue provide/inject 中的注入 key */
 export const SCHEMX_INSTANCE_KEY = Symbol("SCHEMX_INSTANCE")
+
 /** @deprecated 请使用 SCHEMX_INSTANCE_KEY。保留给旧测试和旧适配代码兼容。 */
 export const FORM_INSTANCE_KEY = SCHEMX_INSTANCE_KEY
 

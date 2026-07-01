@@ -13,14 +13,16 @@ import { onMounted, Ref, ref } from "vue"
 import { useFormContext } from "./useForm"
 import { useWatchFields } from "./useWatch"
 
-import type { NamePath, SchemxDictionary, Values } from "@schemx/core"
+import type { NamePath, Values } from "@schemx/core"
 
-export type { SchemxDictionary, SchemxWithDictionary } from "@schemx/core"
+import type { SchemxDictionary } from "@/types/dictionary"
+
+export type { SchemxDictionary, SchemxWithDictionary } from "@/types/dictionary"
 
 /**
  * useDictionary 返回值
  */
-export interface UseDictOptionsReturn {
+export interface UseDictionaryReturn {
   /** 远程加载的字典选项列表（响应式） */
   list: Ref<any[]>
   /** 请求加载状态（响应式） */
@@ -34,6 +36,13 @@ export interface UseDictOptionsReturn {
   /** 直接修改 list 的值，不触发 api 调用 */
   mutate: (data: any[]) => void
 }
+
+/**
+ * @deprecated
+ *
+ * 已弃用，请使用 **UseDictionaryReturn**
+ */
+export type UseDictOptionsReturn = UseDictionaryReturn
 
 /**
  * 将未知抛出值规范化为 `Error` 实例
@@ -85,7 +94,7 @@ export const useDictionary = <
 >(
   options: SchemxDictionary<TValues>,
   fieldName?: TName
-): UseDictOptionsReturn => {
+): UseDictionaryReturn => {
   const instance = useFormContext<TValues>()
 
   const list = ref<any[]>([])

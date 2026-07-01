@@ -1,7 +1,7 @@
 /**
  * Field 模块统一导出。
  *
- * 提供字段模型、字段索引、动态依赖、dependency slot 和字段运行态。
+ * 提供字段运行态、字段索引、动态依赖、dependency effect 和校验 effect。
  *
  * @module core/field
  */
@@ -13,20 +13,12 @@ export {
 } from "./dependenciesEffect"
 
 export {
-  getDependencySlot,
-  hasDependencySlot,
+  getDependencyEffect,
+  hasDependencyEffect,
   createDependencyEffect,
   type CreateDependencyEffectOptions,
-  type DependencyEffectSlot,
+  type DependencyEffectState,
 } from "./dependencyEffect"
-
-export {
-  createFieldModel,
-  createFieldModelFromRuntimeState,
-  updateFieldModel,
-  type FieldModel,
-  type FieldModelSnapshot,
-} from "./model"
 
 export {
   createFieldRegistry,
@@ -37,7 +29,7 @@ export {
 export {
   createValidationEffect,
   type CreateValidationEffectOptions,
-  type ValidationModel,
+  type ValidationEffect,
 } from "./validationEffect"
 
 export {

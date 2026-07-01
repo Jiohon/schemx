@@ -4,6 +4,9 @@
  * 将 Vant 渲染器的 componentType 和 componentProps 注册到 schemx 类型系统，
  * 使 schemas 配置获得完整的类型提示。
  */
+import type { Values } from "@schemx/core"
+import type { SchemxWithDictionary } from "@schemx/vue"
+
 import type {
   CalendarRendererProps,
   CascaderRendererProps,
@@ -24,7 +27,6 @@ import type {
   TextRendererProps,
   UploadRendererProps,
 } from "../renderers"
-import type { SchemxWithDictionary, Values } from "@schemx/core"
 
 declare module "@schemx/core" {
   interface SchemxRendererDefinition<T extends Values> {

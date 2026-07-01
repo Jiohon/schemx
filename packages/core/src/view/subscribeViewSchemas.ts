@@ -8,26 +8,23 @@
  */
 import { createDebouncedSignalEffect } from "../reactivity"
 
-import type { RootRuntimeNode } from "../node"
+import type { RootRuntimeNode, RuntimeNodeResourceContext } from "../node"
 import type { Values } from "../types"
 import type { SchemxViewSchema } from "./types"
-import type { ViewRevision } from "./viewRevision"
+import type { RootViewState, RuntimeViewState } from "./viewGraph"
 
 /**
  * 订阅 ViewSchemas 变化。
  *
  * @param root - root runtime 节点。
- * @param revision - 视图结构版本追踪器。
  * @param onChange - ViewSchemas 变化回调。
  * @returns 取消订阅函数。
  */
 export function subscribeViewSchemas<TValues extends Values = Values>(
   root: RootRuntimeNode<TValues>,
-  revision: ViewRevision,
+  resources: RuntimeNodeResourceContext<TValues>,
   onChange: (schemas: readonly SchemxViewSchema<TValues>[]) => void
 ): () => void {
-  void revision
-
   let rootDisposed = false
 
   const rootScope = root.scope
@@ -41,7 +38,9 @@ export function subscribeViewSchemas<TValues extends Values = Values>(
         return []
       }
 
-      return root.viewState!.viewSchemas.value
+      const rootViewState = resources.viewStates.get(root.id)
+
+      return isRootViewState(rootViewState) ? rootViewState.viewSchemas.value : []
     },
     (viewSchemas) => {
       try {
@@ -61,4 +60,10 @@ export function subscribeViewSchemas<TValues extends Values = Values>(
   }
 
   return unsubscribe
+}
+
+function isRootViewState<TValues extends Values>(
+  viewState: RuntimeViewState<TValues> | undefined
+): viewState is RootViewState<TValues> {
+  return viewState != null && "viewSchemas" in viewState
 }

@@ -1,26 +1,25 @@
 import { setFieldDynamicOverrides } from "../../field/runtimeState"
 import { describe, expect, it, vi } from "vitest"
 
-import { compileToDescriptors } from "../../descriptor"
+import { createCompile } from "../../compiler"
 import { createFieldRegistry } from "../../field"
 import { createLifecycleBus } from "../../lifecycle"
+import { createReconciler } from "../../reconciler"
+import { type SchemxContext } from "../../schemxContext"
 import { createScheduler } from "../../scheduler"
-import { createViewRevision } from "../../view"
-import { createRuntimeNodeManager } from "../runtimeNodeManager"
-import { createReconciler } from "../reconciler"
+import { createRuntimeResources } from "../resources"
 
-import type { SchemxFormContext } from "../../createForm"
 import type { DependencyDescriptor, FieldDescriptor } from "../../descriptor"
 import type { LifecycleListener } from "../../lifecycle"
-import type { RuntimeNode, FieldRuntimeNode } from "../runtimeNode"
+import type { RuntimeNode, FieldRuntimeNode } from "../types"
 
 function createFieldDescriptor(key: string, name = key): FieldDescriptor {
   return {
     type: "field",
     key,
     name,
-    rendererType: "text",
-    schema: {
+    componentType: "text",
+    staticSchema: {
       name,
       componentType: "text",
     },
@@ -29,13 +28,13 @@ function createFieldDescriptor(key: string, name = key): FieldDescriptor {
 
 function createDependencyDescriptor(
   key: string,
-  trigger: string[],
+  triggerFields: string[],
   renderer = vi.fn().mockResolvedValue([])
 ): DependencyDescriptor {
   return {
     type: "dependency",
     key,
-    trigger,
+    triggerFields,
     renderer,
   }
 }
@@ -44,7 +43,6 @@ function createGraphRuntime(listener: LifecycleListener<RuntimeNode> = {}) {
   const fieldRegistry = createFieldRegistry()
   const lifecycleBus = createLifecycleBus(listener)
   const scheduler = createScheduler()
-  const viewRevision = createViewRevision()
   const formApi = {
     getValue: vi.fn(),
     getValues: vi.fn(() => ({})),
@@ -64,43 +62,46 @@ function createGraphRuntime(listener: LifecycleListener<RuntimeNode> = {}) {
     defaultProps: {},
     instance,
     formApi,
+    compile: createCompile({
+      defaultProps: {},
+      formInstance: instance as any,
+    }),
     scheduler,
     lifecycleBus,
-  } as unknown as SchemxFormContext
+    fieldRegistry,
+    nodeResources: createRuntimeResources(),
+  } as unknown as SchemxContext
 
-  Object.assign(context, { fieldRegistry })
-
-  const runtimeNodeManager = createRuntimeNodeManager(context)
-  const reconciler = createReconciler(runtimeNodeManager)
+  const reconciler = createReconciler(context)
   const commitChildren = (parent: RuntimeNode, descriptors: any[]) => {
-    const changed = reconciler.reconcileChildren(parent, descriptors)
-
-    if (changed) {
-      viewRevision.bump()
-    }
+    reconciler.reconcileChildren(parent, descriptors)
   }
 
-  const root = runtimeNodeManager.createRoot()
+  const root = reconciler.createRoot()
 
   Object.assign(context, { reconciler, commitChildren, compileOptions: {} })
 
   return {
     context,
     fieldRegistry,
-    runtimeNodeManager,
     lifecycleBus,
     reconciler,
     commitChildren,
     root,
     scheduler,
-    viewRevision,
   }
 }
 
 describe("RuntimeReconciler + DefaultRuntimeNodeManager", () => {
-  it("嵌套 group reconcile 只推进一次 viewRevision", () => {
-    const { commitChildren, root, viewRevision } = createGraphRuntime()
-    const descriptors = compileToDescriptors([
+  it("createReconciler(context) 内部初始化 RuntimeNodeManager 并创建 root", () => {
+    const { context, root } = createGraphRuntime()
+
+    expect(context.nodeResources.nodes.get(root.id)).toBe(root)
+  })
+
+  it("嵌套 group reconcile 只推进一次结构提交", () => {
+    const { commitChildren, root } = createGraphRuntime()
+    const descriptors = createCompile().toDescriptors([
       {
         componentType: "group",
         label: "root group",
@@ -121,7 +122,7 @@ describe("RuntimeReconciler + DefaultRuntimeNodeManager", () => {
 
     commitChildren(root, descriptors)
 
-    expect(viewRevision.revision.value).toBe(1)
+    expect(root.childNodes).toHaveLength(1)
   })
 
   it("生命周期事件只由 RuntimeNodeManager 触发一次", () => {
@@ -141,37 +142,38 @@ describe("RuntimeReconciler + DefaultRuntimeNodeManager", () => {
     expect(calls.unmount).toHaveBeenCalledTimes(1)
   })
 
-  it("同名字段替换时旧 node cleanup 不会误删新注册", () => {
-    const { fieldRegistry, commitChildren, root } = createGraphRuntime()
+  it("同名字段替换时应该移除旧 node 并写入新 descriptor", () => {
+    const { context, commitChildren, root } = createGraphRuntime()
 
     commitChildren(root, [createFieldDescriptor("old", "user.name")])
-    commitChildren(root, [createFieldDescriptor("new", "user.name")])
+    const oldNode = root.childNodes[0] as FieldRuntimeNode
 
-    expect(fieldRegistry.get("user.name")?.node.key).toBe("new")
+    commitChildren(root, [createFieldDescriptor("new", "user.name")])
+    const newNode = root.childNodes[0] as FieldRuntimeNode
+
+    expect(oldNode.disposed.value).toBe(true)
+    expect(newNode.key).toBe("new")
+    expect(context.nodeResources.descriptors.get(newNode.id)?.key).toBe("new")
   })
 
-  it("disposeTree 不清空 descriptor 和 fieldModel，只释放字段 scope", () => {
-    const { runtimeNodeManager, commitChildren, root } = createGraphRuntime()
+  it("removeNode 应该删除节点资源并断开父子关系", () => {
+    const { context, reconciler, commitChildren, root } = createGraphRuntime()
 
     commitChildren(root, [createFieldDescriptor("name", "name")])
 
     const field = root.childNodes[0] as FieldRuntimeNode
-    const descriptor = field.descriptor
-    const fieldModel = field.fieldModel
+    const descriptor = context.nodeResources.descriptors.get(field.id)
 
-    expect(field.fieldResourceScope).not.toBeNull()
-
-    runtimeNodeManager.disposeTree(field)
+    reconciler.removeNode(field)
 
     expect(field.disposed.value).toBe(true)
-    expect(field.descriptor).toBe(descriptor)
-    expect(field.fieldModel).toBe(fieldModel)
-    expect(field.fieldResourceScope).toBeNull()
+    expect(context.nodeResources.descriptors.get(field.id)).toBeUndefined()
+    expect(descriptor).toBeDefined()
     expect(field.parent).toBeNull()
   })
 
-  it("dependency trigger 不变时不重建 slot，trigger 变化时才重建", () => {
-    const { commitChildren, root } = createGraphRuntime()
+  it("dependency trigger 变化时应该复用 node 并更新 descriptor", () => {
+    const { context, commitChildren, root } = createGraphRuntime()
 
     commitChildren(root, [
       createDependencyDescriptor("dep", ["type"], vi.fn().mockResolvedValue([])),
@@ -183,42 +185,48 @@ describe("RuntimeReconciler + DefaultRuntimeNodeManager", () => {
       throw new Error("expected dependency node")
     }
 
-    const firstSlot = dependency.dependencySlot
+    const firstNode = dependency
+    const firstDescriptor = context.nodeResources.descriptors.get(dependency.id)
 
     commitChildren(root, [
       createDependencyDescriptor("dep", ["type"], vi.fn().mockResolvedValue([])),
     ])
 
-    expect(dependency.dependencySlot).toBe(firstSlot)
+    expect(root.childNodes[0]).toBe(firstNode)
 
     commitChildren(root, [
       createDependencyDescriptor("dep", ["mode"], vi.fn().mockResolvedValue([])),
     ])
 
-    expect(dependency.dependencySlot).not.toBe(firstSlot)
+    expect(root.childNodes[0]).toBe(firstNode)
+    expect(context.nodeResources.descriptors.get(dependency.id)).not.toBe(firstDescriptor)
+    expect(
+      (context.nodeResources.descriptors.get(dependency.id) as DependencyDescriptor)
+        .triggerFields
+    ).toEqual(["mode"])
   })
 
-  it("仅 descriptor props 变化时 commitChildren 不 bump viewRevision", () => {
-    const { commitChildren, root, viewRevision } = createGraphRuntime()
+  it("仅 descriptor props 变化时 commitChildren 不重建节点", () => {
+    const { commitChildren, root } = createGraphRuntime()
 
     commitChildren(root, [createFieldDescriptor("f1", "f1")])
-    expect(viewRevision.revision.value).toBe(1)
+    const firstNode = root.childNodes[0]
 
     commitChildren(root, [createFieldDescriptor("f1", "f1")])
-    expect(viewRevision.revision.value).toBe(1)
+    expect(root.childNodes[0]).toBe(firstNode)
   })
 
-  it("子节点新增时 commitChildren bump viewRevision", () => {
-    const { commitChildren, root, viewRevision } = createGraphRuntime()
+  it("子节点新增时 commitChildren 扩展 childNodes", () => {
+    const { commitChildren, root } = createGraphRuntime()
 
     commitChildren(root, [createFieldDescriptor("f1", "f1")])
-    expect(viewRevision.revision.value).toBe(1)
+    expect(root.childNodes).toHaveLength(1)
 
     commitChildren(root, [
       createFieldDescriptor("f1", "f1"),
       createFieldDescriptor("f2", "f2"),
     ])
-    expect(viewRevision.revision.value).toBe(2)
+    expect(root.childNodes).toHaveLength(2)
   })
 })
 
@@ -227,7 +235,9 @@ import { createFieldRuntimeState } from "../../field/runtimeState"
 
 import type { SchemxResolvedBaseField } from "../../types"
 
-function createTestSchema(overrides: Partial<SchemxResolvedBaseField> = {}): SchemxResolvedBaseField {
+function createTestSchema(
+  overrides: Partial<SchemxResolvedBaseField> = {}
+): SchemxResolvedBaseField {
   return {
     componentType: "input",
     label: "测试字段",
@@ -249,7 +259,7 @@ describe("RuntimeNodeManager 创建 field 节点时挂载 FieldRuntimeState (US1
     const state = createFieldRuntimeState({
       nodeId: 1,
       key: "field-1",
-      descriptor: { name: "username" as any, schema },
+      descriptor: { name: "username" as any, staticSchema: schema },
     })
 
     expect(state).toBeDefined()
@@ -262,7 +272,7 @@ describe("RuntimeNodeManager 创建 field 节点时挂载 FieldRuntimeState (US1
     const state = createFieldRuntimeState({
       nodeId: 1,
       key: "field-1",
-      descriptor: { name: "username" as any, schema },
+      descriptor: { name: "username" as any, staticSchema: schema },
     })
 
     // 验证两个 signal 独立
@@ -270,10 +280,14 @@ describe("RuntimeNodeManager 创建 field 节点时挂载 FieldRuntimeState (US1
     expect(state.dynamicOverrides.value).toEqual({})
 
     // 修改 dynamicOverrides 不影响 staticSchema
-    setFieldDynamicOverrides(state, { visible: false }, {
-      source: "dependencies",
-      triggerFields: [],
-    })
+    setFieldDynamicOverrides(
+      state,
+      { visible: false },
+      {
+        source: "dependencies",
+        triggerFields: [],
+      }
+    )
 
     expect(state.staticSchema.value.visible).toBe(true)
     expect(state.dynamicOverrides.value.visible).toBe(false)

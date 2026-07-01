@@ -35,7 +35,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "dev:vant": "pnpm --filter vant dev",
+    "dev:vant": "pnpm --filter ./examples/vant dev",
     "build": "pnpm -r run build",
     "build:analyze": "pnpm -r --filter @schemx/core --filter @schemx/vue --filter @schemx/vant run build:analyze",
     "preview": "vite preview",

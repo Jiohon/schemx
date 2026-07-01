@@ -33,7 +33,7 @@ describe("FieldRuntimeState", () => {
         key: "field-1",
         descriptor: {
           name: "username" as any,
-          schema,
+          staticSchema: schema,
         },
       })
 
@@ -44,14 +44,27 @@ describe("FieldRuntimeState", () => {
       expect(state.diagnostics).toBeDefined()
     })
 
-    it("初始 staticSchema 应该等于 descriptor.schema", () => {
+    it("不应暴露运行时内部隐藏字段", () => {
+      const state = createFieldRuntimeState({
+        nodeId: 1,
+        key: "field-1",
+        descriptor: {
+          name: "username" as any,
+          staticSchema: createTestSchema(),
+        },
+      })
+
+      expect("_currentName" in state).toBe(false)
+    })
+
+    it("初始 staticSchema 应该等于 descriptor.staticSchema", () => {
       const schema = createTestSchema({ label: "用户名" })
       const state = createFieldRuntimeState({
         nodeId: 1,
         key: "field-1",
         descriptor: {
           name: "username" as any,
-          schema,
+          staticSchema: schema,
         },
       })
 
@@ -64,7 +77,7 @@ describe("FieldRuntimeState", () => {
         key: "field-1",
         descriptor: {
           name: "username" as any,
-          schema: createTestSchema(),
+          staticSchema: createTestSchema(),
         },
       })
 
@@ -77,7 +90,7 @@ describe("FieldRuntimeState", () => {
         key: "field-1",
         descriptor: {
           name: "username" as any,
-          schema: createTestSchema(),
+          staticSchema: createTestSchema(),
         },
       })
 
@@ -99,7 +112,7 @@ describe("FieldRuntimeState", () => {
         key: "field-1",
         descriptor: {
           name: "email" as any,
-          schema,
+          staticSchema: schema,
         },
       })
 
@@ -118,7 +131,7 @@ describe("FieldRuntimeState", () => {
         key: "field-1",
         descriptor: {
           name: "email" as any,
-          schema,
+          staticSchema: schema,
         },
       })
 
@@ -140,7 +153,7 @@ describe("FieldRuntimeState", () => {
         key: "field-1",
         descriptor: {
           name: "email" as any,
-          schema,
+          staticSchema: schema,
         },
       })
 
@@ -165,17 +178,36 @@ describe("FieldRuntimeState", () => {
         key: "field-1",
         descriptor: {
           name: "email" as any,
-          schema,
+          staticSchema: schema,
         },
       })
 
       const newSchema = createTestSchema({ label: "新标签" })
       setFieldStaticSchema(state, {
         name: "email" as any,
-        schema: newSchema,
+        staticSchema: newSchema,
       })
 
       expect(state.staticSchema.value.label).toBe("新标签")
+    })
+
+    it("应该更新 effectiveSchema.name", () => {
+      const schema = createTestSchema({ label: "旧标签" })
+      const state = createFieldRuntimeState({
+        nodeId: 1,
+        key: "field-1",
+        descriptor: {
+          name: "oldName" as any,
+          staticSchema: schema,
+        },
+      })
+
+      setFieldStaticSchema(state, {
+        name: "newName" as any,
+        staticSchema: createTestSchema({ label: "新标签" }),
+      })
+
+      expect(state.effectiveSchema.value.name).toBe("newName")
     })
 
     it("更新 staticSchema 不应清空 dynamicOverrides", () => {
@@ -185,7 +217,7 @@ describe("FieldRuntimeState", () => {
         key: "field-1",
         descriptor: {
           name: "email" as any,
-          schema,
+          staticSchema: schema,
         },
       })
 
@@ -197,7 +229,7 @@ describe("FieldRuntimeState", () => {
       const newSchema = createTestSchema({ visible: true, label: "新标签" })
       setFieldStaticSchema(state, {
         name: "email" as any,
-        schema: newSchema,
+        staticSchema: newSchema,
       })
 
       // dynamicOverrides 应保留
@@ -213,14 +245,14 @@ describe("FieldRuntimeState", () => {
         key: "field-1",
         descriptor: {
           name: "email" as any,
-          schema,
+          staticSchema: schema,
         },
       })
 
       const prevVersion = state.diagnostics.value.version
       setFieldStaticSchema(state, {
         name: "email" as any,
-        schema: createTestSchema({ label: "新" }),
+        staticSchema: createTestSchema({ label: "新" }),
       })
 
       expect(state.diagnostics.value.lastUpdatedBy).toBe("static-schema")
@@ -235,7 +267,7 @@ describe("FieldRuntimeState", () => {
         key: "field-1",
         descriptor: {
           name: "email" as any,
-          schema: createTestSchema(),
+          staticSchema: createTestSchema(),
         },
       })
 
@@ -253,7 +285,7 @@ describe("FieldRuntimeState", () => {
         key: "field-1",
         descriptor: {
           name: "email" as any,
-          schema: createTestSchema(),
+          staticSchema: createTestSchema(),
         },
       })
 
@@ -274,7 +306,7 @@ describe("FieldRuntimeState", () => {
         key: "field-1",
         descriptor: {
           name: "email" as any,
-          schema: createTestSchema(),
+          staticSchema: createTestSchema(),
         },
       })
 
@@ -298,7 +330,7 @@ describe("FieldRuntimeState", () => {
         key: "field-1",
         descriptor: {
           name: "email" as any,
-          schema: createTestSchema(),
+          staticSchema: createTestSchema(),
         },
       })
 
@@ -317,7 +349,7 @@ describe("FieldRuntimeState", () => {
         key: "field-1",
         descriptor: {
           name: "email" as any,
-          schema: createTestSchema(),
+          staticSchema: createTestSchema(),
         },
       })
 
@@ -337,7 +369,7 @@ describe("FieldRuntimeState", () => {
         key: "field-1",
         descriptor: {
           name: "email" as any,
-          schema,
+          staticSchema: schema,
         },
       })
 
@@ -367,7 +399,7 @@ describe("effectiveSchema 合并逻辑 (US1)", () => {
     const state = createFieldRuntimeState({
       nodeId: 1,
       key: "field-1",
-      descriptor: { name: "email" as any, schema },
+      descriptor: { name: "email" as any, staticSchema: schema },
     })
 
     const effective = state.effectiveSchema.value
@@ -391,7 +423,7 @@ describe("effectiveSchema 合并逻辑 (US1)", () => {
     const state = createFieldRuntimeState({
       nodeId: 1,
       key: "field-1",
-      descriptor: { name: "email" as any, schema },
+      descriptor: { name: "email" as any, staticSchema: schema },
     })
 
     setFieldDynamicOverrides(state, { rules: [{ min: 3 }] as any }, {
@@ -407,7 +439,7 @@ describe("effectiveSchema 合并逻辑 (US1)", () => {
     const state = createFieldRuntimeState({
       nodeId: 1,
       key: "field-1",
-      descriptor: { name: "email" as any, schema },
+      descriptor: { name: "email" as any, staticSchema: schema },
     })
 
     setFieldDynamicOverrides(state, { componentProps: { size: "large" } as any }, {
@@ -423,7 +455,7 @@ describe("effectiveSchema 合并逻辑 (US1)", () => {
     const state = createFieldRuntimeState({
       nodeId: 1,
       key: "field-1",
-      descriptor: { name: "email" as any, schema },
+      descriptor: { name: "email" as any, staticSchema: schema },
     })
 
     setFieldDynamicOverrides(state, { visible: false, label: "动态" as any }, {

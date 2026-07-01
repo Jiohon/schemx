@@ -98,7 +98,7 @@ describe("ViewGraph", () => {
       const state = createFieldRuntimeState({
         nodeId: 1,
         key: "field-1",
-        descriptor: { name: "province" as any, schema },
+        descriptor: { name: "province" as any, staticSchema: schema },
       })
 
       expect(state.viewSchema.value.visible).toBe(true)

@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from "vitest"
 import { createRuntimeGraphHarness, flushRuntimeGraph } from "./runtimeGraphTestUtils"
 
 describe("dependency flow", () => {
-  it("trigger 不变时保留 dependency slot，trigger 变化时重建", async () => {
-    const { commitSchemas, root, scheduler } = createRuntimeGraphHarness()
+  it("trigger 不变时保留 dependency effect，trigger 变化时重建", async () => {
+    const { commitSchemas, context, root, scheduler } = createRuntimeGraphHarness()
 
     commitSchemas(root, [
       {
@@ -21,7 +21,8 @@ describe("dependency flow", () => {
       throw new Error("expected dependency node")
     }
 
-    const firstSlot = dependency.dependencySlot
+    const firstEffect = context.nodeResources.dependencyEffects.get(dependency.id)
+    expect(firstEffect).toBeDefined()
 
     commitSchemas(root, [
       {
@@ -33,7 +34,7 @@ describe("dependency flow", () => {
     ])
     await flushRuntimeGraph(scheduler)
 
-    expect(dependency.dependencySlot).toBe(firstSlot)
+    expect(context.nodeResources.dependencyEffects.get(dependency.id)).toBe(firstEffect)
 
     commitSchemas(root, [
       {
@@ -45,7 +46,7 @@ describe("dependency flow", () => {
     ])
     await flushRuntimeGraph(scheduler)
 
-    expect(dependency.dependencySlot).not.toBe(firstSlot)
+    expect(context.nodeResources.dependencyEffects.get(dependency.id)).not.toBe(firstEffect)
   })
 
   it("trigger 不变但 renderer 变化时，下一次执行使用最新 descriptor", async () => {

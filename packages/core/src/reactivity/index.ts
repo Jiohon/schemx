@@ -25,7 +25,9 @@ export {
 
 export {
   createSignalEffect,
+  createOnceSignalEffect,
   createDebouncedSignalEffect,
+  type SignalEffectOptions,
   type DebouncedSignalEffectOptions,
   type SignalEffectDispose,
 } from "./effect"

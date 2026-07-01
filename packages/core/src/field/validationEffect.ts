@@ -1,47 +1,20 @@
 /**
- * ValidationEffect - 校验 effect。
+ * ValidationEffect - 校验规则注册 effect。
  *
- * Validation 是字段状态的 effect，不是 lifecycle bridge。
+ * ValidationEffect 只同步字段规则与 Validator 的注册状态，
+ * 字段交互触发校验由具体渲染层调用字段校验命令。
  *
  * @module core/field/validationEffect
  */
 
 import { createSignal, createSignalEffect } from "../reactivity"
 
-import type { SchemxFormContext } from "../createForm"
 import type { Scope } from "../node"
 import type { Signal } from "../reactivity"
+import type { SchemxContext } from "../schemxContext"
 import type { FieldEffectiveSchema } from "./runtimeState"
 import type { ComputedSignal } from "../reactivity/computed"
 import type { SchemxBaseField, Values } from "../types"
-import type { ValidateResult } from "../validator"
-
-/**
- * 校验模型。
- */
-export interface ValidationModel<TValues extends Values> {
-  /**
-   * 是否已注册规则。
-   */
-  registered: Signal<boolean>
-
-  /**
-   * 是否正在校验。
-   */
-  validating: Signal<boolean>
-
-  /**
-   * 执行校验。
-   *
-   * @returns 字段校验结果。
-   */
-  validate(): Promise<ValidateResult<TValues>>
-
-  /**
-   * 释放资源。
-   */
-  dispose(): void
-}
 
 /**
  * 创建 ValidationEffect 的配置选项。
@@ -49,6 +22,11 @@ export interface ValidationModel<TValues extends Values> {
  * @typeParam TValues - 表单值类型
  */
 export interface CreateValidationEffectOptions<TValues extends Values = Values> {
+  /**
+   * 当前 form 实例运行时上下文。
+   */
+  context: SchemxContext<TValues>
+
   /**
    * 字段名路径。
    */
@@ -63,11 +41,21 @@ export interface CreateValidationEffectOptions<TValues extends Values = Values> 
    * 关联的 scope。
    */
   scope: Scope
+}
+
+/**
+ * 校验规则注册 effect。
+ */
+export interface ValidationEffect {
+  /**
+   * 是否已注册规则。
+   */
+  registered: Signal<boolean>
 
   /**
-   * 表单内部上下文。
+   * 释放资源。
    */
-  context: SchemxFormContext<TValues>
+  dispose(): void
 }
 
 interface ValidationRegistrationSnapshot {
@@ -83,17 +71,16 @@ interface ValidationRegistrationSnapshot {
  *
  * @typeParam TValues - 表单值类型
  * @param options - 配置选项
- * @returns 新创建的 ValidationModel
+ * @returns 新创建的 ValidationEffect
  */
 export function createValidationEffect<TValues extends Values = Values>(
   options: CreateValidationEffectOptions<TValues>
-): ValidationModel<TValues> {
-  const { name, effectiveSchema, scope, context } = options
+): ValidationEffect {
+  const { context, name, effectiveSchema, scope } = options
 
   const taskScheduler = context.scheduler
 
   const registered = createSignal(false)
-  const validating = createSignal(false)
   let registrationVersion = 0
 
   /**
@@ -170,21 +157,6 @@ export function createValidationEffect<TValues extends Values = Values>(
   scope.add(disposeEffect)
 
   /**
-   * 执行当前字段校验并维护 validating 状态。
-   */
-  const validate = async (): Promise<ValidateResult<TValues>> => {
-    validating.value = true
-
-    try {
-      const result = await context.instance.validateField(name)
-
-      return result as ValidateResult<TValues>
-    } finally {
-      validating.value = false
-    }
-  }
-
-  /**
    * 释放校验 effect 持有的资源作用域。
    */
   const dispose = (): void => {
@@ -193,8 +165,6 @@ export function createValidationEffect<TValues extends Values = Values>(
 
   return {
     registered,
-    validating,
-    validate,
     dispose,
   }
 }

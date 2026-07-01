@@ -12,9 +12,7 @@
   import { omit } from "es-toolkit"
 
   import FormItem from "./components/FormItem"
-  import { createContext } from "./hooks/useContext"
-  import { useForm } from "./hooks/useForm"
-  import { useViewSchemas } from "./hooks/useViewSchemas"
+  import { createConfigContext, useForm, useViewSchemas } from "./hooks"
 
   import type { SchemxFormProps } from "./types/index"
   import type { SchemxViewSchema, Values } from "@schemx/core"
@@ -48,7 +46,7 @@
    *
    * 为子组件提供表单配置信息。
    */
-  createContext(
+  createConfigContext(
     omit(props, [
       "form",
       "modelValue",

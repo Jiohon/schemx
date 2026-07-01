@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import { createRawFieldSchema, createRuntimeGraphHarness } from "./runtimeGraphTestUtils"
 
-import type { FieldRuntimeNode } from "../runtimeNode"
+import type { FieldRuntimeNode } from "../types"
 
 describe("node lifecycle flow", () => {
   it("create/update/remove transition 每类生命周期事件只触发一次", () => {
@@ -43,13 +43,14 @@ describe("node lifecycle flow", () => {
       update: vi.fn(),
       updated: vi.fn(),
     }
-    const { commitSchemas, root } = createRuntimeGraphHarness(hooks)
+    const { commitSchemas, context, root } = createRuntimeGraphHarness(hooks)
 
     commitSchemas(root, [createRawFieldSchema("name", "name")])
     const node = root.childNodes[0] as FieldRuntimeNode
-    const previousDescriptor = node.descriptor
+    const previousDescriptor = context.nodeResources.descriptors.get(node.id)
 
     commitSchemas(root, [createRawFieldSchema("name", "nickname")])
+    const nextDescriptor = context.nodeResources.descriptors.get(node.id)
 
     expect(hooks.beforeMount).toHaveBeenCalledWith(node)
     expect(hooks.mount).toHaveBeenCalledWith(node)
@@ -66,28 +67,34 @@ describe("node lifecycle flow", () => {
     expect(beforeUpdatePreviousRuntimeNode).toMatchObject({
       type: "field",
       key: "name",
-      descriptor: previousDescriptor,
     })
+    expect(beforeUpdatePreviousRuntimeNode).not.toHaveProperty("descriptor")
     expect(updatePreviousRuntimeNode).toBe(beforeUpdatePreviousRuntimeNode)
     expect(updatedPreviousRuntimeNode).toBe(beforeUpdatePreviousRuntimeNode)
     expect(beforeUpdatePreviousRuntimeNode).not.toBe(previousDescriptor)
+    expect(nextDescriptor).not.toBe(previousDescriptor)
   })
 
-  it("disposed field 保留 descriptor 和 model 快照但释放资源 scope", () => {
-    const { commitSchemas, root } = createRuntimeGraphHarness()
+  it("disposed field 会释放并删除 resources 中的字段资源", () => {
+    const { commitSchemas, context, root } = createRuntimeGraphHarness()
 
     commitSchemas(root, [createRawFieldSchema("name", "name")])
     const field = root.childNodes[0] as FieldRuntimeNode
-    const descriptor = field.descriptor
-    const model = field.fieldModel
+
+    expect(context.nodeResources.descriptors.has(field.id)).toBe(true)
+    expect(context.nodeResources.fieldStates.has(field.id)).toBe(true)
+    expect(context.nodeResources.fieldResourceScopes.has(field.id)).toBe(true)
+    expect(context.nodeResources.fieldDynamicPropScopes.has(field.id)).toBe(true)
 
     commitSchemas(root, [])
 
     expect(field.disposed.value).toBe(true)
-    expect(field.descriptor).toBe(descriptor)
-    expect(field.fieldModel).toBe(model)
-    expect(field.fieldResourceScope).toBeNull()
-    expect(field.fieldDependenciesScope).toBeNull()
+    expect(field).not.toHaveProperty("descriptor")
+    expect(field).not.toHaveProperty("runtimeState")
+    expect(context.nodeResources.descriptors.has(field.id)).toBe(false)
+    expect(context.nodeResources.fieldStates.has(field.id)).toBe(false)
+    expect(context.nodeResources.fieldResourceScopes.has(field.id)).toBe(false)
+    expect(context.nodeResources.fieldDynamicPropScopes.has(field.id)).toBe(false)
   })
 })
 
@@ -118,7 +125,7 @@ describe("字段删除和 scope 释放 (US3)", () => {
     const state = createFieldRuntimeState({
       nodeId: 1,
       key: "field-1",
-      descriptor: { name: "email" as any, schema },
+      descriptor: { name: "email" as any, staticSchema: schema },
     })
 
     resetFieldDynamicOverrides(state, "dispose")
@@ -132,7 +139,7 @@ describe("字段删除和 scope 释放 (US3)", () => {
     const state = createFieldRuntimeState({
       nodeId: 1,
       key: "field-1",
-      descriptor: { name: "email" as any, schema },
+      descriptor: { name: "email" as any, staticSchema: schema },
     })
 
     resetFieldDynamicOverrides(state, "dispose")
@@ -152,7 +159,7 @@ describe("字段删除和 scope 释放 (US3)", () => {
     const state = createFieldRuntimeState({
       nodeId: 1,
       key: "field-1",
-      descriptor: { name: "email" as any, schema },
+      descriptor: { name: "email" as any, staticSchema: schema },
     })
 
     setFieldDynamicOverrides(state, { visible: false, disabled: true }, {
