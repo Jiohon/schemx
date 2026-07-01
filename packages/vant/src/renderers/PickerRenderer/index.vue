@@ -15,6 +15,7 @@
       :class="classNames('schemx-picker-popup-renderer', props.popupClassName)"
       v-bind="popupProps"
       safe-area-inset-bottom
+      @close="handleClose"
     >
       <Picker
         :model-value="modelValue"
@@ -87,9 +88,11 @@
   const title = computed(() => props.title || placeholder.value)
 
   const pickerProps = computed(() => {
+    const rendererProps = props as typeof props & { formInstance?: unknown }
     const {
       value: _value,
       onChange: _onChange,
+      onBlur: _onBlur,
       onConfirm: _onConfirm,
       className: _className,
       popupClassName: _popupClassName,
@@ -102,13 +105,41 @@
       columnsFieldNames: _columnsFieldNames,
       fieldNames: _fieldNames,
       contentAlign: _contentAlign,
+      readonly: _readonly,
+      disabled: _disabled,
+      placeholder: _placeholder,
       formItemProps: _formItemProps,
       popupProps: _popupProps,
       title: _title,
+      formInstance: _formInstance,
       ...rest
-    } = props
+    } = rendererProps
+    const {
+      value: _attrsValue,
+      onChange: _attrsOnChange,
+      onBlur: _attrsOnBlur,
+      onConfirm: _attrsOnConfirm,
+      className: _attrsClassName,
+      popupClassName: _attrsPopupClassName,
+      readonly: _attrsReadonly,
+      readonlyPlaceholder: _attrsReadonlyPlaceholder,
+      disabled: _attrsDisabled,
+      placeholder: _attrsPlaceholder,
+      separator: _attrsSeparator,
+      showAllLevels: _attrsShowAllLevels,
+      emitPath: _attrsEmitPath,
+      options: _attrsOptions,
+      columns: _attrsColumns,
+      columnsFieldNames: _attrsColumnsFieldNames,
+      fieldNames: _attrsFieldNames,
+      contentAlign: _attrsContentAlign,
+      formItemProps: _attrsFormItemProps,
+      popupProps: _attrsPopupProps,
+      formInstance: _attrsFormInstance,
+      ...attrsRest
+    } = attrs
 
-    return { ...attrs, ...rest, title: title.value }
+    return { ...attrsRest, ...rest, title: title.value }
   })
 
   const popupProps = computed(() => ({
@@ -182,5 +213,10 @@
   const handleClick = (): void => {
     if (props.readonly || props.disabled) return
     showPicker.value = true
+  }
+
+  /** 弹窗关闭（确认/取消/遮罩）统一出口，触发 blur 校验 */
+  const handleClose = (): void => {
+    props.onBlur?.()
   }
 </script>

@@ -12,16 +12,7 @@
       v-else
       ref="inputRef"
       v-model:value="textAreaValue"
-      type="textarea"
-      :placeholder="props.placeholder"
-      :readonly-placeholder="props.readonlyPlaceholder"
-      :readonly="props.readonly"
-      :disabled="props.disabled"
-      :align="props.align"
-      :rows="computedRows"
-      :autosize="computedAutosize"
-      :maxlength="props.maxlength"
-      :show-word-limit="props.showWordLimit && !props.readonly && !props.disabled"
+      v-bind="inputProps"
       @change="props.onChange"
       @blur="props.onBlur"
       @focus="props.onFocus"
@@ -105,6 +96,32 @@
     }
 
     return 2
+  })
+
+  const inputProps = computed(() => {
+    const rendererProps = props as typeof props & { formInstance?: unknown }
+    const {
+      value: _value,
+      onChange: _onChange,
+      onBlur: _onBlur,
+      onFocus: _onFocus,
+      className: _className,
+      rows: _rows,
+      autosize: _autosize,
+      autoSize: _autoSize,
+      showWordLimit: _showWordLimit,
+      formItemProps: _formItemProps,
+      formInstance: _formInstance,
+      ...rest
+    } = rendererProps
+
+    return {
+      ...rest,
+      type: "textarea" as const,
+      rows: computedRows.value,
+      autosize: computedAutosize.value,
+      showWordLimit: props.showWordLimit && !props.readonly && !props.disabled,
+    }
   })
 
   defineExpose({

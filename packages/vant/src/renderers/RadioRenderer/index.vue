@@ -88,16 +88,42 @@
   })
 
   const radioProps = computed(() => {
-    const { value, className, formItemProps, ...rest } = props
+    const rendererProps = props as typeof props & { formInstance?: unknown }
+    const {
+      value: _value,
+      onChange: _onChange,
+      options: _options,
+      fieldNames: _fieldNames,
+      className: _className,
+      view: _view,
+      readonly: _readonly,
+      readonlyPlaceholder: _readonlyPlaceholder,
+      placeholder: _placeholder,
+      formItemProps: _formItemProps,
+      formInstance: _formInstance,
+      ...rest
+    } = rendererProps
+    const {
+      style: attrsStyle,
+      options: _attrsOptions,
+      fieldNames: _attrsFieldNames,
+      view: _attrsView,
+      readonly: _attrsReadonly,
+      readonlyPlaceholder: _attrsReadonlyPlaceholder,
+      placeholder: _attrsPlaceholder,
+      formItemProps: _attrsFormItemProps,
+      formInstance: _attrsFormInstance,
+      ...attrsRest
+    } = attrs
     const style = {
       display: "flex",
       flexWrap: "wrap",
       gap: "8px 12px",
       justifyContent: contentAlign.value,
-      ...(attrs?.style || {}),
+      ...(attrsStyle || {}),
     }
 
-    return { ...attrs, ...rest, style }
+    return { ...attrsRest, ...rest, style }
   })
 
   const handleChange = (value: RadioValue): void => {

@@ -9,7 +9,7 @@ import { describe, expect, it, vi } from "vitest"
 vi.mock("vant", () => ({
   Switch: defineComponent({
     name: "Switch",
-    props: ["modelValue", "disabled", "loading"],
+    props: ["modelValue", "disabled", "loading", "activeColor"],
     emits: ["update:modelValue"],
     setup(props, { emit }) {
       return () =>
@@ -38,6 +38,27 @@ describe("SwitchRenderer", () => {
     expect(cell.exists()).toBe(true)
     expect(wrapper.findComponent({ name: "Switch" }).exists()).toBe(false)
     expect(onChange).not.toHaveBeenCalled()
+
+    wrapper.unmount()
+  })
+
+  it("把 Switch 原生属性从 props 透传给子组件", () => {
+    const wrapper = mount(SwitchRenderer, {
+      props: {
+        value: true,
+        activeColor: "#07c160",
+        readonlyPlaceholder: "-",
+        formItemProps: { name: "enabled" } as any,
+        formInstance: {} as any,
+      },
+    })
+
+    const switchComponent = wrapper.findComponent({ name: "Switch" })
+
+    expect(switchComponent.props("activeColor")).toBe("#07c160")
+    expect(switchComponent.attributes("readonly-placeholder")).toBeUndefined()
+    expect(switchComponent.attributes("form-item-props")).toBeUndefined()
+    expect(switchComponent.attributes("form-instance")).toBeUndefined()
 
     wrapper.unmount()
   })

@@ -13,7 +13,7 @@ vi.mock("@schemx/vue", () => ({
 vi.mock("vant", () => ({
   Uploader: defineComponent({
     name: "Uploader",
-    props: ["modelValue", "showUpload", "deletable", "disabled", "readonly"],
+    props: ["modelValue", "showUpload", "deletable", "disabled", "readonly", "maxCount"],
     emits: ["delete"],
     setup(props) {
       return () => h("div", JSON.stringify(props))
@@ -38,6 +38,27 @@ describe("UploadRenderer", () => {
     expect(uploader.props("deletable")).toBe(false)
     expect(uploader.props("readonly")).toBe(true)
     expect(uploader.props("disabled")).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it("把 Uploader 原生属性从 props 透传给子组件", () => {
+    const wrapper = mount(UploadRenderer, {
+      props: {
+        value: [],
+        maxCount: 3,
+        readonlyPlaceholder: "-",
+        formItemProps: { name: "files" } as any,
+        formInstance: {} as any,
+      },
+    })
+
+    const uploader = wrapper.findComponent({ name: "Uploader" })
+
+    expect(uploader.props("maxCount")).toBe(3)
+    expect(uploader.attributes("readonly-placeholder")).toBeUndefined()
+    expect(uploader.attributes("form-item-props")).toBeUndefined()
+    expect(uploader.attributes("form-instance")).toBeUndefined()
 
     wrapper.unmount()
   })

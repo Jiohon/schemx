@@ -6,14 +6,27 @@ import { defineComponent, h } from "vue"
 import { mount } from "@vue/test-utils"
 import { describe, expect, it, vi } from "vitest"
 
+let stepperAttrs: Record<string, unknown> = {}
+
 vi.mock("vant", () => ({
   Stepper: defineComponent({
     name: "Stepper",
-    props: ["modelValue", "disabled"],
+    inheritAttrs: false,
+    props: ["modelValue", "disabled", "buttonSize"],
     emits: ["update:modelValue"],
-    setup(props, { emit }) {
-      return () =>
-        h("button", { onClick: () => emit("update:modelValue", 2) }, String(props.modelValue))
+    setup(props, { emit, attrs }) {
+      return () => {
+        stepperAttrs = attrs
+
+        return h(
+          "button",
+          {
+            onClick: () => emit("update:modelValue", 2),
+            "data-button-size": props.buttonSize,
+          },
+          String(props.modelValue)
+        )
+      }
     },
   }),
 }))
@@ -33,6 +46,29 @@ describe("StepperRenderer", () => {
 
     expect(cell.exists()).toBe(true)
     expect(wrapper.findComponent({ name: "Stepper" }).exists()).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it("只向 Stepper 透传组件相关属性", () => {
+    const wrapper = mount(StepperRenderer, {
+      props: {
+        value: 1,
+        buttonSize: "32px",
+        readonlyPlaceholder: "-",
+        onChange: vi.fn(),
+        formItemProps: { name: "count" } as any,
+        formInstance: {} as any,
+      },
+    })
+
+    const stepper = wrapper.findComponent({ name: "Stepper" })
+
+    expect(stepper.props("buttonSize")).toBe("32px")
+    expect(stepperAttrs).not.toHaveProperty("readonlyPlaceholder")
+    expect(stepperAttrs).not.toHaveProperty("onChange")
+    expect(stepperAttrs).not.toHaveProperty("formItemProps")
+    expect(stepperAttrs).not.toHaveProperty("formInstance")
 
     wrapper.unmount()
   })

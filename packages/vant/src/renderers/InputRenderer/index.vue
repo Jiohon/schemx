@@ -80,7 +80,14 @@
   const placeholder = computed(() => props.placeholder || "请选择")
 
   const inputProps = computed(() => {
-    const { value: _value, ...rest } = props
+    const rendererProps = props as typeof props & { formInstance?: unknown }
+    const {
+      value: _value,
+      className: _className,
+      formItemProps: _formItemProps,
+      formInstance: _formInstance,
+      ...rest
+    } = rendererProps
 
     return rest
   })

@@ -48,6 +48,8 @@ export interface SelectPickerRendererProps extends Omit<
   value?: SelectPickerValue
   /** 值变化回调，确认选择后触发 */
   onChange?: (value: SelectPickerValue, detail: SelectPickerConfirmEventParams) => void
+  /** 失焦回调，弹窗关闭时触发（用于 blur 校验） */
+  onBlur?: () => void
   /** 确认回调，用户点击确定按钮时触发 */
   onConfirm?: (value: SelectPickerValue, detail: SelectPickerConfirmEventParams) => void
   /** 自定义 CSS 类名 */

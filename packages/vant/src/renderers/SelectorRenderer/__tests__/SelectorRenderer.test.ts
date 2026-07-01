@@ -20,4 +20,29 @@ describe("SelectorRenderer", () => {
 
     wrapper.unmount()
   })
+
+  it("只向 Selector 子组件透传需要的属性", () => {
+    const wrapper = mount(SelectorRenderer, {
+      props: {
+        value: "college",
+        options: [{ label: "大专", value: "college" }],
+        fieldNames: { label: "label", value: "value" },
+        view: true,
+        readonlyPlaceholder: "-",
+        formItemProps: { name: "education" } as any,
+        formInstance: {} as any,
+      },
+    })
+
+    const selector = wrapper.findComponent({ name: "SSelector" })
+
+    expect(selector.props("options")).toHaveLength(1)
+    expect(selector.props("fieldNames")).toEqual({ label: "label", value: "value" })
+    expect(selector.attributes("view")).toBeUndefined()
+    expect(selector.attributes("readonly-placeholder")).toBeUndefined()
+    expect(selector.attributes("form-item-props")).toBeUndefined()
+    expect(selector.attributes("form-instance")).toBeUndefined()
+
+    wrapper.unmount()
+  })
 })

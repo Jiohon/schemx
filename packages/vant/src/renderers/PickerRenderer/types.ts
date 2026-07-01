@@ -39,6 +39,8 @@ export interface PickerRendererProps
   onConfirm?: (value: PickerValue, detail: PickerConfirmEventParams) => void
   /** 值变化回调，选中项变化时触发 */
   onChange?: (value: PickerValue, detail: PickerConfirmEventParams) => void
+  /** 失焦回调，弹窗关闭时触发（用于 blur 校验） */
+  onBlur?: () => void
   /** 自定义 CSS 类名 */
   className?: string
   /** 是否返回完整路径 */

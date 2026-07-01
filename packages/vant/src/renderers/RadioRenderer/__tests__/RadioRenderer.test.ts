@@ -6,13 +6,20 @@ import { defineComponent, h } from "vue"
 import { mount } from "@vue/test-utils"
 import { describe, expect, it, vi } from "vitest"
 
+let radioGroupAttrs: Record<string, unknown> = {}
+
 vi.mock("vant", () => ({
   RadioGroup: defineComponent({
     name: "RadioGroup",
+    inheritAttrs: false,
     props: ["modelValue"],
     emits: ["update:modelValue"],
-    setup(_, { slots }) {
-      return () => h("div", slots.default?.())
+    setup(_, { attrs, slots }) {
+      return () => {
+        radioGroupAttrs = attrs
+
+        return h("div", slots.default?.())
+      }
     },
   }),
   Radio: defineComponent({
@@ -38,6 +45,31 @@ describe("RadioRenderer", () => {
 
     expect(wrapper.text()).toContain("女")
     expect(wrapper.findComponent({ name: "RadioGroup" }).exists()).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it("只向 RadioGroup 透传组件相关属性", () => {
+    const wrapper = mount(RadioRenderer, {
+      props: {
+        value: "female",
+        options: [{ label: "女", value: "female" }],
+        fieldNames: { label: "label", value: "value" },
+        view: true,
+        readonlyPlaceholder: "-",
+        onChange: vi.fn(),
+        formItemProps: { name: "gender" } as any,
+        formInstance: {} as any,
+      },
+    })
+
+    expect(radioGroupAttrs).not.toHaveProperty("options")
+    expect(radioGroupAttrs).not.toHaveProperty("fieldNames")
+    expect(radioGroupAttrs).not.toHaveProperty("view")
+    expect(radioGroupAttrs).not.toHaveProperty("readonlyPlaceholder")
+    expect(radioGroupAttrs).not.toHaveProperty("onChange")
+    expect(radioGroupAttrs).not.toHaveProperty("formItemProps")
+    expect(radioGroupAttrs).not.toHaveProperty("formInstance")
 
     wrapper.unmount()
   })

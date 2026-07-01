@@ -12,16 +12,7 @@
       v-else
       ref="inputRef"
       v-model:value="numberValue"
-      :type="props.type"
-      :placeholder="props.placeholder"
-      :readonly-placeholder="props.readonlyPlaceholder"
-      :readonly="props.readonly"
-      :disabled="props.disabled"
-      :align="props.align"
-      :min="props.min"
-      :max="props.max"
-      :maxlength="props.maxlength"
-      :clearable="props.clearable"
+      v-bind="numberProps"
       @change="handleChange"
       @blur="props.onBlur"
       @focus="props.onFocus"
@@ -85,6 +76,22 @@
   const inputRef = ref<InstanceType<typeof SchemxInput> | null>(null)
 
   const placeholder = computed(() => props.placeholder || "请选择")
+
+  const numberProps = computed(() => {
+    const rendererProps = props as typeof props & { formInstance?: unknown }
+    const {
+      value: _value,
+      onChange: _onChange,
+      onBlur: _onBlur,
+      onFocus: _onFocus,
+      className: _className,
+      formItemProps: _formItemProps,
+      formInstance: _formInstance,
+      ...rest
+    } = rendererProps
+
+    return rest
+  })
 
   /**
    * 处理值变化
