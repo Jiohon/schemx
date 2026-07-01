@@ -15,9 +15,9 @@ if [[ -z "$pkg" ]]; then
 fi
 
 info "发布 @schemx/$pkg"
-printf '发布 registry：%s\n' "$NPM_REGISTRY"
+release_kv "registry" "$NPM_REGISTRY" 10
 if [[ -n "$tag" ]]; then
-  printf '发布 tag：%s\n' "$tag"
+  release_kv "tag" "$tag" 10
 fi
 warn "$(cat <<'MESSAGE'
 如果 npm 要求网页登录、二维码确认或 OTP，终端可能会停在认证提示处。

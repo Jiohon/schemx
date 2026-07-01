@@ -5,58 +5,92 @@ set -euo pipefail
 ROOT_DIR="${ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 NPM_REGISTRY="${NPM_REGISTRY:-https://registry.npmjs.org/}"
 RELEASE_PACKAGES=(core vue vant)
+RELEASE_CHANNELS=(dev alpha beta rc next latest)
+RELEASE_VERSION_ACTIONS=(current patch minor major custom)
 
-# 颜色只面向交互终端；CI 和 NO_COLOR 环境保持纯文本，避免污染日志。
-release_colors_enabled() {
-  if [[ -n "${NO_COLOR:-}" ]]; then
-    return 1
-  fi
-
-  if [[ -n "${FORCE_COLOR:-}" && "${FORCE_COLOR:-}" != "0" ]]; then
-    return 0
-  fi
-
-  if [[ "${CLICOLOR_FORCE:-}" == "1" ]]; then
-    return 0
-  fi
-
-  [[ -t 1 ]]
+release_ui() {
+  node "$ROOT_DIR/scripts/release/ui.mjs" "$@"
 }
 
-if release_colors_enabled; then
-  RELEASE_COLOR_INFO=$'\033[36m'
-  RELEASE_COLOR_SUCCESS=$'\033[32m'
-  RELEASE_COLOR_WARN=$'\033[33m'
-  RELEASE_COLOR_ERROR=$'\033[31m'
-  RELEASE_COLOR_RESET=$'\033[0m'
-else
-  RELEASE_COLOR_INFO=""
-  RELEASE_COLOR_SUCCESS=""
-  RELEASE_COLOR_WARN=""
-  RELEASE_COLOR_ERROR=""
-  RELEASE_COLOR_RESET=""
-fi
-
 info() {
-  printf '\n%s==> %s%s\n' "$RELEASE_COLOR_INFO" "$1" "$RELEASE_COLOR_RESET"
+  release_ui section "$1"
 }
 
 success() {
-  printf '%s%s%s\n' "$RELEASE_COLOR_SUCCESS" "$1" "$RELEASE_COLOR_RESET"
+  release_ui success "$1"
 }
 
 warn() {
-  printf '%s%s%s\n' "$RELEASE_COLOR_WARN" "$1" "$RELEASE_COLOR_RESET"
+  release_ui warn "$1"
 }
 
 die() {
-  printf '%s错误：%s%s\n' "$RELEASE_COLOR_ERROR" "$1" "$RELEASE_COLOR_RESET" >&2
+  release_ui error "$1" >&2
   exit 1
+}
+
+release_kv() {
+  local label="$1"
+  local value="$2"
+  local width="${3:-8}"
+
+  release_ui kv "$label" "$value" "$width"
 }
 
 package_choices() {
   local IFS="、"
   printf '%s' "${RELEASE_PACKAGES[*]}"
+}
+
+release_channel_choices() {
+  local IFS="、"
+  printf '%s' "${RELEASE_CHANNELS[*]}"
+}
+
+version_action_choices() {
+  local IFS="、"
+  printf '%s' "${RELEASE_VERSION_ACTIONS[*]}"
+}
+
+release_channel_label() {
+  case "$1" in
+    latest) printf '正式版发布' ;;
+    dev) printf 'Dev 开发测试发布' ;;
+    alpha) printf 'Alpha 预发布' ;;
+    beta) printf 'Beta 预发布' ;;
+    rc) printf 'RC 候选发布' ;;
+    next) printf 'Next 预发布' ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+
+release_channel_description() {
+  case "$1" in
+    latest) printf '发布到 npm latest，仅允许 main 分支。' ;;
+    dev) printf '发布到 npm dev tag，用于日常开发测试，不保证稳定。' ;;
+    alpha) printf '发布到 npm alpha tag，用于早期实验和开发分支临时验证。' ;;
+    beta) printf '发布到 npm beta tag，用于公开测试。' ;;
+    rc) printf '发布到 npm rc tag，用于正式版前的候选验证。' ;;
+    next) printf '发布到 npm next tag，用于下一版本预览。' ;;
+    *) printf '' ;;
+  esac
+}
+
+version_action_label() {
+  case "$1" in
+    current) printf '使用当前版本' ;;
+    patch) printf '提升 patch 版本（x.y.z 的 z 位）' ;;
+    minor) printf '提升 minor 版本（x.y.z 的 y 位）' ;;
+    major) printf '提升 major 版本（x.y.z 的 x 位）' ;;
+    custom) printf '指定版本' ;;
+    *)
+      if is_exact_version "$1"; then
+        printf '指定版本'
+      else
+        printf '%s' "$1"
+      fi
+      ;;
+  esac
 }
 
 package_path() {
@@ -91,6 +125,69 @@ assert_publish_target() {
   fi
 
   assert_package "$target"
+}
+
+is_publish_target() {
+  local target="$1"
+  local item
+
+  if [[ "$target" == "all" ]]; then
+    return 0
+  fi
+
+  for item in "${RELEASE_PACKAGES[@]}"; do
+    if [[ "$item" == "$target" ]]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+assert_release_channel() {
+  local channel="$1"
+  local item
+
+  for item in "${RELEASE_CHANNELS[@]}"; do
+    if [[ "$item" == "$channel" ]]; then
+      return
+    fi
+  done
+
+  die "未知发布模式：${channel}，可选值为 $(release_channel_choices)"
+}
+
+is_release_channel() {
+  local channel="$1"
+  local item
+
+  for item in "${RELEASE_CHANNELS[@]}"; do
+    if [[ "$item" == "$channel" ]]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+is_exact_version() {
+  [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+}
+
+assert_version_action() {
+  local action="$1"
+
+  case "$action" in
+    current | patch | minor | major | custom)
+      return
+      ;;
+  esac
+
+  if is_exact_version "$action"; then
+    return
+  fi
+
+  die "版本处理方式只能是 current、patch、minor、major 或 x.y.z"
 }
 
 resolve_targets() {

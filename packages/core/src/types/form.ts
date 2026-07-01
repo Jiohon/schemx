@@ -58,6 +58,17 @@ export type Dynamic<T, V extends Values = Values> = ((values: V) => T | Promise<
 export type NamePath<T = Values> = DeepNamePath<T>
 
 /**
+ * 字段静态 schema patch。
+ *
+ * 只允许更新不会改变 RuntimeNode 身份和结构的字段级静态呈现配置。
+ * `name`、`key`、`componentType`、`dependencies` 这类结构/资源边界字段仍应通过
+ * `setSchemas` 或 `updateSchemas` 更新。
+ */
+export type SchemxFieldSchemaPatch<TValues extends Values = Values> = Partial<
+  Omit<SchemxBaseField<TValues>, "name" | "key" | "componentType" | "dependencies">
+>
+
+/**
  * 验证规则触发时机
  *
  * 支持两种命名风格：`onBlur` / `blur`，内部会归一化处理。
@@ -557,6 +568,21 @@ export interface SchemxInstance<TValues extends Values = Values> {
   ) => void
 
   /**
+   * 更新单个字段的静态 schema 呈现配置。
+   *
+   * 该方法直接定位已有 Field RuntimeNode，只更新字段级 staticSchema，
+   * 不重新编译整棵 root schemas。字段身份、结构、渲染器类型和 dependencies
+   * 仍由 `setSchemas` / `updateSchemas` 管理。
+   *
+   * @param name - 目标字段路径
+   * @param patch - 要合并到当前字段静态 schema 的呈现配置
+   */
+  updateFieldSchema: (
+    name: NamePath<TValues>,
+    patch: SchemxFieldSchemaPatch<TValues>
+  ) => void
+
+  /**
    * 更新表单默认配置。
    *
    * 合并传入属性到当前 defaultProps，然后重新编译根 schemas 并 reconcile。
@@ -587,13 +613,6 @@ export interface SchemxInstance<TValues extends Values = Values> {
   subscribeViewSchemas: (
     callback: (schemas: readonly SchemxViewSchema<TValues>[]) => void
   ) => () => void
-
-  /**
-   * 获取 ViewSchemas 结构版本。
-   *
-   * @returns 当前视图结构版本号。
-   */
-  getViewRevision: () => number
 
   /**
    * 等待所有异步依赖解析完成

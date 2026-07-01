@@ -17,7 +17,7 @@ for pkg in "$@"; do
   version="$(package_json_value "$pkg" version)"
 
   if pnpm view "${package_name}@${version}" version --registry "$NPM_REGISTRY" >/dev/null 2>&1; then
-    die "${package_name}@${version} 已存在。正式发布前请先执行 \`pnpm release:version:patch $pkg\`，提交版本变更后再发布。"
+    die "${package_name}@${version} 已存在。正式发布前请使用 \`pnpm release:publish latest $pkg patch\` 或指定新的 x.y.z 版本。"
   fi
 
   success "${package_name}@${version} 可发布"

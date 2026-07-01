@@ -7,5 +7,3 @@
  */
 
 export { WithRemoteOptions } from "./withRemoteOptions"
-
-export type { SchemxDictionary, SchemxWithDictionary } from "./withRemoteOptions"

@@ -8,26 +8,22 @@
  * @module components/FormItem
  */
 
-import { computed, defineComponent, h, PropType, toRef } from "vue"
+import { computed, defineComponent, h, PropType, toRef, watchEffect } from "vue"
 import type { SetupContext, VNodeChild } from "vue"
 
 import classnames from "classnames"
-import { omit } from "es-toolkit"
 
-import { useField } from "../../hooks"
-import { useContext } from "../../hooks/useContext"
-import { provideFieldContext } from "../../hooks/useFieldContext"
-import { useFormInstance } from "../../hooks/useForm"
-import { useStableRef } from "../../hooks/useStableRef"
 import {
-  extractChildSlots,
-  mergeTrigger,
-  resolveSlot,
-  shouldValidateOn,
-} from "../../utils"
+  useField,
+  useConfigContext,
+  createFieldContext,
+  useFormContext,
+  useStableRef,
+} from "@/hooks"
+import { extractChildSlots, mergeTrigger, resolveSlot, shouldValidateOn } from "@/utils"
 import FormGroup from "../FormGroup"
 
-import type { TriggerConfig } from "../../utils"
+import type { TriggerConfig } from "@/utils"
 import type {
   FieldValue,
   NamePath,
@@ -58,15 +54,15 @@ const FormItem = defineComponent(
       }
     }
 
-    const form = useFormInstance<T>()
-    const formContext = useContext()
+    const form = useFormContext<T>()
+    const formContext = useConfigContext()
 
     const schema = (): SchemxViewFieldSchema<T> =>
       schemaRef.value as SchemxViewFieldSchema<T>
 
     const field = useField(schema().name)
 
-    provideFieldContext(field)
+    createFieldContext(field)
 
     const trigger = computed<TriggerConfig>(() =>
       mergeTrigger(schema().validationTrigger, formContext.validationTrigger, "onChange")
@@ -106,33 +102,11 @@ const FormItem = defineComponent(
       }
     }
 
-    /**
-     * schemas 每一项的 props
-     */
-    const formItemProps = computed<SchemxFormItemProps<T>>((): SchemxFormItemProps<T> => {
-      return {
-        ...(omit(schema(), ["componentProps"]) satisfies SchemxFormItemProps<T>),
-        name: schema().name,
-        componentType: schema().componentType,
-        class: classnames("schemx-item", schema().class),
-        required: schema().required,
-        readonly: schema().readonly,
-        disabled: schema().disabled,
-        visible: schema().visible,
-        placeholder: schema().placeholder,
-        validationTrigger: trigger.value,
-      }
-    })
-
     // 使用 useStableRef 避免每次生成新对象引用
     const componentProps = useStableRef<SchemxComponentProps<T>>(
       (): SchemxComponentProps<T> => ({
         ...schema().componentProps,
-        formItemProps: formItemProps.value,
         value: field.getValue(),
-        readonly: schema().readonly,
-        disabled: schema().disabled,
-        placeholder: schema().placeholder,
         onChange: handleChange,
         onBlur: handleBlur,
         "onUpdate:value": (v) => field.setValue(v),
@@ -166,7 +140,7 @@ const FormItem = defineComponent(
       const labelSlot = resolveSlot(slots, `${schema().name}Label`)
 
       if (labelSlot) {
-        return labelSlot(formItemProps.value)
+        return labelSlot(schema())
       }
 
       const labelAlign = schema().labelAlign || formContext.labelAlign
@@ -213,7 +187,7 @@ const FormItem = defineComponent(
 
       if (contentSlot) {
         return contentSlot({
-          ...formItemProps.value,
+          ...schema(),
           columnElement,
         })
       }
@@ -235,7 +209,7 @@ const FormItem = defineComponent(
 
       if (errorSlot) {
         return errorSlot({
-          ...formItemProps.value,
+          ...schema(),
           errors: field.error.value,
         })
       }
@@ -256,7 +230,7 @@ const FormItem = defineComponent(
       const itemSlot = resolveSlot(slots, normalizeNameKey(schema().name))
 
       if (itemSlot) {
-        return itemSlot(formItemProps.value)
+        return itemSlot(schema())
       }
 
       const labelPosition = schema().labelPosition || formContext.labelPosition

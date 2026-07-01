@@ -7,7 +7,7 @@
  * @module types/dictionary
  */
 
-import { NamePath, SchemxInstance, Values } from "./form"
+import { NamePath, SchemxInstance, Values } from "@schemx/core"
 
 /**
  * 字典选项配置

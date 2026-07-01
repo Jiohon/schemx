@@ -32,6 +32,7 @@ import type { CreateFormOptions, NamePath, SchemxInstance, Values } from "@schem
 
 /** SchemxInstance 在 Vue provide/inject 中的注入 key */
 export const SCHEMX_INSTANCE_KEY = Symbol("SCHEMX_INSTANCE")
+
 /** @deprecated 请使用 SCHEMX_INSTANCE_KEY。保留给旧测试和旧适配代码兼容。 */
 export const FORM_INSTANCE_KEY = SCHEMX_INSTANCE_KEY
 
@@ -72,7 +73,7 @@ export interface UseFormOptions<TValues extends Values> extends CreateFormOption
  * ```
  */
 export function useForm<TValues extends Values = Values>(
-  options: UseFormOptions<TValues>
+  options: UseFormOptions<TValues> = {}
 ): SchemxInstance<TValues> {
   const { ...formOptions } = options
 
@@ -106,17 +107,17 @@ export function useForm<TValues extends Values = Values>(
  *
  * @example
  * ```ts
- * const form = useFormInstance()
+ * const form = useFormContext()
  * form.setFieldValue('name', 'hello')
  * ```
  */
-export function useFormInstance<
+export function useFormContext<
   TValues extends Values = Values,
 >(): SchemxInstance<TValues> {
   const instance = inject<SchemxInstance<TValues>>(SCHEMX_INSTANCE_KEY)
 
   if (!instance) {
-    throw new Error("useFormInstance must be used within a Form")
+    throw new Error("useFormContext must be used within a Form")
   }
 
   return instance

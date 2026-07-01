@@ -53,10 +53,10 @@
  *   schemas: [...],
  *   lifecycleHooks: {
  *     mounted: (node) => {
- *       console.log('字段已挂载:', node.descriptor.name)
+ *       console.log('节点已挂载:', node.key)
  *     },
  *     unmounted: (node) => {
- *       console.log('字段已卸载:', node.descriptor.name)
+ *       console.log('节点已卸载:', node.key)
  *     }
  *   }
  * })

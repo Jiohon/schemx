@@ -71,7 +71,7 @@ import {
   type SchemxSchemasInput,
 } from "./createSchemas"
 import { defaultConfigKey } from "./defaultConfig"
-import { compileToDescriptors } from "./descriptor"
+import { createCompile } from "./compiler"
 import { createFieldRegistry, type FieldRegistry } from "./field"
 import {
   createLifecycleBus,
@@ -80,16 +80,14 @@ import {
 } from "./lifecycle/lifecycle"
 import {
   type ContainerRuntimeNode,
-  createReconciler,
   createScope,
-  FieldRuntimeNode,
-  findFieldRuntimeNode,
-  type Reconciler,
   type RootRuntimeNode,
-  type RuntimeNodeManager,
+  type RuntimeNodeResourceContext,
+  type RuntimeNode,
   type Scope,
 } from "./node"
-import { createRuntimeNodeManager } from "./node/runtimeNodeManager"
+import { createRuntimeResources } from "./node/resources"
+import { createReconciler, type Reconciler } from "./reconciler"
 import { batchUpdates, createSignalEffect } from "./reactivity"
 import {
   createRendererRegistry,
@@ -97,6 +95,7 @@ import {
   type RendererRegistryType,
   type ValidatorsRegistryType,
 } from "./registry"
+import { type SchemxContext } from "./schemxContext"
 import { createScheduler, type Scheduler } from "./scheduler"
 import { createStore, type Store } from "./store"
 import { collectObjectPathsByLeaf, diff, withLock } from "./utils"
@@ -110,19 +109,21 @@ import {
   type Validator,
 } from "./validator"
 import {
-  buildViewSchemas,
-  createViewRevision,
+  readRootViewSchemas,
+  type RootViewState,
   type SchemxViewSchema,
   subscribeViewSchemas,
-  type ViewRevision,
 } from "./view"
+import { createRootRuntimeViewState } from "./view/createViewState"
 
+import type { Compile } from "./compiler/types"
 import type { FormDescriptor } from "./descriptor"
 import type {
   NamePath,
   SchemxBaseField,
   SchemxDefaultProps,
   SchemxField,
+  SchemxFieldSchemaPatch,
   SchemxFormApi,
   SchemxInstance,
   SchemxRendererKey,
@@ -138,54 +139,6 @@ type Callbacks<
   CreateFormOptions<TValues, TName>,
   "onValuesChange" | "onFinish" | "onFinishFailed" | "onFieldsChange"
 >
-
-/**
- * createForm 内部运行时上下文。
- *
- * 字段、dependency effect 和 node lifecycle 通过该对象共享 store、
- * validator、scheduler、registry 以及唯一的子树提交边界。
- *
- * @typeParam TValues - 表单值类型。
- */
-export interface SchemxFormContext<TValues extends Values = Values> {
-  /**
-   * schema 编译默认选项，供 root 与 dependency 子树复用
-   */
-  defaultProps: SchemxDefaultProps
-  /**
-   * 表单实例，定义表单的所有操作方法
-   */
-  readonly instance: SchemxInstance<TValues>
-  /**
-   * 获取传递给动态 renderer 的表单 API。
-   *
-   * @returns 当前表单实例的公开操作 API。
-   */
-  readonly formApi: SchemxFormApi<TValues>
-
-  /**
-   * 运行时异步调度器，用于追踪 dependency renderer 和字段动态依赖
-   */
-  readonly scheduler: Scheduler
-  /**
-   * node 生命周期事件总线，连接 reconciler 与字段资源挂载流程
-   */
-  readonly lifecycleBus: LifecycleBus<FieldRuntimeNode<TValues>>
-  /**
-   * 字段 RuntimeNode 到字段模型的注册表，供表单 API 和视图投影读取
-   */
-  readonly fieldRegistry: FieldRegistry<TValues>
-  /**
-   * 唯一子节点提交边界，负责 reconcile 后推进 viewRevision。
-   *
-   * @param parent - 接收子节点的容器 RuntimeNode。
-   * @param descriptors - 新一轮编译得到的子 descriptor 列表。
-   */
-  commitChildren(
-    parent: ContainerRuntimeNode<TValues>,
-    descriptors: FormDescriptor<TValues>[]
-  ): void
-}
 
 /**
  * 创建表单实例的配置项。
@@ -292,7 +245,7 @@ class CreateForm<
   TName extends NamePath<TValues> = NamePath<TValues>,
 > {
   /** 表单内部上下文，集中持有全局配置和运行时服务 */
-  private context: SchemxFormContext<TValues>
+  private context: SchemxContext<TValues>
 
   /** 用户传入的表单级回调集合 */
   readonly callbacks: Callbacks<TValues>
@@ -315,17 +268,14 @@ class CreateForm<
   /** 运行时异步调度器，用于追踪 dependency renderer 和字段动态依赖 */
   readonly scheduler: Scheduler
 
-  /** 视图结构版本号，node 结构变化时推进以触发 ViewSchemas 重新构建 */
-  readonly viewRevision: ViewRevision
-
   /** descriptor 到 RuntimeNode tree 的协调器，负责创建、复用和销毁节点 */
   readonly reconciler: Reconciler<TValues>
 
-  /** 单个 RuntimeNode 生命周期执行器，负责挂载和释放运行期资源 */
-  readonly runtimeNodeManager: RuntimeNodeManager<TValues>
-
   /** 字段 RuntimeNode 到字段模型的注册表，供表单 API 和视图投影读取 */
   readonly fieldRegistry: FieldRegistry<TValues>
+
+  /** RuntimeNode 之外的 descriptor、state、view 和 effect 资源表 */
+  readonly nodeResources: RuntimeNodeResourceContext<TValues>
 
   /** 表单级资源作用域，统一管理回调 effect 等非 RuntimeNode 资源 */
   private readonly scope: Scope = createScope()
@@ -333,11 +283,14 @@ class CreateForm<
   /** root schema 的统一数据源 */
   private schemas: SchemxSchemas<TValues>
 
+  /** schema 编译，让未变化的 schema 复用 descriptor 引用 */
+  private compile: Compile<TValues>
+
   /** 标记表单实例是否已销毁，保证 dispose 幂等 */
   private disposed = false
 
   /** node 生命周期事件总线，连接 reconciler 与字段资源挂载流程 */
-  private lifecycleBus: LifecycleBus<FieldRuntimeNode<TValues>>
+  private lifecycleBus: LifecycleBus<RuntimeNode<TValues>>
 
   constructor(options: CreateFormOptions<TValues> = {}) {
     const {
@@ -380,29 +333,50 @@ class CreateForm<
     })
 
     // 生命周期总线连接 node 结构变化与字段模型、依赖资源的挂载和更新流程。
-    this.lifecycleBus = createLifecycleBus<FieldRuntimeNode<TValues>>()
+    this.lifecycleBus = createLifecycleBus<RuntimeNode<TValues>>()
 
     // 初始化运行时 node 所需的核心基础设施。
     this.scheduler = createScheduler()
-    this.viewRevision = createViewRevision()
+
     this.fieldRegistry = createFieldRegistry<TValues>()
+
+    this.nodeResources = createRuntimeResources<TValues>()
+
+    // defaultProps 必须在 compiler options 与 context 间共享同一引用：
+    // applySchemas 走 compiler fallback 时读取的是 compileOptions.defaultProps，
+    // updateDefaultProps 直接 mutate context.defaultProps，若两者是不同对象，
+    // 变更将无法被编译器感知，reconcile 后字段值不变、effect 也不会重算。
+    const defaultProps = pick(restOptions, defaultConfigKey)
+
+    this.compile = createCompile({
+      defaultProps,
+      formInstance: this.getFormInstance(),
+    })
 
     // dependency renderer 运行时需要回写 node，因此上下文在首次编译前准备好。
     this.context = {
-      defaultProps: pick(restOptions, defaultConfigKey),
+      defaultProps,
       instance: this.getFormInstance(),
       formApi: this.getFormApi(),
+      compile: this.compile,
       scheduler: this.scheduler,
       lifecycleBus: this.lifecycleBus,
       fieldRegistry: this.fieldRegistry,
+      nodeResources: this.nodeResources,
       commitChildren: this.commitChildren,
     }
 
-    this.runtimeNodeManager = createRuntimeNodeManager<TValues>(this.context)
+    this.reconciler = createReconciler<TValues>(this.context)
 
-    this.reconciler = createReconciler(this.runtimeNodeManager)
+    this.root = this.reconciler.createRoot()
 
-    this.root = this.runtimeNodeManager.createRoot()
+    const rootChildrenState = this.nodeResources.childrenStates.get(this.root.id)
+
+    if (!rootChildrenState) {
+      throw new Error("[schemx] root childrenState is required")
+    }
+
+    createRootRuntimeViewState(this.root, this.nodeResources)
 
     if (options.lifecycleHooks) {
       this.lifecycleBus.on(options.lifecycleHooks)
@@ -490,8 +464,8 @@ class CreateForm<
 
       setSchemas: this.setSchemas.bind(this),
       updateSchemas: this.updateSchemas.bind(this),
+      updateFieldSchema: this.updateFieldSchema.bind(this),
       updateDefaultProps: this.updateDefaultProps.bind(this),
-      getViewRevision: () => this.viewRevision.revision.value,
       getViewSchemas: this.getViewSchemas.bind(this),
       subscribeViewSchemas: this.subscribeViewSchemas.bind(this),
       waitForDependencies: this.waitForIdle.bind(this),
@@ -543,9 +517,9 @@ class CreateForm<
   ): void {
     const resolvedRules: StandardSchemaV1[] = []
 
-    const node = findFieldRuntimeNode(this.root, path)
-
-    const schema = node?.descriptor.schema
+    const node = this.fieldRegistry.get(path)?.node
+    const descriptor = node ? this.nodeResources.descriptors.get(node.id) : undefined
+    const schema = descriptor?.type === "field" ? descriptor.staticSchema : undefined
 
     this.validator.unregister(path)
 
@@ -686,6 +660,54 @@ class CreateForm<
   }
 
   /**
+   * 更新单个字段的静态 schema 呈现配置。
+   */
+  private updateFieldSchema(
+    name: NamePath<TValues>,
+    patch: SchemxFieldSchemaPatch<TValues>
+  ): void {
+    if (this.disposed) {
+      return
+    }
+
+    const entry = this.fieldRegistry.get(name)
+
+    if (!entry) {
+      return
+    }
+
+    const node = entry.node
+    const current = this.nodeResources.descriptors.get(node.id)
+
+    if (current?.type !== "field") {
+      return
+    }
+
+    const nextRawSchema = {
+      ...current.staticSchema,
+      ...patch,
+      componentProps: patch.componentProps
+        ? {
+            ...current.staticSchema.componentProps,
+            ...patch.componentProps,
+          }
+        : current.staticSchema.componentProps,
+      key: current.key,
+      name: current.name,
+      componentType: current.staticSchema.componentType,
+      dependencies: current.dynamicProps?.dependencies,
+    } as SchemxBaseField<TValues>
+
+    const [next] = this.compile.toDescriptors([nextRawSchema])
+
+    if (next.type !== "field") {
+      return
+    }
+
+    this.reconciler.updateNode(node, next)
+  }
+
+  /**
    * 更新表单默认配置。
    *
    * 合并传入属性到当前 defaultProps，然后重新编译根 schemas 并 reconcile。
@@ -698,6 +720,9 @@ class CreateForm<
 
     Object.assign(this.context.defaultProps, pick(partial, defaultConfigKey))
 
+    // defaultProps 影响所有字段的 normalizedSchema，bump version 让缓存条目失效。
+    this.compile.invalidate()
+
     this.applySchemas(this.schemas.peek())
   }
 
@@ -709,31 +734,22 @@ class CreateForm<
       return
     }
 
-    const previousRevision = this.viewRevision.revision.value
-    const descriptors = compileToDescriptors([...schemas], this.context.defaultProps)
+    const descriptors = this.compile.toDescriptors(schemas)
 
     this.commitChildren(this.root as ContainerRuntimeNode<TValues>, descriptors)
-
-    if (this.viewRevision.revision.value === previousRevision) {
-      this.viewRevision.bump()
-    }
   }
 
   /**
    * 唯一子节点提交边界。
    *
    * 所有结构输入先编译成 descriptor，再经由这里提交到某个 parent RuntimeNode。
-   * Reconciler 只负责 node 结构；public commit 完成后由这里推进一次 viewRevision。
+   * Reconciler 只负责 node 结构；视图层通过 childrenState signal 自动感知结构变化。
    */
   private commitChildren = (
     parentNode: ContainerRuntimeNode<TValues>,
     descriptors: FormDescriptor<TValues>[]
   ): void => {
-    const changed = this.reconciler.reconcileChildren(parentNode, descriptors)
-
-    if (changed) {
-      this.viewRevision.bump()
-    }
+    this.reconciler.reconcileChildren(parentNode, descriptors)
   }
 
   /**
@@ -749,7 +765,7 @@ class CreateForm<
     this.disposed = true
 
     this.scope.dispose()
-    this.runtimeNodeManager.disposeTree(this.root)
+    this.reconciler.removeNode(this.root)
     this.scheduler.dispose()
     this.store.destroy()
   }
@@ -758,7 +774,13 @@ class CreateForm<
    * 获取当前 ViewSchemas。
    */
   private getViewSchemas(): readonly SchemxViewSchema<TValues>[] {
-    return buildViewSchemas<TValues>(this.root)
+    const rootViewState = this.nodeResources.viewStates.get(this.root.id)
+
+    if (!rootViewState || !("viewSchemas" in rootViewState)) {
+      return []
+    }
+
+    return readRootViewSchemas<TValues>(rootViewState as RootViewState<TValues>)
   }
 
   /**
@@ -767,7 +789,7 @@ class CreateForm<
   private subscribeViewSchemas(
     callback: (schemas: readonly SchemxViewSchema<TValues>[]) => void
   ): () => void {
-    return subscribeViewSchemas<TValues>(this.root, this.viewRevision, callback)
+    return subscribeViewSchemas<TValues>(this.root, this.nodeResources, callback)
   }
 
   /**

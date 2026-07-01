@@ -52,6 +52,12 @@ case "$1" in
     fi
     exit 0
     ;;
+  add)
+    exit 0
+    ;;
+  commit)
+    exit 0
+    ;;
   log)
     if [[ "$*" == *"--format=%s"* ]]; then
       printf 'feat(core): 支持动态 schema 更新\n'
@@ -158,8 +164,8 @@ cat >"$MOCK_BIN/node" <<'MOCK'
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ "${MOCK_RELEASE_CANCEL:-0}" == "1" && "${1:-}" == */select-release-target.mjs ]]; then
-  printf '已取消发布目标选择\n' >&2
+if [[ "${MOCK_RELEASE_CANCEL:-0}" == "1" && "${1:-}" == */select-release-option.mjs ]]; then
+  printf '已取消选择\n' >&2
   printf '__SCHEMX_RELEASE_CANCELLED__\n'
   exit 0
 fi
@@ -197,6 +203,20 @@ assert_not_contains() {
   fi
 }
 
+assert_occurrences() {
+  local haystack="$1"
+  local needle="$2"
+  local expected="$3"
+  local actual
+
+  actual="$(printf '%s' "$haystack" | grep -Fo -- "$needle" | wc -l | tr -d ' ')"
+
+  if [[ "$actual" != "$expected" ]]; then
+    printf '期望输出中 %s 出现 %s 次，实际出现 %s 次。\n实际输出：\n%s\n' "$needle" "$expected" "$actual" "$haystack" >&2
+    exit 1
+  fi
+}
+
 assert_log_contains() {
   local needle="$1"
 
@@ -221,32 +241,34 @@ test_help_lists_channel_commands_without_package_shortcuts() {
   local output
   output="$(run_release help)"
 
-  assert_contains "$output" "pnpm release:publish:alpha"
-  assert_contains "$output" "pnpm release:publish:dev"
-  assert_contains "$output" "pnpm release:publish:next"
-  assert_not_contains "$output" "pnpm release:publish:core"
-  assert_not_contains "$output" "pnpm release:publish:wot"
-  assert_contains "$output" "bash scripts/release.sh publish-alpha [all|core|vue|vant]"
-  assert_contains "$output" "bash scripts/release.sh publish-dev [all|core|vue|vant]"
+  assert_contains "$output" "pnpm release:publish [dev|alpha|beta|rc|next|latest] [all|core|vue|vant] [current|patch|minor|major|x.y.z]"
+  assert_not_contains "$output" "pnpm release:publish:alpha"
+  assert_not_contains "$output" "pnpm release:version:patch"
+  assert_not_contains "$output" "bash scripts/release.sh publish-alpha"
+  assert_not_contains "$output" "bash scripts/release.sh version"
 }
 
-test_package_scripts_keep_only_publish_channels() {
+test_package_scripts_keep_single_publish_entry() {
   local scripts
   scripts="$(node -e "
 const pkg = require('$ROOT_DIR/package.json');
-console.log(Object.keys(pkg.scripts).filter((name) => name.startsWith('release:publish')).join('\n'));
+console.log(Object.keys(pkg.scripts).filter((name) => name.startsWith('release:')).join('\n'));
 ")"
 
   assert_contains "$scripts" "release:publish"
-  assert_contains "$scripts" "release:publish:dev"
-  assert_contains "$scripts" "release:publish:alpha"
-  assert_contains "$scripts" "release:publish:beta"
-  assert_contains "$scripts" "release:publish:rc"
-  assert_contains "$scripts" "release:publish:next"
-  assert_not_contains "$scripts" "release:publish:core"
-  assert_not_contains "$scripts" "release:publish:vue"
-  assert_not_contains "$scripts" "release:publish:vant"
-  assert_not_contains "$scripts" "release:publish:wot"
+  assert_not_contains "$scripts" "release:publish:"
+  assert_not_contains "$scripts" "release:version:"
+}
+
+test_release_channel_choices_put_latest_last() {
+  local output
+
+  output="$(bash -c "source '$ROOT_DIR/scripts/release/common.sh'; release_channel_choices")"
+
+  if [[ "$output" != "dev、alpha、beta、rc、next、latest" ]]; then
+    printf '发布通道选项应把 latest 放在最后。\n实际输出：%s\n' "$output" >&2
+    exit 1
+  fi
 }
 
 test_release_test_runs_only_release_script_tests() {
@@ -266,7 +288,7 @@ test_dev_publish_uses_dev_tag_and_restores_version() {
   : >"$COMMAND_LOG"
 
   export MOCK_BRANCH="feature/demo"
-  output="$(run_release publish-dev core)"
+  output="$(run_release publish dev core)"
   unset MOCK_BRANCH
 
   after="$(node -p "require('$ROOT_DIR/packages/core/package.json').version")"
@@ -276,8 +298,11 @@ test_dev_publish_uses_dev_tag_and_restores_version() {
     exit 1
   fi
 
-  assert_contains "$output" "发布模式：dev"
-  assert_contains "$output" "发布目标：core"
+  assert_contains "$output" "发布计划"
+  assert_contains "$output" "通道    dev - Dev 开发测试发布"
+  assert_contains "$output" "目标    core"
+  assert_contains "$output" "tag     dev"
+  assert_not_contains "$output" "发布模式：dev"
   assert_log_contains "pnpm --dir packages/core publish --access public --registry https://registry.npmjs.org/ --tag dev --no-git-checks"
   assert_log_not_contains "gh auth status"
   assert_log_not_contains "gh release create"
@@ -290,7 +315,7 @@ test_latest_publish_is_main_only() {
 
   export MOCK_BRANCH="feature/demo"
   set +e
-  output="$(run_release publish core 2>&1)"
+  output="$(run_release publish latest core current 2>&1)"
   status=$?
   set -e
   unset MOCK_BRANCH
@@ -308,7 +333,7 @@ test_publish_without_npm_auth_shows_clear_message() {
 
   export MOCK_NPM_AUTH_FAIL=1
   set +e
-  output="$(run_release publish core 2>&1)"
+  output="$(run_release publish latest core current 2>&1)"
   status=$?
   set -e
   unset MOCK_NPM_AUTH_FAIL
@@ -332,7 +357,7 @@ test_publish_accepts_npm_token_auth() {
   export MOCK_NPM_AUTH_FAIL=1
   export NPM_TOKEN=mock-token
   set +e
-  output="$(run_release publish-alpha core 2>&1)"
+  output="$(run_release publish alpha core 2>&1)"
   status=$?
   set -e
   unset MOCK_NPM_AUTH_FAIL
@@ -355,7 +380,7 @@ test_publish_without_github_auth_stops_before_publish() {
 
   export MOCK_GITHUB_AUTH_FAIL=1
   set +e
-  output="$(run_release publish core 2>&1)"
+  output="$(run_release publish latest core current 2>&1)"
   status=$?
   set -e
   unset MOCK_GITHUB_AUTH_FAIL
@@ -376,7 +401,7 @@ test_publish_existing_version_suggests_release_version() {
 
   export MOCK_PNPM_VIEW_EXISTS="@schemx/vue@"
   set +e
-  output="$(run_release publish vue 2>&1)"
+  output="$(run_release publish latest vue current 2>&1)"
   status=$?
   set -e
   unset MOCK_PNPM_VIEW_EXISTS
@@ -388,7 +413,7 @@ test_publish_existing_version_suggests_release_version() {
 
   assert_contains "$output" "@schemx/vue@"
   assert_contains "$output" "已存在"
-  assert_contains "$output" "pnpm release:version:patch vue"
+  assert_contains "$output" "pnpm release:publish latest vue patch"
   assert_log_not_contains "pnpm --dir packages/vue publish"
 }
 
@@ -399,7 +424,7 @@ test_alpha_publish_uses_alpha_tag_and_restores_version() {
   : >"$COMMAND_LOG"
 
   export MOCK_BRANCH="feature/demo"
-  output="$(run_release publish-alpha core)"
+  output="$(run_release publish alpha core)"
   unset MOCK_BRANCH
 
   after="$(node -p "require('$ROOT_DIR/packages/core/package.json').version")"
@@ -409,10 +434,13 @@ test_alpha_publish_uses_alpha_tag_and_restores_version() {
     exit 1
   fi
 
-  assert_contains "$output" "发布模式：alpha"
-  assert_contains "$output" "发布目标：core"
-  assert_contains "$output" "发布 registry：https://registry.npmjs.org/"
-  assert_contains "$output" "发布 tag：alpha"
+  assert_contains "$output" "发布计划"
+  assert_contains "$output" "通道    alpha - Alpha 预发布"
+  assert_contains "$output" "目标    core"
+  assert_contains "$output" "tag     alpha"
+  assert_not_contains "$output" "发布模式：alpha"
+  assert_contains "$output" "registry  https://registry.npmjs.org/"
+  assert_contains "$output" "tag       alpha"
   assert_contains "$output" "终端可能会停在认证提示处"
   assert_contains "$output" "完成后回到这里等待发布继续"
   assert_log_contains "pnpm --dir packages/core publish --access public --registry https://registry.npmjs.org/ --tag alpha --no-git-checks"
@@ -432,26 +460,48 @@ test_pack_accepts_target() {
   assert_log_not_contains "pnpm --filter @schemx/vue pack --pack-destination $ROOT_DIR"
 }
 
-test_version_accepts_target() {
+test_latest_publish_patch_bumps_commits_and_publishes_target() {
   : >"$COMMAND_LOG"
 
-  run_release version patch vue >/dev/null
+  run_release publish latest vue patch >/dev/null
 
   assert_log_contains "npm --prefix packages/vue version patch --no-git-tag-version"
   assert_log_not_contains "npm --prefix packages/core version patch --no-git-tag-version"
   assert_log_not_contains "npm --prefix packages/vant version patch --no-git-tag-version"
   assert_log_contains "pnpm install --lockfile-only"
+  assert_log_contains "git add packages/vue/package.json pnpm-lock.yaml"
+  assert_log_contains "git commit -m chore(发布): 提升 vue 版本"
+  assert_log_contains "pnpm --dir packages/vue publish --access public --registry https://registry.npmjs.org/"
 }
 
-test_version_defaults_to_all_packages() {
+test_latest_publish_patch_all_bumps_and_commits_all_packages() {
   : >"$COMMAND_LOG"
 
-  run_release version patch >/dev/null
+  run_release publish latest all patch >/dev/null
 
   assert_log_contains "npm --prefix packages/core version patch --no-git-tag-version"
   assert_log_contains "npm --prefix packages/vue version patch --no-git-tag-version"
   assert_log_contains "npm --prefix packages/vant version patch --no-git-tag-version"
   assert_log_contains "pnpm install --lockfile-only"
+  assert_log_contains "git add packages/core/package.json packages/vue/package.json packages/vant/package.json pnpm-lock.yaml"
+  assert_log_contains "git commit -m chore(发布): 提升 packages 版本"
+}
+
+test_latest_publish_explicit_version_requires_single_target() {
+  local output status
+
+  set +e
+  output="$(run_release publish latest all 1.2.3 2>&1)"
+  status=$?
+  set -e
+
+  if [[ "$status" -eq 0 ]]; then
+    printf '指定精确版本发布 all 应失败，避免把不同包强行设成同一版本。\n' >&2
+    exit 1
+  fi
+
+  assert_contains "$output" "指定版本只能用于单个发布目标"
+  assert_log_not_contains "npm --prefix packages/core version 1.2.3 --no-git-tag-version"
 }
 
 test_publish_checks_only_target_dependency_chain() {
@@ -460,7 +510,7 @@ test_publish_checks_only_target_dependency_chain() {
   : >"$COMMAND_LOG"
 
   export MOCK_BRANCH="feature/demo"
-  output="$(run_release publish-alpha vant)"
+  output="$(run_release publish alpha vant)"
   unset MOCK_BRANCH
 
   assert_contains "$output" "运行目标依赖链测试：vant"
@@ -477,33 +527,34 @@ test_publish_checks_only_target_dependency_chain() {
 
 test_release_output_uses_colors_when_forced() {
   local output error_output status
-  local cyan green yellow red reset
+  local cyan green yellow red bold
 
   cyan=$'\033[36m'
   green=$'\033[32m'
   yellow=$'\033[33m'
   red=$'\033[31m'
-  reset=$'\033[0m'
+  bold=$'\033[1m'
 
   : >"$COMMAND_LOG"
 
   export MOCK_BRANCH="feature/demo"
   unset NO_COLOR
   export FORCE_COLOR=1
-  output="$(run_release publish-alpha core 2>&1)"
+  output="$(run_release publish alpha core 2>&1)"
   unset FORCE_COLOR
   unset MOCK_BRANCH
 
-  assert_contains "$output" "${cyan}==> 发布 @schemx/core${reset}"
-  assert_contains "$output" "${green}@schemx/core@"
-  assert_contains "$output" "可发布${reset}"
-  assert_contains "$output" "${yellow}如果 npm 要求网页登录、二维码确认或 OTP"
+  assert_contains "$output" "${cyan}${bold}◆ 发布计划"
+  assert_contains "$output" "${cyan}${bold}◆ 发布 @schemx/core"
+  assert_contains "$output" "${green}✓ @schemx/core@"
+  assert_contains "$output" "可发布"
+  assert_contains "$output" "${yellow}! 如果 npm 要求网页登录、二维码确认或 OTP"
 
   export MOCK_BRANCH="feature/demo"
   unset NO_COLOR
   export FORCE_COLOR=1
   set +e
-  error_output="$(run_release publish core 2>&1)"
+  error_output="$(run_release publish latest core current 2>&1)"
   status=$?
   set -e
   unset FORCE_COLOR
@@ -514,7 +565,7 @@ test_release_output_uses_colors_when_forced() {
     exit 1
   fi
 
-  assert_contains "$error_output" "${red}错误：正式发布只能在 main 分支执行。当前分支：feature/demo${reset}"
+  assert_contains "$error_output" "${red}✖ 错误：正式发布只能在 main 分支执行。当前分支：feature/demo"
 }
 
 test_release_output_omits_colors_without_tty() {
@@ -525,7 +576,7 @@ test_release_output_omits_colors_without_tty() {
   export MOCK_BRANCH="feature/demo"
   export NO_COLOR=1
   export FORCE_COLOR=1
-  output="$(run_release publish-alpha core 2>&1)"
+  output="$(run_release publish alpha core 2>&1)"
   unset NO_COLOR
   unset FORCE_COLOR
   unset MOCK_BRANCH
@@ -533,18 +584,47 @@ test_release_output_omits_colors_without_tty() {
   assert_not_contains "$output" $'\033['
 }
 
-test_publish_without_target_prompts_for_package_selection() {
+test_publish_without_args_uses_channel_target_and_version_env_selection() {
   local output
 
   : >"$COMMAND_LOG"
 
-  output="$(SCHEMX_RELEASE_TARGET=core run_release publish)"
+  output="$(SCHEMX_RELEASE_CHANNEL=latest SCHEMX_RELEASE_TARGET=core SCHEMX_RELEASE_VERSION_ACTION=current run_release publish)"
 
-  assert_contains "$output" "发布模式：latest"
-  assert_contains "$output" "发布目标：core"
+  assert_contains "$output" "发布计划"
+  assert_contains "$output" "目标    core"
+  assert_contains "$output" "通道    latest - 正式版发布"
+  assert_contains "$output" "说明    发布到 npm latest，仅允许 main 分支。"
+  assert_contains "$output" "版本    current - 使用当前版本"
+  assert_occurrences "$output" "发布计划" 1
+  assert_not_contains "$output" "==> 已选择"
+  assert_not_contains "$output" "==> 本次发布选择"
+  assert_not_contains "$output" "发布信息"
+  assert_not_contains "$output" "----------------------------------------"
+  assert_not_contains "$output" "发布模式：latest"
   assert_not_contains "$output" "输入序号或名称"
   assert_log_contains "pnpm --dir packages/core publish --access public --registry https://registry.npmjs.org/"
   assert_log_not_contains "pnpm --dir packages/vue publish"
+}
+
+test_selector_does_not_print_confirmation_line_after_enter() {
+  local output status
+
+  if ! command -v script >/dev/null 2>&1; then
+    return
+  fi
+
+  set +e
+  output="$(printf '\r' | script -q /dev/null node "$ROOT_DIR/scripts/select-release-option.mjs" --kind target --channel alpha all core 2>&1)"
+  status=$?
+  set -e
+
+  if [[ "$status" -ne 0 ]]; then
+    return
+  fi
+
+  assert_contains "$output" "all"
+  assert_not_contains "$output" "请选择发布目标：all"
 }
 
 test_latest_publish_tags_and_pushes_after_publish() {
@@ -553,7 +633,7 @@ test_latest_publish_tags_and_pushes_after_publish() {
   version="$(node -p "require('$ROOT_DIR/packages/core/package.json').version")"
   : >"$COMMAND_LOG"
 
-  SCHEMX_RELEASE_TARGET=core run_release publish
+  run_release publish latest core current
 
   assert_log_contains "pnpm --dir packages/core publish --access public --registry https://registry.npmjs.org/"
   assert_log_contains "git tag -a @schemx/core@${version} -m release: @schemx/core@${version}"
@@ -571,7 +651,7 @@ test_latest_publish_all_creates_package_scoped_tags_and_releases() {
   vant_version="$(node -p "require('$ROOT_DIR/packages/vant/package.json').version")"
   : >"$COMMAND_LOG"
 
-  SCHEMX_RELEASE_TARGET=all run_release publish
+  run_release publish latest all current
 
   assert_log_contains "pnpm --dir packages/core publish --access public --registry https://registry.npmjs.org/"
   assert_log_contains "pnpm --dir packages/vue publish --access public --registry https://registry.npmjs.org/"
@@ -591,7 +671,7 @@ test_selector_rejects_unknown_environment_target() {
   local output status
 
   set +e
-  output="$(SCHEMX_RELEASE_TARGET=unknown node "$ROOT_DIR/scripts/select-release-target.mjs" all core vue 2>&1)"
+  output="$(SCHEMX_RELEASE_TARGET=unknown node "$ROOT_DIR/scripts/select-release-option.mjs" --kind target all core vue 2>&1)"
   status=$?
   set -e
 
@@ -607,7 +687,7 @@ test_selector_requires_tty_or_automation_target() {
   local output status
 
   set +e
-  output="$(node "$ROOT_DIR/scripts/select-release-target.mjs" all core vue 2>&1)"
+  output="$(node "$ROOT_DIR/scripts/select-release-option.mjs" --kind target all core vue 2>&1)"
   status=$?
   set -e
 
@@ -623,7 +703,7 @@ test_selector_rejects_unknown_channel() {
   local output status
 
   set +e
-  output="$(SCHEMX_RELEASE_TARGET=core node "$ROOT_DIR/scripts/select-release-target.mjs" --channel unknown all core vue 2>&1)"
+  output="$(SCHEMX_RELEASE_TARGET=core node "$ROOT_DIR/scripts/select-release-option.mjs" --kind target --channel unknown all core vue 2>&1)"
   status=$?
   set -e
 
@@ -638,7 +718,7 @@ test_selector_rejects_unknown_channel() {
 test_selector_accepts_dev_channel() {
   local output
 
-  output="$(SCHEMX_RELEASE_TARGET=core node "$ROOT_DIR/scripts/select-release-target.mjs" --channel dev all core vue)"
+  output="$(SCHEMX_RELEASE_TARGET=core node "$ROOT_DIR/scripts/select-release-option.mjs" --kind target --channel dev all core vue)"
 
   if [[ "$output" != "core" ]]; then
     printf 'dev 发布模式应允许自动化目标选择。\n实际输出：%s\n' "$output" >&2
@@ -663,13 +743,14 @@ test_cancelled_selector_exits_without_lifecycle_failure() {
     exit 1
   fi
 
-  assert_contains "$output" "已取消发布目标选择"
+  assert_contains "$output" "已取消选择"
   assert_log_not_contains "pnpm --dir packages/core publish"
   assert_log_not_contains "pnpm --dir packages/vue publish"
 }
 
 test_help_lists_channel_commands_without_package_shortcuts
-test_package_scripts_keep_only_publish_channels
+test_package_scripts_keep_single_publish_entry
+test_release_channel_choices_put_latest_last
 test_release_test_runs_only_release_script_tests
 test_latest_publish_is_main_only
 test_publish_without_npm_auth_shows_clear_message
@@ -681,9 +762,11 @@ test_publish_checks_only_target_dependency_chain
 test_release_output_uses_colors_when_forced
 test_release_output_omits_colors_without_tty
 test_pack_accepts_target
-test_version_accepts_target
-test_version_defaults_to_all_packages
-test_publish_without_target_prompts_for_package_selection
+test_latest_publish_patch_bumps_commits_and_publishes_target
+test_latest_publish_patch_all_bumps_and_commits_all_packages
+test_latest_publish_explicit_version_requires_single_target
+test_publish_without_args_uses_channel_target_and_version_env_selection
+test_selector_does_not_print_confirmation_line_after_enter
 test_latest_publish_tags_and_pushes_after_publish
 test_latest_publish_all_creates_package_scoped_tags_and_releases
 test_selector_rejects_unknown_environment_target

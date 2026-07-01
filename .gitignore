@@ -159,6 +159,9 @@ Desktop.ini
 .tasks
 ./*.md
 
+.agents
+AGENTS.md
+
 # ===================================
 # 其他
 # ===================================
@@ -174,6 +177,3 @@ bower_components
 
 # Typescript v1 declaration files
 # typings/
-
-*test*.ts
-*test*.js

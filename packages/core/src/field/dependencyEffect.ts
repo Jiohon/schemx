@@ -1,47 +1,53 @@
 /**
  * DependencyEffect - dependency renderer 执行态容器。
  *
- * Slot 只记录异步执行状态。renderer 返回的结构由 reconciler 写入
- * DependencyRuntimeNode.dynamicChildNodes。
+ * Effect state 只记录异步执行状态。renderer 返回的结构由 reconciler 写入
+ * DependencyRuntimeNode.childNodes。
  *
  * @module core/field/dependencyEffect
  */
 
-import { compileToDescriptors } from "../descriptor"
 import { createSignal, createSignalEffect } from "../reactivity"
+import { createAbortableTaskRunner } from "../scheduler/abortableTaskRunner"
 
-import type { SchemxFormContext } from "../createForm"
-import type { DependencyDescriptor } from "../descriptor"
-import type { DependencyRuntimeNode, Scope } from "../node"
+import { isDependencyDescriptor, type DependencyDescriptor } from "../descriptor"
+import type { DependencyRuntimeNode, RuntimeNodeResourceContext, Scope } from "../node"
 import type { Signal } from "../reactivity"
-import type { NamePath, SchemxFormApi, Values } from "../types"
+import type { Scheduler } from "../scheduler"
+import type { SchemxContext } from "../schemxContext"
+import type { NamePath, SchemxField, SchemxFormApi, Values } from "../types"
+
+const dependencyNodeResources = new WeakMap<
+  DependencyRuntimeNode,
+  RuntimeNodeResourceContext<any>
+>()
 
 /**
- * 检查 DependencyRuntimeNode 是否有 DependencySlot。
+ * 检查 DependencyRuntimeNode 是否有 DependencyEffectState。
  *
  * @param node - dependency runtime 节点。
- * @returns 已挂载 slot 时返回 true。
+ * @returns 已挂载 effect state 时返回 true。
  */
-export function hasDependencySlot(node: DependencyRuntimeNode): boolean {
-  return node.dependencySlot != null
+export function hasDependencyEffect(node: DependencyRuntimeNode): boolean {
+  return getDependencyEffect(node) != null
 }
 
 /**
- * 从 DependencyRuntimeNode 获取 DependencySlot。
+ * 从 DependencyRuntimeNode 获取 DependencyEffectState。
  *
  * @param node - dependency runtime 节点。
- * @returns 当前 slot；尚未挂载时返回 undefined。
+ * @returns 当前 effect state；尚未挂载时返回 undefined。
  */
-export function getDependencySlot(
+export function getDependencyEffect(
   node: DependencyRuntimeNode
-): DependencyEffectSlot | undefined {
-  return node.dependencySlot ?? undefined
+): DependencyEffectState | undefined {
+  return dependencyNodeResources.get(node)?.dependencyEffects.get(node.id)
 }
 
 /**
  * Dependency renderer 的执行状态与控制句柄。
  */
-export interface DependencyEffectSlot {
+export interface DependencyEffectState {
   readonly loading: Signal<boolean>
   readonly error: Signal<Error | null>
   readonly version: Signal<number>
@@ -67,6 +73,11 @@ export interface DependencyEffectSlot {
  */
 export interface CreateDependencyEffectOptions<TValues extends Values = Values> {
   /**
+   * 当前 form 实例运行时上下文。
+   */
+  context: SchemxContext<TValues>
+
+  /**
    * dependency runtime 节点。
    */
   node: DependencyRuntimeNode<TValues>
@@ -80,31 +91,35 @@ export interface CreateDependencyEffectOptions<TValues extends Values = Values> 
    * 关联的 scope，默认创建 node 的子 scope。
    */
   scope?: Scope
-
-  /**
-   * 表单内部上下文。
-   */
-  context: SchemxFormContext<TValues>
 }
 
 /**
- * 创建并挂载 DependencyEffectSlot 到 RuntimeNode。
+ * 创建并挂载 DependencyEffectState 到 RuntimeNode。
  *
- * 会创建 slot 的 run/dispose 逻辑，并把 renderer 结果经由统一 commit 边界写入
- * dependency 子树。
+ * 会创建 effect state 的 run/dispose 逻辑，并把 renderer 结果经由统一 commit
+ * 边界写入 dependency 子树。
  *
  * @param options - 创建 dependency effect 的配置。
- * @returns 已挂载到 node 的 DependencyEffectSlot。
+ * @returns 已挂载到 node 的 DependencyEffectState。
  */
 export function createDependencyEffect<TValues extends Values = Values>(
   options: CreateDependencyEffectOptions<TValues>
-): DependencyEffectSlot {
-  const { node, descriptor, context } = options
+): DependencyEffectState {
+  const { context, node, descriptor } = options
+
+  const { formApi, scheduler, compile, commitChildren } = context
+
   const resourceScope = options.scope ?? node.scope.child()
 
-  node.dependencySlot?.dispose()
+  let compileCacheVersion = compile.getCacheVersion()
 
-  const slot: DependencyEffectSlot = {
+  const resources = context.nodeResources
+
+  dependencyNodeResources.set(node, resources)
+
+  resources.dependencyEffects.get(node.id)?.dispose()
+
+  const effectState: DependencyEffectState = {
     loading: createSignal(false),
     error: createSignal<Error | null>(null),
     version: createSignal(0),
@@ -113,102 +128,92 @@ export function createDependencyEffect<TValues extends Values = Values>(
     dispose: (): void => undefined,
   }
 
-  node.dependencyResourceScope = resourceScope
+  resources.dependencyResourceScopes.set(node.id, resourceScope)
 
-  slot.run = (): Promise<void> => {
-    if (resourceScope.disposed) return Promise.resolve()
+  const taskRunner = createAbortableTaskRunner<SchemxField<TValues>[]>({
+    scope: resourceScope,
+    scheduler,
+    run: async (signal) => {
+      const currentDescriptor = resources.descriptors.get(node.id)
 
-    const currentDescriptor = node.descriptor
+      if (!currentDescriptor || !isDependencyDescriptor(currentDescriptor)) {
+        return []
+      }
 
-    const currentVersion = slot.version.value + 1
-    slot.version.value = currentVersion
+      return await Promise.resolve(currentDescriptor.renderer(formApi, signal))
+    },
+    onStart: (controller) => {
+      effectState.version.value += 1
+      effectState.abortController.value = controller
+      effectState.loading.value = true
+      effectState.error.value = null
+    },
+    onSuccess: (childSchemas) => {
+      const nextCompileCacheVersion = compile.getCacheVersion()
+      if (nextCompileCacheVersion !== compileCacheVersion) {
+        compile.invalidate()
+        compileCacheVersion = nextCompileCacheVersion
+      }
 
-    slot.abortController.value?.abort()
-    const controller = new AbortController()
-    slot.abortController.value = controller
+      const descriptors = compile.toDescriptors(childSchemas, "")
 
-    slot.loading.value = true
-    slot.error.value = null
+      commitChildren(node, descriptors)
+    },
+    onError: (error) => {
+      effectState.error.value = error
+    },
+    onSettled: () => {
+      effectState.loading.value = false
+    },
+  })
 
-    return context.scheduler.track(
-      (async () => {
-        try {
-          const childSchemas = await Promise.resolve(
-            currentDescriptor.renderer(context.formApi, controller.signal)
-          )
+  effectState.run = async (): Promise<void> => {
+    if (resourceScope.disposed) return
 
-          if (
-            resourceScope.disposed ||
-            controller.signal.aborted ||
-            currentVersion !== slot.version.value
-          ) {
-            return
-          }
+    const currentDescriptor = resources.descriptors.get(node.id)
 
-          const descriptors = compileToDescriptors<TValues>(
-            childSchemas,
-            context.defaultProps
-          )
+    if (!currentDescriptor || !isDependencyDescriptor(currentDescriptor)) {
+      return
+    }
 
-          context.commitChildren(node, descriptors)
-        } catch (cause) {
-          if (
-            resourceScope.disposed ||
-            controller.signal.aborted ||
-            currentVersion !== slot.version.value
-          ) {
-            return
-          }
-
-          slot.error.value = normalizeError(cause)
-        } finally {
-          if (
-            !resourceScope.disposed &&
-            !controller.signal.aborted &&
-            currentVersion === slot.version.value
-          ) {
-            slot.loading.value = false
-          }
-        }
-      })()
-    )
+    await taskRunner.run()
   }
 
-  slot.dispose = (): void => {
-    slot.version.value += 1
-    slot.abortController.value?.abort()
+  effectState.dispose = (): void => {
+    effectState.version.value += 1
+    taskRunner.dispose()
     resourceScope.dispose()
   }
 
   resourceScope.add(() => {
-    slot.abortController.value?.abort()
-    slot.abortController.value = null
+    effectState.abortController.value?.abort()
+    effectState.abortController.value = null
 
-    if (node.dependencySlot === slot) {
-      node.dependencySlot = null
+    if (resources.dependencyEffects.get(node.id) === effectState) {
+      resources.dependencyEffects.delete(node.id)
     }
 
-    if (node.dependencyResourceScope === resourceScope) {
-      node.dependencyResourceScope = null
+    if (resources.dependencyResourceScopes.get(node.id) === resourceScope) {
+      resources.dependencyResourceScopes.delete(node.id)
     }
   })
 
-  if (descriptor.trigger.length > 0) {
-    setupTriggerSubscription(
-      descriptor.trigger,
-      context.formApi,
-      () => slot.run(),
-      resourceScope
-    )
-  }
+  setupTriggerSubscription(
+    descriptor.triggerFields,
+    formApi,
+    () => effectState.run(),
+    resourceScope,
+    scheduler,
+    `dependency:${node.id}:trigger`
+  )
 
-  node.dependencySlot = slot
+  resources.dependencyEffects.set(node.id, effectState)
 
-  void slot.run().catch((runError) => {
-    console.error("DependencyEffectSlot initial run error:", runError)
+  void effectState.run().catch((runError) => {
+    console.error("DependencyEffectState initial run error:", runError)
   })
 
-  return slot
+  return effectState
 }
 
 /**
@@ -218,28 +223,27 @@ function setupTriggerSubscription<
   TValues extends Values = Values,
   TName extends NamePath<TValues> = NamePath<TValues>,
 >(
-  triggers: TName[],
+  triggers: readonly TName[],
   formApi: SchemxFormApi<TValues>,
   run: () => Promise<void>,
-  scope: { disposed: boolean; add: (cleanup: () => void) => void }
+  scope: Scope,
+  scheduler: Scheduler,
+  taskId: string
 ): void {
   let isFirstRun = true
-  let pendingRun = false
 
   const disposeEffect = createSignalEffect(() => {
-    void formApi.getValues(triggers)
+    void formApi.getValues([...triggers])
 
-    if (!isFirstRun && !pendingRun) {
-      pendingRun = true
-
-      queueMicrotask(() => {
-        pendingRun = false
-
-        if (scope.disposed) return
-
-        run().catch((runError) => {
-          console.error("DependencyEffectSlot trigger run error:", runError)
-        })
+    if (!isFirstRun) {
+      scheduler.schedule({
+        id: taskId,
+        priority: "normal",
+        scope,
+        run,
+        onError: (runError) => {
+          console.error("DependencyEffectState trigger run error:", runError)
+        },
       })
     }
 
@@ -247,8 +251,4 @@ function setupTriggerSubscription<
   })
 
   scope.add(disposeEffect)
-}
-
-function normalizeError(cause: unknown): Error {
-  return cause instanceof Error ? cause : new Error(String(cause))
 }

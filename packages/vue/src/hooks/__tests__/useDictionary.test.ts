@@ -14,14 +14,10 @@ import { mount } from "@vue/test-utils"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { FORM_CONTEXT_KEY } from "../useContext"
-import {
-  normalizeError,
-  useDictionary,
-  type UseDictOptionsReturn,
-} from "../useDictionary"
+import { normalizeError, useDictionary, type UseDictionaryReturn } from "../useDictionary"
 import { SCHEMX_INSTANCE_KEY } from "../useForm"
 
-import type { SchemxDictionary } from "@schemx/core"
+import type { SchemxDictionary } from "@/types/dictionary"
 
 // ========== normalizeError 单元测试 ==========
 
@@ -60,7 +56,7 @@ const flushPromises = () => new Promise<void>((resolve) => setTimeout(resolve, 0
  * 挂载包装组件，提供 inject 上下文，在 setup 中调用 useDictionary。
  */
 function mountUseDictionary(options: SchemxDictionary) {
-  let hookReturn: UseDictOptionsReturn
+  let hookReturn: UseDictionaryReturn
 
   const form = createForm({ initialValues: {} })
 

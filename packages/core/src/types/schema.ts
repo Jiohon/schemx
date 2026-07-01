@@ -77,6 +77,10 @@ export interface SchemxBaseComponentProps<
    */
   formItemProps?: SchemxFormItemProps<TValues>
   /**
+   * Form 表单实例方法
+   */
+  formInstance?: SchemxInstance<TValues>
+  /**
    * 字段值
    */
   value?: TValue
@@ -386,7 +390,7 @@ export interface SchemxGroupField<
  * 动态子树依赖字段配置
  *
  * 根据其他字段的值动态生成一段子 schema，componentType 固定为 `"dependency"`。
- * 该配置会被编译为 DependencyEffectSlot。
+ * 该配置会被编译为 DependencyEffectState。
  *
  * @typeParam  TValues - 表单值类型
  */

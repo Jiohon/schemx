@@ -19,22 +19,26 @@ export { validatorRegistry } from "./utils/rulesProvider"
 
 /** Hooks */
 export {
+  useConfigContext,
   useForm,
+  useFormContext,
   useField,
+  useFieldContext,
   useWatch,
   useWatchField,
   useWatchFields,
   useWatchAll,
   useDictionary,
-  useContext,
   useEffect,
-  useFieldContext,
-  type UseDictOptionsReturn,
+  type UseDictionaryReturn,
   type FormContextProps,
 } from "./hooks"
 
 /** 高阶组件 */
 export { WithRemoteOptions } from "./hocs"
+
+/** 字典选项类型 */
+export type { SchemxDictionary, SchemxWithDictionary } from "./types/dictionary"
 
 /** 组件 */
 export { default as FormItem } from "./components/FormItem"

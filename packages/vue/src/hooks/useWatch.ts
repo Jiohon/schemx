@@ -2,7 +2,7 @@
  * useWatch - 监听字段变化（Vue 组合式 API 版本）
  *
  * 基于 core 层的 {@link createWatch} 实现，
- * 自动通过 `useFormInstance` 获取 formContext，
+ * 自动通过 `useFormContext` 获取 formContext，
  * 并在 `onUnmounted` 时自动取消监听，无需手动管理生命周期。
  *
  * 提供三种监听模式：
@@ -40,7 +40,7 @@ import { onUnmounted } from "vue"
 
 import { createWatch } from "@schemx/core"
 
-import { useFormInstance } from "./useForm"
+import { useFormContext } from "./useForm"
 
 import type { NamePath, Values } from "@schemx/core"
 import type {
@@ -95,7 +95,7 @@ export function useWatch<T extends Values>(
   callbackOrOptions?: WatchFieldCallback<T> | WatchFieldsCallback<T> | CreateWatchOptions,
   maybeOptions?: CreateWatchOptions
 ): () => void {
-  const form = useFormInstance<T>()
+  const form = useFormContext<T>()
 
   const dispose = (createWatch as any)(
     form,

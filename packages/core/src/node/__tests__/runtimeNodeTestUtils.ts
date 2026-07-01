@@ -1,4 +1,9 @@
-import { createSignal } from "../../reactivity"
+import {
+  createDependencyRuntimeNode,
+  createFieldRuntimeNode,
+  createGroupRuntimeNode,
+  createRootRuntimeNode,
+} from "../runtimeNode"
 import { createScope } from "../scope"
 
 import type {
@@ -12,8 +17,8 @@ import type {
   FieldRuntimeNode,
   GroupRuntimeNode,
   RootRuntimeNode,
-} from "../runtimeNode"
-import type { Scope } from "../scope"
+  Scope,
+} from "../types"
 
 export function createTestRootRuntimeNode(
   options: {
@@ -22,15 +27,12 @@ export function createTestRootRuntimeNode(
     scope?: Scope
   } = {}
 ): RootRuntimeNode {
+  const root = createRootRuntimeNode({ scope: options.scope ?? createScope() })
+
   return {
-    id: options.id ?? 0,
-    key: options.key ?? "root",
-    type: "root",
-    parent: null,
-    scope: options.scope ?? createScope(),
-    disposed: createSignal(false),
-    mounted: createSignal(false),
-    childNodes: [],
+    ...root,
+    id: options.id ?? root.id,
+    key: options.key ?? root.key,
   }
 }
 
@@ -41,19 +43,12 @@ export function createTestFieldRuntimeNode(options: {
   descriptor: FieldDescriptor
   scope?: Scope
 }): FieldRuntimeNode {
-  return {
+  return createFieldRuntimeNode({
     id: options.id ?? 1,
     key: options.key,
-    type: "field",
     parent: options.parent,
     scope: options.scope ?? options.parent.scope.child(),
-    disposed: createSignal(false),
-    mounted: createSignal(false),
-    descriptor: options.descriptor,
-    fieldModel: null,
-    fieldResourceScope: null,
-    fieldDependenciesScope: null,
-  }
+  })
 }
 
 export function createTestGroupRuntimeNode(options: {
@@ -63,17 +58,12 @@ export function createTestGroupRuntimeNode(options: {
   descriptor: GroupDescriptor
   scope?: Scope
 }): GroupRuntimeNode {
-  return {
+  return createGroupRuntimeNode({
     id: options.id ?? 1,
     key: options.key,
-    type: "group",
     parent: options.parent,
     scope: options.scope ?? options.parent.scope.child(),
-    disposed: createSignal(false),
-    mounted: createSignal(false),
-    descriptor: options.descriptor,
-    childNodes: [],
-  }
+  })
 }
 
 export function createTestDependencyRuntimeNode(options: {
@@ -83,17 +73,10 @@ export function createTestDependencyRuntimeNode(options: {
   descriptor: DependencyDescriptor
   scope?: Scope
 }): DependencyRuntimeNode {
-  return {
+  return createDependencyRuntimeNode({
     id: options.id ?? 1,
     key: options.key,
-    type: "dependency",
     parent: options.parent,
     scope: options.scope ?? options.parent.scope.child(),
-    disposed: createSignal(false),
-    mounted: createSignal(false),
-    descriptor: options.descriptor,
-    dependencySlot: null,
-    dependencyResourceScope: null,
-    dynamicChildNodes: [],
-  }
+  })
 }

@@ -52,7 +52,7 @@ export default defineConfig({
       },
     },
     rollupOptions: {
-      external: ["vue", "vant", "classnames", "dayjs"],
+      external: ["vue", "vant", "@schemx/core", "@schemx/vue", "classnames", "dayjs"],
       output: {
         exports: "named",
       },
