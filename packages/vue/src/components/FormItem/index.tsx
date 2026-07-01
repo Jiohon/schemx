@@ -8,27 +8,27 @@
  * @module components/FormItem
  */
 
-import { computed, defineComponent, h, PropType, toRef, watchEffect } from "vue"
+import { computed, defineComponent, h, PropType, toRef } from "vue"
 import type { SetupContext, VNodeChild } from "vue"
 
 import classnames from "classnames"
 
 import {
-  useField,
-  useConfigContext,
   createFieldContext,
+  useConfigContext,
+  useField,
   useFormContext,
   useStableRef,
 } from "@/hooks"
 import { extractChildSlots, mergeTrigger, resolveSlot, shouldValidateOn } from "@/utils"
+import type { TriggerConfig } from "@/utils"
+
 import FormGroup from "../FormGroup"
 
-import type { TriggerConfig } from "@/utils"
 import type {
   FieldValue,
   NamePath,
   SchemxComponentProps,
-  SchemxFormItemProps,
   SchemxViewFieldSchema,
   SchemxViewGroupSchema,
   SchemxViewSchema,

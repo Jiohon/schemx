@@ -12,9 +12,9 @@
  * 不直接挂在 RuntimeNode 上，而是由 RuntimeNodeResources 承载。
  */
 
+import type { Values } from ".."
 import type { Scope } from "./scope"
 import type { Signal } from "../../reactivity"
-import type { Values } from ".."
 
 /**
  * Runtime node 支持的节点类型。

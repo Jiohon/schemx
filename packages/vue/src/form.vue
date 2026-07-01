@@ -13,12 +13,12 @@
 
   import FormItem from "./components/FormItem"
   import { createConfigContext, useForm, useViewSchemas } from "./hooks"
+  import { getSectionPosition } from "./utils/helpers"
 
   import type { SchemxFormProps } from "./types/index"
   import type { SchemxViewSchema, Values } from "@schemx/core"
 
   import "./styles/index.css"
-  import { getSectionPosition } from "./utils/helpers"
 
   defineOptions({ name: "SchemxForm" })
 

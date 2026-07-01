@@ -6,27 +6,25 @@
 
 import {
   createDependencyDescriptor,
-  createDescriptor,
   createFieldDescriptor,
   createGroupDescriptor,
 } from "../descriptor"
 import { maybeUseSchemxContext, withSchemxContext } from "../schemxContext"
 import {
-  isBaseSchema,
   isDependencySchema,
   isGroupSchema,
   normalizeSchemas,
 } from "../utils"
 
 import {
-  CompileError,
   type Compile,
   type CompileCache,
   type CompileOptions,
 } from "./types"
+
 import type { FormDescriptor } from "../descriptor"
 import type { SchemxContext } from "../schemxContext"
-import type { NamePath, SchemxInstance, Values } from "../types"
+import type { SchemxInstance, Values } from "../types"
 import type { SchemxField } from "../types/schema"
 
 /**
@@ -103,7 +101,7 @@ export function createCompile<TValues extends Values = Values>(
     for (let i = 0; i < normalized.length; i++) {
       const schema = normalized[i]
 
-      let descriptor: FormDescriptor<TValues> | undefined = undefined
+      let descriptor: FormDescriptor<TValues>
 
       const cached = compileCache.entries.get(schema)
 
@@ -112,12 +110,7 @@ export function createCompile<TValues extends Values = Values>(
         continue
       }
 
-      if (isBaseSchema(schema)) {
-        descriptor = createFieldDescriptor<TValues>({
-          schema,
-          parentKey,
-        })
-      } else if (isGroupSchema(schema)) {
+      if (isGroupSchema(schema)) {
         descriptor = createGroupDescriptor<TValues>({
           schema,
           index: i,
@@ -134,14 +127,19 @@ export function createCompile<TValues extends Values = Values>(
           schema,
           parentKey,
         })
+      } else {
+        descriptor = createFieldDescriptor<TValues>({
+          schema,
+          parentKey,
+        })
       }
 
       compileCache.entries.set(schema, {
         version: compileCache.version,
-        descriptor: descriptor!,
+        descriptor,
       })
 
-      descriptors.push(descriptor!)
+      descriptors.push(descriptor)
     }
 
     return descriptors

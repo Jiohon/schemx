@@ -7,16 +7,14 @@
  * @module core/runtime-resources
  */
 
-import type { FormDescriptor } from "../../descriptor/types"
+import type { Values } from ".."
 import type { RuntimeChildrenState } from "./runtimeNode"
+import type { RuntimeNode, RuntimeNodeId } from "./runtimeNode"
 import type { Scope } from "./scope"
-
+import type { FormDescriptor } from "../../descriptor/types"
 import type { DependencyEffectState } from "../../field/dependencyEffect"
 import type { FieldRuntimeState } from "../../field/runtimeState"
 import type { RuntimeViewState } from "../../view/viewGraph"
-
-import type { Values } from ".."
-import type { RuntimeNode, RuntimeNodeId } from "./runtimeNode"
 
 /**
  * 运行时资源注册表。

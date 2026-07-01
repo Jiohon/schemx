@@ -47,13 +47,13 @@ export function createSignalEffect(
     return effect(fn)
   }
 
-  let dispose: SignalEffectDispose | undefined
-  dispose = effect(() => {
+  const disposeRef: { current?: SignalEffectDispose } = {}
+  disposeRef.current = effect(() => {
     fn()
-    dispose?.()
+    disposeRef.current?.()
   })
 
-  return () => dispose?.()
+  return () => disposeRef.current?.()
 }
 
 /**

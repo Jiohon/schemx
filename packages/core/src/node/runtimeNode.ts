@@ -10,6 +10,7 @@
 import { createSignal } from "../reactivity"
 
 import { createScope } from "./scope"
+
 import type {
   CreateDependencyRuntimeNodeOptions,
   CreateFieldRuntimeNodeOptions,
@@ -61,9 +62,11 @@ export function setChildRuntimeNodes<TValues extends Values = Values>(
     case "root":
     case "group":
       node.childNodes = children
+
       return
     case "dependency":
       node.childNodes = children
+
       return
     case "field":
       return

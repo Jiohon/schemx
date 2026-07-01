@@ -7,10 +7,10 @@
  * @module core/field/dependencyEffect
  */
 
+import { type DependencyDescriptor, isDependencyDescriptor } from "../descriptor"
 import { createSignal, createSignalEffect } from "../reactivity"
 import { createAbortableTaskRunner } from "../scheduler/abortableTaskRunner"
 
-import { isDependencyDescriptor, type DependencyDescriptor } from "../descriptor"
 import type { DependencyRuntimeNode, RuntimeNodeResourceContext, Scope } from "../node"
 import type { Signal } from "../reactivity"
 import type { Scheduler } from "../scheduler"

@@ -3,15 +3,16 @@ import {
   createDependencyEffect,
   createFieldRuntimeState,
   createValidationEffect,
-  setFieldStaticSchema,
   type FieldRuntimeState,
+  setFieldStaticSchema,
 } from "../field"
-import { getChildRuntimeNodes } from "./runtimeNode"
 import {
   createRuntimeViewState,
   deleteRuntimeViewState,
   updateRuntimeViewState,
 } from "../view/createViewState"
+
+import { getChildRuntimeNodes } from "./runtimeNode"
 
 import type { DependencyDescriptor, FieldDescriptor, FormDescriptor } from "../descriptor"
 import type { SchemxContext } from "../schemxContext"
@@ -103,11 +104,13 @@ export function createRuntimeLifecycle<TValues extends Values = Values>(
   ): void {
     if (node.type === "field" && descriptor.type === "field") {
       mountFieldResources(node, descriptor)
+
       return
     }
 
     if (node.type === "group" && descriptor.type === "group") {
       mountGroupResources(node, descriptor)
+
       return
     }
 
@@ -127,11 +130,13 @@ export function createRuntimeLifecycle<TValues extends Values = Values>(
         nextDescriptor,
         previousDescriptor?.type === "field" ? previousDescriptor : undefined
       )
+
       return
     }
 
     if (node.type === "group" && nextDescriptor.type === "group") {
       mountGroupResources(node, nextDescriptor)
+
       return
     }
 
@@ -170,6 +175,7 @@ export function createRuntimeLifecycle<TValues extends Values = Values>(
 
     if (!runtimeState) {
       mountFieldResources(node, descriptor)
+
       return
     }
 

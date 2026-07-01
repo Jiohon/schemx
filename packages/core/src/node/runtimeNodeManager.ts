@@ -7,6 +7,9 @@
  * @module core/node/runtimeNodeManager
  */
 
+import { createSignal } from "../reactivity"
+
+import { deleteNodeResources } from "./resources"
 import {
   createDependencyRuntimeNode,
   createFieldRuntimeNode,
@@ -15,9 +18,7 @@ import {
   getChildRuntimeNodes,
   setChildRuntimeNodes,
 } from "./runtimeNode"
-import { deleteNodeResources } from "./resources"
 import { createScope } from "./scope"
-import { createSignal } from "../reactivity"
 
 import type { FormDescriptor } from "../descriptor"
 import type { SchemxContext } from "../schemxContext"
@@ -26,10 +27,10 @@ import type {
   ContainerRuntimeNode,
   CreateRuntimeNodeOptions,
   DescribedRuntimeNode,
+  RootRuntimeNode,
   RuntimeNode,
   RuntimeNodeManager,
   RuntimeNodeResourceContext,
-  RootRuntimeNode,
 } from "./types"
 
 export function createRuntimeNodeManager<TValues extends Values = Values>(

@@ -9,15 +9,15 @@
 
 import type {
   NamePath,
+  SchemxBaseField,
   SchemxDependencies,
+  SchemxDependencyField,
   SchemxField,
   SchemxFormApi,
-  SchemxBaseField,
-  SchemxDependencyField,
+  SchemxGroupField,
   SchemxRendererKey,
   SchemxResolvedBaseField,
   SchemxResolvedGroupField,
-  SchemxGroupField,
   SchemxRules,
   ValidationTrigger,
   Values,
@@ -111,7 +111,7 @@ export interface FieldDynamicPropsDescriptor<TValues extends Values = Values> {
 /**
  * 字段校验描述。
  */
-export interface FieldValidationDescriptor<TValues extends Values = Values> {
+export interface FieldValidationDescriptor<_TValues extends Values = Values> {
   /** 校验触发方式。 */
   readonly trigger?: ValidationTrigger | readonly ValidationTrigger[]
   /** 静态校验规则。 */

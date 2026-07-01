@@ -1,10 +1,10 @@
 import type { DescribedRuntimeNode } from "../node"
+import type { ContainerRuntimeNode } from "../node"
 import type { Values } from "../types"
 import type {
   CommitReconcilePlanOptions,
   ReconcilePlan,
 } from "./types"
-import type { ContainerRuntimeNode } from "../node"
 
 export function commitReconcilePlan<TValues extends Values = Values>(
   parent: ContainerRuntimeNode<TValues>,

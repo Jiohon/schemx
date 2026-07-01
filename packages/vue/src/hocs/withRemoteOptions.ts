@@ -10,11 +10,12 @@
 
 import { Component, computed, defineComponent, h, PropType, SetupContext } from "vue"
 
+import type { SchemxDictionary } from "@/types/dictionary"
+
 import { useDictionary } from "../hooks/useDictionary"
 
 import type { NamePath } from "@schemx/core"
 
-import type { SchemxDictionary } from "@/types/dictionary"
 
 /**
  * WithRemoteOptions 注入给被包装组件的额外 Props

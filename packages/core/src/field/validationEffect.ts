@@ -11,9 +11,9 @@ import { createSignal, createSignalEffect } from "../reactivity"
 
 import type { Scope } from "../node"
 import type { Signal } from "../reactivity"
-import type { SchemxContext } from "../schemxContext"
 import type { FieldEffectiveSchema } from "./runtimeState"
 import type { ComputedSignal } from "../reactivity/computed"
+import type { SchemxContext } from "../schemxContext"
 import type { SchemxBaseField, Values } from "../types"
 
 /**
