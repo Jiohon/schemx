@@ -58,7 +58,7 @@
   },
   "scripts": {
     "build": "vite build",
-    "build:analyze": "ANALYZE=true vite build",
+    "build:analyze": "VITE_ANALYZE=true vite build",
     "test": "vitest run",
     "lint": "eslint \"src/**/*.{ts,tsx,vue,js,jsx}\"",
     "type-check": "tsc -p tsconfig.json --noEmit",

@@ -1,10 +1,11 @@
 /**
- * @schemx/vant 入口
+ * @schemx/vant/standalone 入口
  *
- * Vant 渲染器适配包，导入时自动将 Vant 渲染器注册到
- * @schemx/vue 的全局 rendererRegistry 实例中。
+ * 面向 uni-app 等保留 symlink 路径进行依赖预构建的消费环境。
+ * 构建时会内联 @schemx/core、@schemx/vue 及其运行时依赖，
+ * 但仍保持 vue、vant 为外部依赖，避免打包框架和 UI 库。
  *
- * @module @schemx/vant
+ * @module @schemx/vant/standalone
  */
 
 import "@/styles/index.scss"

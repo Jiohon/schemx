@@ -1,7 +1,5 @@
 # @schemx/vue
 
-Vue 3 adapter for schemx.
-
 `@schemx/vue` 将 `@schemx/core` 的表单实例和 ViewSchemas 渲染为 Vue 组件树。它不绑定具体 UI 组件库，适合接入业务组件、设计系统或新的 UI adapter。
 
 如果项目使用 Vant，推荐直接安装 [`@schemx/vant`](../vant)。该包已经注册好常用移动端表单 renderer。

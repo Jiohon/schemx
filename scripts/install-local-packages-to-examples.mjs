@@ -63,6 +63,8 @@ for (const exampleDir of exampleDirs) {
       "install",
       "--no-save",
       "--package-lock=false",
+      "--no-audit",
+      "--fund=false",
       "--cache",
       relative(exampleDir, npmCacheDir),
       ...tarballArgs,

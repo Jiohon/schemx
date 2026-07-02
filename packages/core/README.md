@@ -473,15 +473,18 @@ schemas.update((current) => [
 ```text
 raw schemas
   -> compileToDescriptors
-  -> commitChildren
-  -> RuntimeReconciler
-  -> RuntimeFiberManager
+  -> createReconcilePlan
+  -> commitReconcilePlan
+  -> RuntimeNodeManager
+  -> viewGraph
   -> ViewSchemas
 ```
 
 - `compileToDescriptors` 将 raw schema 标准化为内部 descriptor。
-- `RuntimeReconciler` 负责复用、创建和卸载 runtime fiber。
-- `RuntimeFiberManager` 负责字段模型、校验 effect、dependency effect 和生命周期资源。
+- `createReconcilePlan` 根据 descriptor 与现有 runtime node 计算结构变更。
+- `commitReconcilePlan` 提交创建、更新、移除和排序操作。
+- `RuntimeNodeManager` 负责 runtime node 的树结构、父子关系、子树删除和资源清理。
+- `viewGraph` 负责把运行时节点投影为 UI 层消费的 ViewSchemas。
 - `ViewSchemas` 是给框架适配层渲染的公开投影。
 
 ### 模块边界
@@ -490,7 +493,8 @@ raw schemas
 src/
 ├── createForm.ts       # 表单实例装配入口
 ├── descriptor/         # schema 编译
-├── node/              # runtime fiber / reconciler / scope
+├── node/               # runtime node / node manager / scope
+├── reconciler/         # 结构 diff、计划生成和提交
 ├── field/              # 字段模型、字段注册、动态依赖 effect
 ├── store/              # 值、初始值、touched、pending 状态
 ├── validator/          # 规则注册与校验状态

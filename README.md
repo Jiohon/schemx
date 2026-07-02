@@ -1,82 +1,73 @@
 # schemx
 
-Schema-driven, extensible form engine for modern web.
+`schemx` 是一套 Schema 驱动的动态表单引擎，用来把「表单业务规则」从「具体 UI 组件」中拆出来。
 
-`schemx` 是一套以 Schema 驱动的动态表单方案。它将表单状态、校验、字段依赖和 UI 渲染拆分为独立层级，既可以直接在 Vue 3 + Vant 项目中使用，也可以基于 headless core 接入其他 UI 框架。
+它的核心目标不是再封装一个输入框组件库，而是解决动态表单中最容易失控的部分：字段状态、校验、联动、运行时 schema 更新、可渲染视图投影和 UI 适配边界。业务只描述 schema，core 负责把 schema 编译成稳定的运行时结构，上层适配器再把 ViewSchemas 渲染成具体界面。
 
-## 特性
+## 解决的问题
 
-- **Schema 驱动**：使用配置描述字段、分组、动态属性和条件子树。
-- **分层设计**：core、Vue 适配层和 Vant renderer 可以独立使用。
-- **动态表单优先**：支持字段联动、异步 dependency renderer 和运行时 schema 更新。
-- **类型友好**：根据表单值、字段路径和 `componentType` 推断对应类型。
-- **可扩展校验**：内置常用必填规则，并支持实现 Standard Schema 的校验库。
-- **可扩展渲染**：通过 renderer registry 注册业务组件或接入新的 UI 组件库。
+动态表单通常会遇到这些问题：
+
+- 字段显隐、禁用、只读、必填、校验规则散落在组件里，难以维护。
+- 条件字段和远程配置会改变表单结构，普通静态表单模型难以表达。
+- 表单值、字段状态、校验状态和 UI 渲染耦合后，局部改动容易触发大范围重渲染。
+- 同一份表单规则需要在不同 UI 组件库、业务系统或端上复用。
+- 字符串字段路径、动态 schema 和 renderer props 难以获得可靠类型提示。
+
+`schemx` 将这些问题拆成几个稳定边界：
+
+- **Schema 协议**：用配置描述字段、分组、动态属性和条件子树。
+- **运行时表单引擎**：管理值、初始值、touched、pending、校验和提交。
+- **运行时 schema node**：把原始 schema 编译为可增量更新的运行时结构。
+- **ViewSchemas 投影**：向 UI 层输出已经解析好的渲染数据。
+- **Renderer registry**：把 `componentType` 映射到具体 UI 组件。
+- **Validator registry**：复用字符串规则，并接入 Standard Schema 生态。
 
 ## 包说明
 
-| 包                                | 说明                         | 适用场景                                        |
-| --------------------------------- | ---------------------------- | ----------------------------------------------- |
-| [`@schemx/core`](./packages/core) | 框架无关的 headless 表单引擎 | 自定义框架适配、状态管理、字段依赖和校验        |
-| [`@schemx/vue`](./packages/vue)   | Vue 3 表单适配层             | 使用 Vue 组件树渲染 Schema，接入自定义 renderer |
-| [`@schemx/vant`](./packages/vant) | 基于 Vant 的 renderer 集合   | 在 Vue 3 + Vant 项目中快速构建移动端表单        |
+| 包                                | 职责                         | 适用场景                                      |
+| --------------------------------- | ---------------------------- | --------------------------------------------- |
+| [`@schemx/core`](./packages/core) | 框架无关的 headless 表单引擎 | 构建表单运行时、字段依赖、校验和 ViewSchemas |
+| [`@schemx/vue`](./packages/vue)   | Vue 3 适配层                 | 把 ViewSchemas 渲染为 Vue 组件树             |
+| [`@schemx/vant`](./packages/vant) | Vant renderer 适配包         | 使用 Vant 4 快速落地移动端动态表单           |
 
-## 快速开始
+## 架构边界
 
-在 Vue 3 + Vant 项目中，推荐直接使用 `@schemx/vant`：
-
-```bash
-pnpm add @schemx/vant vant vue
+```text
+raw schemas
+  -> @schemx/core
+  -> runtime schema node
+  -> validation / dependency / scheduler
+  -> ViewSchemas
+  -> @schemx/vue
+  -> renderer registry
+  -> @schemx/vant 或业务 renderer
 ```
 
-```vue
-<script setup lang="ts">
-  import { ref } from "vue"
+`@schemx/core` 不依赖具体 UI 框架，也不渲染 DOM。它只负责把表单规则、字段状态和运行时 schema 维护好，并输出 UI 层可消费的 ViewSchemas。
 
-  import Schemx from "@schemx/vant"
+`@schemx/vue` 只负责 Vue 组件树的适配，不绑定具体组件库。业务可以通过 `rendererRegistry` 接入自己的输入框、选择器、上传组件或设计系统组件。
 
-  import type { SchemxField } from "@schemx/vant"
+`@schemx/vant` 是基于 Vant 4 的 renderer 集合，面向移动端表单场景。它复用 `@schemx/core` 和 `@schemx/vue` 的能力，并在包入口自动注册默认 renderer。
 
-  type LoginValues = {
-    username: string
-    password: string
-  }
+## 何时使用
 
-  const formData = ref<LoginValues>({
-    username: "",
-    password: "",
-  })
+- 表单字段来自后端配置、低代码配置或业务 schema。
+- 字段显隐、禁用、只读、必填、校验规则需要根据其他字段动态变化。
+- 表单结构会在运行时增删，例如条件字段、多步骤问卷或远程 schema。
+- 同一套表单能力需要复用到多个 UI 组件库或多个业务端。
+- 需要把表单运行时能力和 UI 组件实现解耦。
 
-  const schemas: SchemxField<LoginValues>[] = [
-    {
-      name: "username",
-      label: "用户名",
-      componentType: "input",
-      rules: "required",
-      placeholder: "请输入用户名",
-    },
-    {
-      name: "password",
-      label: "密码",
-      componentType: "input",
-      rules: "required",
-      componentProps: {
-        type: "password",
-      },
-    },
-  ]
+如果只是少量静态字段，且没有字段联动、动态 schema 或跨端复用诉求，直接使用 UI 组件库自带表单能力通常更简单。
 
-  function handleFinish(values: Readonly<LoginValues>) {
-    console.log(values)
-  }
-</script>
+## 选择入口
 
-<template>
-  <Schemx v-model="formData" :schemas="schemas" @finish="handleFinish" />
-</template>
-```
+- 只需要表单运行时、校验、依赖和 ViewSchemas：使用 `@schemx/core`。
+- 已有 Vue 组件库或业务组件，需要自己注册 renderer：使用 `@schemx/vue`。
+- 项目使用 Vue 3 + Vant 4，希望直接使用内置移动端 renderer：使用 `@schemx/vant`。
+- uni-app + pnpm 场景遇到 symlink 解析导致的依赖预构建问题：使用 `@schemx/vant/standalone`。
 
-`@schemx/vant` 会在导入时注册默认 Vant renderer。需要接入其他 UI 组件库时，可以使用 `@schemx/vue` 注册自定义 renderer；只需要状态、校验和依赖能力时，可以直接使用 `@schemx/core`。
+具体 API 和使用示例见各包 README。
 
 ## 本地开发
 

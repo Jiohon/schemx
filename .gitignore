@@ -90,6 +90,9 @@ build/Release
 .env
 .env*
 !.env.example
+!packages/core/.env
+!packages/vue/.env
+!packages/vant/.env
 .env.local
 .env.*.local
 

@@ -1,24 +1,24 @@
-# schemx 示例
+# @schemx/vant 示例
 
-本目录包含 schemx 组件的使用示例。
+本目录是 `@schemx/vant` 的 Vue 3 + Vant 4 示例项目，用于验证内置 renderer、字段联动、校验、插槽和运行时 schema 更新能力。
 
 ## 示例列表
 
-1. **basic** - 基础表单示例（文本、数字、日期、开关等常用字段）
-2. **validation** - 表单验证示例（必填、正则、自定义验证器、异步验证）
-3. **dynamic** - 动态表单示例（字段联动、条件显示/隐藏、动态属性）
-4. **dependency** - FormDependency 组件示例（复杂字段联动）
-5. **custom-renderer** - 自定义渲染器示例（颜色选择器、星级评分、标签输入）
-6. **hooks** - Hooks API 使用示例（useForm、useField、useWatch）
+1. **basic**：基础表单示例，覆盖内置 Vant renderer、`initialValues`、实例方法和实时数据预览。
+2. **validation**：表单校验示例，覆盖必填、正则、Zod 规则和提交失败处理。
+3. **dynamic**：动态表单示例，覆盖字段联动、条件显示、动态属性和运行时 schema 更新。
+4. **dependency**：`componentType: "dependency"` 示例，覆盖复杂条件子树和嵌套 dependency。
+5. **slots**：插槽示例，覆盖 `FieldItem`、`FieldGroup` 和 renderer slot 的自定义展示。
+6. **slots-jsx**：JSX 插槽示例，展示通过 TSX 编写插槽内容。
 
 ## 运行示例
 
 ```bash
-# 在 packages/schemx 目录下
-npm run dev
+# 在仓库根目录
+pnpm dev:vant
 
-# 或者使用 vite 直接运行示例
-npx vite examples
+# 或只运行示例包
+pnpm --filter vant-demo dev
 ```
 
 然后在浏览器中访问 http://localhost:5173 查看示例。
@@ -27,24 +27,36 @@ npx vite examples
 
 ```vue
 <template>
-  <schemx v-model="formData" :schemas="schemas" :footer="true" @finish="handleSubmit" />
+  <Schemx v-model="formData" :schemas="schemas" @finish="handleSubmit" />
 </template>
 
 <script setup lang="ts">
   import { ref } from "vue"
-  import schemx from "@schemx/core"
-  import "@schemx/core/style.css"
+
+  import Schemx from "@schemx/vant"
+
+  import type { SchemxField } from "@schemx/vant"
 
   const formData = ref({})
 
-  const schemas = [
-    { name: "username", label: "用户名", componentType: "text", required: true },
-    { name: "email", label: "邮箱", componentType: "text" },
+  const schemas: SchemxField[] = [
+    {
+      name: "username",
+      label: "用户名",
+      componentType: "input",
+      rules: "required",
+      placeholder: "请输入用户名",
+    },
+    {
+      name: "email",
+      label: "邮箱",
+      componentType: "input",
+      placeholder: "请输入邮箱",
+    },
   ]
 
-  const handleSubmit = (values, done: () => void) => {
-    console.log("提交数据:", values)
-    done()
+  function handleSubmit(values: Readonly<Record<string, unknown>>) {
+    console.log("提交数据：", values)
   }
 </script>
 ```
