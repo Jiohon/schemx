@@ -42,7 +42,7 @@ export default defineConfig({
       },
     },
     rollupOptions: {
-      external: ["vue", "simple-async-context"],
+      external: ["vue"],
       output: {
         globals: {
           vue: "Vue",

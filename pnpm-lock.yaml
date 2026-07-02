@@ -96,8 +96,8 @@ importers:
   examples/vant:
     dependencies:
       '@schemx/vant':
-        specifier: 0.1.11-beta.20260617210349.ea163cc
-        version: 0.1.11-beta.20260617210349.ea163cc(vant@4.9.24(vue@3.5.38(typescript@5.9.3)))(vue@3.5.38(typescript@5.9.3))
+        specifier: file:../../schemx-vant-0.1.11.tgz
+        version: file:schemx-vant-0.1.11.tgz(vant@4.9.24(vue@3.5.38(typescript@5.9.3)))(vue@3.5.38(typescript@5.9.3))
       vant:
         specifier: ^4.9.24
         version: 4.9.24(vue@3.5.38(typescript@5.9.3))
@@ -839,8 +839,9 @@ packages:
   '@schemx/core@0.1.23':
     resolution: {integrity: sha512-7pZh04hkLTN62y8kp526wxk+Pw4uOre91UQ7H4dRtIH2Eo9koPcKOMbS7YqbM3bHLRGWKhE4rTRenC8wkzDnog==}
 
-  '@schemx/vant@0.1.11-beta.20260617210349.ea163cc':
-    resolution: {integrity: sha512-EMneh0RQxT4UVsqXwV+hluqhJ977PIH9P/+N2j5ZOd/zBUJpXF85HcAlA8cTLhZlyTum64G8LDnW5FDMmuch2g==}
+  '@schemx/vant@file:schemx-vant-0.1.11.tgz':
+    resolution: {integrity: sha512-VYO1y45rguo3bzYZXaeWkvefOV1Iy61Z2gZgZapBe6PopczZdLJvr9qWv31j8BSb/Cm5LhJO6k8o4jVL8orwyQ==, tarball: file:schemx-vant-0.1.11.tgz}
+    version: 0.1.11
     peerDependencies:
       vant: ^4.0.0
       vue: ^3.0.0
@@ -3468,7 +3469,7 @@ snapshots:
       csstype: 3.2.3
       es-toolkit: 1.47.1
 
-  '@schemx/vant@0.1.11-beta.20260617210349.ea163cc(vant@4.9.24(vue@3.5.38(typescript@5.9.3)))(vue@3.5.38(typescript@5.9.3))':
+  '@schemx/vant@file:schemx-vant-0.1.11.tgz(vant@4.9.24(vue@3.5.38(typescript@5.9.3)))(vue@3.5.38(typescript@5.9.3))':
     dependencies:
       '@schemx/core': 0.1.23
       '@schemx/vue': 0.1.21(vue@3.5.38(typescript@5.9.3))
