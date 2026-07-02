@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@schemx/core",
-  "version": "0.1.23",
+  "version": "0.1.24",
   "description": "框架无关的表单引擎核心（Framework-agnostic form engine core）",
   "keywords": [
     "schemx",
@@ -49,7 +49,7 @@
   },
   "scripts": {
     "build": "vite build",
-    "build:analyze": "ANALYZE=true vite build",
+    "build:analyze": "VITE_ANALYZE=true vite build",
     "test": "vitest run",
     "lint": "eslint \"src/**/*.{ts,tsx,vue,js,jsx}\" --ignore-pattern \"**/__tests__/**\" --ignore-pattern \"**/*.test.*\" --ignore-pattern \"**/*.spec.*\"",
     "type-check": "tsc -p tsconfig.json --noEmit",

@@ -2,7 +2,7 @@
   <div class="example-container">
     <h2>基础表单示例</h2>
     <p class="description">
-      演示全部 17 种 ComponentType、initialValues 初始值、布局配置、实例方法调用、
+      演示全部 18 种 ComponentType、initialValues 初始值、布局配置、实例方法调用、
       事件监听和实时数据预览
     </p>
 
@@ -84,9 +84,9 @@
   /**
    * 表单 Schema 配置
    *
-   * 覆盖全部 17 种 ComponentType：
+   * 覆盖全部 18 种 ComponentType：
    * text、input、sensitiveInput、textarea、number、switch、radio、checkbox、
-   * date、calendar、picker、selector、rate、slider、stepper、upload、cascader
+   * date、calendar、picker、selectPicker、selector、rate、slider、stepper、upload、cascader
    */
   const schemas = computed((): SchemxField<BasicFormValues>[] => [
     {

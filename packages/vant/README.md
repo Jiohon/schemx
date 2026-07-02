@@ -1,7 +1,5 @@
 # @schemx/vant
 
-Vant renderers for schemx.
-
 `@schemx/vant` 是基于 Vue 3 和 Vant 4 的 Schema 表单组件。导入该包时会自动注册默认 renderer，适合快速构建移动端动态表单。
 
 ## 特性
@@ -13,6 +11,44 @@ Vant renderers for schemx.
 - 复用 `@schemx/vue` 和 `@schemx/core` 的表单能力，并重新导出常用 API。
 
 ## 安装
+
+```bash
+pnpm add @schemx/vant vant vue
+```
+
+### uni-app / pnpm
+
+uni-app 的依赖预构建在部分场景下会按 `node_modules/@schemx/vant`
+这类 symlink 路径解析依赖，可能无法继续进入 pnpm 的 `.pnpm`
+真实包目录寻找传递依赖。如果遇到 `Could not resolve "@schemx/vue"`、
+`Could not resolve "@schemx/core"`、`Could not resolve "@preact/signals-core"`
+等错误，推荐改用 standalone 入口：
+
+```ts
+import Schemx from "@schemx/vant/standalone"
+```
+
+如果不希望逐处修改业务代码，也可以在 uni-app 项目的 Vite 配置中把根入口
+`@schemx/vant` 指向 standalone 入口：
+
+```ts
+// vite.config.ts
+import { defineConfig } from "vite"
+
+export default defineConfig({
+  resolve: {
+    alias: [
+      {
+        find: /^@schemx\/vant$/,
+        replacement: "@schemx/vant/standalone",
+      },
+    ],
+  },
+})
+```
+
+standalone 入口会内联 `@schemx/core`、`@schemx/vue` 以及它们的运行时依赖，
+但仍保持 `vue`、`vant` 为外部依赖，因此安装命令不变：
 
 ```bash
 pnpm add @schemx/vant vant vue

@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@schemx/vant",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "description": "基于 Vant 组件库的 schemx 渲染器适配包",
   "keywords": [
     "schemx",
@@ -24,6 +24,13 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "standalone": [
+        "./dist/standalone.d.ts"
+      ]
+    }
+  },
   "exports": {
     ".": {
       "import": {
@@ -33,6 +40,16 @@
       "require": {
         "types": "./dist/index.d.ts",
         "default": "./dist/index.cjs"
+      }
+    },
+    "./standalone": {
+      "import": {
+        "types": "./dist/standalone.d.ts",
+        "default": "./dist/standalone.mjs"
+      },
+      "require": {
+        "types": "./dist/standalone.d.ts",
+        "default": "./dist/standalone.cjs"
       }
     },
     "./style.css": "./dist/style.css"
@@ -59,8 +76,8 @@
     "es-toolkit": "catalog:"
   },
   "scripts": {
-    "build": "vite build",
-    "build:analyze": "ANALYZE=true vite build",
+    "build": "vite build && VITE_BUILD_STANDALONE=true vite build --emptyOutDir false && node ../../scripts/normalize-vant-dts.mjs",
+    "build:analyze": "VITE_ANALYZE=true vite build",
     "test": "vitest run --passWithNoTests",
     "lint": "eslint \"src/**/*.{ts,tsx,vue,js,jsx}\"",
     "prepublishOnly": "pnpm run build"
