@@ -840,7 +840,7 @@ packages:
     resolution: {integrity: sha512-q1PkmQ+jn1ztS0pIzVCG4UvXBzp7ZhbZn8TVleIhGvhV7i76AWvuotmYfgR1VuVzyrwCCzvNNWZIV3+guNEjNg==}
 
   '@schemx/vant@file:schemx-vant-0.1.12.tgz':
-    resolution: {integrity: sha512-WGTtqKQqRocuXF3r46oDFZf5ZDLjYOGj8w6BLt2zOybsXmAAhLd+ELUtXGoVJNPQCSedG3waJZEUuvWJ1O/nhQ==, tarball: file:schemx-vant-0.1.12.tgz}
+    resolution: {integrity: sha512-gR+QPQE5hFd8n7utNB1gmv4Jf/eR45FVFOSrYjayQSucQczmf6NXAClmPabUaKFhtaquzMAfoV+ykhCl1WZm1Q==, tarball: file:schemx-vant-0.1.12.tgz}
     version: 0.1.12
     peerDependencies:
       vant: ^4.0.0
