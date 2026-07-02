@@ -5,10 +5,10 @@
  */
 
 /** useForm - 表单状态管理 */
-export { useForm } from "./useForm"
+export { useForm, useFormContext } from "./useForm"
 
 /** useField - 单字段控制 */
-export { useField } from "./useField"
+export { useField, createFieldContext, useFieldContext } from "./useField"
 
 /** useWatch - 字段变化监听 */
 export { useWatch, useWatchField, useWatchFields, useWatchAll } from "./useWatch"
@@ -21,17 +21,18 @@ export {
   useDictionary,
   type SchemxDictionary,
   type SchemxWithDictionary,
-  type UseDictOptionsReturn,
+  type UseDictionaryReturn,
 } from "./useDictionary"
 
-/** useContext - 表单上下文注入与消费 */
-export { type FormContextProps, useContext } from "./useContext"
+/** useConfigContext - 表单上下文注入与消费 */
+export {
+  createConfigContext,
+  useConfigContext,
+  type FormContextProps,
+} from "./useContext"
 
 /** useStableRef - 引用稳定化的 shallowRef */
 export { useStableRef } from "./useStableRef"
 
 /** useViewSchemas - ViewSchemas Vue 桥接 */
 export { useViewSchemas } from "./useViewSchemas"
-
-/** useFieldContext - 字段上下文注入与消费 */
-export { useFieldContext } from "./useFieldContext"

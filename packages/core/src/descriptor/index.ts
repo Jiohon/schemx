@@ -1,25 +1,37 @@
 /**
  * Descriptor 模块统一导出。
  *
- * 提供 schema 编译和内部 descriptor 类型。
+ * 提供 descriptor 创建函数和 descriptor 类型。
  *
  * @module core/descriptor
  */
 
 export {
-  getPlaceholder,
-  compileToDescriptors,
-  CompileError,
-  type CompileOptions,
-} from "./compiler"
+  createDependencyDescriptor,
+  createDescriptor,
+  createFieldDescriptor,
+  createGroupDescriptor,
+} from "./createDescriptor"
 
 export {
   isDependencyDescriptor,
   isFieldDescriptor,
   isGroupDescriptor,
-  type DependencyDescriptor,
-  type DependencyRenderer,
-  type FieldDescriptor,
-  type FormDescriptor,
-  type GroupDescriptor,
-} from "./descriptor"
+} from "./helper"
+
+export type {
+  BaseDescriptor,
+  CreateDependencyDescriptorOptions,
+  CreateDescriptorOptions,
+  CreateFieldDescriptorOptions,
+  CreateGroupDescriptorOptions,
+  DescriptorMeta,
+  DescriptorType,
+  DependencyDescriptor,
+  DependencyRenderer,
+  FieldDescriptor,
+  FieldDynamicPropsDescriptor,
+  FieldValidationDescriptor,
+  FormDescriptor,
+  GroupDescriptor,
+} from "./types"

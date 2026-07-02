@@ -7,7 +7,7 @@
     "dev": " npx vite --config vite.config.ts "
   },
   "dependencies": {
-    "@schemx/vant": "0.1.11-beta.20260617210349.ea163cc",
+    "@schemx/vant": "file:../../schemx-vant-0.1.11.tgz",
     "vant": "^4.9.24",
     "vue": "^3.5.38",
     "zod": "^3.24.0"

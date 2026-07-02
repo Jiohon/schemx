@@ -298,8 +298,10 @@ test_dev_publish_uses_dev_tag_and_restores_version() {
     exit 1
   fi
 
-  assert_contains "$output" "发布通道：dev - Dev 开发测试发布"
-  assert_contains "$output" "发布目标：core"
+  assert_contains "$output" "发布计划"
+  assert_contains "$output" "通道    dev - Dev 开发测试发布"
+  assert_contains "$output" "目标    core"
+  assert_contains "$output" "tag     dev"
   assert_not_contains "$output" "发布模式：dev"
   assert_log_contains "pnpm --dir packages/core publish --access public --registry https://registry.npmjs.org/ --tag dev --no-git-checks"
   assert_log_not_contains "gh auth status"
@@ -432,11 +434,13 @@ test_alpha_publish_uses_alpha_tag_and_restores_version() {
     exit 1
   fi
 
-  assert_contains "$output" "发布通道：alpha - Alpha 预发布"
-  assert_contains "$output" "发布目标：core"
+  assert_contains "$output" "发布计划"
+  assert_contains "$output" "通道    alpha - Alpha 预发布"
+  assert_contains "$output" "目标    core"
+  assert_contains "$output" "tag     alpha"
   assert_not_contains "$output" "发布模式：alpha"
-  assert_contains "$output" "发布 registry：https://registry.npmjs.org/"
-  assert_contains "$output" "发布 tag：alpha"
+  assert_contains "$output" "registry  https://registry.npmjs.org/"
+  assert_contains "$output" "tag       alpha"
   assert_contains "$output" "终端可能会停在认证提示处"
   assert_contains "$output" "完成后回到这里等待发布继续"
   assert_log_contains "pnpm --dir packages/core publish --access public --registry https://registry.npmjs.org/ --tag alpha --no-git-checks"
@@ -523,13 +527,13 @@ test_publish_checks_only_target_dependency_chain() {
 
 test_release_output_uses_colors_when_forced() {
   local output error_output status
-  local cyan green yellow red reset
+  local cyan green yellow red bold
 
   cyan=$'\033[36m'
   green=$'\033[32m'
   yellow=$'\033[33m'
   red=$'\033[31m'
-  reset=$'\033[0m'
+  bold=$'\033[1m'
 
   : >"$COMMAND_LOG"
 
@@ -540,10 +544,11 @@ test_release_output_uses_colors_when_forced() {
   unset FORCE_COLOR
   unset MOCK_BRANCH
 
-  assert_contains "$output" "${cyan}==> 发布 @schemx/core${reset}"
-  assert_contains "$output" "${green}@schemx/core@"
-  assert_contains "$output" "可发布${reset}"
-  assert_contains "$output" "${yellow}如果 npm 要求网页登录、二维码确认或 OTP"
+  assert_contains "$output" "${cyan}${bold}◆ 发布计划"
+  assert_contains "$output" "${cyan}${bold}◆ 发布 @schemx/core"
+  assert_contains "$output" "${green}✓ @schemx/core@"
+  assert_contains "$output" "可发布"
+  assert_contains "$output" "${yellow}! 如果 npm 要求网页登录、二维码确认或 OTP"
 
   export MOCK_BRANCH="feature/demo"
   unset NO_COLOR
@@ -560,7 +565,7 @@ test_release_output_uses_colors_when_forced() {
     exit 1
   fi
 
-  assert_contains "$error_output" "${red}错误：正式发布只能在 main 分支执行。当前分支：feature/demo${reset}"
+  assert_contains "$error_output" "${red}✖ 错误：正式发布只能在 main 分支执行。当前分支：feature/demo"
 }
 
 test_release_output_omits_colors_without_tty() {
@@ -586,15 +591,16 @@ test_publish_without_args_uses_channel_target_and_version_env_selection() {
 
   output="$(SCHEMX_RELEASE_CHANNEL=latest SCHEMX_RELEASE_TARGET=core SCHEMX_RELEASE_VERSION_ACTION=current run_release publish)"
 
-  assert_contains "$output" "发布目标：core"
-  assert_contains "$output" "发布信息"
-  assert_contains "$output" "----------------------------------------"
-  assert_contains "$output" "发布通道：latest - 正式版发布"
-  assert_contains "$output" "发布说明：发布到 npm latest，仅允许 main 分支。"
-  assert_contains "$output" "版本处理：current - 使用当前版本"
-  assert_occurrences "$output" "发布信息" 1
+  assert_contains "$output" "发布计划"
+  assert_contains "$output" "目标    core"
+  assert_contains "$output" "通道    latest - 正式版发布"
+  assert_contains "$output" "说明    发布到 npm latest，仅允许 main 分支。"
+  assert_contains "$output" "版本    current - 使用当前版本"
+  assert_occurrences "$output" "发布计划" 1
   assert_not_contains "$output" "==> 已选择"
   assert_not_contains "$output" "==> 本次发布选择"
+  assert_not_contains "$output" "发布信息"
+  assert_not_contains "$output" "----------------------------------------"
   assert_not_contains "$output" "发布模式：latest"
   assert_not_contains "$output" "输入序号或名称"
   assert_log_contains "pnpm --dir packages/core publish --access public --registry https://registry.npmjs.org/"
@@ -742,31 +748,85 @@ test_cancelled_selector_exits_without_lifecycle_failure() {
   assert_log_not_contains "pnpm --dir packages/vue publish"
 }
 
-test_help_lists_channel_commands_without_package_shortcuts
-test_package_scripts_keep_single_publish_entry
-test_release_channel_choices_put_latest_last
-test_release_test_runs_only_release_script_tests
-test_latest_publish_is_main_only
-test_publish_without_npm_auth_shows_clear_message
-test_publish_accepts_npm_token_auth
-test_publish_without_github_auth_stops_before_publish
-test_publish_existing_version_suggests_release_version
-test_alpha_publish_uses_alpha_tag_and_restores_version
-test_publish_checks_only_target_dependency_chain
-test_release_output_uses_colors_when_forced
-test_release_output_omits_colors_without_tty
-test_pack_accepts_target
-test_latest_publish_patch_bumps_commits_and_publishes_target
-test_latest_publish_patch_all_bumps_and_commits_all_packages
-test_latest_publish_explicit_version_requires_single_target
-test_publish_without_args_uses_channel_target_and_version_env_selection
-test_selector_does_not_print_confirmation_line_after_enter
-test_latest_publish_tags_and_pushes_after_publish
-test_latest_publish_all_creates_package_scoped_tags_and_releases
-test_selector_rejects_unknown_environment_target
-test_selector_requires_tty_or_automation_target
-test_selector_rejects_unknown_channel
-test_selector_accepts_dev_channel
-test_cancelled_selector_exits_without_lifecycle_failure
+release_test_name() {
+  local name="$1"
+  name="${name#test_}"
+  printf '%s' "${name//_/ }"
+}
 
-printf 'release script tests passed\n'
+now_ms() {
+  node -e 'process.stdout.write(String(Date.now()))'
+}
+
+format_duration() {
+  local ms="$1"
+  local centiseconds
+  local seconds
+  local fraction
+
+  centiseconds=$(((ms + 5) / 10))
+  seconds=$((centiseconds / 100))
+  fraction=$((centiseconds % 100))
+
+  if [[ "$fraction" -eq 0 ]]; then
+    printf '%ss' "$seconds"
+  elif [[ $((fraction % 10)) -eq 0 ]]; then
+    printf '%s.%ss' "$seconds" "$((fraction / 10))"
+  else
+    printf '%s.%02ds' "$seconds" "$fraction"
+  fi
+}
+
+run_release_test() {
+  local index="$1"
+  local total="$2"
+  local test_name="$3"
+  local label
+  local started_at
+  local elapsed
+
+  label="$(release_test_name "$test_name")"
+  started_at="$(now_ms)"
+  printf '\n◆ release:test [%02d/%02d] RUNNING %s\n' "$index" "$total" "$label" >&2
+  "$test_name"
+  elapsed=$(($(now_ms) - started_at))
+  printf '✓ release:test [%02d/%02d] SUCCESS %s (%s)\n' "$index" "$total" "$label" "$(format_duration "$elapsed")" >&2
+}
+
+RELEASE_TESTS=(
+  test_help_lists_channel_commands_without_package_shortcuts
+  test_package_scripts_keep_single_publish_entry
+  test_release_channel_choices_put_latest_last
+  test_release_test_runs_only_release_script_tests
+  test_latest_publish_is_main_only
+  test_publish_without_npm_auth_shows_clear_message
+  test_publish_accepts_npm_token_auth
+  test_publish_without_github_auth_stops_before_publish
+  test_publish_existing_version_suggests_release_version
+  test_alpha_publish_uses_alpha_tag_and_restores_version
+  test_publish_checks_only_target_dependency_chain
+  test_release_output_uses_colors_when_forced
+  test_release_output_omits_colors_without_tty
+  test_pack_accepts_target
+  test_latest_publish_patch_bumps_commits_and_publishes_target
+  test_latest_publish_patch_all_bumps_and_commits_all_packages
+  test_latest_publish_explicit_version_requires_single_target
+  test_publish_without_args_uses_channel_target_and_version_env_selection
+  test_selector_does_not_print_confirmation_line_after_enter
+  test_latest_publish_tags_and_pushes_after_publish
+  test_latest_publish_all_creates_package_scoped_tags_and_releases
+  test_selector_rejects_unknown_environment_target
+  test_selector_requires_tty_or_automation_target
+  test_selector_rejects_unknown_channel
+  test_selector_accepts_dev_channel
+  test_cancelled_selector_exits_without_lifecycle_failure
+)
+
+total_release_tests="${#RELEASE_TESTS[@]}"
+release_tests_started_at="$(now_ms)"
+for i in "${!RELEASE_TESTS[@]}"; do
+  run_release_test "$((i + 1))" "$total_release_tests" "${RELEASE_TESTS[$i]}"
+done
+
+release_tests_elapsed=$(($(now_ms) - release_tests_started_at))
+printf '\n✓ release:test SUCCESS %d/%d passed (%s)\n' "$total_release_tests" "$total_release_tests" "$(format_duration "$release_tests_elapsed")"

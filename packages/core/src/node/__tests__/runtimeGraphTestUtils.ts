@@ -1,27 +1,25 @@
 import { vi } from "vitest"
 
-import { compileToDescriptors, type FormDescriptor } from "../../descriptor"
+import { createCompile } from "../../compiler"
+import type { FormDescriptor } from "../../descriptor"
 import { createFieldRegistry, type FieldRegistry } from "../../field"
 import { createLifecycleBus, type LifecycleListener } from "../../lifecycle"
 import { createSignal } from "../../reactivity"
+import { createReconciler, type Reconciler } from "../../reconciler"
+import { type SchemxContext } from "../../schemxContext"
 import { createScheduler, type Scheduler } from "../../scheduler"
-import { createViewRevision, type ViewRevision } from "../../view"
-import { createRuntimeNodeManager, type RuntimeNodeManager } from "../runtimeNodeManager"
-import { createReconciler, type Reconciler } from "../reconciler"
+import { createRuntimeResources } from "../resources"
 
-import type { SchemxFormContext } from "../../createForm"
 import type { FieldDescriptor } from "../../descriptor"
 import type { SchemxField, SchemxFormApi, Values } from "../../types"
-import type { ContainerRuntimeNode, RuntimeNode, RootRuntimeNode } from "../runtimeNode"
+import type { ContainerRuntimeNode, RuntimeNode, RootRuntimeNode } from "../types"
 
 export interface RuntimeGraphTestHarness<TValues extends Values = Values> {
-  readonly context: SchemxFormContext<TValues>
+  readonly context: SchemxContext<TValues>
   readonly fieldRegistry: FieldRegistry<TValues>
-  readonly runtimeNodeManager: RuntimeNodeManager<TValues>
   readonly reconciler: Reconciler<TValues>
   readonly root: RootRuntimeNode
   readonly scheduler: Scheduler
-  readonly viewRevision: ViewRevision
   readonly commitChildren: (
     parent: ContainerRuntimeNode<TValues>,
     descriptors: FormDescriptor<TValues>[]
@@ -37,7 +35,7 @@ export function createFieldDescriptor<TValues extends Values = Values>(
   key: string,
   name: string | string[] = key
 ): FieldDescriptor<TValues> {
-  return compileToDescriptors<TValues>([
+  return createCompile<TValues>().toDescriptors([
     {
       key,
       name: name as any,
@@ -67,7 +65,6 @@ export function createRuntimeGraphHarness<TValues extends Values = Values>(
   const fieldRegistry = createFieldRegistry<TValues>()
   const lifecycleBus = createLifecycleBus<RuntimeNode<TValues>>(listener)
   const scheduler = createScheduler()
-  const viewRevision = createViewRevision()
 
   const readValue = (name: unknown): unknown => {
     const key = normalizeName(name)
@@ -133,44 +130,44 @@ export function createRuntimeGraphHarness<TValues extends Values = Values>(
     validateField: vi.fn().mockResolvedValue({ ok: true, values }),
   }
 
+  const compile = createCompile<TValues>({
+    defaultProps: {},
+    formInstance: instance as any,
+  })
+
   const context = {
     defaultProps: {},
     instance,
     formApi,
+    compile,
     scheduler,
     lifecycleBus,
     fieldRegistry,
-  } as unknown as SchemxFormContext<TValues>
+    nodeResources: createRuntimeResources<TValues>(),
+  } as unknown as SchemxContext<TValues>
 
-  const runtimeNodeManager = createRuntimeNodeManager<TValues>(context)
-  const reconciler = createReconciler(runtimeNodeManager)
-  const root = runtimeNodeManager.createRoot()
+  const reconciler = createReconciler<TValues>(context)
+  const root = reconciler.createRoot()
   const commitChildren = (
     parent: ContainerRuntimeNode<TValues>,
     descriptors: FormDescriptor<TValues>[]
   ): void => {
-    const changed = reconciler.reconcileChildren(parent, descriptors)
-
-    if (changed) {
-      viewRevision.bump()
-    }
+    reconciler.reconcileChildren(parent, descriptors)
   }
 
   const commitSchemas = (
     parent: ContainerRuntimeNode<TValues>,
     schemas: SchemxField<TValues>[]
-  ): void => commitChildren(parent, compileToDescriptors<TValues>(schemas))
+  ): void => commitChildren(parent, compile.toDescriptors(schemas))
 
   Object.assign(context, { reconciler, commitChildren })
 
   return {
     context,
     fieldRegistry,
-    runtimeNodeManager,
     reconciler,
     root,
     scheduler,
-    viewRevision,
     commitChildren,
     commitSchemas,
     formApi,

@@ -62,9 +62,31 @@
   const placeholder = computed(() => props.placeholder || "请选择")
 
   const stepperProps = computed(() => {
-    const { value, className, formItemProps, ...rest } = props
+    const rendererProps = props as typeof props & { formInstance?: unknown }
+    const {
+      value: _value,
+      onChange: _onChange,
+      className: _className,
+      readonly: _readonly,
+      readonlyPlaceholder: _readonlyPlaceholder,
+      placeholder: _placeholder,
+      formItemProps: _formItemProps,
+      formInstance: _formInstance,
+      ...rest
+    } = rendererProps
+    const {
+      value: _attrsValue,
+      onChange: _attrsOnChange,
+      className: _attrsClassName,
+      readonly: _attrsReadonly,
+      readonlyPlaceholder: _attrsReadonlyPlaceholder,
+      placeholder: _attrsPlaceholder,
+      formItemProps: _attrsFormItemProps,
+      formInstance: _attrsFormInstance,
+      ...attrsRest
+    } = attrs
 
-    return { ...attrs, ...rest }
+    return { ...attrsRest, ...rest }
   })
 
   /**

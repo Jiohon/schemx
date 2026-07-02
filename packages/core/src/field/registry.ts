@@ -1,13 +1,11 @@
 /**
  * FieldRegistry - 字段索引。
  *
- * 通过 descriptor.schema.name 快速查询字段 entry。Registry 不依赖
- * FieldModel.name，因为 FieldModel 不持有静态字段身份。
+ * 通过 descriptor.name 快速查询字段 entry。
  *
  * @module core/field/registry
  */
 
-import type { FieldModel } from "./model"
 import type { FieldRuntimeNode } from "../node"
 import type { NamePath, Values } from "../types/form"
 
@@ -24,16 +22,12 @@ export interface FieldRegistryEntry<
   readonly name: TName
 
   /**
-   * 字段 RuntimeNode，持有字段描述符、字段模型和字段相关资源作用域。
+   * 字段 RuntimeNode，持有字段描述符、字段运行态和字段相关资源作用域。
    *
    * @typeParam TValues - 表单值类型。
    */
   readonly node: FieldRuntimeNode<TValues>
 
-  /**
-   * 字段运行时模型；卸载字段主体资源后会被清空或重建。
-   */
-  readonly model: FieldModel<TValues>
 }
 
 /**
@@ -47,7 +41,10 @@ class RuntimeFieldRegistry<
 
   register(entry: FieldRegistryEntry<TValues>): void {
     const key = entry.name
-    this.fields.set(key, entry)
+    this.fields.set(key, {
+      name: entry.name,
+      node: entry.node,
+    })
   }
 
   unregister(name: TName, node?: FieldRuntimeNode<TValues>): void {

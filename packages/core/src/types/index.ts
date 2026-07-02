@@ -10,6 +10,7 @@ export type {
   Dynamic,
   NamePath,
   ValidationTrigger,
+  SchemxFieldSchemaPatch,
   SchemxInstance,
   SchemxFormApi,
   SchemxDefaultProps,
@@ -60,7 +61,5 @@ export type {
   SchemxDependenciesConditionKey,
   SchemxDependenciesStaticProps,
 } from "./dependencies"
-
-export type { SchemxDictionary, SchemxWithDictionary } from "./dictionary"
 
 export type { StandardSchemaV1 } from "./standardSchema"

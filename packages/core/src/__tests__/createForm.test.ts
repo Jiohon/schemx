@@ -261,13 +261,9 @@ describe("字段规则注册上下文 单元测试", () => {
     expect(mount).toHaveBeenCalledTimes(1)
     expect(mount.mock.calls[0][0]).toMatchObject({
       type: "field",
-      descriptor: {
-        type: "field",
-        schema: {
-          name: "name",
-        },
-      },
+      key: "field:name",
     })
+    expect(mount.mock.calls[0][0]).not.toHaveProperty("descriptor")
 
     form.destroy()
   })
@@ -286,7 +282,9 @@ describe("字段规则注册上下文 单元测试", () => {
         {
           componentType: "dependency",
           to: ["orderType"],
-          renderer: (values: any) => {
+          renderer: async (values: any) => {
+            await Promise.resolve()
+
             if (values.orderType !== "standard") return []
 
             return [
@@ -421,6 +419,243 @@ describe("字段规则注册上下文 单元测试", () => {
       },
     ])
 
+    form.destroy()
+  })
+
+  it("dependency renderer 切换到 group 分支后应输出 group children", async () => {
+    const renderer = vi.fn((values: any) => {
+      if (values.orderType === "standard") {
+        return [
+          {
+            label: "标准订单配置",
+            componentType: "group",
+            children: [
+              {
+                name: "quantity",
+                label: "数量",
+                componentType: "stepper",
+              },
+              {
+                name: "expectedDate",
+                label: "预计日期",
+                componentType: "date",
+              },
+            ],
+          },
+        ]
+      }
+
+      if (values.orderType !== "express") {
+        return []
+      }
+
+      return [
+        {
+          label: "加急订单配置",
+          componentType: "group",
+          children: [
+            {
+              name: "expressLevel",
+              label: "加急等级",
+              componentType: "selector",
+            },
+            {
+              name: "expressFee",
+              label: "加急费用",
+              componentType: "slider",
+            },
+          ],
+        },
+      ]
+    })
+    const form = createForm({
+      initialValues: { orderType: "standard" },
+      schemas: [
+        {
+          name: "orderType",
+          label: "订单类型",
+          componentType: "selector",
+        },
+        {
+          componentType: "dependency",
+          to: ["orderType"],
+          renderer,
+        },
+      ] as any,
+    })
+
+    await form.waitForDependencies()
+
+    expect(form.getViewSchemas()).toMatchObject([
+      { name: "orderType" },
+      {
+        componentType: "group",
+        label: "标准订单配置",
+        children: [{ name: "quantity" }, { name: "expectedDate" }],
+      },
+    ])
+
+    form.setFieldValue("orderType", "express")
+    await form.waitForDependencies()
+
+    expect(renderer).toHaveBeenCalledTimes(2)
+    expect(form.getViewSchemas()).toMatchObject([
+      { name: "orderType" },
+      {
+        componentType: "group",
+        label: "加急订单配置",
+        children: [{ name: "expressLevel" }, { name: "expressFee" }],
+      },
+    ])
+
+    form.destroy()
+  })
+
+  it("dependency 切换分支后应使用新子树字段 initialValue 驱动嵌套 dependency 展开", async () => {
+    const form = createForm({
+      initialValues: { orderType: "standard" },
+      schemas: [
+        {
+          name: "orderType",
+          label: "订单类型",
+          componentType: "selector",
+        },
+        {
+          componentType: "dependency",
+          to: ["orderType"],
+          renderer: (values: any) => {
+            if (values.orderType === "standard") {
+              return [
+                {
+                  label: "标准订单配置",
+                  componentType: "group",
+                  children: [
+                    {
+                      name: "quantity",
+                      label: "数量",
+                      componentType: "stepper",
+                    },
+                  ],
+                },
+              ]
+            }
+
+            if (values.orderType !== "express") {
+              return []
+            }
+
+            return [
+              {
+                label: "加急订单配置",
+                componentType: "group",
+                children: [
+                  {
+                    name: "expressLevel",
+                    label: "加急等级",
+                    componentType: "selector",
+                    initialValue: "priority",
+                  },
+                  {
+                    componentType: "dependency",
+                    to: ["expressLevel"],
+                    renderer: (expressValues: any) => {
+                      if (expressValues.expressLevel !== "priority") {
+                        return []
+                      }
+
+                      return [
+                        {
+                          name: "expressFee",
+                          label: "加急费用",
+                          componentType: "slider",
+                        },
+                      ]
+                    },
+                  },
+                ],
+              },
+            ]
+          },
+        },
+      ] as any,
+    })
+
+    await form.waitForDependencies()
+    form.setFieldValue("orderType", "express")
+    await form.waitForDependencies()
+
+    expect(form.getFieldValue("expressLevel")).toBe("priority")
+    expect(form.getViewSchemas()).toMatchObject([
+      { name: "orderType" },
+      {
+        componentType: "group",
+        label: "加急订单配置",
+        children: [{ name: "expressLevel" }, { name: "expressFee" }],
+      },
+    ])
+
+    form.destroy()
+  })
+
+  it("初始化后立即更新默认属性不应阻断 dependency 初始子树提交", async () => {
+    const form = createForm({
+      initialValues: { orderType: "standard" },
+      schemas: [
+        {
+          name: "orderType",
+          label: "订单类型",
+          componentType: "selector",
+        },
+        {
+          componentType: "dependency",
+          to: ["orderType"],
+          renderer: (values: any) => {
+            if (values.orderType !== "standard") return []
+
+            return [
+              {
+                label: "标准订单配置",
+                componentType: "group",
+                children: [
+                  {
+                    name: "quantity",
+                    label: "数量",
+                    componentType: "stepper",
+                  },
+                ],
+              },
+            ]
+          },
+        },
+      ] as any,
+    })
+
+    const unsubscribe = form.subscribeViewSchemas(() => undefined)
+
+    form.updateDefaultProps({
+      required: undefined,
+      readonly: undefined,
+      disabled: undefined,
+      visible: undefined,
+      labelIcon: undefined,
+      labelAlign: undefined,
+      labelPosition: undefined,
+      labelWidth: undefined,
+      validationTrigger: undefined,
+      colon: undefined,
+    } as any)
+    await form.waitForDependencies()
+
+    expect(form.getViewSchemas()).toMatchObject([
+      { name: "orderType" },
+      {
+        componentType: "group",
+        label: "标准订单配置",
+        children: [{ name: "quantity" }],
+      },
+    ])
+
+    unsubscribe()
     form.destroy()
   })
 
@@ -705,6 +940,34 @@ describe("动态 schemas", () => {
     form.destroy()
   })
 
+  it("移除 group 子树时应该递归发送子字段 unmount 事件", () => {
+    const unmount = vi.fn()
+    const form = createForm({
+      schemas: [
+        {
+          label: "用户信息",
+          componentType: "group",
+          children: [
+            { name: "name", label: "姓名", componentType: "input" },
+          ],
+        },
+      ],
+      lifecycleHooks: {
+        unmount,
+      },
+    })
+
+    form.setSchemas([])
+
+    expect(
+      unmount.mock.calls.some(
+        ([node]) => node.type === "field" && node.key.endsWith("/name")
+      )
+    ).toBe(true)
+
+    form.destroy()
+  })
+
   it("updateSchemas 支持基于当前 schemas 派生下一版", () => {
     const form = createForm({
       schemas: [
@@ -726,7 +989,59 @@ describe("动态 schemas", () => {
     form.destroy()
   })
 
-  it("setSchemas 仅修改 group 属性时通知 ViewSchemas 订阅", () => {
+  it("updateFieldSchema 应只更新目标字段静态 schema 并复用兄弟字段 view", () => {
+    const form = createForm({
+      schemas: [
+        { name: "name", label: "姓名", componentType: "input" },
+        { name: "age", label: "年龄", componentType: "input" },
+      ],
+    })
+
+    const [nameBefore, ageBefore] = form.getViewSchemas()
+
+    form.updateFieldSchema("name", {
+      visible: false,
+      readonly: true,
+      disabled: true,
+    })
+
+    const [nameAfter, ageAfter] = form.getViewSchemas()
+
+    expect(nameAfter).toMatchObject({
+      name: "name",
+      visible: false,
+      readonly: true,
+      disabled: true,
+    })
+    expect(nameAfter).not.toBe(nameBefore)
+    expect(ageAfter).toBe(ageBefore)
+
+    form.destroy()
+  })
+
+  it("updateFieldSchema 应同步更新 renderer componentProps 中的静态状态", () => {
+    const form = createForm({
+      schemas: [
+        { name: "name", label: "姓名", componentType: "input" },
+      ],
+    })
+
+    form.updateFieldSchema("name", {
+      readonly: true,
+      disabled: true,
+    })
+
+    const [schema] = form.getViewSchemas()
+
+    expect(schema.componentProps).toMatchObject({
+      readonly: true,
+      disabled: true,
+    })
+
+    form.destroy()
+  })
+
+  it("setSchemas 仅修改 group 属性时通知 ViewSchemas 订阅", async () => {
     const form = createForm({
       schemas: [
         { componentType: "group", label: "旧分组", children: [] },
@@ -740,6 +1055,8 @@ describe("动态 schemas", () => {
     form.setSchemas([
       { componentType: "group", label: "新分组", children: [] },
     ] as any)
+
+    await new Promise((resolve) => setTimeout(resolve, 25))
 
     expect(calls.at(-1)).toMatchObject([{ label: "新分组" }])
 

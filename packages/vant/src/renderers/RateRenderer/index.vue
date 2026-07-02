@@ -10,12 +10,20 @@
       },
     ]"
   >
+    <SchemxCell
+      v-if="props.readonly && !hasValue"
+      :value="''"
+      :readonly-placeholder="props.readonlyPlaceholder"
+      :readonly="props.readonly"
+    />
     <Rate
+      v-else
       v-bind="rateProps"
       :model-value="rateValue"
       :count="count"
       :allow-half="allowHalf"
       :disabled="props.disabled"
+      :readonly="props.readonly"
       @update:model-value="handleChange"
     />
   </div>
@@ -32,6 +40,8 @@
   import { computed, useAttrs } from "vue"
 
   import { Rate } from "vant"
+
+  import SchemxCell from "@/components/Cell/index.vue"
 
   import type { RateRendererProps, RateValue } from "./types"
 
@@ -57,16 +67,39 @@
 
   const rateValue = defineModel<RateValue>("value")
 
+  /** 是否有评分值（0 视为未评分） */
+  const hasValue = computed(() => {
+    const v = rateValue.value ?? props.value
+
+    return v !== undefined && v !== null && v !== 0
+  })
+
   const rateProps = computed(() => {
+    const rendererProps = props as typeof props & { formInstance?: unknown }
     const {
       value: _value,
       onChange: _onChange,
       className: _className,
+      readonlyPlaceholder: _readonlyPlaceholder,
+      placeholder: _placeholder,
+      align: _align,
       formItemProps: _formItemProps,
+      formInstance: _formInstance,
       ...rest
-    } = props
+    } = rendererProps
+    const {
+      value: _attrsValue,
+      onChange: _attrsOnChange,
+      className: _attrsClassName,
+      readonlyPlaceholder: _attrsReadonlyPlaceholder,
+      placeholder: _attrsPlaceholder,
+      align: _attrsAlign,
+      formItemProps: _attrsFormItemProps,
+      formInstance: _attrsFormInstance,
+      ...attrsRest
+    } = attrs
 
-    return { ...attrs, rest }
+    return { ...attrsRest, ...rest }
   })
 
   const handleChange = (value: RateValue): void => {

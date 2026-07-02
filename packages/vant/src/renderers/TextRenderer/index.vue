@@ -19,25 +19,7 @@
       v-else
       ref="inputRef"
       v-model:value="textValue"
-      :type="inputType"
-      :placeholder="props.placeholder"
-      :readonly-placeholder="props.readonlyPlaceholder"
-      :readonly="props.readonly"
-      :disabled="props.disabled"
-      :align="props.align"
-      :maxlength="props.maxlength"
-      :min="props.min"
-      :max="props.max"
-      :formatter="props.formatter"
-      :format-trigger="props.formatTrigger"
-      :autocomplete="props.autocomplete"
-      :autofocus="props.autofocus"
-      :clearable="props.clearable"
-      :clear-icon="props.clearIcon"
-      :clear-trigger="props.clearTrigger"
-      :left-icon="props.leftIcon"
-      :right-icon="isPasswordMode || props.readonly ? '' : props.rightIcon"
-      :show-word-limit="props.showWordLimit && !props.readonly && !props.disabled"
+      v-bind="inputProps"
       @change="props.onChange"
       @blur="props.onBlur"
       @focus="props.onFocus"
@@ -130,6 +112,30 @@
   /** 密码可见性图标 */
   const passwordIcon = computed(() => {
     return passwordVisible.value ? "eye-o" : "closed-eye"
+  })
+
+  const inputProps = computed(() => {
+    const rendererProps = props as typeof props & { formInstance?: unknown }
+    const {
+      value: _value,
+      onChange: _onChange,
+      onBlur: _onBlur,
+      onFocus: _onFocus,
+      className: _className,
+      type: _type,
+      rightIcon: _rightIcon,
+      showWordLimit: _showWordLimit,
+      formItemProps: _formItemProps,
+      formInstance: _formInstance,
+      ...rest
+    } = rendererProps
+
+    return {
+      ...rest,
+      type: inputType.value,
+      rightIcon: isPasswordMode.value || props.readonly ? "" : props.rightIcon,
+      showWordLimit: props.showWordLimit && !props.readonly && !props.disabled,
+    }
   })
 
   /** 切换密码可见性 */

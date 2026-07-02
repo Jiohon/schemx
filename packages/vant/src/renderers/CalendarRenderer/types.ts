@@ -27,6 +27,8 @@ export interface CalendarRendererProps
   onConfirm?: (value: CalendarFormattedValue) => void
   /** 值变化回调，选中日期时触发 */
   onChange?: (value: CalendarFormattedValue) => void
+  /** 失焦回调，弹窗关闭时触发（用于 blur 校验） */
+  onBlur?: () => void
   /** 自定义 CSS 类名 */
   className?: string
   /** 弹层 CSS 类名 */

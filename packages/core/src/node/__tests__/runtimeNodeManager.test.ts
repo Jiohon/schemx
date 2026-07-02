@@ -1,0 +1,145 @@
+import { describe, expect, it } from "vitest"
+
+import { createCompile } from "../../compiler"
+import { createFieldRegistry } from "../../field"
+import { createLifecycleBus } from "../../lifecycle"
+import { createScheduler } from "../../scheduler"
+import { createRuntimeResources } from "../resources"
+import { createRuntimeNodeManager } from "../runtimeNodeManager"
+
+import type { SchemxContext } from "../../schemxContext"
+import type { Values } from "../../types"
+import type { RuntimeNodeManager } from "../types"
+
+function createRuntimeContext<TValues extends Values = Values>(): SchemxContext<TValues> {
+  const nodeResources = createRuntimeResources<TValues>()
+  const scheduler = createScheduler()
+  const instance = {
+    getFieldSnapshot: () => undefined,
+    setInitialValues: () => undefined,
+    setFieldValue: () => undefined,
+    registerRules: () => undefined,
+    unregisterRules: () => undefined,
+    setFieldError: () => undefined,
+    validateField: async () => ({ ok: true, values: {} }),
+  }
+  const formApi = {
+    getValues: () => ({}),
+  }
+
+  return {
+    defaultProps: {},
+    instance,
+    formApi,
+    compile: createCompile({
+      defaultProps: {},
+      formInstance: instance as any,
+    }),
+    scheduler,
+    lifecycleBus: createLifecycleBus(),
+    fieldRegistry: createFieldRegistry<TValues>(),
+    nodeResources,
+    commitChildren: () => undefined,
+  } as unknown as SchemxContext<TValues>
+}
+
+function createTreeManager(): RuntimeNodeManager {
+  return createRuntimeNodeManager(createRuntimeContext())
+}
+
+describe("RuntimeNodeManager", () => {
+  it("应该通过显式 context 使用同一份 nodeResources", () => {
+    const context = createRuntimeContext()
+    const manager = createRuntimeNodeManager(context)
+
+    expect(manager.resources).toBe(context.nodeResources)
+    expect(manager.nodes).toBe(context.nodeResources.nodes)
+  })
+
+  it("应该只暴露 runtime tree 结构操作", () => {
+    const manager = createTreeManager()
+
+    expect(manager).toEqual(
+      expect.objectContaining({
+        resources: expect.any(Object),
+        nodes: expect.any(Map),
+        createRoot: expect.any(Function),
+        create: expect.any(Function),
+        createNode: expect.any(Function),
+        getNode: expect.any(Function),
+        traverse: expect.any(Function),
+        insertChild: expect.any(Function),
+        replaceChildren: expect.any(Function),
+        removeChild: expect.any(Function),
+        removeSubtree: expect.any(Function),
+      })
+    )
+
+    expect("mount" in manager).toBe(false)
+    expect("update" in manager).toBe(false)
+    expect("updateDescriptor" in manager).toBe(false)
+    expect("unmount" in manager).toBe(false)
+    expect("disposeTree" in manager).toBe(false)
+  })
+
+  it("创建 node 时应该注册到 nodes Map 并维护 parent", () => {
+    const manager = createTreeManager()
+    const root = manager.createRoot()
+    const field = manager.createNode({ type: "field", key: "field:name" })
+
+    expect(manager.getNode(root.id)).toBe(root)
+    expect(manager.getNode(field.id)).toBe(field)
+    expect(manager.resources.childrenStates.has(root.id)).toBe(true)
+    expect(field.parent).toBeNull()
+    expect(root.childNodes).toEqual([])
+  })
+
+  it("insertChild 应该维护 parent 和 children 数组一致性", () => {
+    const manager = createTreeManager()
+    const root = manager.createRoot()
+    const first = manager.createNode({ type: "field", key: "first" })
+    const second = manager.createNode({ type: "field", key: "second" })
+
+    manager.insertChild(root, second)
+    manager.insertChild(root, first, 0)
+
+    expect(root.childNodes).toEqual([first, second])
+    expect(first.parent).toBe(root)
+    expect(second.parent).toBe(root)
+  })
+
+  it("replaceChildren 应该替换 children 并清空被移除节点 parent", () => {
+    const manager = createTreeManager()
+    const root = manager.createRoot()
+    const first = manager.createNode({ type: "field", key: "first" })
+    const second = manager.createNode({ type: "field", key: "second" })
+    const third = manager.createNode({ type: "field", key: "third" })
+
+    manager.replaceChildren(root, [first, second])
+    manager.replaceChildren(root, [third])
+
+    expect(root.childNodes).toEqual([third])
+    expect(first.parent).toBeNull()
+    expect(second.parent).toBeNull()
+    expect(third.parent).toBe(root)
+  })
+
+  it("removeSubtree 应该深度删除节点、释放结构 scope 并维护父子关系", () => {
+    const manager = createTreeManager()
+    const root = manager.createRoot()
+    const group = manager.createNode({ type: "group", key: "group" })
+    const field = manager.createNode({ type: "field", key: "field" })
+
+    manager.replaceChildren(root, [group])
+    manager.replaceChildren(group, [field])
+    manager.removeSubtree(group)
+
+    expect(root.childNodes).toEqual([])
+    expect(manager.getNode(group.id)).toBeUndefined()
+    expect(manager.getNode(field.id)).toBeUndefined()
+    expect(group.parent).toBeNull()
+    expect(field.parent).toBeNull()
+    expect(group.scope.disposed).toBe(true)
+    expect(field.scope.disposed).toBe(true)
+  })
+})

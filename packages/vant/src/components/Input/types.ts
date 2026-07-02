@@ -4,7 +4,7 @@
  * @module components/Input/types
  */
 
-import type { FieldProps, FieldAutosizeConfig } from "vant"
+import type { FieldAutosizeConfig, FieldProps } from "vant"
 
 import type { SchemxBaseComponentProps } from "@schemx/vue"
 

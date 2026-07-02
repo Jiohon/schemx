@@ -16,6 +16,7 @@
       :class="classNames('schemx-date-popup-renderer', props.popupClassName)"
       v-bind="popupProps"
       safe-area-inset-bottom
+      @close="handleClose"
     >
       <DatePicker
         :model-value="modelValue"
@@ -83,23 +84,48 @@
   const title = computed(() => props.title || placeholder.value)
 
   const datePickerProps = computed(() => {
+    const rendererProps = props as typeof props & { formInstance?: unknown }
     const {
       value: _value,
       onChange: _onChange,
+      onBlur: _onBlur,
       onConfirm: _onConfirm,
       onClose: _onClose,
       format: _format,
       className: _className,
       popupClassName: _popupClassName,
       readonlyPlaceholder: _readonlyPlaceholder,
+      readonly: _readonly,
+      disabled: _disabled,
+      placeholder: _placeholder,
       contentAlign: _contentAlign,
       formItemProps: _formItemProps,
       popupProps: _popupProps,
       title: _title,
+      formInstance: _formInstance,
       ...rest
-    } = props
+    } = rendererProps
+    const {
+      value: _attrsValue,
+      onChange: _attrsOnChange,
+      onBlur: _attrsOnBlur,
+      onConfirm: _attrsOnConfirm,
+      onClose: _attrsOnClose,
+      format: _attrsFormat,
+      className: _attrsClassName,
+      popupClassName: _attrsPopupClassName,
+      readonly: _attrsReadonly,
+      readonlyPlaceholder: _attrsReadonlyPlaceholder,
+      disabled: _attrsDisabled,
+      placeholder: _attrsPlaceholder,
+      contentAlign: _attrsContentAlign,
+      formItemProps: _attrsFormItemProps,
+      popupProps: _attrsPopupProps,
+      formInstance: _attrsFormInstance,
+      ...attrsRest
+    } = attrs
 
-    return { ...attrs, ...rest, title: title.value }
+    return { ...attrsRest, ...rest, title: title.value }
   })
 
   const popupProps = computed(() => ({
@@ -157,6 +183,11 @@
 
   const handleCancel = (): void => {
     showPicker.value = false
+  }
+
+  /** 弹窗关闭（确认/取消/遮罩）统一出口，触发 blur 校验 */
+  const handleClose = (): void => {
+    props.onBlur?.()
   }
 
   const handleClick = (): void => {

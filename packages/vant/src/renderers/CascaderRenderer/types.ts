@@ -38,6 +38,8 @@ export interface CascaderRendererProps
   onConfirm?: (value: CascaderValue) => void
   /** 值变化回调，选中项变化时触发 */
   onChange?: (value: CascaderValue) => void
+  /** 失焦回调，弹窗关闭时触发（用于 blur 校验） */
+  onBlur?: () => void
   /** 自定义 CSS 类名 */
   className?: string
   /** 是否显示所有层级 */

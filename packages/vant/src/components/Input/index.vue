@@ -198,6 +198,7 @@
     // 对于 number/digit 类型，使用内置的格式化
     if (props.type === "number" || props.type === "digit") {
       const isNumber = props.type === "number"
+
       return (value: string) => formatNumber(value, isNumber, isNumber)
     }
 

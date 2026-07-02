@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import readline from "node:readline"
+import { cancel as cancelPrompt, isCancel, select } from "@clack/prompts"
 
 const args = process.argv.slice(2)
 const kindOptionIndex = args.indexOf("--kind")
@@ -57,7 +57,7 @@ function fail(message) {
 
 function cancel() {
   // pnpm 会把非 0 退出码包装成 ELIFECYCLE；取消选择应停止发布但不算脚本失败。
-  process.stderr.write("\n  已取消选择\n")
+  cancelPrompt("已取消选择", { output: process.stderr })
   process.stdout.write("__SCHEMX_RELEASE_CANCELLED__\n")
   process.exit(0)
 }
@@ -89,101 +89,40 @@ if (envOption) {
   process.exit(0)
 }
 
-// release.sh 通过命令替换读取 stdout，所以交互界面必须写到 stderr。
-const screen = process.stderr
-const styles = {
-  reset: "\x1b[0m",
-  bold: "\x1b[1m",
-  dim: "\x1b[2m",
-  darkGray: "\x1b[90m",
-  blue: "\x1b[34m",
-  cyan: "\x1b[36m",
-}
-
-if (!process.stdin.isTTY || !screen.isTTY) {
+if (!process.stdin.isTTY || !process.stderr.isTTY) {
   fail(`当前终端不支持交互选择。请传入参数，或设置 ${config.env}。`)
 }
-
-let selectedIndex = 0
 
 function optionLabel(option) {
   return config.labels?.[option] ? `${option} - ${config.labels[option]}` : option
 }
 
-function renderSelectedOptions() {
+function selectedContext() {
   if (kind === "channel") {
-    return
+    return ""
   }
 
-  screen.write(`\n  ${styles.bold}已选择${styles.reset}\n`)
-  screen.write(`  发布通道：${channel} - ${channelLabels[channel]}\n`)
+  const lines = [`发布通道：${channel} - ${channelLabels[channel]}`]
 
   if (target) {
-    screen.write(`  发布目标：${target}\n`)
+    lines.push(`发布目标：${target}`)
   }
 
-  screen.write("\n")
+  return `\n${lines.join("\n")}`
 }
 
-function render() {
-  readline.cursorTo(screen, 0, 0)
-  readline.clearScreenDown(screen)
-  screen.write(`  ${styles.bold}${config.title}${styles.reset}\n`)
+const selected = await select({
+  message: `${config.title}${selectedContext()}`,
+  options: options.map((option) => ({
+    value: option,
+    label: optionLabel(option),
+  })),
+  initialValue: options[0],
+  output: process.stderr,
+})
 
-  renderSelectedOptions()
-  screen.write(`  ${styles.dim}使用方向键移动，Enter 确认，Esc 取消。${styles.reset}\n\n`)
-
-  options.forEach((option, index) => {
-    const label = optionLabel(option)
-
-    if (index === selectedIndex) {
-      screen.write(`${styles.bold}${styles.blue}› ${label}${styles.reset}\n`)
-      return
-    }
-
-    screen.write(`${styles.darkGray}  ${label}${styles.reset}\n`)
-  })
+if (isCancel(selected)) {
+  cancel()
 }
 
-function finish(option) {
-  process.stdin.setRawMode(false)
-  process.stdin.off("keypress", handleKeypress)
-  process.stdin.pause()
-  readline.cursorTo(screen, 0, 0)
-  readline.clearScreenDown(screen)
-  process.stdout.write(`${option}\n`)
-  process.exit(0)
-}
-
-function handleKeypress(_, key) {
-  if (key.name === "up") {
-    selectedIndex = (selectedIndex - 1 + options.length) % options.length
-    render()
-    return
-  }
-
-  if (key.name === "down") {
-    selectedIndex = (selectedIndex + 1) % options.length
-    render()
-    return
-  }
-
-  if (key.name === "return" || key.name === "enter") {
-    finish(options[selectedIndex])
-    return
-  }
-
-  if (key.name === "escape" || (key.ctrl && key.name === "c")) {
-    process.stdin.setRawMode(false)
-    process.stdin.off("keypress", handleKeypress)
-    readline.cursorTo(screen, 0)
-    readline.clearScreenDown(screen)
-    cancel()
-  }
-}
-
-readline.emitKeypressEvents(process.stdin)
-process.stdin.setRawMode(true)
-process.stdin.resume()
-process.stdin.on("keypress", handleKeypress)
-render()
+process.stdout.write(`${selected}\n`)

@@ -25,6 +25,8 @@ export interface DateRendererProps
   onConfirm?: (value: string) => void
   /** 值变化回调，选中日期时触发 */
   onChange?: (value: string) => void
+  /** 失焦回调，弹窗关闭时触发（用于 blur 校验） */
+  onBlur?: () => void
   /** 日期格式化字符串或格式化函数 */
   format?: string | ((value: any) => string)
   /** 自定义 CSS 类名 */

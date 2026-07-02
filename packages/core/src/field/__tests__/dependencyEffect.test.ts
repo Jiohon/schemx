@@ -6,7 +6,6 @@ import {
   flushRuntimeGraph,
 } from "./dependencyRuntimeTestUtils"
 import * as fieldModule from "../index"
-import { buildViewSchemas } from "../../view"
 
 describe("dependency effect", () => {
   it("只导出 createDependencyEffect 作为 dependency effect 创建入口", () => {
@@ -14,9 +13,9 @@ describe("dependency effect", () => {
     expect(fieldModule).not.toHaveProperty("mountDependencyEffect")
   })
 
-  it("renderer 返回的子 schema 会编译后通过 commit boundary 写入 dependency.dynamicChildNodes", async () => {
+  it("renderer 返回的子 schema 会编译后通过 commit boundary 写入 dependency childNodes", async () => {
     const renderer = vi.fn().mockResolvedValue([createRawFieldSchema("child", "child")])
-    const { commitSchemas, root, scheduler, viewRevision } = createRuntimeGraphHarness()
+    const { commitSchemas, root, scheduler } = createRuntimeGraphHarness()
 
     commitSchemas(root, [
       {
@@ -30,10 +29,101 @@ describe("dependency effect", () => {
 
     const dependency = root.childNodes[0]
     expect(dependency?.type).toBe("dependency")
-    expect(dependency?.dynamicChildNodes).toHaveLength(1)
-    expect(dependency?.dynamicChildNodes[0]?.key).toBe("child")
-    expect(dependency?.dynamicChildNodes[0]?.type).toBe("field")
-    expect(viewRevision.revision.value).toBe(2)
+    expect(dependency?.childNodes).toHaveLength(1)
+    expect(dependency?.childNodes[0]?.key).toBe("child")
+    expect(dependency?.childNodes[0]?.type).toBe("field")
+  })
+
+  it("renderer 返回 group schema 时应保留 group children", async () => {
+    const renderer = vi.fn((values: { orderType?: string }) => {
+      if (values.orderType !== "express") {
+        return []
+      }
+
+      return [
+        {
+          label: "加急订单配置",
+          componentType: "group",
+          children: [
+            {
+              name: "expressLevel",
+              label: "加急等级",
+              componentType: "selector",
+            },
+          ],
+        },
+      ]
+    })
+    const { commitSchemas, formApi, root, scheduler } = createRuntimeGraphHarness(
+      {},
+      { orderType: "standard" }
+    )
+
+    commitSchemas(root, [
+      {
+        key: "dep",
+        componentType: "dependency",
+        to: ["orderType"],
+        renderer,
+      },
+    ])
+    await flushRuntimeGraph(scheduler)
+
+    formApi.setValue("orderType" as any, "express")
+    await flushRuntimeGraph(scheduler)
+
+    const dependency = root.childNodes[0]
+    expect(dependency?.type).toBe("dependency")
+    if (dependency?.type !== "dependency") {
+      throw new Error("expected dependency node")
+    }
+
+    const group = dependency.childNodes[0]
+
+    expect(renderer).toHaveBeenCalledTimes(2)
+    expect(group?.type).toBe("group")
+    expect(group?.childNodes.map((child) => child.key)).toEqual([
+      "field:group:0/expressLevel",
+    ])
+  })
+
+  it("renderer 返回相同 child schema 引用时应复用 descriptor", async () => {
+    const childSchema = createRawFieldSchema("child", "child")
+    const renderer = vi.fn(() => [childSchema])
+    const { commitSchemas, context, formApi, root, scheduler } = createRuntimeGraphHarness(
+      {},
+      { mode: "a" }
+    )
+
+    commitSchemas(root, [
+      {
+        key: "dep",
+        componentType: "dependency",
+        to: ["mode"],
+        renderer,
+      },
+    ])
+    await flushRuntimeGraph(scheduler)
+
+    const dependency = root.childNodes[0]
+    if (dependency?.type !== "dependency") {
+      throw new Error("expected dependency node")
+    }
+
+    const firstChild = dependency.childNodes[0]
+    const firstDescriptor = firstChild
+      ? context.nodeResources.descriptors.get(firstChild.id)
+      : undefined
+
+    formApi.setValue("mode" as any, "b")
+    await flushRuntimeGraph(scheduler)
+
+    expect(dependency.childNodes[0]).toBe(firstChild)
+    expect(
+      dependency.childNodes[0]
+        ? context.nodeResources.descriptors.get(dependency.childNodes[0].id)
+        : undefined
+    ).toBe(firstDescriptor)
   })
 
   it("空 renderer 输出会提交为空子树", async () => {
@@ -60,12 +150,12 @@ describe("dependency effect", () => {
     if (root.childNodes[0]?.type !== "dependency") {
       throw new Error("expected dependency node")
     }
-    expect(root.childNodes[0].dynamicChildNodes).toHaveLength(1)
+    expect(root.childNodes[0].childNodes).toHaveLength(1)
 
     formApi.setValue("mode" as any, "b")
     await flushRuntimeGraph(scheduler)
 
-    expect(root.childNodes[0].dynamicChildNodes).toHaveLength(0)
+    expect(root.childNodes[0].childNodes).toHaveLength(0)
   })
 
   it("失败的 renderer 不会覆盖上一次成功提交的 dependency children", async () => {
@@ -95,7 +185,7 @@ describe("dependency effect", () => {
     if (root.childNodes[0]?.type !== "dependency") {
       throw new Error("expected dependency node")
     }
-    expect(root.childNodes[0].dynamicChildNodes.map((child) => child.key)).toEqual([
+    expect(root.childNodes[0].childNodes.map((child) => child.key)).toEqual([
       "stable",
     ])
   })
@@ -138,7 +228,7 @@ describe("dependency effect", () => {
     if (root.childNodes[0]?.type !== "dependency") {
       throw new Error("expected dependency node")
     }
-    expect(root.childNodes[0].dynamicChildNodes.map((child) => child.key)).toEqual([
+    expect(root.childNodes[0].childNodes.map((child) => child.key)).toEqual([
       "latest",
     ])
   })

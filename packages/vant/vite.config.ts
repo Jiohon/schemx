@@ -6,19 +6,12 @@ import { visualizer } from "rollup-plugin-visualizer"
 import { resolve } from "path"
 import { injectStyleCss } from "@plugins/injectStyleCss"
 
-const useSource = process.env.VITE_USE_SOURCE === "true"
 const analyze = process.env.ANALYZE === "true"
 
 export default defineConfig({
   resolve: {
     alias: {
       "@": resolve(__dirname, "src"),
-      ...(useSource
-        ? {
-            "@schemx/core": resolve(__dirname, "../core/src/index.ts"),
-            "@schemx/vue": resolve(__dirname, "../vue/src/index.ts"),
-          }
-        : {}),
     },
   },
   plugins: [
@@ -52,7 +45,7 @@ export default defineConfig({
       },
     },
     rollupOptions: {
-      external: ["vue", "vant", "classnames", "dayjs"],
+      external: ["vue", "vant"],
       output: {
         exports: "named",
       },

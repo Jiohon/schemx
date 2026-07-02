@@ -8,52 +8,33 @@ RELEASE_PACKAGES=(core vue vant)
 RELEASE_CHANNELS=(dev alpha beta rc next latest)
 RELEASE_VERSION_ACTIONS=(current patch minor major custom)
 
-# 颜色只面向交互终端；CI 和 NO_COLOR 环境保持纯文本，避免污染日志。
-release_colors_enabled() {
-  if [[ -n "${NO_COLOR:-}" ]]; then
-    return 1
-  fi
-
-  if [[ -n "${FORCE_COLOR:-}" && "${FORCE_COLOR:-}" != "0" ]]; then
-    return 0
-  fi
-
-  if [[ "${CLICOLOR_FORCE:-}" == "1" ]]; then
-    return 0
-  fi
-
-  [[ -t 1 ]]
+release_ui() {
+  node "$ROOT_DIR/scripts/release/ui.mjs" "$@"
 }
 
-if release_colors_enabled; then
-  RELEASE_COLOR_INFO=$'\033[36m'
-  RELEASE_COLOR_SUCCESS=$'\033[32m'
-  RELEASE_COLOR_WARN=$'\033[33m'
-  RELEASE_COLOR_ERROR=$'\033[31m'
-  RELEASE_COLOR_RESET=$'\033[0m'
-else
-  RELEASE_COLOR_INFO=""
-  RELEASE_COLOR_SUCCESS=""
-  RELEASE_COLOR_WARN=""
-  RELEASE_COLOR_ERROR=""
-  RELEASE_COLOR_RESET=""
-fi
-
 info() {
-  printf '\n%s==> %s%s\n' "$RELEASE_COLOR_INFO" "$1" "$RELEASE_COLOR_RESET"
+  release_ui section "$1"
 }
 
 success() {
-  printf '%s%s%s\n' "$RELEASE_COLOR_SUCCESS" "$1" "$RELEASE_COLOR_RESET"
+  release_ui success "$1"
 }
 
 warn() {
-  printf '%s%s%s\n' "$RELEASE_COLOR_WARN" "$1" "$RELEASE_COLOR_RESET"
+  release_ui warn "$1"
 }
 
 die() {
-  printf '%s错误：%s%s\n' "$RELEASE_COLOR_ERROR" "$1" "$RELEASE_COLOR_RESET" >&2
+  release_ui error "$1" >&2
   exit 1
+}
+
+release_kv() {
+  local label="$1"
+  local value="$2"
+  local width="${3:-8}"
+
+  release_ui kv "$label" "$value" "$width"
 }
 
 package_choices() {

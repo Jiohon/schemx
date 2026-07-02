@@ -1,39 +1,58 @@
 /**
  * Graph 模块统一导出。
  *
- * 提供 RuntimeNode、Reconciler 和资源作用域。
+ * 提供 RuntimeNode、RuntimeNodeManager 和资源作用域。
  *
  * @module core/node
  */
 
 export {
-  findFieldRuntimeNode,
+  createDependencyRuntimeNode,
+  createFieldRuntimeNode,
+  createGroupRuntimeNode,
+  createRootRuntimeNode,
   getChildRuntimeNodes,
-  hasDescriptor,
-  isContainerRuntimeNode,
-  isDependencyRuntimeNode,
-  isRootRuntimeNode,
-  isFieldRuntimeNode,
-  isGroupRuntimeNode,
   setChildRuntimeNodes,
-  type ContainerRuntimeNode,
-  type DependencyRuntimeNode,
-  type DescribedRuntimeNode,
-  type RuntimeNode,
-  type RuntimeNodeType,
-  type FieldRuntimeNode,
-  type GroupRuntimeNode,
-  type RootRuntimeNode,
 } from "./runtimeNode"
 
-export { createReconciler, type Reconciler } from "./reconciler"
+export {
+  createRuntimeResources,
+  deleteNodeResources,
+} from "./resources"
 
-export { createRuntimeNodeManager, type RuntimeNodeManager } from "./runtimeNodeManager"
+export type {
+  ContainerRuntimeNode,
+  CreateDependencyRuntimeNodeOptions,
+  CreateFieldRuntimeNodeOptions,
+  CreateGroupRuntimeNodeOptions,
+  CreateRootRuntimeNodeOptions,
+  CreateRuntimeNodeManagerOptions,
+  CreateRuntimeNodeOptions,
+  DependencyRuntimeNode,
+  DescribedRuntimeNode,
+  FieldRuntimeNode,
+  GroupRuntimeNode,
+  RootRuntimeNode,
+  RuntimeChildrenState,
+  RuntimeNode,
+  RuntimeNodeId,
+  RuntimeNodeManager,
+  RuntimeNodeResourceContext,
+  RuntimeNodeResourceMaps,
+  RuntimeNodeType,
+  Scope,
+  ScopeCleanup,
+  ScopeCleanupHandle,
+} from "./types"
+
+export { createRuntimeNodeManager } from "./runtimeNodeManager"
+
+export {
+  createRuntimeLifecycle,
+  type RuntimeLifecycle,
+} from "./runtimeLifecycle"
 
 export {
   createScope,
   reportRuntimeCleanupError,
-  type ScopeCleanup,
-  type ScopeCleanupHandle,
-  type Scope,
 } from "./scope"

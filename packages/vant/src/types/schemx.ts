@@ -15,8 +15,8 @@ import type {
   RadioRendererProps,
   RateRendererProps,
   SelectorRendererProps,
-  SensitiveInputRendererProps,
   SelectPickerRendererProps,
+  SensitiveInputRendererProps,
   SliderRendererProps,
   StepperRendererProps,
   SwitchRendererProps,
@@ -24,7 +24,8 @@ import type {
   TextRendererProps,
   UploadRendererProps,
 } from "../renderers"
-import type { SchemxWithDictionary, Values } from "@schemx/core"
+import type { Values } from "@schemx/core"
+import type { SchemxWithDictionary } from "@schemx/vue"
 
 declare module "@schemx/core" {
   interface SchemxRendererDefinition<T extends Values> {

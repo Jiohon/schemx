@@ -1,9 +1,9 @@
 /**
- * useContext - 表单上下文 Hook
+ * useConfigContext - 表单上下文 Hook
  *
  * 提供表单上下文的创建与消费能力。
- * schemx 通过 createContext 注入全局配置，
- * 子组件通过 useContext 获取。
+ * schemx 通过 createConfigContext 注入全局配置，
+ * 子组件通过 useConfigContext 获取。
  *
  * @module hooks/useContext
  */
@@ -44,9 +44,18 @@ export interface FormContextProps<T extends Values = Values> extends Omit<
  * @typeParam T - 表单值类型
  * @param props - 表单上下文属性
  */
-export const createContext = <T extends Values = Values>(props: FormContextProps<T>) => {
+export const createConfigContext = <T extends Values = Values>(
+  props: FormContextProps<T>
+) => {
   provide<FormContextProps<T>>(FORM_CONTEXT_KEY, props)
 }
+
+/**
+ * @deprecated
+ *
+ * 已弃用，请使用 **createConfigContext**
+ */
+export const createContext = createConfigContext
 
 /**
  * 获取表单上下文配置
@@ -59,16 +68,23 @@ export const createContext = <T extends Values = Values>(props: FormContextProps
  *
  * @example
  * ```ts
- * const context = useContext()
+ * const context = useConfigContext()
  * console.log(context.readonly, context.disabled)
  * ```
  */
-export function useContext(): FormContextProps {
+export function useConfigContext(): FormContextProps {
   const context = inject<FormContextProps>(FORM_CONTEXT_KEY)
 
   if (!context) {
-    throw new Error("useContext must be used within a Form")
+    throw new Error("useConfigContext must be used within a Form")
   }
 
   return context
 }
+
+/**
+ * @deprecated
+ *
+ * 已弃用，请使用 **useConfigContext**
+ */
+export const useContext = useConfigContext

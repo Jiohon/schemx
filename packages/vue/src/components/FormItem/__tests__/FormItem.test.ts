@@ -10,7 +10,7 @@
 
 import { defineComponent, h, nextTick } from "vue"
 
-import { createFormInstance } from "@schemx/core"
+import { createForm } from "@schemx/core"
 import { mount } from "@vue/test-utils"
 import { describe, expect, it, vi } from "vitest"
 
@@ -121,7 +121,7 @@ describe("FormItem 集成测试", () => {
       },
     }
 
-    const form: SchemxInstance = createFormInstance({
+    const form: SchemxInstance = createForm({
       initialValues: { province: "guangdong" },
       schemas: [schema as any],
     })
@@ -158,7 +158,7 @@ describe("FormItem 集成测试", () => {
   })
 
   it("无 dependencies 时静态 visible: false 直接生效，组件不渲染", async () => {
-    const form: SchemxInstance = createFormInstance({
+    const form: SchemxInstance = createForm({
       initialValues: { name: "" },
     })
 
@@ -198,7 +198,7 @@ describe("FormItem 集成测试", () => {
       initialValue: "mixc",
     }
 
-    const form: SchemxInstance = createFormInstance({
+    const form: SchemxInstance = createForm({
       initialValues: { pickupStore: "hubin" },
       schemas: [schema as any],
     })
@@ -231,7 +231,7 @@ describe("FormItem 集成测试", () => {
       componentType: "controlled" as any,
     }
 
-    const form: SchemxInstance = createFormInstance({
+    const form: SchemxInstance = createForm({
       initialValues: { website: "www.baidu.com" },
       schemas: [schema as any],
     })
@@ -269,7 +269,7 @@ describe("FormItem 集成测试", () => {
       componentType: "change" as any,
     }
 
-    const form: SchemxInstance = createFormInstance({
+    const form: SchemxInstance = createForm({
       schemas: [schema as any],
     })
 
@@ -295,6 +295,83 @@ describe("FormItem 集成测试", () => {
     form.destroy()
   })
 
+  it("validationTrigger=onChange 时值变化后触发字段校验", async () => {
+    const schema: SchemxBaseField = {
+      name: "title",
+      label: "标题",
+      componentType: "probe" as any,
+      rules: "required",
+      validationTrigger: "onChange",
+    }
+
+    const form: SchemxInstance = createForm({
+      initialValues: { title: "旧标题" },
+      schemas: [schema as any],
+    })
+
+    form.registerRenderer("probe" as any, ProbeRenderer)
+    const validateSpy = vi.spyOn(form, "validateField")
+
+    const wrapper = mount(FormItem, {
+      props: { schema: form.getViewSchemas()[0] },
+      global: {
+        provide: {
+          [FORM_INSTANCE_KEY]: form,
+          [FORM_CONTEXT_KEY]: createFormContext(),
+        },
+      },
+    })
+
+    await nextTick()
+    await wrapper.get('[data-testid="probe-renderer"]').setValue("")
+
+    expect(validateSpy).toHaveBeenCalledWith("title")
+
+    wrapper.unmount()
+    form.destroy()
+  })
+
+  it("validationTrigger=onBlur 时失焦后触发字段校验", async () => {
+    const schema: SchemxBaseField = {
+      name: "title",
+      label: "标题",
+      componentType: "probe" as any,
+      rules: "required",
+      validationTrigger: "onBlur",
+    }
+
+    const form: SchemxInstance = createForm({
+      initialValues: { title: "旧标题" },
+      schemas: [schema as any],
+    })
+
+    form.registerRenderer("probe" as any, ProbeRenderer)
+    const validateSpy = vi.spyOn(form, "validateField")
+
+    const wrapper = mount(FormItem, {
+      props: { schema: form.getViewSchemas()[0] },
+      global: {
+        provide: {
+          [FORM_INSTANCE_KEY]: form,
+          [FORM_CONTEXT_KEY]: createFormContext(),
+        },
+      },
+    })
+
+    await nextTick()
+
+    const input = wrapper.get('[data-testid="probe-renderer"]')
+
+    await input.setValue("")
+    expect(validateSpy).not.toHaveBeenCalled()
+
+    await input.trigger("blur")
+    expect(validateSpy).toHaveBeenCalledWith("title")
+
+    wrapper.unmount()
+    form.destroy()
+  })
+
   it("readonly=true 时下发给 renderer、隐藏 required 星号并跳过校验", async () => {
     const schema: SchemxBaseField = {
       name: "title",
@@ -305,7 +382,7 @@ describe("FormItem 集成测试", () => {
       rules: "required",
     }
 
-    const form: SchemxInstance = createFormInstance({
+    const form: SchemxInstance = createForm({
       initialValues: { title: "旧标题" },
       schemas: [schema as any],
     })

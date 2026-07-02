@@ -119,18 +119,18 @@ rendererRegistry.register("input", InputRenderer)
 
 ## Composition API
 
-| API                 | 说明                                          |
-| ------------------- | --------------------------------------------- |
-| `useForm()`         | 创建表单实例，并通过 Vue context 提供给子组件 |
-| `useField()`        | 获取字段级读写、校验和状态能力                |
-| `useWatch()`        | 监听字段变化                                  |
-| `useWatchField()`   | 监听单个字段                                  |
-| `useWatchFields()`  | 监听多个字段                                  |
-| `useWatchAll()`     | 监听整张表单                                  |
-| `useDictionary()`   | 管理依赖字段的远程或本地选项                  |
-| `useContext()`      | 获取表单上下文                                |
-| `useEffect()`       | 创建字段依赖追踪 effect                       |
-| `useFieldContext()` | 获取当前字段上下文                            |
+| API                  | 说明                                          |
+| -------------------- | --------------------------------------------- |
+| `useForm()`          | 创建表单实例，并通过 Vue context 提供给子组件 |
+| `useField()`         | 获取字段级读写、校验和状态能力                |
+| `useWatch()`         | 监听字段变化                                  |
+| `useWatchField()`    | 监听单个字段                                  |
+| `useWatchFields()`   | 监听多个字段                                  |
+| `useWatchAll()`      | 监听整张表单                                  |
+| `useDictionary()`    | 管理依赖字段的远程或本地选项                  |
+| `useConfigContext()` | 获取表单上下文                                |
+| `useEffect()`        | 创建字段依赖追踪 effect                       |
+| `useFieldContext()`  | 获取当前字段上下文                            |
 
 ## Adapter 边界
 

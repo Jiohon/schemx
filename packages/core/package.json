@@ -43,7 +43,9 @@
   "dependencies": {
     "@preact/signals-core": "^1.14.0",
     "csstype": "^3.2.3",
-    "es-toolkit": "catalog:"
+    "es-toolkit": "catalog:",
+    "simple-async-context": "^1.0.4",
+    "tslib": "^2.6.0"
   },
   "scripts": {
     "build": "vite build",

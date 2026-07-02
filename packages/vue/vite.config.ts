@@ -6,16 +6,13 @@ import { visualizer } from "rollup-plugin-visualizer"
 import { resolve } from "path"
 import { injectStyleCss } from "@plugins/injectStyleCss"
 
-const useSource = process.env.VITE_USE_SOURCE === "true"
 const analyze = process.env.ANALYZE === "true"
 
 export default defineConfig({
   resolve: {
     alias: {
       "@": resolve(__dirname, "src"),
-      ...(useSource
-        ? { "@schemx/core": resolve(__dirname, "../core/src/index.ts") }
-        : {}),
+      "@schemx/core": resolve(__dirname, "../core/src/index.ts"),
     },
   },
   plugins: [
@@ -42,15 +39,14 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, "src/index.ts"),
       name: "schemxCore",
-      formats: ["es", "cjs", "umd"],
+      formats: ["es", "cjs"],
       fileName: (format) => {
         if (format === "es") return "index.mjs"
-        if (format === "cjs") return "index.cjs"
-        return "index.umd.js"
+        return "index.cjs"
       },
     },
     rollupOptions: {
-      external: ["vue", "classnames", "dayjs", "es-toolkit", "@preact/signals-core"],
+      external: ["vue"],
       output: {
         globals: {
           vue: "Vue",

@@ -37,7 +37,7 @@
                 shape="square"
                 :name="option[valueName]"
                 :disabled="disabled || option[disabledName]"
-                v-bind="option"
+                v-bind="getOptionProps(option)"
               >
                 {{ option[labelName] }}
               </Checkbox>
@@ -53,7 +53,7 @@
                 :key="option[valueName]"
                 :name="option[valueName]"
                 :disabled="disabled || option[disabledName]"
-                v-bind="option"
+                v-bind="getOptionProps(option)"
               >
                 {{ option[labelName] }}
               </Radio>
@@ -82,12 +82,12 @@
   import { computed, ref } from "vue"
 
   import { Button, Checkbox, CheckboxGroup, Popup, Radio, RadioGroup } from "vant"
-  
-import classNames from "classnames"
+
+  import classNames from "classnames"
 
   import SchemxCell from "@/components/Cell/index.vue"
-  
-import type {
+
+  import type {
     SelectPickerConfirmEventParams,
     SelectPickerOption,
     SelectPickerRendererProps,
@@ -129,15 +129,44 @@ import type {
   const disabledName = computed(() => props.fieldNames?.disabled || "disabled")
   const isReadonly = computed(() => props.readonly || Boolean(props.view))
 
-  const popupProps = computed((): SelectPickerRendererProps["popupProps"] => ({
-    round: true,
-    position: "bottom" as const,
-    safeAreaInsetBottom: true,
-    teleport: "body",
-    closeable: true,
-    closeIconPosition: "top-right",
-    ...props.popupProps,
-  }))
+  const popupProps = computed((): SelectPickerRendererProps["popupProps"] => {
+    const {
+      value: _value,
+      onChange: _onChange,
+      onBlur: _onBlur,
+      onConfirm: _onConfirm,
+      className: _className,
+      popupClassName: _popupClassName,
+      view: _view,
+      options: _options,
+      columns: _columns,
+      fieldNames: _fieldNames,
+      type: _type,
+      readonly: _readonly,
+      readonlyPlaceholder: _readonlyPlaceholder,
+      disabled: _disabled,
+      title: _title,
+      contentAlign: _contentAlign,
+      popupProps: popupPropsConfig,
+      formItemProps: _formItemProps,
+      formInstance: _formInstance,
+      ..._rest
+    } = props
+
+    const { show: _show, ...popupRest } = (popupPropsConfig || {}) as NonNullable<
+      SelectPickerRendererProps["popupProps"]
+    > & { show?: boolean }
+
+    return {
+      round: true,
+      position: "bottom" as const,
+      safeAreaInsetBottom: true,
+      teleport: "body",
+      closeable: true,
+      closeIconPosition: "top-right",
+      ...popupRest,
+    }
+  })
 
   const columns = computed<SelectPickerOption[]>(() => {
     if (Array.isArray(props.options) && props.options.length > 0) return props.options
@@ -169,6 +198,17 @@ import type {
 
   const getOption = (value: unknown): SelectPickerOption | undefined => {
     return columns.value.find((option) => option[valueName.value] === value)
+  }
+
+  const getOptionProps = (option: SelectPickerOption): SelectPickerOption => {
+    const {
+      [labelName.value]: _label,
+      [valueName.value]: _value,
+      [disabledName.value]: _disabled,
+      ...rest
+    } = option
+
+    return rest
   }
 
   const getOptionLabel = (value: unknown): string => {
@@ -218,6 +258,7 @@ import type {
   const handleClose = (): void => {
     pendingValue.value = undefined
     showPicker.value = false
+    props.onBlur?.()
   }
 
   const handleConfirm = (): void => {

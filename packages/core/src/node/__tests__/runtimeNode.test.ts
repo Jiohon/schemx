@@ -10,7 +10,9 @@ function createFieldDescriptor(key: string): FieldDescriptor {
   return {
     type: "field",
     key,
-    schema: {
+    name: key,
+    componentType: "input",
+    staticSchema: {
       name: key,
       componentType: "input",
       visible: true,
@@ -36,5 +38,20 @@ describe("node child helpers", () => {
 
     expect(root.childNodes).toEqual([field])
     expect(getChildRuntimeNodes(root)).toEqual([field])
+  })
+
+  it("RuntimeNode 只保留结构字段，不直接挂载领域资源", () => {
+    const root = createTestRootRuntimeNode()
+    const field = createTestFieldRuntimeNode({
+      key: "name",
+      parent: root,
+      descriptor: createFieldDescriptor("name"),
+    })
+
+    expect(field).not.toHaveProperty("descriptor")
+    expect(field).not.toHaveProperty("runtimeState")
+    expect(field).not.toHaveProperty("viewState")
+    expect(field).not.toHaveProperty("fieldResourceScope")
+    expect(field).not.toHaveProperty("fieldDependenciesScope")
   })
 })
