@@ -2,7 +2,7 @@ import type { FormDescriptor } from "../descriptor"
 import type { DependencyEffectState } from "../field/dependencyEffect"
 import type { FieldRuntimeState } from "../field/runtimeState"
 import type { Signal } from "../reactivity"
-import type { Values } from "../types"
+import type { NamePath, Values } from "../types"
 import type { RuntimeViewState } from "../view/viewGraph"
 
 /**
@@ -191,11 +191,27 @@ export interface RuntimeChildrenState<TValues extends Values = Values> {
   readonly children: Signal<readonly DescribedRuntimeNode<TValues>[]>
 }
 
+export interface RuntimeFieldIndex<TValues extends Values = Values> {
+  register(node: FieldRuntimeNode<TValues>): void
+  unregister(node: FieldRuntimeNode<TValues>): void
+  getByName(name: NamePath<TValues>): FieldRuntimeNode<TValues> | undefined
+  getByPath(path: NamePath<TValues>): FieldRuntimeNode<TValues> | undefined
+}
+
+export interface RuntimeDependencyIndex<TValues extends Values = Values> {
+  register(node: DependencyRuntimeNode<TValues>): void
+  unregister(node: DependencyRuntimeNode<TValues>): void
+  getByTriggerField(name: NamePath<TValues>): readonly DependencyRuntimeNode<TValues>[]
+  getTriggerFields(node: DependencyRuntimeNode<TValues>): readonly NamePath<TValues>[]
+}
+
 /**
  * RuntimeNode 之外的领域资源注册表。
  */
 export interface RuntimeNodeResourceContext<TValues extends Values = Values> {
   readonly nodes: Map<RuntimeNodeId, RuntimeNode<TValues>>
+  readonly fieldIndex: RuntimeFieldIndex<TValues>
+  readonly dependencyIndex: RuntimeDependencyIndex<TValues>
   readonly descriptors: Map<RuntimeNodeId, FormDescriptor<TValues>>
   readonly fieldStates: Map<RuntimeNodeId, FieldRuntimeState<TValues>>
   readonly viewStates: Map<RuntimeNodeId, RuntimeViewState<TValues>>

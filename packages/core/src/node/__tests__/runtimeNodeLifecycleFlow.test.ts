@@ -96,6 +96,24 @@ describe("node lifecycle flow", () => {
     expect(context.nodeResources.fieldResourceScopes.has(field.id)).toBe(false)
     expect(context.nodeResources.fieldDynamicPropScopes.has(field.id)).toBe(false)
   })
+
+  it("fieldIndex 跟随 field mount/update/unmount 维护字段查询", () => {
+    const { commitSchemas, context, root } = createRuntimeGraphHarness()
+
+    commitSchemas(root, [createRawFieldSchema("name", "name")])
+    const field = root.childNodes[0] as FieldRuntimeNode
+
+    expect(context.nodeResources.fieldIndex.getByName("name" as any)).toBe(field)
+
+    commitSchemas(root, [createRawFieldSchema("name", "nickname")])
+
+    expect(context.nodeResources.fieldIndex.getByName("name" as any)).toBeUndefined()
+    expect(context.nodeResources.fieldIndex.getByName("nickname" as any)).toBe(field)
+
+    commitSchemas(root, [])
+
+    expect(context.nodeResources.fieldIndex.getByName("nickname" as any)).toBeUndefined()
+  })
 })
 
 import { describe, expect, it } from "vitest"

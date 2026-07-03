@@ -79,7 +79,11 @@ describe("createFieldRegistry", () => {
     registry.register(entry)
 
     expect(registry.get("user.name" as any)?.node).toBe(entry.node)
+    expect(registry.getByName("user.name" as any)?.node).toBe(entry.node)
+    expect(registry.getByPath("user.name" as any)?.node).toBe(entry.node)
     expect(registry.get("not-exist" as any)).toBeUndefined()
+    expect(registry.getByName("not-exist" as any)).toBeUndefined()
+    expect(registry.getByPath("not-exist" as any)).toBeUndefined()
   })
 })
 

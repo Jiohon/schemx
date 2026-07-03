@@ -64,6 +64,14 @@ class RuntimeFieldRegistry<
     return this.fields.get(key)
   }
 
+  getByName(name: TName): FieldRegistryEntry<TValues> | undefined {
+    return this.get(name)
+  }
+
+  getByPath(path: TName): FieldRegistryEntry<TValues> | undefined {
+    return this.get(path)
+  }
+
   list(): FieldRegistryEntry<TValues>[] {
     return Array.from(this.fields.values())
   }
