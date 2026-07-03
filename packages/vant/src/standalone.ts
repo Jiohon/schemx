@@ -19,16 +19,7 @@ import "./renderers/defaultRenderers"
 /** 重新导出 @schemx/vue（含 SchemxForm 默认导出） */
 export { default } from "@schemx/vue"
 export { default as SchemxForm } from "@schemx/vue"
-export {
-  useForm,
-  useField,
-  useWatch,
-  useEffect,
-  useFieldContext,
-  WithRemoteOptions,
-  rendererRegistry,
-  validatorRegistry,
-} from "@schemx/vue"
+export * from "@schemx/vue"
 
 /** 重新导出 @schemx/core 的类型 */
 export * from "@schemx/core"

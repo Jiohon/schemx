@@ -78,6 +78,12 @@ export default defineConfig(({ command, mode }) => {
           : {}),
       },
     },
+    css: {
+      preprocessorOptions: {
+        // 使用 modern API，避免 Dart Sass legacy-js-api 弃用警告刷屏
+        scss: { api: "modern-compiler" },
+      },
+    },
     plugins: [
       workspaceSourceAlias(),
       vue(),
