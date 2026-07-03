@@ -96,8 +96,8 @@ importers:
   examples/vant:
     dependencies:
       '@schemx/vant':
-        specifier: file:/Users/j/Project/SchemaForm/schemx-vant-0.1.12.tgz
-        version: file:schemx-vant-0.1.12.tgz(vant@4.10.0(vue@3.5.39(typescript@5.9.3)))(vue@3.5.39(typescript@5.9.3))
+        specifier: ^0.2.0
+        version: 0.2.0(vant@4.10.0(vue@3.5.39(typescript@5.9.3)))(vue@3.5.39(typescript@5.9.3))
       vant:
         specifier: ^4.9.24
         version: 4.10.0(vue@3.5.39(typescript@5.9.3))
@@ -836,18 +836,17 @@ packages:
   '@rushstack/ts-command-line@4.19.1':
     resolution: {integrity: sha512-J7H768dgcpG60d7skZ5uSSwyCZs/S2HrWP1Ds8d1qYAyaaeJmpmmLr9BVw97RjFzmQPOYnoXcKA4GkqDCkduQg==}
 
-  '@schemx/core@0.1.24':
-    resolution: {integrity: sha512-q1PkmQ+jn1ztS0pIzVCG4UvXBzp7ZhbZn8TVleIhGvhV7i76AWvuotmYfgR1VuVzyrwCCzvNNWZIV3+guNEjNg==}
+  '@schemx/core@0.2.0':
+    resolution: {integrity: sha512-OG0ETZnBTZI9M8WmeZZaCeN+ffghJ0g0R6HEsfh4yvYd3Lu2xGeVld94Lpr3Y0lb7UlnSod7K6YgcKtV7xXsJA==}
 
-  '@schemx/vant@file:schemx-vant-0.1.12.tgz':
-    resolution: {integrity: sha512-gR+QPQE5hFd8n7utNB1gmv4Jf/eR45FVFOSrYjayQSucQczmf6NXAClmPabUaKFhtaquzMAfoV+ykhCl1WZm1Q==, tarball: file:schemx-vant-0.1.12.tgz}
-    version: 0.1.12
+  '@schemx/vant@0.2.0':
+    resolution: {integrity: sha512-PkXwxfrBhhQwkJf5LVLK9tFhMCs3P4M8CFi/F4se14rF5JizNdrdPuuWvK7nzlgzI0tzY0hrRrEfTfvFa/BYaA==}
     peerDependencies:
       vant: ^4.0.0
       vue: ^3.0.0
 
-  '@schemx/vue@0.1.22':
-    resolution: {integrity: sha512-YbNMUugqHNhgS19gp6Mq4pNDdUkBRlKm/R7pS/EVrMO0tTNLhMjcVYOSx5Vv9/57Ls5DER4j7W31wcDL2JC8ug==}
+  '@schemx/vue@0.2.0':
+    resolution: {integrity: sha512-aOjg7fQs3UWY+mn9jW0HcSMAiR19nD0kKgjxww6xb6nr1j32UF5IkG/ziq0NFqqCNll07WYPr4f1e4GbozsHwQ==}
     peerDependencies:
       vue: ^3.0.0
 
@@ -3463,7 +3462,7 @@ snapshots:
     transitivePeerDependencies:
       - '@types/node'
 
-  '@schemx/core@0.1.24':
+  '@schemx/core@0.2.0':
     dependencies:
       '@preact/signals-core': 1.14.3
       csstype: 3.2.3
@@ -3471,19 +3470,19 @@ snapshots:
       simple-async-context: 1.0.4
       tslib: 2.8.1
 
-  '@schemx/vant@file:schemx-vant-0.1.12.tgz(vant@4.10.0(vue@3.5.39(typescript@5.9.3)))(vue@3.5.39(typescript@5.9.3))':
+  '@schemx/vant@0.2.0(vant@4.10.0(vue@3.5.39(typescript@5.9.3)))(vue@3.5.39(typescript@5.9.3))':
     dependencies:
-      '@schemx/core': 0.1.24
-      '@schemx/vue': 0.1.22(vue@3.5.39(typescript@5.9.3))
+      '@schemx/core': 0.2.0
+      '@schemx/vue': 0.2.0(vue@3.5.39(typescript@5.9.3))
       classnames: 2.5.1
       dayjs: 1.11.21
       es-toolkit: 1.49.0
       vant: 4.10.0(vue@3.5.39(typescript@5.9.3))
       vue: 3.5.39(typescript@5.9.3)
 
-  '@schemx/vue@0.1.22(vue@3.5.39(typescript@5.9.3))':
+  '@schemx/vue@0.2.0(vue@3.5.39(typescript@5.9.3))':
     dependencies:
-      '@schemx/core': 0.1.24
+      '@schemx/core': 0.2.0
       classnames: 2.5.1
       csstype: 3.2.3
       dayjs: 1.11.21
