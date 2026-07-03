@@ -34,6 +34,9 @@ export type {
   GroupRuntimeNode,
   RootRuntimeNode,
   RuntimeChildrenState,
+  RuntimeCleanup,
+  RuntimeCleanupHandle,
+  RuntimeDispose,
   RuntimeNode,
   RuntimeNodeId,
   RuntimeNodeManager,
@@ -53,6 +56,8 @@ export {
 } from "./runtimeLifecycle"
 
 export {
+  createRuntimeDispose,
+  createRuntimeScope,
   createScope,
   reportRuntimeCleanupError,
 } from "./scope"
