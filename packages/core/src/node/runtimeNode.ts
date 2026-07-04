@@ -2,7 +2,7 @@
  * RuntimeNode 结构实现。
  *
  * RuntimeNode 只表达稳定身份、节点类型、父子结构和生命周期状态。
- * descriptor、runtimeState、viewState、dependencySlot 等领域资源不挂在 node 上。
+ * described node 持有当前 descriptor，其他领域资源暂由 RuntimeNodeResources 承载。
  *
  * @module core/node/runtimeNode
  */
@@ -21,7 +21,6 @@ import type {
   FieldRuntimeNode,
   GroupRuntimeNode,
   RootRuntimeNode,
-  RuntimeNode,
 } from "./types"
 import type { Values } from "../types"
 
@@ -33,43 +32,11 @@ export function createRootRuntimeNode<TValues extends Values = Values>(
     key: "schemx:root",
     type: "root",
     parent: null,
-    scope: options.scope,
+    dispose: options.dispose,
     mounted: createSignal(false),
     disposed: createSignal(false),
-    childNodes: [],
-  }
-}
-
-export function getChildRuntimeNodes<TValues extends Values = Values>(
-  node: RuntimeNode<TValues>
-): readonly DescribedRuntimeNode<TValues>[] {
-  switch (node.type) {
-    case "root":
-    case "group":
-      return node.childNodes
-    case "dependency":
-      return node.childNodes
-    case "field":
-      return []
-  }
-}
-
-export function setChildRuntimeNodes<TValues extends Values = Values>(
-  node: RuntimeNode<TValues>,
-  children: DescribedRuntimeNode<TValues>[]
-): void {
-  switch (node.type) {
-    case "root":
-    case "group":
-      node.childNodes = children
-
-      return
-    case "dependency":
-      node.childNodes = children
-
-      return
-    case "field":
-      return
+    childNodes: createSignal<readonly DescribedRuntimeNode<TValues>[]>([]),
+    viewState: null,
   }
 }
 
@@ -81,9 +48,13 @@ export function createFieldRuntimeNode<TValues extends Values = Values>(
     key: options.key,
     type: "field",
     parent: options.parent ?? null,
-    scope: options.scope ?? options.parent?.scope.child() ?? createScope(),
+    dispose: options.dispose ?? options.parent?.dispose.child() ?? createScope(),
     mounted: createSignal(false),
     disposed: createSignal(false),
+    descriptor: null,
+    fieldState: null,
+    viewState: null,
+    effectDispose: null,
   }
 }
 
@@ -95,10 +66,12 @@ export function createGroupRuntimeNode<TValues extends Values = Values>(
     key: options.key,
     type: "group",
     parent: options.parent ?? null,
-    scope: options.scope ?? options.parent?.scope.child() ?? createScope(),
+    dispose: options.dispose ?? options.parent?.dispose.child() ?? createScope(),
     mounted: createSignal(false),
     disposed: createSignal(false),
-    childNodes: [],
+    descriptor: null,
+    viewState: null,
+    childNodes: createSignal<readonly DescribedRuntimeNode<TValues>[]>([]),
   }
 }
 
@@ -110,9 +83,13 @@ export function createDependencyRuntimeNode<TValues extends Values = Values>(
     key: options.key,
     type: "dependency",
     parent: options.parent ?? null,
-    scope: options.scope ?? options.parent?.scope.child() ?? createScope(),
+    dispose: options.dispose ?? options.parent?.dispose.child() ?? createScope(),
     mounted: createSignal(false),
     disposed: createSignal(false),
-    childNodes: [],
+    descriptor: null,
+    viewState: null,
+    effectState: null,
+    dependencyDispose: null,
+    childNodes: createSignal<readonly DescribedRuntimeNode<TValues>[]>([]),
   }
 }

@@ -6,7 +6,6 @@ import type {
   RuntimeNodeId,
   RuntimeNodeResourceContext,
 } from "./types"
-import type { FormDescriptor } from "../descriptor"
 import type { NamePath, Values } from "../types"
 
 /**
@@ -18,20 +17,10 @@ import type { NamePath, Values } from "../types"
 export function createRuntimeResources<
   TValues extends Values = Values,
 >(): RuntimeNodeResourceContext<TValues> {
-  const descriptors = new Map<RuntimeNodeId, FormDescriptor<TValues>>()
-
   return {
     nodes: new Map(),
-    fieldIndex: createRuntimeFieldIndex(descriptors),
-    dependencyIndex: createRuntimeDependencyIndex(descriptors),
-    descriptors,
-    fieldStates: new Map(),
-    viewStates: new Map(),
-    childrenStates: new Map(),
-    dependencyEffects: new Map(),
-    fieldResourceScopes: new Map(),
-    fieldDynamicPropScopes: new Map(),
-    dependencyResourceScopes: new Map(),
+    fieldIndex: createRuntimeFieldIndex(),
+    dependencyIndex: createRuntimeDependencyIndex(),
   }
 }
 
@@ -46,23 +35,13 @@ export function deleteNodeResources<TValues extends Values>(
   nodeId: RuntimeNodeId
 ): void {
   resources.nodes.delete(nodeId)
-  resources.descriptors.delete(nodeId)
-  resources.fieldStates.delete(nodeId)
-  resources.viewStates.delete(nodeId)
-  resources.childrenStates.delete(nodeId)
-  resources.dependencyEffects.delete(nodeId)
-  resources.fieldResourceScopes.delete(nodeId)
-  resources.fieldDynamicPropScopes.delete(nodeId)
-  resources.dependencyResourceScopes.delete(nodeId)
 }
 
-function createRuntimeFieldIndex<TValues extends Values>(
-  descriptors: Map<RuntimeNodeId, FormDescriptor<TValues>>
-): RuntimeFieldIndex<TValues> {
+function createRuntimeFieldIndex<TValues extends Values>(): RuntimeFieldIndex<TValues> {
   const nodesByName = new Map<NamePath<TValues>, FieldRuntimeNode<TValues>>()
 
   const unregister = (node: FieldRuntimeNode<TValues>): void => {
-    const descriptor = descriptors.get(node.id)
+    const descriptor = node.descriptor
 
     if (descriptor?.type === "field") {
       const current = nodesByName.get(descriptor.name)
@@ -81,7 +60,7 @@ function createRuntimeFieldIndex<TValues extends Values>(
 
   return {
     register(node) {
-      const descriptor = descriptors.get(node.id)
+      const descriptor = node.descriptor
 
       if (descriptor?.type !== "field") {
         return
@@ -99,9 +78,7 @@ function createRuntimeFieldIndex<TValues extends Values>(
   }
 }
 
-function createRuntimeDependencyIndex<TValues extends Values>(
-  descriptors: Map<RuntimeNodeId, FormDescriptor<TValues>>
-): RuntimeDependencyIndex<TValues> {
+function createRuntimeDependencyIndex<TValues extends Values>(): RuntimeDependencyIndex<TValues> {
   const triggerFieldsByNode = new Map<
     DependencyRuntimeNode<TValues>,
     readonly NamePath<TValues>[]
@@ -135,7 +112,7 @@ function createRuntimeDependencyIndex<TValues extends Values>(
 
   return {
     register(node) {
-      const descriptor = descriptors.get(node.id)
+      const descriptor = node.descriptor
 
       if (descriptor?.type !== "dependency") {
         return

@@ -4,7 +4,6 @@ import type { Values } from "../types"
 import type {
   ReconcileChildOrderEntry,
   ReconcileCreateOperation,
-  ReconcileDescriptorMap,
   ReconcilePlan,
   ReconcileRemoveOperation,
   ReconcileUpdateOperation,
@@ -12,8 +11,7 @@ import type {
 
 export function createReconcilePlan<TValues extends Values = Values>(
   currentChildren: readonly DescribedRuntimeNode<TValues>[],
-  nextDescriptors: readonly FormDescriptor<TValues>[],
-  currentDescriptors: ReconcileDescriptorMap<TValues>
+  nextDescriptors: readonly FormDescriptor<TValues>[]
 ): ReconcilePlan<TValues> {
   const currentByKey = indexNodesByKey(currentChildren)
   const nextByKey = indexDescriptorsByKey(nextDescriptors)
@@ -31,7 +29,7 @@ export function createReconcilePlan<TValues extends Values = Values>(
       continue
     }
 
-    const previousDescriptor = currentDescriptors.get(existing.id)
+    const previousDescriptor = existing.descriptor
 
     if (previousDescriptor !== descriptor) {
       updates.push({

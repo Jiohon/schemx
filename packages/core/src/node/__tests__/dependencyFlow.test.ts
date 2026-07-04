@@ -16,7 +16,7 @@ describe("dependency flow", () => {
     ])
     await flushRuntimeGraph(scheduler)
 
-    const dependency = root.childNodes[0]
+    const dependency = root.childNodes.value[0]
     if (dependency?.type !== "dependency") {
       throw new Error("expected dependency node")
     }
@@ -24,6 +24,8 @@ describe("dependency flow", () => {
     expect(context.nodeResources.dependencyIndex.getByTriggerField("mode" as any)).toEqual([
       dependency,
     ])
+    expect(dependency.effectState).toBeDefined()
+    expect(dependency.dependencyDispose).toBeDefined()
 
     commitSchemas(root, [
       {
@@ -47,7 +49,7 @@ describe("dependency flow", () => {
   })
 
   it("trigger 不变时保留 dependency effect，trigger 变化时重建", async () => {
-    const { commitSchemas, context, root, scheduler } = createRuntimeGraphHarness()
+    const { commitSchemas, root, scheduler } = createRuntimeGraphHarness()
 
     commitSchemas(root, [
       {
@@ -59,13 +61,17 @@ describe("dependency flow", () => {
     ])
     await flushRuntimeGraph(scheduler)
 
-    const dependency = root.childNodes[0]
+    const dependency = root.childNodes.value[0]
     if (dependency?.type !== "dependency") {
       throw new Error("expected dependency node")
     }
 
-    const firstEffect = context.nodeResources.dependencyEffects.get(dependency.id)
+    const firstEffect = dependency.effectState
+    const firstDispose = dependency.dependencyDispose
     expect(firstEffect).toBeDefined()
+    expect(dependency.effectState).toBe(firstEffect)
+    expect(firstDispose).toBeDefined()
+    expect(firstDispose?.disposed).toBe(false)
 
     commitSchemas(root, [
       {
@@ -77,7 +83,8 @@ describe("dependency flow", () => {
     ])
     await flushRuntimeGraph(scheduler)
 
-    expect(context.nodeResources.dependencyEffects.get(dependency.id)).toBe(firstEffect)
+    expect(dependency.effectState).toBe(firstEffect)
+    expect(dependency.dependencyDispose).toBe(firstDispose)
 
     commitSchemas(root, [
       {
@@ -89,7 +96,43 @@ describe("dependency flow", () => {
     ])
     await flushRuntimeGraph(scheduler)
 
-    expect(context.nodeResources.dependencyEffects.get(dependency.id)).not.toBe(firstEffect)
+    expect(dependency.effectState).not.toBe(firstEffect)
+    expect(firstDispose?.disposed).toBe(true)
+    expect(dependency.dependencyDispose).not.toBe(firstDispose)
+    expect(dependency.dependencyDispose?.disposed).toBe(false)
+  })
+
+  it("dependency unmount 会清空 node-local effect 资源", async () => {
+    const { commitSchemas, root, scheduler } = createRuntimeGraphHarness()
+
+    commitSchemas(root, [
+      {
+        key: "dep",
+        componentType: "dependency",
+        to: ["mode"],
+        renderer: vi.fn().mockResolvedValue([]),
+      },
+    ])
+    await flushRuntimeGraph(scheduler)
+
+    const dependency = root.childNodes.value[0]
+    if (dependency?.type !== "dependency") {
+      throw new Error("expected dependency node")
+    }
+
+    const effectState = dependency.effectState
+    const dependencyDispose = dependency.dependencyDispose
+
+    expect(effectState).toBeDefined()
+    expect(dependencyDispose).toBeDefined()
+
+    commitSchemas(root, [])
+    await flushRuntimeGraph(scheduler)
+
+    expect(dependency.disposed.value).toBe(true)
+    expect(dependency.effectState).toBeNull()
+    expect(dependency.dependencyDispose).toBeNull()
+    expect(dependencyDispose?.disposed).toBe(true)
   })
 
   it("trigger 不变但 renderer 变化时，下一次执行使用最新 descriptor", async () => {

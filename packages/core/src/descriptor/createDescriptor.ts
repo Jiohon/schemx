@@ -8,14 +8,10 @@
  */
 
 import { defaultConfig } from "../defaultConfig"
-import { useSchemxContext } from "../schemxContext"
 import { isDependencySchema, isGroupSchema, NormalizedTrigger } from "../utils"
 
+import type { SchemxContext } from "../schemxContext"
 import type {
-  CreateDependencyDescriptorOptions,
-  CreateDescriptorOptions,
-  CreateFieldDescriptorOptions,
-  CreateGroupDescriptorOptions,
   DependencyDescriptor,
   DependencyRenderer,
   FieldDescriptor,
@@ -28,33 +24,52 @@ import type {
   NamePath,
   SchemxDependencies,
   SchemxResolvedBaseField,
-  SchemxResolvedGroupField,
   SchemxRules,
   ValidationTrigger,
   Values,
 } from "../types"
-import type { SchemxBaseField } from "../types/schema"
+import type {
+  SchemxBaseField,
+  SchemxDependencyField,
+  SchemxField,
+  SchemxGroupField,
+} from "../types/schema"
+
+type DescriptorContext<TValues extends Values = Values> = Pick<
+  SchemxContext<TValues>,
+  "defaultProps" | "instance"
+>
 
 /**
  * 创建任意表单 descriptor。
  *
- * @param options - descriptor 创建选项。
+ * @param schema - schema 字段配置。
+ * @param index - schema 在同级列表中的位置。
+ * @param parentKey - 父级 descriptor key。
+ * @param context - 当前表单实例默认配置与公开 API。
  * @returns 编译后的 descriptor。
  */
 export function createDescriptor<TValues extends Values = Values>(
-  options: CreateDescriptorOptions<TValues>
+  schema: SchemxField<TValues>,
+  index: number,
+  parentKey: string | undefined,
+  context: DescriptorContext<TValues>
 ): FormDescriptor<TValues> {
-  const { schema, index, parentKey = "" } = options
+  schema.key = createDescriptorKey(schema, index, parentKey)
 
   if (isGroupSchema(schema)) {
-    return createGroupDescriptor({ schema, index, parentKey })
+    const children = schema.children.map((schemaChild, index) =>
+      createDescriptor(schemaChild, index, schema.key, context)
+    )
+
+    return createGroupDescriptor(schema, children)
   }
 
   if (isDependencySchema(schema)) {
-    return createDependencyDescriptor({ schema, parentKey })
+    return createDependencyDescriptor(schema)
   }
 
-  return createFieldDescriptor({ schema, parentKey })
+  return createFieldDescriptor(schema, context)
 }
 
 /**
@@ -63,20 +78,15 @@ export function createDescriptor<TValues extends Values = Values>(
  * @param options - 字段 descriptor 创建选项。
  * @returns 字段 descriptor。
  */
-export function createFieldDescriptor<TValues extends Values = Values>(
-  options: CreateFieldDescriptorOptions<TValues>
+function createFieldDescriptor<TValues extends Values = Values>(
+  schema: SchemxBaseField<TValues>,
+  context: DescriptorContext<TValues>
 ): FieldDescriptor<TValues> {
-  const { schema, parentKey = "" } = options
-
-  const key =
-    schema.key ??
-    (parentKey ? `field:${parentKey}/${schema.name}` : `field:${schema.name}`)
-
-  const normalizedSchema = buildNormalizedFieldSchema(schema)
+  const normalizedSchema = buildNormalizedFieldSchema(schema, context)
 
   return {
     type: "field",
-    key,
+    key: schema.key!,
     name: schema.name,
     componentType: schema.componentType,
     staticSchema: normalizedSchema,
@@ -91,23 +101,21 @@ export function createFieldDescriptor<TValues extends Values = Values>(
  * @param options - 分组 descriptor 创建选项。
  * @returns 分组 descriptor。
  */
-export function createGroupDescriptor<TValues extends Values = Values>(
-  options: CreateGroupDescriptorOptions<TValues>
+function createGroupDescriptor<TValues extends Values = Values>(
+  schema: SchemxGroupField<TValues>,
+  children: FormDescriptor<TValues>[]
 ): GroupDescriptor<TValues> {
-  const { schema, index, parentKey = "" } = options
-
-  const key = createGroupDescriptorKey(schema.key, index, parentKey)
-
   const { children: _rawChildren, ...schemaWithoutChildren } = schema
 
   return {
     type: "group",
-    key,
+    key: schema.key!,
     staticSchema: {
       ...schemaWithoutChildren,
-      key,
-    } as SchemxResolvedGroupField<TValues>,
-    children: [],
+      key: schema.key!,
+      children: [],
+    },
+    children,
   }
 }
 
@@ -117,18 +125,12 @@ export function createGroupDescriptor<TValues extends Values = Values>(
  * @param options - dependency descriptor 创建选项。
  * @returns dependency descriptor。
  */
-export function createDependencyDescriptor<TValues extends Values = Values>(
-  options: CreateDependencyDescriptorOptions<TValues>
+function createDependencyDescriptor<TValues extends Values = Values>(
+  schema: SchemxDependencyField<TValues>
 ): DependencyDescriptor<TValues> {
-  const { schema, parentKey = "" } = options
-
   const trigger = [...schema.to]
 
   const triggerKey = trigger.map(serializeNamePath).join(",")
-
-  const key =
-    schema.key ??
-    (parentKey ? `dependency:${parentKey}/${triggerKey}` : `dependency:${triggerKey}`)
 
   const renderer: DependencyRenderer<TValues> = (formApi, abortSignal) => {
     const values = formApi.getValues()
@@ -140,7 +142,7 @@ export function createDependencyDescriptor<TValues extends Values = Values>(
 
   return {
     type: "dependency",
-    key,
+    key: schema.key!,
     triggerFields: trigger,
     renderer,
   }
@@ -176,9 +178,10 @@ function getPlaceholder<TValues extends Values>(
  * @returns 规范化后的字段 schema。
  */
 function buildNormalizedFieldSchema<TValues extends Values>(
-  schema: SchemxBaseField<TValues>
+  schema: SchemxBaseField<TValues>,
+  context: DescriptorContext<TValues>
 ): SchemxResolvedBaseField<TValues> {
-  const { defaultProps, instance } = useSchemxContext<TValues>()
+  const { defaultProps, instance } = context
 
   const {
     componentProps: cp,
@@ -195,9 +198,16 @@ function buildNormalizedFieldSchema<TValues extends Values>(
   const mergedVisible = visible ?? defaultConfig.visible
   const mergedReadonly = readonly ?? defaultProps.readonly ?? defaultConfig.readonly
   const mergedDisabled = disabled ?? defaultProps.disabled ?? defaultConfig.disabled
-  const mergedAlign = mergedReadonly ? "right" : (cp?.align ?? rest.contentAlign)
+  const mergedAlign = mergedReadonly
+    ? "right"
+    : (cp?.align ??
+      rest.contentAlign ??
+      defaultProps.contentAlign ??
+      defaultConfig.contentAlign)
+
   const mergedValidationTrigger =
     validationTrigger ?? defaultProps.validationTrigger ?? defaultConfig.validationTrigger
+
   const mergedPlaceholder = getPlaceholder(schema)
   const rulesArray = (Array.isArray(rules) ? rules : [rules]).filter(Boolean)
   const mergedRequired = required ?? (rulesArray.length > 0 || defaultConfig.required)
@@ -309,21 +319,39 @@ function normalizeValidationRules(
 }
 
 /**
- * 生成分组 descriptor 的稳定 key。
+ * 生成 descriptor 的稳定 key。
  *
  * 优先使用显式 key，否则按 parentKey + index 拼装。
  *
- * @param explicitKey - schema 上显式声明的 key。
+ * @param schema - schema 字段配置联合类型。
  * @param index - schema 在同级列表中的位置。
  * @param parentKey - 父级 descriptor key。
  * @returns 分组 descriptor key。
  */
-function createGroupDescriptorKey(
-  explicitKey: string | undefined,
+function createDescriptorKey<TValues extends Values = Values>(
+  schema: SchemxField<TValues>,
   index: number,
-  parentKey: string
+  parentKey: string | undefined
 ): string {
-  return explicitKey ?? (parentKey ? `group:${parentKey}/${index}` : `group:${index}`)
+  const currentKey = schema.key
+
+  if (isDependencySchema(schema)) {
+    const triggerKey = schema.to.map(serializeNamePath).join(",")
+
+    const key = parentKey
+      ? `dependency:${parentKey}/${index}/${triggerKey}`
+      : `dependency:${index}/${triggerKey}`
+
+    return currentKey ?? key
+  }
+
+  if (isGroupSchema(schema)) {
+    const key = parentKey ? `group:${parentKey}/${index}` : `group:${index}`
+
+    return currentKey ?? key
+  }
+
+  return currentKey ?? (parentKey ? `field:${parentKey}/${index}` : `field:${index}`)
 }
 
 /**

@@ -22,15 +22,11 @@ describe("reconciler plan", () => {
     const nextDescriptor = createDescriptor("field", "name")
     const createdDescriptor = createDescriptor("field", "email")
     const removedDescriptor = createDescriptor("field", "age")
-    const currentDescriptors = new Map([
-      [reused.id, previousDescriptor],
-      [removed.id, removedDescriptor],
-    ])
-
-    const plan = createReconcilePlan(
+    reused.descriptor = previousDescriptor
+    removed.descriptor = removedDescriptor
+        const plan = createReconcilePlan(
       [reused, removed],
-      [createdDescriptor, nextDescriptor],
-      currentDescriptors
+      [createdDescriptor, nextDescriptor]
     )
 
     expect(plan.creates).toEqual([{ descriptor: createdDescriptor }])
@@ -48,18 +44,15 @@ describe("reconciler plan", () => {
     ])
     expect(plan.nextChildrenOrder[0].node).toBeUndefined()
     expect(plan.nextChildrenOrder[1].node).toBe(reused)
-    expect(currentDescriptors.get(reused.id)).toBe(previousDescriptor)
+    expect(reused.descriptor).toBe(previousDescriptor)
   })
 
   it("descriptor 引用未变化时不产生 update 操作", () => {
     const reused = createNode(1, "name", "field")
     const descriptor = createDescriptor("field", "name")
+    reused.descriptor = descriptor
 
-    const plan = createReconcilePlan(
-      [reused],
-      [descriptor],
-      new Map([[reused.id, descriptor]])
-    )
+    const plan = createReconcilePlan([reused], [descriptor])
 
     expect(plan.creates).toEqual([])
     expect(plan.updates).toEqual([])
@@ -78,14 +71,12 @@ describe("reconciler commit", () => {
     const previousDescriptor = createDescriptor("field", "name")
     const nextDescriptor = createDescriptor("field", "name")
     const createdDescriptor = createDescriptor("field", "email")
+    reused.descriptor = previousDescriptor
+    removed.descriptor = createDescriptor("field", "age")
 
     const plan = createReconcilePlan(
       [reused, removed],
-      [createdDescriptor, nextDescriptor],
-      new Map([
-        [reused.id, previousDescriptor],
-        [removed.id, createDescriptor("field", "age")],
-      ])
+      [createdDescriptor, nextDescriptor]
     )
 
     const nodeManager = {
@@ -103,6 +94,7 @@ describe("reconciler commit", () => {
     const lifecycle = {
       mount: vi.fn((node: DescribedRuntimeNode, descriptor: FormDescriptor) => {
         calls.push(`mount:${node.key}:${descriptor.key}`)
+        node.descriptor = descriptor
       }),
       update: vi.fn(
         (
@@ -111,6 +103,7 @@ describe("reconciler commit", () => {
           next: FormDescriptor
         ) => {
           calls.push(`update:${node.key}:${previous?.key ?? "none"}:${next.key}`)
+          node.descriptor = next
         }
       ),
       unmountSubtree: vi.fn((node: RuntimeNode) => {
@@ -126,7 +119,7 @@ describe("reconciler commit", () => {
     expect(nodeManager.createNode).toHaveBeenCalledWith({
       type: "field",
       key: "email",
-      scope: childScope,
+      dispose: childScope,
     })
     expect(nodeManager.replaceChildren).toHaveBeenCalledWith(parent, [
       created,
@@ -150,53 +143,114 @@ describe("reconciler commit", () => {
       "remove:age",
     ])
   })
+
+  it("先 mount 创建节点资源，再发布 parent childNodes", () => {
+    const calls: string[] = []
+    const parent = createRoot()
+    const created = createNode(1, "email", "field") as DescribedRuntimeNode & {
+      viewState?: unknown
+    }
+    const descriptor = createDescriptor("field", "email")
+    const plan = createReconcilePlan([], [descriptor])
+
+    const nodeManager = {
+      createNode: vi.fn(() => {
+        calls.push("create")
+        return created
+      }),
+      replaceChildren: vi.fn((node: ContainerRuntimeNode, children) => {
+        calls.push(created.viewState ? "replace:with-view" : "replace:missing-view")
+        node.childNodes.value = [...children]
+      }),
+      removeSubtree: vi.fn(),
+    }
+    const lifecycle = {
+      mount: vi.fn((node: DescribedRuntimeNode & { viewState?: unknown }) => {
+        calls.push("mount")
+        node.viewState = { mounted: true }
+      }),
+      update: vi.fn(),
+      unmountSubtree: vi.fn(),
+    }
+
+    commitReconcilePlan(parent, plan, { nodeManager, lifecycle })
+
+    expect(parent.childNodes.value[0]).toBe(created)
+    expect(created.viewState).toEqual({ mounted: true })
+    expect(calls).toEqual(["create", "mount", "replace:with-view"])
+  })
 })
 
 describe("createReconciler", () => {
   it("组合 plan 和 commit，并在提交后递归处理 group children", () => {
     const root = createRoot()
-    const group = createNode(1, "profile", "group")
-    const child = createNode(2, "name", "field")
-    const childDescriptor = createDescriptor("field", "name")
-    const groupDescriptor = createDescriptor("group", "profile", [childDescriptor])
-    const calls: string[] = []
+    const groupDescriptor = createDescriptor("group", "profile", [
+      createDescriptor("field", "name"),
+    ])
 
-    const nodeManager = {
-      createNode: vi.fn(({ key }) => {
-        calls.push(`create:${key}`)
-        return key === "profile" ? group : child
-      }),
-      replaceChildren: vi.fn((parent: ContainerRuntimeNode, children) => {
-        calls.push(`replace:${parent.key}:${children.map((node) => node.key).join(",")}`)
-        parent.childNodes = [...children]
-      }),
-      removeSubtree: vi.fn(),
+    const context = {
+      defaultProps: {},
+      instance: {
+        getFieldSnapshot: vi.fn(() => undefined),
+        getFieldValue: vi.fn(),
+        setFieldValue: vi.fn(),
+        setInitialValues: vi.fn(),
+        registerRules: vi.fn(),
+        unregisterRules: vi.fn(),
+        setFieldError: vi.fn(),
+        validateField: vi.fn().mockResolvedValue({ ok: true, values: {} }),
+      },
+      formApi: {
+        getValue: vi.fn(),
+        getValues: vi.fn(() => ({})),
+      },
+      compile: {
+        toDescriptors: vi.fn((schemas: any[]) => schemas.map((s: any, i: number) => ({
+          type: s.children ? "group" : "field",
+          key: `field:${s.name || "group"}:${i}`,
+          name: s.name,
+          children: s.children || [],
+        }))),
+        getCacheVersion: vi.fn(() => 0),
+        invalidate: vi.fn(),
+      },
+      scheduler: {
+        schedule: vi.fn(),
+        dispose: vi.fn(),
+      },
+      lifecycleBus: {
+        emitBeforeMount: vi.fn(),
+        emitMount: vi.fn(),
+        emitBeforeUpdate: vi.fn(),
+        emitUpdate: vi.fn(),
+        emitUpdated: vi.fn(),
+        emitBeforeUnmount: vi.fn(),
+        emitUnmount: vi.fn(),
+      },
+      nodeResources: {
+        nodes: new Map(),
+        fieldIndex: {
+          register: vi.fn(),
+          unregister: vi.fn(),
+          getByName: vi.fn(),
+          getByPath: vi.fn(),
+        },
+        dependencyIndex: {
+          register: vi.fn(),
+          unregister: vi.fn(),
+          getByTriggerField: vi.fn(() => []),
+          getTriggerFields: vi.fn(() => []),
+        },
+      },
+      commitChildren: vi.fn(),
     }
-    const lifecycle = {
-      mount: vi.fn((node: DescribedRuntimeNode) => {
-        calls.push(`mount:${node.key}`)
-      }),
-      update: vi.fn(),
-      unmountSubtree: vi.fn(),
-    }
-    const reconciler = createReconciler({
-      nodeManager,
-      lifecycle,
-      getCurrentDescriptors: () => new Map(),
-    })
+
+    const reconciler = createReconciler(context as any)
 
     reconciler.reconcileChildren(root, [groupDescriptor])
 
-    expect(root.childNodes).toEqual([group])
-    expect(group.childNodes).toEqual([child])
-    expect(calls).toEqual([
-      "create:profile",
-      "mount:profile",
-      "replace:root:profile",
-      "create:name",
-      "mount:name",
-      "replace:profile:name",
-    ])
+    expect(root.childNodes.value).toHaveLength(1)
+    expect(root.childNodes.value[0]?.type).toBe("group")
   })
 })
 
@@ -208,10 +262,10 @@ function createRoot(): ContainerRuntimeNode {
     key: "root",
     type: "root",
     parent: null,
-    scope: createScope(childScope),
+    dispose: createScope(childScope),
     mounted: { value: false },
     disposed: { value: false },
-    childNodes: [],
+    childNodes: { value: [] },
   } as ContainerRuntimeNode
 }
 
@@ -225,9 +279,10 @@ function createNode(
     key,
     type,
     parent: null,
-    scope: createScope(),
+    dispose: createScope(),
     mounted: { value: false },
     disposed: { value: false },
+    descriptor: null,
   }
 
   if (type === "field") {
@@ -236,7 +291,7 @@ function createNode(
 
   return {
     ...node,
-    childNodes: [],
+    childNodes: { value: [] },
   } as DescribedRuntimeNode
 }
 

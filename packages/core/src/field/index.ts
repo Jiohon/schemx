@@ -21,10 +21,22 @@ export {
 } from "./dependencyEffect"
 
 export {
+  mountDependencyNodeResources,
+  updateDependencyNodeResources,
+  unmountDependencyNodeResources,
+} from "./dependencyNodeResources"
+
+export {
   createFieldRegistry,
   type FieldRegistry,
   type FieldRegistryEntry,
 } from "./registry"
+
+export {
+  mountFieldNodeResources,
+  updateFieldNodeResources,
+  unmountFieldNodeResources,
+} from "./nodeResources"
 
 export {
   createValidationEffect,

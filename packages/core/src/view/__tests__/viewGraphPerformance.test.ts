@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest"
-import { createFieldRuntimeState, setFieldDynamicOverrides } from "../../field/runtimeState"
+import {
+  createFieldRuntimeState,
+  setFieldDynamicOverrides,
+} from "../../field/runtimeState"
 
 import type { SchemxResolvedBaseField } from "../../types"
 
-function createTestSchema(overrides: Partial<SchemxResolvedBaseField> = {}): SchemxResolvedBaseField {
+function createTestSchema(
+  overrides: Partial<SchemxResolvedBaseField> = {}
+): SchemxResolvedBaseField {
   return {
     componentType: "input",
     label: "测试字段",
@@ -19,7 +24,7 @@ function createTestSchema(overrides: Partial<SchemxResolvedBaseField> = {}): Sch
   } as SchemxResolvedBaseField
 }
 
-describe("ViewGraph 性能边界 (US3)", () => {
+describe("computed viewState 性能边界 (US3)", () => {
   it("单字段动态属性变化不应触发其他字段 viewSchema 重建", () => {
     const schema1 = createTestSchema({ label: "字段A", visible: true })
     const schema2 = createTestSchema({ label: "字段B", visible: true })
@@ -40,10 +45,14 @@ describe("ViewGraph 性能边界 (US3)", () => {
     const view2Before = state2.viewSchema.value
 
     // 只修改字段A
-    setFieldDynamicOverrides(state1, { visible: false }, {
-      source: "dependencies",
-      triggerFields: ["trigger" as any],
-    })
+    setFieldDynamicOverrides(
+      state1,
+      { visible: false },
+      {
+        source: "dependencies",
+        triggerFields: ["trigger" as any],
+      }
+    )
 
     const view1After = state1.viewSchema.value
     const view2After = state2.viewSchema.value
@@ -67,10 +76,14 @@ describe("ViewGraph 性能边界 (US3)", () => {
 
     // 多次写入
     for (let i = 0; i < 100; i++) {
-      setFieldDynamicOverrides(state, { visible: i % 2 === 0 }, {
-        source: "dependencies",
-        triggerFields: ["trigger" as any],
-      })
+      setFieldDynamicOverrides(
+        state,
+        { visible: i % 2 === 0 },
+        {
+          source: "dependencies",
+          triggerFields: ["trigger" as any],
+        }
+      )
     }
 
     // 最终状态正确
@@ -89,10 +102,14 @@ describe("ViewGraph 性能边界 (US3)", () => {
     const versions: number[] = []
 
     for (let i = 0; i < 10; i++) {
-      setFieldDynamicOverrides(state, { disabled: i % 2 === 0 }, {
-        source: "dependencies",
-        triggerFields: ["trigger" as any],
-      })
+      setFieldDynamicOverrides(
+        state,
+        { disabled: i % 2 === 0 },
+        {
+          source: "dependencies",
+          triggerFields: ["trigger" as any],
+        }
+      )
       versions.push(state.diagnostics.value.version)
     }
 

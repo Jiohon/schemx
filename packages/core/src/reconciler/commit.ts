@@ -17,7 +17,7 @@ export function commitReconcilePlan<TValues extends Values = Values>(
     const node = options.nodeManager.createNode({
       type: descriptor.type,
       key: descriptor.key,
-      scope: parent.scope.child(),
+      dispose: parent.dispose.child(),
     })
 
     createdByKey.set(descriptor.key, node)
