@@ -12,6 +12,7 @@
  */
 
 import type {
+  RuntimeDispose,
   Scope,
   ScopeCleanup,
   ScopeCleanupHandle,
@@ -123,6 +124,13 @@ export function createScope(): Scope {
     child,
     dispose: disposeScope,
   }
+}
+
+/**
+ * 创建一个 Runtime 资源生命周期边界。
+ */
+export function createRuntimeDispose(): RuntimeDispose {
+  return createScope()
 }
 
 /**

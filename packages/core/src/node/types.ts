@@ -6,27 +6,31 @@ import type { Values } from "../types"
 import type { RuntimeViewState } from "../view/viewGraph"
 
 /**
- * Scope 执行的清理函数。
+ * RuntimeDispose 执行的清理函数。
  */
-export type ScopeCleanup = () => void
+export type RuntimeCleanup = () => void
 
 /**
  * cleanup 注册后的释放句柄。
  */
-export interface ScopeCleanupHandle {
+export interface RuntimeCleanupHandle {
   readonly disposed: boolean
   dispose(): void
 }
 
 /**
- * 资源生命周期作用域。
+ * Runtime 资源生命周期边界。
  */
-export interface Scope {
+export interface RuntimeDispose {
   readonly disposed: boolean
-  add(cleanup: ScopeCleanup): ScopeCleanupHandle
-  child(): Scope
+  add(cleanup: RuntimeCleanup): RuntimeCleanupHandle
+  child(): RuntimeDispose
   dispose(): void
 }
+
+export type ScopeCleanup = RuntimeCleanup
+export type ScopeCleanupHandle = RuntimeCleanupHandle
+export type Scope = RuntimeDispose
 
 export interface ScopeCleanupRecord {
   cleanup: ScopeCleanup
