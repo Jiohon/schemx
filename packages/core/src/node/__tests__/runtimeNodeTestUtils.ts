@@ -24,10 +24,10 @@ export function createTestRootRuntimeNode(
   options: {
     id?: number
     key?: string
-    scope?: Scope
+    dispose?: RuntimeDispose
   } = {}
 ): RootRuntimeNode {
-  const root = createRootRuntimeNode({ scope: options.scope ?? createScope() })
+  const root = createRootRuntimeNode({ dispose: options.dispose ?? createScope() })
 
   return {
     ...root,
@@ -41,13 +41,13 @@ export function createTestFieldRuntimeNode(options: {
   key: string
   parent: ContainerRuntimeNode
   descriptor: FieldDescriptor
-  scope?: Scope
+  dispose?: RuntimeDispose
 }): FieldRuntimeNode {
   return createFieldRuntimeNode({
     id: options.id ?? 1,
     key: options.key,
     parent: options.parent,
-    scope: options.scope ?? options.parent.scope.child(),
+    dispose: options.dispose ?? options.parent.dispose.child(),
   })
 }
 
@@ -56,13 +56,13 @@ export function createTestGroupRuntimeNode(options: {
   key: string
   parent: ContainerRuntimeNode
   descriptor: GroupDescriptor
-  scope?: Scope
+  dispose?: RuntimeDispose
 }): GroupRuntimeNode {
   return createGroupRuntimeNode({
     id: options.id ?? 1,
     key: options.key,
     parent: options.parent,
-    scope: options.scope ?? options.parent.scope.child(),
+    dispose: options.dispose ?? options.parent.dispose.child(),
   })
 }
 
@@ -71,12 +71,12 @@ export function createTestDependencyRuntimeNode(options: {
   key: string
   parent: ContainerRuntimeNode
   descriptor: DependencyDescriptor
-  scope?: Scope
+  dispose?: RuntimeDispose
 }): DependencyRuntimeNode {
   return createDependencyRuntimeNode({
     id: options.id ?? 1,
     key: options.key,
     parent: options.parent,
-    scope: options.scope ?? options.parent.scope.child(),
+    dispose: options.dispose ?? options.parent.dispose.child(),
   })
 }

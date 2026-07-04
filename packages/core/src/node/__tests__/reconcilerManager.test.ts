@@ -2,7 +2,6 @@ import { setFieldDynamicOverrides } from "../../field/runtimeState"
 import { describe, expect, it, vi } from "vitest"
 
 import { createCompile } from "../../compiler"
-import { createFieldRegistry } from "../../field"
 import { createLifecycleBus } from "../../lifecycle"
 import { createReconciler } from "../../reconciler"
 import { type SchemxContext } from "../../schemxContext"
@@ -40,7 +39,6 @@ function createDependencyDescriptor(
 }
 
 function createGraphRuntime(listener: LifecycleListener<RuntimeNode> = {}) {
-  const fieldRegistry = createFieldRegistry()
   const lifecycleBus = createLifecycleBus(listener)
   const scheduler = createScheduler()
   const formApi = {
@@ -68,7 +66,6 @@ function createGraphRuntime(listener: LifecycleListener<RuntimeNode> = {}) {
     }),
     scheduler,
     lifecycleBus,
-    fieldRegistry,
     nodeResources: createRuntimeResources(),
   } as unknown as SchemxContext
 
@@ -83,7 +80,6 @@ function createGraphRuntime(listener: LifecycleListener<RuntimeNode> = {}) {
 
   return {
     context,
-    fieldRegistry,
     lifecycleBus,
     reconciler,
     commitChildren,
@@ -122,7 +118,7 @@ describe("RuntimeReconciler + DefaultRuntimeNodeManager", () => {
 
     commitChildren(root, descriptors)
 
-    expect(root.childNodes).toHaveLength(1)
+    expect(root.childNodes.value).toHaveLength(1)
   })
 
   it("生命周期事件只由 RuntimeNodeManager 触发一次", () => {
@@ -146,14 +142,14 @@ describe("RuntimeReconciler + DefaultRuntimeNodeManager", () => {
     const { context, commitChildren, root } = createGraphRuntime()
 
     commitChildren(root, [createFieldDescriptor("old", "user.name")])
-    const oldNode = root.childNodes[0] as FieldRuntimeNode
+    const oldNode = root.childNodes.value[0] as FieldRuntimeNode
 
     commitChildren(root, [createFieldDescriptor("new", "user.name")])
-    const newNode = root.childNodes[0] as FieldRuntimeNode
+    const newNode = root.childNodes.value[0] as FieldRuntimeNode
 
     expect(oldNode.disposed.value).toBe(true)
     expect(newNode.key).toBe("new")
-    expect(context.nodeResources.descriptors.get(newNode.id)?.key).toBe("new")
+    expect(newNode.descriptor?.key).toBe("new")
   })
 
   it("removeNode 应该删除节点资源并断开父子关系", () => {
@@ -161,13 +157,13 @@ describe("RuntimeReconciler + DefaultRuntimeNodeManager", () => {
 
     commitChildren(root, [createFieldDescriptor("name", "name")])
 
-    const field = root.childNodes[0] as FieldRuntimeNode
-    const descriptor = context.nodeResources.descriptors.get(field.id)
+    const field = root.childNodes.value[0] as FieldRuntimeNode
+    const descriptor = field.descriptor ?? undefined
 
     reconciler.removeNode(field)
 
     expect(field.disposed.value).toBe(true)
-    expect(context.nodeResources.descriptors.get(field.id)).toBeUndefined()
+    expect(field.descriptor ?? undefined).toBeDefined()
     expect(descriptor).toBeDefined()
     expect(field.parent).toBeNull()
   })
@@ -179,54 +175,53 @@ describe("RuntimeReconciler + DefaultRuntimeNodeManager", () => {
       createDependencyDescriptor("dep", ["type"], vi.fn().mockResolvedValue([])),
     ])
 
-    const dependency = root.childNodes[0]
+    const dependency = root.childNodes.value[0]
 
     if (dependency?.type !== "dependency") {
       throw new Error("expected dependency node")
     }
 
     const firstNode = dependency
-    const firstDescriptor = context.nodeResources.descriptors.get(dependency.id)
+    const firstDescriptor = dependency.descriptor ?? undefined
 
     commitChildren(root, [
       createDependencyDescriptor("dep", ["type"], vi.fn().mockResolvedValue([])),
     ])
 
-    expect(root.childNodes[0]).toBe(firstNode)
+    expect(root.childNodes.value[0]).toBe(firstNode)
 
     commitChildren(root, [
       createDependencyDescriptor("dep", ["mode"], vi.fn().mockResolvedValue([])),
     ])
 
-    expect(root.childNodes[0]).toBe(firstNode)
-    expect(context.nodeResources.descriptors.get(dependency.id)).not.toBe(firstDescriptor)
-    expect(
-      (context.nodeResources.descriptors.get(dependency.id) as DependencyDescriptor)
-        .triggerFields
-    ).toEqual(["mode"])
+    expect(root.childNodes.value[0]).toBe(firstNode)
+    expect(dependency.descriptor ?? undefined).not.toBe(firstDescriptor)
+    expect((dependency.descriptor as DependencyDescriptor).triggerFields).toEqual([
+      "mode",
+    ])
   })
 
   it("仅 descriptor props 变化时 commitChildren 不重建节点", () => {
     const { commitChildren, root } = createGraphRuntime()
 
     commitChildren(root, [createFieldDescriptor("f1", "f1")])
-    const firstNode = root.childNodes[0]
+    const firstNode = root.childNodes.value[0]
 
     commitChildren(root, [createFieldDescriptor("f1", "f1")])
-    expect(root.childNodes[0]).toBe(firstNode)
+    expect(root.childNodes.value[0]).toBe(firstNode)
   })
 
   it("子节点新增时 commitChildren 扩展 childNodes", () => {
     const { commitChildren, root } = createGraphRuntime()
 
     commitChildren(root, [createFieldDescriptor("f1", "f1")])
-    expect(root.childNodes).toHaveLength(1)
+    expect(root.childNodes.value).toHaveLength(1)
 
     commitChildren(root, [
       createFieldDescriptor("f1", "f1"),
       createFieldDescriptor("f2", "f2"),
     ])
-    expect(root.childNodes).toHaveLength(2)
+    expect(root.childNodes.value).toHaveLength(2)
   })
 })
 

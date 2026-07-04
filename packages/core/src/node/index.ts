@@ -11,8 +11,6 @@ export {
   createFieldRuntimeNode,
   createGroupRuntimeNode,
   createRootRuntimeNode,
-  getChildRuntimeNodes,
-  setChildRuntimeNodes,
 } from "./runtimeNode"
 
 export {

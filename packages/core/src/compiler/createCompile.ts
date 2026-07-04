@@ -4,23 +4,10 @@
  * @module core/compiler/createCompile
  */
 
-import {
-  createDependencyDescriptor,
-  createFieldDescriptor,
-  createGroupDescriptor,
-} from "../descriptor"
-import { maybeUseSchemxContext, withSchemxContext } from "../schemxContext"
-import {
-  isDependencySchema,
-  isGroupSchema,
-  normalizeSchemas,
-} from "../utils"
+import { createDescriptor } from "../descriptor"
+import { normalizeSchemas } from "../utils"
 
-import {
-  type Compile,
-  type CompileCache,
-  type CompileOptions,
-} from "./types"
+import { type Compile, type CompileCache, type CompileOptions } from "./types"
 
 import type { FormDescriptor } from "../descriptor"
 import type { SchemxContext } from "../schemxContext"
@@ -60,7 +47,7 @@ export function createCompile<TValues extends Values = Values>(
   /**
    * 将 schema 列表编译为 descriptor 列表。
    *
-   * 在已有 SchemxContext 时直接编译，否则用一个回退 context 包裹执行。
+   * 编译时通过显式参数把表单默认配置传给 descriptor 创建流程。
    *
    * @param schemas - 待编译的 schema 列表。
    * @param parentKey - 父级 descriptor key，用于生成嵌套 key。
@@ -70,13 +57,7 @@ export function createCompile<TValues extends Values = Values>(
     schemas: readonly SchemxField<TValues>[],
     parentKey = ""
   ): FormDescriptor<TValues>[] {
-    if (maybeUseSchemxContext<TValues>()) {
-      return compileDescriptors(schemas, parentKey)
-    }
-
-    return withSchemxContext(createFallbackCompileContext(), () =>
-      compileDescriptors(schemas, parentKey)
-    )
+    return compileDescriptors(schemas, parentKey)
   }
 
   /**
@@ -110,29 +91,7 @@ export function createCompile<TValues extends Values = Values>(
         continue
       }
 
-      if (isGroupSchema(schema)) {
-        descriptor = createGroupDescriptor<TValues>({
-          schema,
-          index: i,
-          parentKey,
-        })
-
-        if (schema.children.length > 0) {
-          ;(
-            descriptor as unknown as { children: FormDescriptor<TValues>[] }
-          ).children = toDescriptors(schema.children, descriptor.key)
-        }
-      } else if (isDependencySchema(schema)) {
-        descriptor = createDependencyDescriptor<TValues>({
-          schema,
-          parentKey,
-        })
-      } else {
-        descriptor = createFieldDescriptor<TValues>({
-          schema,
-          parentKey,
-        })
-      }
+      descriptor = createDescriptor(schema, i, parentKey, createFallbackCompileContext())
 
       compileCache.entries.set(schema, {
         version: compileCache.version,

@@ -7,10 +7,39 @@
 import { describe, expect, it, vi } from "vitest"
 
 import { createCompile, CompileError } from "../index"
+import { createDescriptor } from "../../descriptor"
 
 import type { SchemxField } from "../../types/schema"
 
 describe("createCompile().toDescriptors", () => {
+  it("应该允许 createDescriptor 通过显式参数读取表单默认配置", () => {
+    const descriptor = createDescriptor(
+      {
+        name: "username",
+        label: "用户名",
+        componentType: "input",
+      },
+      0,
+      "",
+      {
+        defaultProps: {
+          readonly: true,
+        },
+        instance: {
+          marker: "form",
+        } as any,
+      }
+    )
+
+    expect(descriptor.type).toBe("field")
+    if (descriptor.type === "field") {
+      expect(descriptor.staticSchema.readonly).toBe(true)
+      expect(descriptor.staticSchema.componentProps?.formInstance).toEqual({
+        marker: "form",
+      })
+    }
+  })
+
   it("应该编译基础字段 schema", () => {
     const schemas: SchemxField[] = [
       {

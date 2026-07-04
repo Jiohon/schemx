@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest"
 
 import { createCompile } from "../../compiler"
-import { createFieldRegistry } from "../../field"
 import { createLifecycleBus } from "../../lifecycle"
 import { createScheduler } from "../../scheduler"
 import { createRuntimeResources } from "../resources"
@@ -38,7 +37,6 @@ function createRuntimeContext<TValues extends Values = Values>(): SchemxContext<
     }),
     scheduler,
     lifecycleBus: createLifecycleBus(),
-    fieldRegistry: createFieldRegistry<TValues>(),
     nodeResources,
     commitChildren: () => undefined,
   } as unknown as SchemxContext<TValues>
@@ -49,6 +47,16 @@ function createTreeManager(): RuntimeNodeManager {
 }
 
 describe("RuntimeNodeManager", () => {
+  it("nodeResources 应该只保留结构表和跨节点索引", () => {
+    const resources = createRuntimeResources()
+
+    expect(Object.keys(resources).sort()).toEqual([
+      "dependencyIndex",
+      "fieldIndex",
+      "nodes",
+    ])
+  })
+
   it("应该通过显式 context 使用同一份 nodeResources", () => {
     const context = createRuntimeContext()
     const manager = createRuntimeNodeManager(context)
@@ -84,8 +92,8 @@ describe("RuntimeNodeManager", () => {
     }
 
     manager.replaceChildren(root, [field, dependency])
-    context.nodeResources.descriptors.set(field.id, fieldDescriptor)
-    context.nodeResources.descriptors.set(dependency.id, dependencyDescriptor)
+    field.descriptor = fieldDescriptor
+    dependency.descriptor = dependencyDescriptor
 
     context.nodeResources.fieldIndex.register(field)
     context.nodeResources.dependencyIndex.register(dependency)
@@ -140,9 +148,8 @@ describe("RuntimeNodeManager", () => {
 
     expect(manager.getNode(root.id)).toBe(root)
     expect(manager.getNode(field.id)).toBe(field)
-    expect(manager.resources.childrenStates.has(root.id)).toBe(true)
     expect(field.parent).toBeNull()
-    expect(root.childNodes).toEqual([])
+    expect(root.childNodes.value).toEqual([])
   })
 
   it("insertChild 应该维护 parent 和 children 数组一致性", () => {
@@ -154,7 +161,7 @@ describe("RuntimeNodeManager", () => {
     manager.insertChild(root, second)
     manager.insertChild(root, first, 0)
 
-    expect(root.childNodes).toEqual([first, second])
+    expect(root.childNodes.value).toEqual([first, second])
     expect(first.parent).toBe(root)
     expect(second.parent).toBe(root)
   })
@@ -167,9 +174,11 @@ describe("RuntimeNodeManager", () => {
     const third = manager.createNode({ type: "field", key: "third" })
 
     manager.replaceChildren(root, [first, second])
+    const previous = root.childNodes.value
     manager.replaceChildren(root, [third])
 
-    expect(root.childNodes).toEqual([third])
+    expect(root.childNodes.value).toEqual([third])
+    expect(root.childNodes.value).not.toBe(previous)
     expect(first.parent).toBeNull()
     expect(second.parent).toBeNull()
     expect(third.parent).toBe(root)
@@ -185,12 +194,12 @@ describe("RuntimeNodeManager", () => {
     manager.replaceChildren(group, [field])
     manager.removeSubtree(group)
 
-    expect(root.childNodes).toEqual([])
+    expect(root.childNodes.value).toEqual([])
     expect(manager.getNode(group.id)).toBeUndefined()
     expect(manager.getNode(field.id)).toBeUndefined()
     expect(group.parent).toBeNull()
     expect(field.parent).toBeNull()
-    expect(group.scope.disposed).toBe(true)
-    expect(field.scope.disposed).toBe(true)
+    expect(group.dispose.disposed).toBe(true)
+    expect(field.dispose.disposed).toBe(true)
   })
 })

@@ -72,7 +72,6 @@ import {
   type SchemxSchemasInput,
 } from "./createSchemas"
 import { defaultConfigKey } from "./defaultConfig"
-import { createFieldRegistry, type FieldRegistry } from "./field"
 import {
   createLifecycleBus,
   type LifecycleBus,
@@ -271,9 +270,6 @@ class CreateForm<
   /** descriptor 到 RuntimeNode tree 的协调器，负责创建、复用和销毁节点 */
   readonly reconciler: Reconciler<TValues>
 
-  /** 字段 RuntimeNode 到字段模型的注册表，供表单 API 和视图投影读取 */
-  readonly fieldRegistry: FieldRegistry<TValues>
-
   /** RuntimeNode 之外的 descriptor、state、view 和 effect 资源表 */
   readonly nodeResources: RuntimeNodeResourceContext<TValues>
 
@@ -332,15 +328,14 @@ class CreateForm<
       uploadRequired: createUploadRequiredRule,
     })
 
+    // RuntimeNode 之外的 descriptor、state、view 和 effect 资源表
+    this.nodeResources = createRuntimeResources<TValues>()
+
     // 生命周期总线连接 node 结构变化与字段模型、依赖资源的挂载和更新流程。
     this.lifecycleBus = createLifecycleBus<RuntimeNode<TValues>>()
 
     // 初始化运行时 node 所需的核心基础设施。
     this.scheduler = createScheduler()
-
-    this.fieldRegistry = createFieldRegistry<TValues>()
-
-    this.nodeResources = createRuntimeResources<TValues>()
 
     // defaultProps 必须在 compiler options 与 context 间共享同一引用：
     // applySchemas 走 compiler fallback 时读取的是 compileOptions.defaultProps，
@@ -361,7 +356,6 @@ class CreateForm<
       compile: this.compile,
       scheduler: this.scheduler,
       lifecycleBus: this.lifecycleBus,
-      fieldRegistry: this.fieldRegistry,
       nodeResources: this.nodeResources,
       commitChildren: this.commitChildren,
     }
@@ -369,12 +363,6 @@ class CreateForm<
     this.reconciler = createReconciler<TValues>(this.context)
 
     this.root = this.reconciler.createRoot()
-
-    const rootChildrenState = this.nodeResources.childrenStates.get(this.root.id)
-
-    if (!rootChildrenState) {
-      throw new Error("[schemx] root childrenState is required")
-    }
 
     createRootRuntimeViewState(this.root, this.nodeResources)
 
@@ -517,8 +505,8 @@ class CreateForm<
   ): void {
     const resolvedRules: StandardSchemaV1[] = []
 
-    const node = this.fieldRegistry.get(path)?.node
-    const descriptor = node ? this.nodeResources.descriptors.get(node.id) : undefined
+    const node = this.nodeResources.fieldIndex.getByName(path)
+    const descriptor = node ? (node.descriptor ?? undefined) : undefined
     const schema = descriptor?.type === "field" ? descriptor.staticSchema : undefined
 
     this.validator.unregister(path)
@@ -670,33 +658,34 @@ class CreateForm<
       return
     }
 
-    const entry = this.fieldRegistry.get(name)
+    const node = this.nodeResources.fieldIndex.getByName(name)
 
-    if (!entry) {
+    if (!node) {
       return
     }
 
-    const node = entry.node
-    const current = this.nodeResources.descriptors.get(node.id)
+    const current = node.descriptor ?? undefined
 
     if (current?.type !== "field") {
       return
     }
 
-    const nextRawSchema = {
+    const componentProps = patch.componentProps
+      ? {
+          ...current.staticSchema.componentProps,
+          ...patch.componentProps,
+        }
+      : current.staticSchema.componentProps
+
+    const nextRawSchema: SchemxBaseField<TValues> = {
       ...current.staticSchema,
       ...patch,
-      componentProps: patch.componentProps
-        ? {
-            ...current.staticSchema.componentProps,
-            ...patch.componentProps,
-          }
-        : current.staticSchema.componentProps,
+      componentProps,
       key: current.key,
       name: current.name,
       componentType: current.staticSchema.componentType,
       dependencies: current.dynamicProps?.dependencies,
-    } as SchemxBaseField<TValues>
+    }
 
     const [next] = this.compile.toDescriptors([nextRawSchema])
 
@@ -774,7 +763,7 @@ class CreateForm<
    * 获取当前 ViewSchemas。
    */
   private getViewSchemas(): readonly SchemxViewSchema<TValues>[] {
-    const rootViewState = this.nodeResources.viewStates.get(this.root.id)
+    const rootViewState = this.root.viewState
 
     if (!rootViewState || !("viewSchemas" in rootViewState)) {
       return []
