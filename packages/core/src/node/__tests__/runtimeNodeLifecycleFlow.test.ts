@@ -43,14 +43,14 @@ describe("node lifecycle flow", () => {
       update: vi.fn(),
       updated: vi.fn(),
     }
-    const { commitSchemas, context, root } = createRuntimeGraphHarness(hooks)
+    const { commitSchemas, root } = createRuntimeGraphHarness(hooks)
 
     commitSchemas(root, [createRawFieldSchema("name", "name")])
-    const node = root.childNodes[0] as FieldRuntimeNode
-    const previousDescriptor = context.nodeResources.descriptors.get(node.id)
+    const node = root.childNodes.value[0] as FieldRuntimeNode
+    const previousDescriptor = node.descriptor ?? undefined
 
     commitSchemas(root, [createRawFieldSchema("name", "nickname")])
-    const nextDescriptor = context.nodeResources.descriptors.get(node.id)
+    const nextDescriptor = node.descriptor ?? undefined
 
     expect(hooks.beforeMount).toHaveBeenCalledWith(node)
     expect(hooks.mount).toHaveBeenCalledWith(node)
@@ -68,33 +68,85 @@ describe("node lifecycle flow", () => {
       type: "field",
       key: "name",
     })
-    expect(beforeUpdatePreviousRuntimeNode).not.toHaveProperty("descriptor")
+    expect(beforeUpdatePreviousRuntimeNode).toHaveProperty("descriptor")
     expect(updatePreviousRuntimeNode).toBe(beforeUpdatePreviousRuntimeNode)
     expect(updatedPreviousRuntimeNode).toBe(beforeUpdatePreviousRuntimeNode)
     expect(beforeUpdatePreviousRuntimeNode).not.toBe(previousDescriptor)
     expect(nextDescriptor).not.toBe(previousDescriptor)
   })
 
-  it("disposed field 会释放并删除 resources 中的字段资源", () => {
+  it("descriptor 挂载和更新时同步写入 runtime node", () => {
+    const { commitSchemas, root } = createRuntimeGraphHarness()
+
+    commitSchemas(root, [createRawFieldSchema("name", "name")])
+    const field = root.childNodes.value[0] as FieldRuntimeNode
+    const firstDescriptor = field.descriptor ?? undefined
+
+    expect(field.descriptor ?? undefined).toBe(firstDescriptor)
+
+    commitSchemas(root, [createRawFieldSchema("name", "nickname")])
+    const nextDescriptor = field.descriptor ?? undefined
+
+    expect(field.descriptor ?? undefined).toBe(nextDescriptor)
+    expect(nextDescriptor).not.toBe(firstDescriptor)
+  })
+
+  it("disposed field 会释放 node-local 字段资源并移除索引", () => {
     const { commitSchemas, context, root } = createRuntimeGraphHarness()
 
     commitSchemas(root, [createRawFieldSchema("name", "name")])
-    const field = root.childNodes[0] as FieldRuntimeNode
+    const field = root.childNodes.value[0] as FieldRuntimeNode
 
-    expect(context.nodeResources.descriptors.has(field.id)).toBe(true)
-    expect(context.nodeResources.fieldStates.has(field.id)).toBe(true)
-    expect(context.nodeResources.fieldResourceScopes.has(field.id)).toBe(true)
-    expect(context.nodeResources.fieldDynamicPropScopes.has(field.id)).toBe(true)
+    expect(field.descriptor ?? undefined).toBeDefined()
+    expect(field.fieldState).not.toBeNull()
+    expect(field.viewState).not.toBeNull()
+    expect(field.effectDispose).toBeDefined()
+    expect(context.nodeResources.fieldIndex.getByName("name" as any)).toBe(field)
 
     commitSchemas(root, [])
 
     expect(field.disposed.value).toBe(true)
-    expect(field).not.toHaveProperty("descriptor")
-    expect(field).not.toHaveProperty("runtimeState")
-    expect(context.nodeResources.descriptors.has(field.id)).toBe(false)
-    expect(context.nodeResources.fieldStates.has(field.id)).toBe(false)
-    expect(context.nodeResources.fieldResourceScopes.has(field.id)).toBe(false)
-    expect(context.nodeResources.fieldDynamicPropScopes.has(field.id)).toBe(false)
+    expect(field.descriptor ?? undefined).toBeDefined()
+    expect(field.fieldState).toBeNull()
+    expect(field.viewState).toBeNull()
+    expect(field.effectDispose).toBeNull()
+    expect(context.nodeResources.fieldIndex.getByName("name" as any)).toBeUndefined()
+  })
+
+  it("field update 会释放旧 effectDispose 并挂载新的 effectDispose", () => {
+    const { commitSchemas, root } = createRuntimeGraphHarness()
+
+    commitSchemas(root, [createRawFieldSchema("name", "name")])
+    const field = root.childNodes.value[0] as FieldRuntimeNode
+    const previousEffectDispose = field.effectDispose
+
+    expect(previousEffectDispose).not.toBeNull()
+    expect(previousEffectDispose?.disposed).toBe(false)
+
+    commitSchemas(root, [createRawFieldSchema("name", "nickname")])
+
+    expect(previousEffectDispose?.disposed).toBe(true)
+    expect(field.effectDispose).not.toBeNull()
+    expect(field.effectDispose).not.toBe(previousEffectDispose)
+    expect(field.effectDispose?.disposed).toBe(false)
+  })
+
+  it("fieldIndex 跟随 field mount/update/unmount 维护字段查询", () => {
+    const { commitSchemas, context, root } = createRuntimeGraphHarness()
+
+    commitSchemas(root, [createRawFieldSchema("name", "name")])
+    const field = root.childNodes.value[0] as FieldRuntimeNode
+
+    expect(context.nodeResources.fieldIndex.getByName("name" as any)).toBe(field)
+
+    commitSchemas(root, [createRawFieldSchema("name", "nickname")])
+
+    expect(context.nodeResources.fieldIndex.getByName("name" as any)).toBeUndefined()
+    expect(context.nodeResources.fieldIndex.getByName("nickname" as any)).toBe(field)
+
+    commitSchemas(root, [])
+
+    expect(context.nodeResources.fieldIndex.getByName("nickname" as any)).toBeUndefined()
   })
 })
 

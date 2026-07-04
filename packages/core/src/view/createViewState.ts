@@ -1,42 +1,89 @@
-import {
-  createChildrenViewState,
-  createDependencyViewState,
-  createFieldNodeViewState,
-  createGroupViewState,
-  createRootViewState,
-} from "./viewGraph"
+/**
+ * RuntimeNode ViewState 生命周期与 computed ViewSchema 图。
+ *
+ * ViewState 挂在 runtime node 上，增删改查维护 computed 图节点；
+ * 读取 root viewSchemas 时直接取 root computed 的当前值。
+ *
+ * @module core/view/createViewState
+ */
 
-import type {
-  DependencyDescriptor,
-  FieldDescriptor,
-  FormDescriptor,
-  GroupDescriptor,
+import { createComputed } from "../reactivity/computed"
+
+import {
+  isDependencyDescriptor,
+  isFieldDescriptor,
+  isGroupDescriptor,
+  type FormDescriptor,
 } from "../descriptor"
 import type {
-  ContainerRuntimeNode,
   DescribedRuntimeNode,
   RootRuntimeNode,
-  RuntimeChildrenState,
   RuntimeNode,
   RuntimeNodeResourceContext,
 } from "../node"
-import type { Values } from "../types"
-import type { RootViewState, RuntimeViewState } from "./viewGraph"
+import type {
+  SchemxViewFieldSchema,
+  SchemxViewGroupSchema,
+  SchemxViewSchema,
+} from "./types"
+import type { ComputedSignal } from "../reactivity/computed"
+import type { SchemxComponentProps, Values } from "../types"
+import {
+  isDependencyRuntimeNode,
+  isFieldRuntimeNode,
+  isGroupRuntimeNode,
+} from "@/node/helper"
+
+/**
+ * 字段节点视图状态。
+ */
+export interface FieldNodeViewState<TValues extends Values = Values> {
+  /** 字段 ViewSchema computed */
+  readonly view: ComputedSignal<SchemxViewFieldSchema<TValues> | null>
+}
+
+/**
+ * 分组节点视图状态。
+ */
+export interface GroupViewState<TValues extends Values = Values> {
+  /** 分组 ViewSchema computed */
+  readonly view: ComputedSignal<SchemxViewGroupSchema<TValues> | null>
+}
+
+/**
+ * Dependency 节点视图状态。
+ */
+export interface DependencyViewState<TValues extends Values = Values> {
+  /** dependency 透明展开的 children ViewSchemas computed */
+  readonly view: ComputedSignal<readonly SchemxViewSchema<TValues>[]>
+}
+
+/**
+ * Root 节点视图状态。
+ */
+export interface RootViewState<TValues extends Values = Values> {
+  /** 顶层 ViewSchemas computed */
+  readonly viewSchemas: ComputedSignal<readonly SchemxViewSchema<TValues>[]>
+}
+
+export type RuntimeViewState<TValues extends Values = Values> =
+  | FieldNodeViewState<TValues>
+  | GroupViewState<TValues>
+  | DependencyViewState<TValues>
+  | RootViewState<TValues>
 
 /**
  * 为 root 创建并注册 ViewState。
  */
 export function createRootRuntimeViewState<TValues extends Values = Values>(
   root: RootRuntimeNode<TValues>,
-  resources: RuntimeNodeResourceContext<TValues>
+  _resources: RuntimeNodeResourceContext<TValues>
 ): RootViewState<TValues> {
-  const childrenState = getChildrenState(root, resources)
-  const viewState = createRootViewState<TValues>(
-    childrenState.children,
-    resources
-  )
+  const viewState: RootViewState<TValues> = {
+    viewSchemas: createComputed(() => readChildrenViewSchemas(root.childNodes.value)),
+  }
 
-  resources.viewStates.set(root.id, viewState)
+  root.viewState = viewState
 
   return viewState
 }
@@ -47,18 +94,79 @@ export function createRootRuntimeViewState<TValues extends Values = Values>(
 export function createRuntimeViewState<TValues extends Values = Values>(
   node: DescribedRuntimeNode<TValues>,
   descriptor: FormDescriptor<TValues>,
-  resources: RuntimeNodeResourceContext<TValues>
+  _resources: RuntimeNodeResourceContext<TValues>
 ): RuntimeViewState<TValues> {
-  if (node.type === "field" && descriptor.type === "field") {
-    return createFieldRuntimeViewState(node, descriptor, resources)
+  if (node.type !== descriptor.type) {
+    throw new Error(
+      `[schemx] Cannot create viewState for node "${node.key}" with descriptor "${descriptor.type}".`
+    )
   }
 
-  if (node.type === "group" && descriptor.type === "group") {
-    return createGroupRuntimeViewState(node, descriptor, resources)
+  if (isFieldRuntimeNode(node) && isFieldDescriptor(descriptor)) {
+    const runtimeState = node.fieldState
+
+    if (!runtimeState) {
+      throw new Error(`[schemx] fieldState is required for node "${node.key}"`)
+    }
+
+    const viewState: FieldNodeViewState<TValues> = {
+      view: createComputed(() => {
+        const schema = runtimeState.viewSchema.value
+        const diagnostics = runtimeState.diagnostics.value
+
+        return {
+          ...schema,
+          key: node.key,
+          placeholder: sanitizePlaceholder(schema.placeholder),
+          componentProps: sanitizeComponentProps(schema.componentProps ?? {}),
+          debug: {
+            runtimeNodeId: node.id,
+            runtimeNodeType: "field",
+            hasRuntimeState: true,
+            hasDependencyEffect: false,
+            lastUpdatedBy: diagnostics.lastUpdatedBy,
+            overriddenKeys: diagnostics.overriddenKeys,
+            error: diagnostics.error?.message ?? null,
+          },
+        } as SchemxViewFieldSchema<TValues>
+      }),
+    }
+
+    node.viewState = viewState
+
+    return viewState
   }
 
-  if (node.type === "dependency" && descriptor.type === "dependency") {
-    return createDependencyRuntimeViewState(node, descriptor, resources)
+  if (isGroupRuntimeNode(node) && isGroupDescriptor(descriptor)) {
+    const viewState: GroupViewState<TValues> = {
+      view: createComputed(() => {
+        return {
+          ...descriptor.staticSchema,
+          key: node.key,
+          children: readChildrenViewSchemas(node.childNodes.value),
+          debug: {
+            runtimeNodeId: node.id,
+            runtimeNodeType: "group",
+            hasRuntimeState: false,
+            hasDependencyEffect: false,
+          },
+        } as SchemxViewGroupSchema<TValues>
+      }),
+    }
+
+    node.viewState = viewState
+
+    return viewState
+  }
+
+  if (isDependencyRuntimeNode(node) && isDependencyDescriptor(descriptor)) {
+    const viewState: DependencyViewState<TValues> = {
+      view: createComputed(() => readChildrenViewSchemas(node.childNodes.value)),
+    }
+
+    node.viewState = viewState
+
+    return viewState
   }
 
   throw new Error(
@@ -82,80 +190,75 @@ export function updateRuntimeViewState<TValues extends Values = Values>(
  */
 export function deleteRuntimeViewState<TValues extends Values = Values>(
   node: RuntimeNode<TValues>,
-  resources: RuntimeNodeResourceContext<TValues>
+  _resources: RuntimeNodeResourceContext<TValues>
 ): void {
-  resources.viewStates.delete(node.id)
+  node.viewState = null
 }
 
-function createFieldRuntimeViewState<TValues extends Values>(
-  node: Extract<RuntimeNode<TValues>, { type: "field" }>,
-  descriptor: FieldDescriptor<TValues>,
-  resources: RuntimeNodeResourceContext<TValues>
-): RuntimeViewState<TValues> {
-  const runtimeState = resources.fieldStates.get(node.id)
+/**
+ * 读取 root 视图。
+ *
+ * @param root - root 节点视图状态
+ * @returns 当前顶层 ViewSchemas
+ */
+export function readRootViewSchemas<TValues extends Values>(
+  root: RootViewState<TValues>
+): readonly SchemxViewSchema<TValues>[] {
+  return root.viewSchemas.value
+}
 
-  if (!runtimeState) {
-    throw new Error(`[schemx] fieldState is required for node "${node.key}"`)
+function readChildrenViewSchemas<TValues extends Values>(
+  children: readonly DescribedRuntimeNode<TValues>[]
+): readonly SchemxViewSchema<TValues>[] {
+  const result: SchemxViewSchema<TValues>[] = []
+
+  for (const child of children) {
+    if (child.disposed.value || !child.viewState || !("view" in child.viewState)) {
+      continue
+    }
+
+    const view = child.viewState.view.value
+
+    if (Array.isArray(view)) {
+      result.push(...(view as readonly SchemxViewSchema<TValues>[]))
+    } else if (view) {
+      result.push(view as SchemxViewSchema<TValues>)
+    }
   }
 
-  const viewState = createFieldNodeViewState<TValues>(
-    runtimeState.viewSchema,
-    node.key,
-    node.id,
-    runtimeState.diagnostics
-  )
-
-  resources.viewStates.set(node.id, viewState)
-
-  return viewState
+  return result
 }
 
-function createGroupRuntimeViewState<TValues extends Values>(
-  node: Extract<RuntimeNode<TValues>, { type: "group" }>,
-  descriptor: GroupDescriptor<TValues>,
-  resources: RuntimeNodeResourceContext<TValues>
-): RuntimeViewState<TValues> {
-  const viewState = createGroupViewState<TValues>(
-    descriptor.staticSchema,
-    createChildrenViewState<TValues>(
-      getChildrenState(node, resources).children,
-      resources
-    ),
-    node.key,
-    node.id
-  )
-
-  resources.viewStates.set(node.id, viewState)
-
-  return viewState
+function sanitizePlaceholder(value: string | undefined): string {
+  return value ? value.slice(0, 1000) : ""
 }
 
-function createDependencyRuntimeViewState<TValues extends Values>(
-  node: Extract<RuntimeNode<TValues>, { type: "dependency" }>,
-  _descriptor: DependencyDescriptor<TValues>,
-  resources: RuntimeNodeResourceContext<TValues>
-): RuntimeViewState<TValues> {
-  const viewState = createDependencyViewState<TValues>(
-    createChildrenViewState<TValues>(
-      getChildrenState(node, resources).children,
-      resources
-    )
-  )
-
-  resources.viewStates.set(node.id, viewState)
-
-  return viewState
-}
-
-function getChildrenState<TValues extends Values>(
-  node: ContainerRuntimeNode<TValues>,
-  resources: RuntimeNodeResourceContext<TValues>
-): RuntimeChildrenState<TValues> {
-  const childrenState = resources.childrenStates.get(node.id)
-
-  if (!childrenState) {
-    throw new Error(`[schemx] childrenState is required for node "${node.key}"`)
+function sanitizeComponentProps<TValues extends Values = Values>(
+  props: SchemxComponentProps<TValues>,
+  depth = 0
+): Readonly<Record<string, unknown>> {
+  if (depth > 10) {
+    return {}
   }
 
-  return childrenState
+  const result: Record<string, unknown> = {}
+
+  for (const key of Object.keys(props)) {
+    if (!/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key) && !/^[a-zA-Z0-9_-]+$/.test(key)) {
+      continue
+    }
+
+    const value = (props as Record<string, unknown>)[key]
+
+    if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+      result[key] = sanitizeComponentProps(
+        value as SchemxComponentProps<TValues>,
+        depth + 1
+      )
+    } else {
+      result[key] = value
+    }
+  }
+
+  return result
 }

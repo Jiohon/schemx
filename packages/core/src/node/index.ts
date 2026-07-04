@@ -11,8 +11,6 @@ export {
   createFieldRuntimeNode,
   createGroupRuntimeNode,
   createRootRuntimeNode,
-  getChildRuntimeNodes,
-  setChildRuntimeNodes,
 } from "./runtimeNode"
 
 export {
@@ -34,6 +32,11 @@ export type {
   GroupRuntimeNode,
   RootRuntimeNode,
   RuntimeChildrenState,
+  RuntimeCleanup,
+  RuntimeCleanupHandle,
+  RuntimeDependencyIndex,
+  RuntimeDispose,
+  RuntimeFieldIndex,
   RuntimeNode,
   RuntimeNodeId,
   RuntimeNodeManager,
@@ -53,6 +56,8 @@ export {
 } from "./runtimeLifecycle"
 
 export {
+  createRuntimeDispose,
+  createRuntimeScope,
   createScope,
   reportRuntimeCleanupError,
 } from "./scope"

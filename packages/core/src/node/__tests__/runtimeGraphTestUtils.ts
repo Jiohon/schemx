@@ -2,7 +2,6 @@ import { vi } from "vitest"
 
 import { createCompile } from "../../compiler"
 import type { FormDescriptor } from "../../descriptor"
-import { createFieldRegistry, type FieldRegistry } from "../../field"
 import { createLifecycleBus, type LifecycleListener } from "../../lifecycle"
 import { createSignal } from "../../reactivity"
 import { createReconciler, type Reconciler } from "../../reconciler"
@@ -16,7 +15,6 @@ import type { ContainerRuntimeNode, RuntimeNode, RootRuntimeNode } from "../type
 
 export interface RuntimeGraphTestHarness<TValues extends Values = Values> {
   readonly context: SchemxContext<TValues>
-  readonly fieldRegistry: FieldRegistry<TValues>
   readonly reconciler: Reconciler<TValues>
   readonly root: RootRuntimeNode
   readonly scheduler: Scheduler
@@ -62,7 +60,6 @@ export function createRuntimeGraphHarness<TValues extends Values = Values>(
 ): RuntimeGraphTestHarness<TValues> {
   const signals = new Map<string, ReturnType<typeof createSignal<unknown>>>()
   const values = { ...initialValues }
-  const fieldRegistry = createFieldRegistry<TValues>()
   const lifecycleBus = createLifecycleBus<RuntimeNode<TValues>>(listener)
   const scheduler = createScheduler()
 
@@ -142,7 +139,6 @@ export function createRuntimeGraphHarness<TValues extends Values = Values>(
     compile,
     scheduler,
     lifecycleBus,
-    fieldRegistry,
     nodeResources: createRuntimeResources<TValues>(),
   } as unknown as SchemxContext<TValues>
 
@@ -164,7 +160,6 @@ export function createRuntimeGraphHarness<TValues extends Values = Values>(
 
   return {
     context,
-    fieldRegistry,
     reconciler,
     root,
     scheduler,

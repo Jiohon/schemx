@@ -1,7 +1,7 @@
 /**
  * View 模块统一导出。
  *
- * 提供 ViewSchema 类型、构建、订阅、view graph 和 adapter 工具。
+ * 提供 ViewSchema 类型、computed viewState、订阅和 runtime adapter 工具。
  *
  * @module core/view
  */
@@ -12,21 +12,12 @@ export {
   createRootRuntimeViewState,
   updateRuntimeViewState,
   deleteRuntimeViewState,
-} from "./createViewState"
-
-export {
-  createChildrenViewState,
-  createFieldNodeViewState,
-  createGroupViewState,
-  createDependencyViewState,
-  createRootViewState,
-  readRuntimeNodeView,
   readRootViewSchemas,
   type FieldNodeViewState,
   type GroupViewState,
   type DependencyViewState,
   type RootViewState,
-} from "./viewGraph"
+} from "./createViewState"
 
 export type {
   SchemxViewDebugMeta,

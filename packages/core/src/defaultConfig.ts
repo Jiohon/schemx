@@ -57,6 +57,13 @@ export const defaultConfig = {
   labelWidth: "auto",
 
   /**
+   * 内容对齐方式
+   *
+   * 未设置时继承 FormContext 的全局 `contentAlign` 配置。
+   */
+  contentAlign: "right",
+
+  /**
    * 校验触发时机
    *
    * 支持单个或多个触发时机组合，如 `'change'`、`'blur'`、`['change', 'blur']`。

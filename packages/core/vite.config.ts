@@ -12,7 +12,7 @@ const externalPackages = [
   "@preact/signals-core",
 ]
 
-function isExternal(id: string, importer: string | undefined, isResolved: boolean) {
+function isExternal(id: string) {
   return externalPackages.some((pkg) => id === pkg || id.startsWith(`${pkg}/`))
 }
 

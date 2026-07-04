@@ -92,7 +92,7 @@ export interface FieldRuntimeState<TValues extends Values = Values> {
   readonly dynamicOverrides: Signal<FieldDynamicOverrides<TValues>>
   /** 合并静态 schema、动态覆盖和默认值的有效字段状态 */
   readonly effectiveSchema: ComputedSignal<FieldEffectiveSchema<TValues>>
-  /** 渲染层消费的字段 ViewSchema（在 viewGraph 阶段接入） */
+  /** 渲染层消费的字段 ViewSchema（在 createViewState 阶段接入） */
   readonly viewSchema: ComputedSignal<SchemxResolvedBaseField<TValues>>
   /** 运行时诊断信息 */
   readonly diagnostics: Signal<FieldRuntimeDiagnostics<TValues>>
@@ -157,7 +157,9 @@ export function createFieldRuntimeState<TValues extends Values>(
       readonly: overrides.readonly ?? base.readonly ?? false,
       required: overrides.required ?? base.required ?? false,
       placeholder: overrides.placeholder ?? base.placeholder ?? "",
-      componentProps: (overrides.componentProps ?? base.componentProps ?? {}) as SchemxComponentProps<TValues>,
+      componentProps: (overrides.componentProps ??
+        base.componentProps ??
+        {}) as SchemxComponentProps<TValues>,
       rules: overrides.rules ?? base.rules ?? [],
       validationTrigger: base.validationTrigger,
     }
@@ -283,7 +285,9 @@ export function resetFieldDynamicOverrides<TValues extends Values>(
   }
 }
 
-function createInitialDiagnostics<TValues extends Values>(): FieldRuntimeDiagnostics<TValues> {
+function createInitialDiagnostics<
+  TValues extends Values,
+>(): FieldRuntimeDiagnostics<TValues> {
   return {
     lastUpdatedBy: "static-schema",
     version: 0,

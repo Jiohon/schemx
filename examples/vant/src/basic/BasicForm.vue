@@ -44,7 +44,7 @@
   import { computed, ref } from "vue"
   import { Button } from "vant"
 
-  import Schemx, { createSchemas } from "@schemx/vant"
+  import Schemx from "@schemx/vant"
 
   import type { BasicFormValues } from "../types"
   import type { SchemxField, SchemxInstance } from "@schemx/vant"
@@ -135,6 +135,7 @@
           componentProps: {
             maxlength: 200,
             showWordLimit: true,
+            align: "right",
           },
         },
         {
@@ -333,6 +334,7 @@
    * @param values - 校验通过的表单数据
    */
   const handleSubmit = (values: BasicFormValues) => {
+    console.log(formRef.value?.getViewSchemas())
     console.log("表单提交:", values)
     alert("提交成功！数据已打印到控制台")
   }

@@ -4,7 +4,6 @@ import type {
   DescribedRuntimeNode,
   RootRuntimeNode,
   RuntimeNode,
-  RuntimeNodeId,
   RuntimeNodeManager,
 } from "../node"
 import type { RuntimeLifecycle } from "../node/runtimeLifecycle"
@@ -17,7 +16,7 @@ export interface ReconcileCreateOperation<TValues extends Values = Values> {
 
 export interface ReconcileUpdateOperation<TValues extends Values = Values> {
   readonly node: DescribedRuntimeNode<TValues>
-  readonly previousDescriptor: FormDescriptor<TValues> | undefined
+  readonly previousDescriptor: FormDescriptor<TValues> | null
   readonly nextDescriptor: FormDescriptor<TValues>
 }
 
@@ -37,37 +36,14 @@ export interface ReconcilePlan<TValues extends Values = Values> {
   readonly nextChildrenOrder: readonly ReconcileChildOrderEntry<TValues>[]
 }
 
-export type ReconcileDescriptorMap<TValues extends Values = Values> = ReadonlyMap<
-  RuntimeNodeId,
-  FormDescriptor<TValues>
->
-
 export type ReconcileNodeManager<TValues extends Values = Values> = Pick<
   RuntimeNodeManager<TValues>,
   "createNode" | "replaceChildren" | "removeSubtree"
 >
 
-export type ReconcileLifecycle<TValues extends Values = Values> =
-  RuntimeLifecycle<TValues>
-
 export interface CommitReconcilePlanOptions<TValues extends Values = Values> {
   readonly nodeManager: ReconcileNodeManager<TValues>
-  readonly lifecycle: ReconcileLifecycle<TValues>
-}
-
-export interface CommitReconcilePlanResult<TValues extends Values = Values> {
-  readonly children: readonly DescribedRuntimeNode<TValues>[]
-}
-
-export interface CommitReconcilePlanInput<TValues extends Values = Values> {
-  readonly parent: ContainerRuntimeNode<TValues>
-  readonly plan: ReconcilePlan<TValues>
-  readonly options: CommitReconcilePlanOptions<TValues>
-}
-
-export interface ReconcilerContext<TValues extends Values = Values>
-  extends CommitReconcilePlanOptions<TValues> {
-  getCurrentDescriptors(): ReconcileDescriptorMap<TValues>
+  readonly lifecycle: RuntimeLifecycle<TValues>
 }
 
 export interface Reconciler<TValues extends Values = Values> {
@@ -84,5 +60,4 @@ export interface Reconciler<TValues extends Values = Values> {
 }
 
 export type CreateReconcilerContext<TValues extends Values = Values> =
-  | SchemxContext<TValues>
-  | ReconcilerContext<TValues>
+  SchemxContext<TValues>

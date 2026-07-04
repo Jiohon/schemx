@@ -6,18 +6,9 @@
  * @module core/descriptor
  */
 
-export {
-  createDependencyDescriptor,
-  createDescriptor,
-  createFieldDescriptor,
-  createGroupDescriptor,
-} from "./createDescriptor"
+export { createDescriptor } from "./createDescriptor"
 
-export {
-  isDependencyDescriptor,
-  isFieldDescriptor,
-  isGroupDescriptor,
-} from "./helper"
+export { isDependencyDescriptor, isFieldDescriptor, isGroupDescriptor } from "./helper"
 
 export type {
   BaseDescriptor,

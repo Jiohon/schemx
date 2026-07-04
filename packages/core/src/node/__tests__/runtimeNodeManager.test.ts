@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest"
 
 import { createCompile } from "../../compiler"
-import { createFieldRegistry } from "../../field"
 import { createLifecycleBus } from "../../lifecycle"
 import { createScheduler } from "../../scheduler"
 import { createRuntimeResources } from "../resources"
@@ -10,6 +9,7 @@ import { createRuntimeNodeManager } from "../runtimeNodeManager"
 import type { SchemxContext } from "../../schemxContext"
 import type { Values } from "../../types"
 import type { RuntimeNodeManager } from "../types"
+import type { DependencyDescriptor, FieldDescriptor } from "../../descriptor"
 
 function createRuntimeContext<TValues extends Values = Values>(): SchemxContext<TValues> {
   const nodeResources = createRuntimeResources<TValues>()
@@ -37,7 +37,6 @@ function createRuntimeContext<TValues extends Values = Values>(): SchemxContext<
     }),
     scheduler,
     lifecycleBus: createLifecycleBus(),
-    fieldRegistry: createFieldRegistry<TValues>(),
     nodeResources,
     commitChildren: () => undefined,
   } as unknown as SchemxContext<TValues>
@@ -48,12 +47,72 @@ function createTreeManager(): RuntimeNodeManager {
 }
 
 describe("RuntimeNodeManager", () => {
+  it("nodeResources 应该只保留结构表和跨节点索引", () => {
+    const resources = createRuntimeResources()
+
+    expect(Object.keys(resources).sort()).toEqual([
+      "dependencyIndex",
+      "fieldIndex",
+      "nodes",
+    ])
+  })
+
   it("应该通过显式 context 使用同一份 nodeResources", () => {
     const context = createRuntimeContext()
     const manager = createRuntimeNodeManager(context)
 
     expect(manager.resources).toBe(context.nodeResources)
     expect(manager.nodes).toBe(context.nodeResources.nodes)
+  })
+
+  it("nodeResources 应该提供字段和 dependency 索引边界", () => {
+    const context = createRuntimeContext()
+    const manager = createRuntimeNodeManager(context)
+    const root = manager.createRoot()
+    const field = manager.createNode({ type: "field", key: "field:name" })
+    const dependency = manager.createNode({
+      type: "dependency",
+      key: "dependency:location",
+    })
+    const fieldDescriptor: FieldDescriptor = {
+      type: "field",
+      key: field.key,
+      name: "user.name",
+      componentType: "input",
+      staticSchema: {
+        name: "user.name",
+        componentType: "input",
+      },
+    }
+    const dependencyDescriptor: DependencyDescriptor = {
+      type: "dependency",
+      key: dependency.key,
+      triggerFields: ["country", "city"],
+      renderer: () => [],
+    }
+
+    manager.replaceChildren(root, [field, dependency])
+    field.descriptor = fieldDescriptor
+    dependency.descriptor = dependencyDescriptor
+
+    context.nodeResources.fieldIndex.register(field)
+    context.nodeResources.dependencyIndex.register(dependency)
+
+    expect(context.nodeResources.fieldIndex.getByName("user.name" as any)).toBe(field)
+    expect(context.nodeResources.fieldIndex.getByPath("user.name" as any)).toBe(field)
+    expect(context.nodeResources.dependencyIndex.getByTriggerField("country" as any)).toEqual([
+      dependency,
+    ])
+    expect(context.nodeResources.dependencyIndex.getTriggerFields(dependency)).toEqual([
+      "country",
+      "city",
+    ])
+
+    context.nodeResources.fieldIndex.unregister(field)
+    context.nodeResources.dependencyIndex.unregister(dependency)
+
+    expect(context.nodeResources.fieldIndex.getByName("user.name" as any)).toBeUndefined()
+    expect(context.nodeResources.dependencyIndex.getByTriggerField("country" as any)).toEqual([])
   })
 
   it("应该只暴露 runtime tree 结构操作", () => {
@@ -89,9 +148,8 @@ describe("RuntimeNodeManager", () => {
 
     expect(manager.getNode(root.id)).toBe(root)
     expect(manager.getNode(field.id)).toBe(field)
-    expect(manager.resources.childrenStates.has(root.id)).toBe(true)
     expect(field.parent).toBeNull()
-    expect(root.childNodes).toEqual([])
+    expect(root.childNodes.value).toEqual([])
   })
 
   it("insertChild 应该维护 parent 和 children 数组一致性", () => {
@@ -103,7 +161,7 @@ describe("RuntimeNodeManager", () => {
     manager.insertChild(root, second)
     manager.insertChild(root, first, 0)
 
-    expect(root.childNodes).toEqual([first, second])
+    expect(root.childNodes.value).toEqual([first, second])
     expect(first.parent).toBe(root)
     expect(second.parent).toBe(root)
   })
@@ -116,9 +174,11 @@ describe("RuntimeNodeManager", () => {
     const third = manager.createNode({ type: "field", key: "third" })
 
     manager.replaceChildren(root, [first, second])
+    const previous = root.childNodes.value
     manager.replaceChildren(root, [third])
 
-    expect(root.childNodes).toEqual([third])
+    expect(root.childNodes.value).toEqual([third])
+    expect(root.childNodes.value).not.toBe(previous)
     expect(first.parent).toBeNull()
     expect(second.parent).toBeNull()
     expect(third.parent).toBe(root)
@@ -134,12 +194,12 @@ describe("RuntimeNodeManager", () => {
     manager.replaceChildren(group, [field])
     manager.removeSubtree(group)
 
-    expect(root.childNodes).toEqual([])
+    expect(root.childNodes.value).toEqual([])
     expect(manager.getNode(group.id)).toBeUndefined()
     expect(manager.getNode(field.id)).toBeUndefined()
     expect(group.parent).toBeNull()
     expect(field.parent).toBeNull()
-    expect(group.scope.disposed).toBe(true)
-    expect(field.scope.disposed).toBe(true)
+    expect(group.dispose.disposed).toBe(true)
+    expect(field.dispose.disposed).toBe(true)
   })
 })

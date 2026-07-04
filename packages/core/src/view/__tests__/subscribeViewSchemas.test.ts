@@ -4,7 +4,6 @@ import createForm from "../../createForm"
 import { createRuntimeResources } from "../../node/resources"
 import { createRootRuntimeNode } from "../../node/runtimeNode"
 import { createScope } from "../../node/scope"
-import { createSignal } from "../../reactivity"
 import { createRootRuntimeViewState } from "../createViewState"
 import { subscribeViewSchemas } from "../subscribeViewSchemas"
 
@@ -15,16 +14,13 @@ import type { SchemxViewSchema } from "../types"
 function createRootWithViewState(): {
   root: RootRuntimeNode
   resources: RuntimeNodeResourceContext
-  children: ReturnType<typeof createSignal<readonly DescribedRuntimeNode[]>>
 } {
-  const root = createRootRuntimeNode({ scope: createScope() })
+  const root = createRootRuntimeNode({ dispose: createScope() })
   const resources = createRuntimeResources()
-  const children = createSignal<readonly DescribedRuntimeNode[]>([])
 
-  resources.childrenStates.set(root.id, { children })
   createRootRuntimeViewState(root, resources)
 
-  return { root, resources, children }
+  return { root, resources }
 }
 
 describe("subscribeViewSchemas", () => {
@@ -110,14 +106,14 @@ describe("subscribeViewSchemas", () => {
 
   it("取消订阅后不再回调", async () => {
     vi.useFakeTimers()
-    const { root, resources, children } = createRootWithViewState()
+    const { root, resources } = createRootWithViewState()
     const onChange = vi.fn()
 
     const unsubscribe = subscribeViewSchemas(root, resources, onChange)
     const callCountAfterFirst = onChange.mock.calls.length
 
     unsubscribe()
-    children.value = [...children.value]
+    root.childNodes.value = [...root.childNodes.value]
     vi.advanceTimersByTime(20)
 
     expect(onChange).toHaveBeenCalledTimes(callCountAfterFirst)
