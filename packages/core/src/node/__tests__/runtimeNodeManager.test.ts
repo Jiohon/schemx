@@ -10,6 +10,7 @@ import { createRuntimeNodeManager } from "../runtimeNodeManager"
 import type { SchemxContext } from "../../schemxContext"
 import type { Values } from "../../types"
 import type { RuntimeNodeManager } from "../types"
+import type { DependencyDescriptor, FieldDescriptor } from "../../descriptor"
 
 function createRuntimeContext<TValues extends Values = Values>(): SchemxContext<TValues> {
   const nodeResources = createRuntimeResources<TValues>()
@@ -54,6 +55,56 @@ describe("RuntimeNodeManager", () => {
 
     expect(manager.resources).toBe(context.nodeResources)
     expect(manager.nodes).toBe(context.nodeResources.nodes)
+  })
+
+  it("nodeResources 应该提供字段和 dependency 索引边界", () => {
+    const context = createRuntimeContext()
+    const manager = createRuntimeNodeManager(context)
+    const root = manager.createRoot()
+    const field = manager.createNode({ type: "field", key: "field:name" })
+    const dependency = manager.createNode({
+      type: "dependency",
+      key: "dependency:location",
+    })
+    const fieldDescriptor: FieldDescriptor = {
+      type: "field",
+      key: field.key,
+      name: "user.name",
+      componentType: "input",
+      staticSchema: {
+        name: "user.name",
+        componentType: "input",
+      },
+    }
+    const dependencyDescriptor: DependencyDescriptor = {
+      type: "dependency",
+      key: dependency.key,
+      triggerFields: ["country", "city"],
+      renderer: () => [],
+    }
+
+    manager.replaceChildren(root, [field, dependency])
+    context.nodeResources.descriptors.set(field.id, fieldDescriptor)
+    context.nodeResources.descriptors.set(dependency.id, dependencyDescriptor)
+
+    context.nodeResources.fieldIndex.register(field)
+    context.nodeResources.dependencyIndex.register(dependency)
+
+    expect(context.nodeResources.fieldIndex.getByName("user.name" as any)).toBe(field)
+    expect(context.nodeResources.fieldIndex.getByPath("user.name" as any)).toBe(field)
+    expect(context.nodeResources.dependencyIndex.getByTriggerField("country" as any)).toEqual([
+      dependency,
+    ])
+    expect(context.nodeResources.dependencyIndex.getTriggerFields(dependency)).toEqual([
+      "country",
+      "city",
+    ])
+
+    context.nodeResources.fieldIndex.unregister(field)
+    context.nodeResources.dependencyIndex.unregister(dependency)
+
+    expect(context.nodeResources.fieldIndex.getByName("user.name" as any)).toBeUndefined()
+    expect(context.nodeResources.dependencyIndex.getByTriggerField("country" as any)).toEqual([])
   })
 
   it("应该只暴露 runtime tree 结构操作", () => {

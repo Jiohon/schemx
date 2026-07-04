@@ -163,6 +163,7 @@ export function createRuntimeLifecycle<TValues extends Values = Values>(
     resources.fieldStates.set(node.id, runtimeState)
     createRuntimeViewState(node, descriptor, resources)
     context.fieldRegistry.register({ name: descriptor.name, node })
+    resources.fieldIndex.register(node)
     recreateFieldEffectScopes(node, descriptor, runtimeState)
   }
 
@@ -181,11 +182,13 @@ export function createRuntimeLifecycle<TValues extends Values = Values>(
 
     if (previousDescriptor && previousDescriptor.name !== descriptor.name) {
       context.fieldRegistry.unregister(previousDescriptor.name, node)
+      resources.fieldIndex.unregister(node)
     }
 
     setFieldStaticSchema(runtimeState, descriptor)
     updateRuntimeViewState(node, descriptor, resources)
     context.fieldRegistry.register({ name: descriptor.name, node })
+    resources.fieldIndex.register(node)
     recreateFieldEffectScopes(node, descriptor, runtimeState)
   }
 
@@ -240,6 +243,7 @@ export function createRuntimeLifecycle<TValues extends Values = Values>(
     descriptor: DependencyDescriptor<TValues>
   ): void {
     createRuntimeViewState(node, descriptor, resources)
+    resources.dependencyIndex.register(node)
     createDependencyEffect({
       context,
       node,
@@ -263,6 +267,8 @@ export function createRuntimeLifecycle<TValues extends Values = Values>(
       return
     }
 
+    resources.dependencyIndex.unregister(node)
+    resources.dependencyIndex.register(node)
     resources.dependencyResourceScopes.get(node.id)?.dispose()
     createDependencyEffect({
       context,
@@ -279,9 +285,11 @@ export function createRuntimeLifecycle<TValues extends Values = Values>(
 
     if (node.type === "field" && descriptor?.type === "field") {
       context.fieldRegistry.unregister(descriptor.name, node)
+      resources.fieldIndex.unregister(node)
       resources.fieldResourceScopes.get(node.id)?.dispose()
       resources.fieldDynamicPropScopes.get(node.id)?.dispose()
     } else if (node.type === "dependency") {
+      resources.dependencyIndex.unregister(node)
       resources.dependencyResourceScopes.get(node.id)?.dispose()
     }
   }

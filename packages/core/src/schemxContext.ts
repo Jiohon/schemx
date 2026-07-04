@@ -60,7 +60,7 @@ export interface SchemxContext<TValues extends Values = Values> {
    */
   readonly fieldRegistry: FieldRegistry<TValues>
   /**
-   * RuntimeNode 之外的领域资源注册表。
+   * RuntimeNode 之外的领域资源注册表与跨节点查询索引。
    */
   readonly nodeResources: RuntimeNodeResourceContext<TValues>
   /**
