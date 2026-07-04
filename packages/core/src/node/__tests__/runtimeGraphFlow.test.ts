@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 
 import { createCompile } from "../../compiler"
-import { withSchemxContext } from "../../schemxContext"
 import { createRawFieldSchema, createRuntimeGraphHarness } from "./runtimeGraphTestUtils"
 
 import type { RuntimeNode } from "../types"
@@ -15,13 +14,13 @@ describe("runtime node flow", () => {
       createRawFieldSchema("age", "age"),
     ])
 
-    const name = root.childNodes[0]
-    const age = root.childNodes[1]
+    const name = root.childNodes.value[0]
+    const age = root.childNodes.value[1]
 
     commitSchemas(root, [createRawFieldSchema("name", "name")])
 
-    expect(root.childNodes).toHaveLength(1)
-    expect(root.childNodes[0]).toBe(name)
+    expect(root.childNodes.value).toHaveLength(1)
+    expect(root.childNodes.value[0]).toBe(name)
     expect(age?.disposed.value).toBe(true)
     expect(age?.parent).toBeNull()
   })
@@ -30,7 +29,7 @@ describe("runtime node flow", () => {
     const { commitSchemas, root } = createRuntimeGraphHarness()
 
     commitSchemas(root, [createRawFieldSchema("slot", "slot")])
-    const first = root.childNodes[0]
+    const first = root.childNodes.value[0]
 
     commitSchemas(root, [
       {
@@ -41,10 +40,11 @@ describe("runtime node flow", () => {
       },
     ])
 
-    expect(root.childNodes[0]).not.toBe(first)
-    expect(root.childNodes[0]?.type).toBe("group")
+    expect(root.childNodes.value[0]).not.toBe(first)
+    expect(root.childNodes.value[0]?.type).toBe("group")
     expect(
-      root.childNodes[0]?.type === "group" && root.childNodes[0].childNodes[0]?.key
+      root.childNodes.value[0]?.type === "group" &&
+        root.childNodes.value[0].childNodes.value[0]?.key
     ).toBe("child")
     expect(first?.disposed.value).toBe(true)
   })
@@ -66,13 +66,13 @@ describe("runtime node flow", () => {
       },
     ])
 
-    expect(root.childNodes).toHaveLength(1)
+    expect(root.childNodes.value).toHaveLength(1)
   })
 
   it("removed-node cleanup 观察到的是已经提交的新 parent.children", () => {
     let rootRef: RuntimeNode | undefined
     const beforeUnmount = vi.fn(() => {
-      expect(rootRef?.childNodes.map((child) => child.key)).toEqual(["next"])
+      expect(rootRef?.childNodes.value.map((child) => child.key)).toEqual(["next"])
     })
     const { commitSchemas, root } = createRuntimeGraphHarness({ beforeUnmount })
     rootRef = root
@@ -84,13 +84,13 @@ describe("runtime node flow", () => {
   })
 
   it("reconciler 只读取 parent.children，不接受外部 previous 结构", () => {
-    const { context, reconciler, root } = createRuntimeGraphHarness()
-    const descriptors = createCompile().toDescriptors([createRawFieldSchema("field", "field")])
+    const { reconciler, root } = createRuntimeGraphHarness()
+    const descriptors = createCompile().toDescriptors([
+      createRawFieldSchema("field", "field"),
+    ])
 
-    withSchemxContext(context, () => {
-      reconciler.reconcileChildren(root, descriptors)
-    })
+    reconciler.reconcileChildren(root, descriptors)
 
-    expect(root.childNodes[0]?.key).toBe("field")
+    expect(root.childNodes.value[0]?.key).toBe("field")
   })
 })

@@ -73,6 +73,7 @@ docs/*
 !docs/runtime-refactor-execution-plan.md
 !docs/runtime-refactor-migration-guide.md
 unpackage/
+.packs
 
 # Compiled binary addons
 build/Release

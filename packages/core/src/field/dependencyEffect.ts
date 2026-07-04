@@ -11,16 +11,14 @@ import { type DependencyDescriptor, isDependencyDescriptor } from "../descriptor
 import { createSignal, createSignalEffect } from "../reactivity"
 import { createAbortableTaskRunner } from "../scheduler/abortableTaskRunner"
 
-import type { DependencyRuntimeNode, RuntimeNodeResourceContext, Scope } from "../node"
+import type {
+  DependencyRuntimeNode,
+  RuntimeDispose,
+} from "../node"
 import type { Signal } from "../reactivity"
 import type { Scheduler } from "../scheduler"
 import type { SchemxContext } from "../schemxContext"
 import type { NamePath, SchemxField, SchemxFormApi, Values } from "../types"
-
-const dependencyNodeResources = new WeakMap<
-  DependencyRuntimeNode,
-  RuntimeNodeResourceContext<any>
->()
 
 /**
  * 检查 DependencyRuntimeNode 是否有 DependencyEffectState。
@@ -41,7 +39,7 @@ export function hasDependencyEffect(node: DependencyRuntimeNode): boolean {
 export function getDependencyEffect(
   node: DependencyRuntimeNode
 ): DependencyEffectState | undefined {
-  return dependencyNodeResources.get(node)?.dependencyEffects.get(node.id)
+  return node.effectState ?? undefined
 }
 
 /**
@@ -90,7 +88,7 @@ export interface CreateDependencyEffectOptions<TValues extends Values = Values> 
   /**
    * 关联的 scope，默认创建 node 的子 scope。
    */
-  scope?: Scope
+  scope?: RuntimeDispose
 }
 
 /**
@@ -109,15 +107,11 @@ export function createDependencyEffect<TValues extends Values = Values>(
 
   const { formApi, scheduler, compile, commitChildren } = context
 
-  const resourceScope = options.scope ?? node.scope.child()
+  const resourceScope = options.scope ?? node.dispose.child()
 
   let compileCacheVersion = compile.getCacheVersion()
 
-  const resources = context.nodeResources
-
-  dependencyNodeResources.set(node, resources)
-
-  resources.dependencyEffects.get(node.id)?.dispose()
+  node.effectState?.dispose()
 
   const effectState: DependencyEffectState = {
     loading: createSignal(false),
@@ -128,13 +122,14 @@ export function createDependencyEffect<TValues extends Values = Values>(
     dispose: (): void => undefined,
   }
 
-  resources.dependencyResourceScopes.set(node.id, resourceScope)
+  node.effectState = effectState
+  node.dependencyDispose = resourceScope
 
   const taskRunner = createAbortableTaskRunner<SchemxField<TValues>[]>({
     scope: resourceScope,
     scheduler,
     run: async (signal) => {
-      const currentDescriptor = resources.descriptors.get(node.id)
+      const currentDescriptor = node.descriptor ?? undefined
 
       if (!currentDescriptor || !isDependencyDescriptor(currentDescriptor)) {
         return []
@@ -170,7 +165,7 @@ export function createDependencyEffect<TValues extends Values = Values>(
   effectState.run = async (): Promise<void> => {
     if (resourceScope.disposed) return
 
-    const currentDescriptor = resources.descriptors.get(node.id)
+    const currentDescriptor = node.descriptor ?? undefined
 
     if (!currentDescriptor || !isDependencyDescriptor(currentDescriptor)) {
       return
@@ -189,12 +184,12 @@ export function createDependencyEffect<TValues extends Values = Values>(
     effectState.abortController.value?.abort()
     effectState.abortController.value = null
 
-    if (resources.dependencyEffects.get(node.id) === effectState) {
-      resources.dependencyEffects.delete(node.id)
+    if (node.effectState === effectState) {
+      node.effectState = null
     }
 
-    if (resources.dependencyResourceScopes.get(node.id) === resourceScope) {
-      resources.dependencyResourceScopes.delete(node.id)
+    if (node.dependencyDispose === resourceScope) {
+      node.dependencyDispose = null
     }
   })
 
@@ -206,8 +201,6 @@ export function createDependencyEffect<TValues extends Values = Values>(
     scheduler,
     `dependency:${node.id}:trigger`
   )
-
-  resources.dependencyEffects.set(node.id, effectState)
 
   void effectState.run().catch((runError) => {
     console.error("DependencyEffectState initial run error:", runError)
@@ -226,7 +219,7 @@ function setupTriggerSubscription<
   triggers: readonly TName[],
   formApi: SchemxFormApi<TValues>,
   run: () => Promise<void>,
-  scope: Scope,
+  scope: RuntimeDispose,
   scheduler: Scheduler,
   taskId: string
 ): void {

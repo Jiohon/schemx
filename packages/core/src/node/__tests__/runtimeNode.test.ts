@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest"
 
-import { getChildRuntimeNodes, setChildRuntimeNodes } from "../runtimeNode"
 
-import { createTestFieldRuntimeNode, createTestRootRuntimeNode } from "./runtimeNodeTestUtils"
+import {
+  createTestDependencyRuntimeNode,
+  createTestFieldRuntimeNode,
+  createTestRootRuntimeNode,
+} from "./runtimeNodeTestUtils"
 
-import type { FieldDescriptor } from "../../descriptor"
+import type { DependencyDescriptor, FieldDescriptor } from "../../descriptor"
 
 function createFieldDescriptor(key: string): FieldDescriptor {
   return {
@@ -25,6 +28,15 @@ function createFieldDescriptor(key: string): FieldDescriptor {
   }
 }
 
+function createDependencyDescriptor(key: string): DependencyDescriptor {
+  return {
+    type: "dependency",
+    key,
+    triggerFields: [key],
+    renderer: () => [],
+  }
+}
+
 describe("node child helpers", () => {
   it("应该读写 root.childNodes", () => {
     const root = createTestRootRuntimeNode()
@@ -34,13 +46,13 @@ describe("node child helpers", () => {
       descriptor: createFieldDescriptor("name"),
     })
 
-    setChildRuntimeNodes(root, [field])
+    root.childNodes.value = [field]
 
-    expect(root.childNodes).toEqual([field])
-    expect(getChildRuntimeNodes(root)).toEqual([field])
+    expect(root.childNodes.value).toEqual([field])
+    expect(root.childNodes.value).toEqual([field])
   })
 
-  it("RuntimeNode 只保留结构字段，不直接挂载领域资源", () => {
+  it("described RuntimeNode 创建时 descriptor 为空", () => {
     const root = createTestRootRuntimeNode()
     const field = createTestFieldRuntimeNode({
       key: "name",
@@ -48,10 +60,29 @@ describe("node child helpers", () => {
       descriptor: createFieldDescriptor("name"),
     })
 
-    expect(field).not.toHaveProperty("descriptor")
-    expect(field).not.toHaveProperty("runtimeState")
-    expect(field).not.toHaveProperty("viewState")
+    expect(field.descriptor).toBeNull()
+    expect(field.descriptor ?? undefined).toBeUndefined()
+    expect(() => {
+      if (!field.descriptor) throw new Error('[schemx] descriptor is required for node "name"')
+    }).toThrow(
+      '[schemx] descriptor is required for node "name"'
+    )
+    expect(field.fieldState).toBeNull()
+    expect(field.viewState).toBeNull()
+    expect(field.effectDispose).toBeNull()
     expect(field).not.toHaveProperty("fieldResourceScope")
     expect(field).not.toHaveProperty("fieldDependenciesScope")
+  })
+
+  it("DependencyRuntimeNode 创建时 dependency effect 为空", () => {
+    const root = createTestRootRuntimeNode()
+    const dependency = createTestDependencyRuntimeNode({
+      key: "mode",
+      parent: root,
+      descriptor: createDependencyDescriptor("mode"),
+    })
+
+    expect(dependency.effectState).toBeNull()
+    expect(dependency.dependencyDispose).toBeNull()
   })
 })

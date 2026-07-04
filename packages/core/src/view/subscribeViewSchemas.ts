@@ -10,8 +10,8 @@ import { createDebouncedSignalEffect } from "../reactivity"
 
 import type { RootRuntimeNode, RuntimeNodeResourceContext } from "../node"
 import type { Values } from "../types"
+import type { RootViewState, RuntimeViewState } from "./createViewState"
 import type { SchemxViewSchema } from "./types"
-import type { RootViewState, RuntimeViewState } from "./viewGraph"
 
 /**
  * 订阅 ViewSchemas 变化。
@@ -22,12 +22,12 @@ import type { RootViewState, RuntimeViewState } from "./viewGraph"
  */
 export function subscribeViewSchemas<TValues extends Values = Values>(
   root: RootRuntimeNode<TValues>,
-  resources: RuntimeNodeResourceContext<TValues>,
+  _resources: RuntimeNodeResourceContext<TValues>,
   onChange: (schemas: readonly SchemxViewSchema<TValues>[]) => void
 ): () => void {
   let rootDisposed = false
 
-  const rootScope = root.scope
+  const rootScope = root.dispose
   const disposeHandle = rootScope.add(() => {
     rootDisposed = true
   })
@@ -38,7 +38,11 @@ export function subscribeViewSchemas<TValues extends Values = Values>(
         return []
       }
 
-      const rootViewState = resources.viewStates.get(root.id)
+      const rootViewState = (
+        root as RootRuntimeNode<TValues> & {
+          readonly viewState?: RootViewState<TValues> | null
+        }
+      ).viewState
 
       return isRootViewState(rootViewState) ? rootViewState.viewSchemas.value : []
     },
@@ -63,7 +67,7 @@ export function subscribeViewSchemas<TValues extends Values = Values>(
 }
 
 function isRootViewState<TValues extends Values>(
-  viewState: RuntimeViewState<TValues> | undefined
+  viewState: RuntimeViewState<TValues> | null | undefined
 ): viewState is RootViewState<TValues> {
   return viewState != null && "viewSchemas" in viewState
 }

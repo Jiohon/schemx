@@ -49,5 +49,5 @@ export function isContainerRuntimeNode<TValues extends Values>(
 export function getRuntimeNodeChildren<TValues extends Values>(
   node: RuntimeNode<TValues>
 ): readonly DescribedRuntimeNode<TValues>[] {
-  return isContainerRuntimeNode(node) ? node.childNodes : []
+  return isContainerRuntimeNode(node) ? node.childNodes.value : []
 }

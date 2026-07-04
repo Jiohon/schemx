@@ -2,31 +2,40 @@ import type { FormDescriptor } from "../descriptor"
 import type { DependencyEffectState } from "../field/dependencyEffect"
 import type { FieldRuntimeState } from "../field/runtimeState"
 import type { Signal } from "../reactivity"
-import type { Values } from "../types"
-import type { RuntimeViewState } from "../view/viewGraph"
+import type { NamePath, Values } from "../types"
+import type {
+  DependencyViewState,
+  FieldNodeViewState,
+  GroupViewState,
+  RootViewState,
+} from "../view/createViewState"
 
 /**
- * Scope 执行的清理函数。
+ * RuntimeDispose 执行的清理函数。
  */
-export type ScopeCleanup = () => void
+export type RuntimeCleanup = () => void
 
 /**
  * cleanup 注册后的释放句柄。
  */
-export interface ScopeCleanupHandle {
+export interface RuntimeCleanupHandle {
   readonly disposed: boolean
   dispose(): void
 }
 
 /**
- * 资源生命周期作用域。
+ * Runtime 资源生命周期边界。
  */
-export interface Scope {
+export interface RuntimeDispose {
   readonly disposed: boolean
-  add(cleanup: ScopeCleanup): ScopeCleanupHandle
-  child(): Scope
+  add(cleanup: RuntimeCleanup): RuntimeCleanupHandle
+  child(): RuntimeDispose
   dispose(): void
 }
+
+export type ScopeCleanup = RuntimeCleanup
+export type ScopeCleanupHandle = RuntimeCleanupHandle
+export type Scope = RuntimeDispose
 
 export interface ScopeCleanupRecord {
   cleanup: ScopeCleanup
@@ -71,10 +80,10 @@ interface BaseRuntimeNode<TValues extends Values = Values> {
 
   /**
    * RuntimeNode 自身的完整生命周期边界。
-   *
-   * 当 node 被 reconcile 移除时，应 dispose 当前 scope。
+   * RuntimeNode 自身的完整生命周期 dispose。
+   * 当 node 被 reconcile 移除时调用 dispose()。
    */
-  scope: Scope
+  dispose: RuntimeDispose
 
   /**
    * 领域资源是否已经完成挂载。
@@ -102,14 +111,15 @@ export interface RootRuntimeNode<
   /**
    * 顶层 runtime 子节点。
    */
-  childNodes: DescribedRuntimeNode<TValues>[]
+  childNodes: Signal<readonly DescribedRuntimeNode<TValues>[]>
+
+  viewState: RootViewState<TValues> | null
 }
 
 /**
  * FieldRuntimeNode - 字段节点。
  *
- * Field 不承载结构子节点。
- * 字段 descriptor、runtimeState、viewState、校验资源等都由 RuntimeNodeResources 承载。
+ * Field 不承载结构子节点，当前 descriptor 直接挂在 node 上。
  */
 export interface FieldRuntimeNode<
   TValues extends Values = Values,
@@ -117,6 +127,14 @@ export interface FieldRuntimeNode<
   readonly type: "field"
 
   parent: ContainerRuntimeNode<TValues> | null
+
+  descriptor: FormDescriptor<TValues> | null
+
+  fieldState: FieldRuntimeState<TValues> | null
+
+  viewState: FieldNodeViewState<TValues> | null
+
+  effectDispose: RuntimeDispose | null
 }
 
 /**
@@ -131,10 +149,14 @@ export interface GroupRuntimeNode<
 
   parent: ContainerRuntimeNode<TValues> | null
 
+  descriptor: FormDescriptor<TValues> | null
+
+  viewState: GroupViewState<TValues> | null
+
   /**
    * 静态 schema children 编译后的 runtime 子节点。
    */
-  childNodes: DescribedRuntimeNode<TValues>[]
+  childNodes: Signal<readonly DescribedRuntimeNode<TValues>[]>
 }
 
 /**
@@ -149,10 +171,18 @@ export interface DependencyRuntimeNode<
 
   parent: ContainerRuntimeNode<TValues> | null
 
+  descriptor: FormDescriptor<TValues> | null
+
+  viewState: DependencyViewState<TValues> | null
+
+  effectState: DependencyEffectState | null
+
+  dependencyDispose: RuntimeDispose | null
+
   /**
    * dependency renderer 产出的动态 runtime 子节点。
    */
-  childNodes: DescribedRuntimeNode<TValues>[]
+  childNodes: Signal<readonly DescribedRuntimeNode<TValues>[]>
 }
 
 /**
@@ -168,17 +198,13 @@ export type RuntimeNode<TValues extends Values = Values> =
  * 除 root 外，所有带 descriptor 的 RuntimeNode。
  */
 export type DescribedRuntimeNode<TValues extends Values = Values> =
-  | FieldRuntimeNode<TValues>
-  | GroupRuntimeNode<TValues>
-  | DependencyRuntimeNode<TValues>
+  FieldRuntimeNode<TValues> | GroupRuntimeNode<TValues> | DependencyRuntimeNode<TValues>
 
 /**
  * 可以承载子节点的 RuntimeNode。
  */
 export type ContainerRuntimeNode<TValues extends Values = Values> =
-  | RootRuntimeNode<TValues>
-  | GroupRuntimeNode<TValues>
-  | DependencyRuntimeNode<TValues>
+  RootRuntimeNode<TValues> | GroupRuntimeNode<TValues> | DependencyRuntimeNode<TValues>
 
 /**
  * 容器 children 响应式状态。
@@ -187,19 +213,27 @@ export interface RuntimeChildrenState<TValues extends Values = Values> {
   readonly children: Signal<readonly DescribedRuntimeNode<TValues>[]>
 }
 
+export interface RuntimeFieldIndex<TValues extends Values = Values> {
+  register(node: FieldRuntimeNode<TValues>): void
+  unregister(node: FieldRuntimeNode<TValues>): void
+  getByName(name: NamePath<TValues>): FieldRuntimeNode<TValues> | undefined
+  getByPath(path: NamePath<TValues>): FieldRuntimeNode<TValues> | undefined
+}
+
+export interface RuntimeDependencyIndex<TValues extends Values = Values> {
+  register(node: DependencyRuntimeNode<TValues>): void
+  unregister(node: DependencyRuntimeNode<TValues>): void
+  getByTriggerField(name: NamePath<TValues>): readonly DependencyRuntimeNode<TValues>[]
+  getTriggerFields(node: DependencyRuntimeNode<TValues>): readonly NamePath<TValues>[]
+}
+
 /**
  * RuntimeNode 之外的领域资源注册表。
  */
 export interface RuntimeNodeResourceContext<TValues extends Values = Values> {
   readonly nodes: Map<RuntimeNodeId, RuntimeNode<TValues>>
-  readonly descriptors: Map<RuntimeNodeId, FormDescriptor<TValues>>
-  readonly fieldStates: Map<RuntimeNodeId, FieldRuntimeState<TValues>>
-  readonly viewStates: Map<RuntimeNodeId, RuntimeViewState<TValues>>
-  readonly childrenStates: Map<RuntimeNodeId, RuntimeChildrenState<TValues>>
-  readonly dependencyEffects: Map<RuntimeNodeId, DependencyEffectState>
-  readonly fieldResourceScopes: Map<RuntimeNodeId, Scope>
-  readonly fieldDynamicPropScopes: Map<RuntimeNodeId, Scope>
-  readonly dependencyResourceScopes: Map<RuntimeNodeId, Scope>
+  readonly fieldIndex: RuntimeFieldIndex<TValues>
+  readonly dependencyIndex: RuntimeDependencyIndex<TValues>
 }
 
 export type RuntimeNodeResourceMaps<TValues extends Values = Values> = {
@@ -207,34 +241,34 @@ export type RuntimeNodeResourceMaps<TValues extends Values = Values> = {
 }
 
 export interface CreateRootRuntimeNodeOptions {
-  scope: Scope
+  dispose: RuntimeDispose
 }
 
 export interface CreateFieldRuntimeNodeOptions<TValues extends Values = Values> {
   id: RuntimeNodeId
   key: string
   parent?: ContainerRuntimeNode<TValues> | null
-  scope?: Scope
+  dispose?: RuntimeDispose
 }
 
 export interface CreateGroupRuntimeNodeOptions<TValues extends Values = Values> {
   id: RuntimeNodeId
   key: string
   parent?: ContainerRuntimeNode<TValues> | null
-  scope?: Scope
+  dispose?: RuntimeDispose
 }
 
 export interface CreateDependencyRuntimeNodeOptions<TValues extends Values = Values> {
   id: RuntimeNodeId
   key: string
   parent?: ContainerRuntimeNode<TValues> | null
-  scope?: Scope
+  dispose?: RuntimeDispose
 }
 
 export interface CreateRuntimeNodeOptions {
   type: Exclude<RuntimeNodeType, "root">
   key: string
-  scope?: Scope
+  dispose?: RuntimeDispose
 }
 
 export interface CreateRuntimeNodeManagerOptions<TValues extends Values = Values> {

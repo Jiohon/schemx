@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest"
 
-import { createFieldRuntimeState } from "../../field"
-import { createSignal } from "../../reactivity"
+import { createFieldRuntimeState, setFieldDynamicOverrides } from "../../field"
 import { createRuntimeResources } from "../../node/resources"
 import {
+  createDependencyRuntimeNode,
   createFieldRuntimeNode,
   createGroupRuntimeNode,
   createRootRuntimeNode,
@@ -13,23 +13,24 @@ import {
   createRuntimeViewState,
   createRootRuntimeViewState,
   deleteRuntimeViewState,
+  readRootViewSchemas,
 } from "../createViewState"
 
-import type { FieldDescriptor, GroupDescriptor } from "../../descriptor"
+import type {
+  DependencyDescriptor,
+  FieldDescriptor,
+  GroupDescriptor,
+} from "../../descriptor"
 
 describe("createViewState", () => {
   it("为 root 创建并注册 root viewState", () => {
     const resources = createRuntimeResources()
-    const root = createRootRuntimeNode({ scope: createScope() })
-
-    resources.childrenStates.set(root.id, {
-      children: createSignal([]),
-    })
+    const root = createRootRuntimeNode({ dispose: createScope() })
 
     const state = createRootRuntimeViewState(root, resources)
 
-    expect(resources.viewStates.get(root.id)).toBe(state)
-    expect(state.viewSchemas.value).toEqual([])
+    expect(root.viewState).toBe(state)
+    expect(readRootViewSchemas(state)).toEqual([])
   })
 
   it("为 field 创建并注册 field viewState", () => {
@@ -37,31 +38,55 @@ describe("createViewState", () => {
     const node = createFieldRuntimeNode({
       id: 1,
       key: "field:name",
-      scope: createScope(),
+      dispose: createScope(),
     })
-    const descriptor = {
-      type: "field",
+    const descriptor = createFieldDescriptor()
+
+    node.fieldState = createFieldRuntimeState({
+      nodeId: node.id,
+      key: node.key,
+      descriptor,
+    })
+
+    const state = createRuntimeViewState(node, descriptor, resources)
+
+    expect(node.viewState).toBe(state)
+    expect(node.viewState?.view.value?.key).toBe("field:name")
+  })
+
+  it("field viewState 跟随 fieldState.viewSchema computed 更新", () => {
+    const resources = createRuntimeResources()
+    const node = createFieldRuntimeNode({
+      id: 1,
       key: "field:name",
-      name: "name",
-      componentType: "input",
+      dispose: createScope(),
+    })
+    const descriptor = createFieldDescriptor({
       staticSchema: {
         name: "name",
         componentType: "input",
         label: "姓名",
+        visible: true,
       },
-    } as FieldDescriptor
+    })
     const runtimeState = createFieldRuntimeState({
       nodeId: node.id,
       key: node.key,
       descriptor,
     })
 
-    resources.fieldStates.set(node.id, runtimeState)
+    node.fieldState = runtimeState
+    createRuntimeViewState(node, descriptor, resources)
 
-    const state = createRuntimeViewState(node, descriptor, resources)
+    expect(node.viewState?.view.value?.visible).toBe(true)
 
-    expect(resources.viewStates.get(node.id)).toBe(state)
-    expect("view" in state ? state.view.value?.key : undefined).toBe("field:name")
+    setFieldDynamicOverrides(
+      runtimeState,
+      { visible: false },
+      { source: "dependencies", triggerFields: ["name" as never] }
+    )
+
+    expect(node.viewState?.view.value?.visible).toBe(false)
   })
 
   it("为 group 创建并注册 group viewState", () => {
@@ -69,26 +94,57 @@ describe("createViewState", () => {
     const node = createGroupRuntimeNode({
       id: 1,
       key: "group:0",
-      scope: createScope(),
+      dispose: createScope(),
     })
-    const descriptor = {
-      type: "group",
-      key: "group:0",
-      staticSchema: {
-        componentType: "group",
-        label: "分组",
-      },
-      children: [],
-    } as GroupDescriptor
-
-    resources.childrenStates.set(node.id, {
-      children: createSignal([]),
-    })
+    const descriptor = createGroupDescriptor()
 
     const state = createRuntimeViewState(node, descriptor, resources)
 
-    expect(resources.viewStates.get(node.id)).toBe(state)
-    expect("view" in state ? state.view.value?.key : undefined).toBe("group:0")
+    expect(node.viewState).toBe(state)
+    expect(node.viewState?.view.value?.key).toBe("group:0")
+  })
+
+  it("group 和 dependency viewState 透明组合 children viewSchemas", () => {
+    const resources = createRuntimeResources()
+    const root = createRootRuntimeNode({ dispose: createScope() })
+    const group = createGroupRuntimeNode({
+      id: 1,
+      key: "group:0",
+      dispose: createScope(),
+    })
+    const dependency = createDependencyRuntimeNode({
+      id: 2,
+      key: "dependency:0",
+      dispose: createScope(),
+    })
+    const field = createFieldRuntimeNode({
+      id: 3,
+      key: "field:name",
+      dispose: createScope(),
+    })
+    const fieldDescriptor = createFieldDescriptor()
+
+    createRootRuntimeViewState(root, resources)
+    createRuntimeViewState(group, createGroupDescriptor(), resources)
+    createRuntimeViewState(dependency, createDependencyDescriptor(), resources)
+
+    field.fieldState = createFieldRuntimeState({
+      nodeId: field.id,
+      key: field.key,
+      descriptor: fieldDescriptor,
+    })
+    createRuntimeViewState(field, fieldDescriptor, resources)
+
+    dependency.childNodes.value = [field]
+    group.childNodes.value = [dependency]
+    root.childNodes.value = [group]
+
+    expect(readRootViewSchemas(root.viewState!)).toMatchObject([
+      {
+        key: "group:0",
+        children: [{ key: "field:name" }],
+      },
+    ])
   })
 
   it("删除节点 viewState", () => {
@@ -96,13 +152,51 @@ describe("createViewState", () => {
     const node = createFieldRuntimeNode({
       id: 1,
       key: "field:name",
-      scope: createScope(),
+      dispose: createScope(),
     })
 
-    resources.viewStates.set(node.id, {} as never)
+    node.viewState = {} as never
 
     deleteRuntimeViewState(node, resources)
 
-    expect(resources.viewStates.has(node.id)).toBe(false)
+    expect(node.viewState).toBeNull()
   })
 })
+
+function createFieldDescriptor(
+  overrides: Partial<FieldDescriptor> = {}
+): FieldDescriptor {
+  return {
+    type: "field",
+    key: "field:name",
+    name: "name",
+    componentType: "input",
+    staticSchema: {
+      name: "name",
+      componentType: "input",
+      label: "姓名",
+    },
+    ...overrides,
+  } as FieldDescriptor
+}
+
+function createGroupDescriptor(): GroupDescriptor {
+  return {
+    type: "group",
+    key: "group:0",
+    staticSchema: {
+      componentType: "group",
+      label: "分组",
+    },
+    children: [],
+  } as GroupDescriptor
+}
+
+function createDependencyDescriptor(): DependencyDescriptor {
+  return {
+    type: "dependency",
+    key: "dependency:0",
+    triggerFields: ["type"],
+    renderer: () => [],
+  } as unknown as DependencyDescriptor
+}

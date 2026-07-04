@@ -1,8 +1,23 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { createScope } from "../scope"
+import { createRuntimeDispose, createScope } from "../scope"
 
 describe("Scope", () => {
+  it("createRuntimeDispose 创建 RuntimeDispose 生命周期边界", () => {
+    const dispose = createRuntimeDispose()
+    const childDispose = dispose.child()
+    const calls: string[] = []
+
+    dispose.add(() => calls.push("parent"))
+    childDispose.add(() => calls.push("child"))
+
+    dispose.dispose()
+
+    expect(calls).toEqual(["child", "parent"])
+    expect(dispose.disposed).toBe(true)
+    expect(childDispose.disposed).toBe(true)
+  })
+
   it("add 返回的 handle 可以提前执行并避免 scope 重复清理", () => {
     const scope = createScope()
     const cleanup = vi.fn()

@@ -263,7 +263,11 @@ describe("字段规则注册上下文 单元测试", () => {
       type: "field",
       key: "field:name",
     })
-    expect(mount.mock.calls[0][0]).not.toHaveProperty("descriptor")
+    expect(mount.mock.calls[0][0].descriptor ?? undefined).toMatchObject({
+      type: "field",
+      key: "field:name",
+      name: "name",
+    })
 
     form.destroy()
   })

@@ -1,8 +1,12 @@
 import type {
+  DependencyRuntimeNode,
+  FieldRuntimeNode,
+  RuntimeDependencyIndex,
+  RuntimeFieldIndex,
   RuntimeNodeId,
   RuntimeNodeResourceContext,
 } from "./types"
-import type { Values } from "../types"
+import type { NamePath, Values } from "../types"
 
 /**
  * 创建 RuntimeNode 之外的领域资源注册表。
@@ -15,14 +19,8 @@ export function createRuntimeResources<
 >(): RuntimeNodeResourceContext<TValues> {
   return {
     nodes: new Map(),
-    descriptors: new Map(),
-    fieldStates: new Map(),
-    viewStates: new Map(),
-    childrenStates: new Map(),
-    dependencyEffects: new Map(),
-    fieldResourceScopes: new Map(),
-    fieldDynamicPropScopes: new Map(),
-    dependencyResourceScopes: new Map(),
+    fieldIndex: createRuntimeFieldIndex(),
+    dependencyIndex: createRuntimeDependencyIndex(),
   }
 }
 
@@ -37,12 +35,106 @@ export function deleteNodeResources<TValues extends Values>(
   nodeId: RuntimeNodeId
 ): void {
   resources.nodes.delete(nodeId)
-  resources.descriptors.delete(nodeId)
-  resources.fieldStates.delete(nodeId)
-  resources.viewStates.delete(nodeId)
-  resources.childrenStates.delete(nodeId)
-  resources.dependencyEffects.delete(nodeId)
-  resources.fieldResourceScopes.delete(nodeId)
-  resources.fieldDynamicPropScopes.delete(nodeId)
-  resources.dependencyResourceScopes.delete(nodeId)
+}
+
+function createRuntimeFieldIndex<TValues extends Values>(): RuntimeFieldIndex<TValues> {
+  const nodesByName = new Map<NamePath<TValues>, FieldRuntimeNode<TValues>>()
+
+  const unregister = (node: FieldRuntimeNode<TValues>): void => {
+    const descriptor = node.descriptor
+
+    if (descriptor?.type === "field") {
+      const current = nodesByName.get(descriptor.name)
+
+      if (current === node) {
+        nodesByName.delete(descriptor.name)
+      }
+    }
+
+    for (const [name, current] of nodesByName) {
+      if (current === node) {
+        nodesByName.delete(name)
+      }
+    }
+  }
+
+  return {
+    register(node) {
+      const descriptor = node.descriptor
+
+      if (descriptor?.type !== "field") {
+        return
+      }
+
+      nodesByName.set(descriptor.name, node)
+    },
+    unregister,
+    getByName(name) {
+      return nodesByName.get(name)
+    },
+    getByPath(path) {
+      return nodesByName.get(path)
+    },
+  }
+}
+
+function createRuntimeDependencyIndex<TValues extends Values>(): RuntimeDependencyIndex<TValues> {
+  const triggerFieldsByNode = new Map<
+    DependencyRuntimeNode<TValues>,
+    readonly NamePath<TValues>[]
+  >()
+  const nodesByTriggerField = new Map<
+    NamePath<TValues>,
+    DependencyRuntimeNode<TValues>[]
+  >()
+
+  const unregister = (node: DependencyRuntimeNode<TValues>): void => {
+    const triggerFields = triggerFieldsByNode.get(node) ?? []
+
+    for (const triggerField of triggerFields) {
+      const nodes = nodesByTriggerField.get(triggerField)
+
+      if (!nodes) {
+        continue
+      }
+
+      const nextNodes = nodes.filter((current) => current !== node)
+
+      if (nextNodes.length > 0) {
+        nodesByTriggerField.set(triggerField, nextNodes)
+      } else {
+        nodesByTriggerField.delete(triggerField)
+      }
+    }
+
+    triggerFieldsByNode.delete(node)
+  }
+
+  return {
+    register(node) {
+      const descriptor = node.descriptor
+
+      if (descriptor?.type !== "dependency") {
+        return
+      }
+
+      unregister(node)
+      triggerFieldsByNode.set(node, descriptor.triggerFields)
+
+      for (const triggerField of descriptor.triggerFields) {
+        const nodes = nodesByTriggerField.get(triggerField) ?? []
+
+        if (!nodes.includes(node)) {
+          nodesByTriggerField.set(triggerField, [...nodes, node])
+        }
+      }
+    },
+    unregister,
+    getByTriggerField(name) {
+      return nodesByTriggerField.get(name) ?? []
+    },
+    getTriggerFields(node) {
+      return triggerFieldsByNode.get(node) ?? []
+    },
+  }
 }
