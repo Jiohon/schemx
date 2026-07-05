@@ -89,6 +89,7 @@ const ProbeRenderer = defineComponent({
     value: String,
     readonly: Boolean,
     disabled: Boolean,
+    formItemProps: Object,
     onChange: Function,
     onBlur: Function,
   },
@@ -98,6 +99,7 @@ const ProbeRenderer = defineComponent({
         "data-testid": "probe-renderer",
         "data-readonly": String(props.readonly),
         "data-disabled": String(props.disabled),
+        "data-form-item-disabled": String((props.formItemProps as any)?.disabled),
         value: props.value,
         onInput: (event: Event) => {
           props.onChange?.((event.target as HTMLInputElement).value)
@@ -414,6 +416,55 @@ describe("FormItem 集成测试", () => {
 
     expect(form.getFieldValue("title")).toBe("")
     expect(validateSpy).not.toHaveBeenCalled()
+
+    wrapper.unmount()
+    form.destroy()
+  })
+
+  it("dependencies 更新 disabled 后应同步下发给 renderer 与 formItemProps", async () => {
+    const schema: SchemxBaseField = {
+      name: "quantity",
+      label: "数量",
+      componentType: "probe" as any,
+      dependencies: {
+        triggerFields: ["deliveryMethod"],
+        disabled: (values: any) => values.deliveryMethod === "selfPickup",
+      },
+    }
+
+    const form: SchemxInstance = createForm({
+      initialValues: { deliveryMethod: "express", quantity: "1" },
+      schemas: [schema as any],
+    })
+
+    form.registerRenderer("probe" as any, ProbeRenderer)
+    await form.waitForDependencies()
+
+    const wrapper = mount(FormItem, {
+      props: { schema: form.getViewSchemas()[0] },
+      global: {
+        provide: {
+          [FORM_INSTANCE_KEY]: form,
+          [FORM_CONTEXT_KEY]: createFormContext(),
+        },
+      },
+    })
+
+    await nextTick()
+
+    expect(wrapper.get('[data-testid="probe-renderer"]').attributes("data-disabled")).toBe(
+      "false"
+    )
+
+    form.setFieldValue("deliveryMethod", "selfPickup")
+    await form.waitForDependencies()
+    await wrapper.setProps({ schema: form.getViewSchemas()[0] })
+    await nextTick()
+
+    const input = wrapper.get('[data-testid="probe-renderer"]')
+
+    expect(input.attributes("data-disabled")).toBe("true")
+    expect(input.attributes("data-form-item-disabled")).toBe("true")
 
     wrapper.unmount()
     form.destroy()

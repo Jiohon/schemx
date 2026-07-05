@@ -9,7 +9,7 @@
  */
 
 import { computed, defineComponent, h, PropType, toRef } from "vue"
-import type { SetupContext, VNodeChild } from "vue"
+import type { VNodeChild } from "vue"
 
 import classnames from "classnames"
 
@@ -44,21 +44,45 @@ export interface SchemxItemProps<T extends Values = Values> {
   schema: SchemxViewSchema<T>
 }
 
-const FormItem = defineComponent(
-  <T extends Values = Values>(props: SchemxItemProps<T>, { slots }: SetupContext) => {
-    const schemaRef = toRef(props, "schema")
+const FormItem = defineComponent({
+  name: "SchemxItem",
 
-    if (isViewGroupSchema(schemaRef.value)) {
-      return (): VNodeChild => {
-        return h(FormGroup, { schema: schemaRef.value as SchemxViewGroupSchema }, slots)
+  props: {
+    schema: {
+      type: Object as PropType<SchemxViewSchema>,
+      required: true,
+    },
+  },
+
+  setup(props, { slots }) {
+    return (): VNodeChild => {
+      const schema = props.schema
+
+      if (isViewGroupSchema(schema)) {
+        return h(FormGroup, { schema }, slots)
       }
-    }
 
-    const form = useFormContext<T>()
+      return h(FieldFormItem, { schema }, slots)
+    }
+  },
+})
+
+const FieldFormItem = defineComponent({
+  name: "SchemxFieldItem",
+
+  props: {
+    schema: {
+      type: Object as PropType<SchemxViewFieldSchema>,
+      required: true,
+    },
+  },
+
+  setup(props, { slots }) {
+    const schemaRef = toRef(props, "schema")
+    const form = useFormContext<Values>()
     const formContext = useConfigContext()
 
-    const schema = (): SchemxViewFieldSchema<T> =>
-      schemaRef.value as SchemxViewFieldSchema<T>
+    const schema = () => schemaRef.value
 
     const field = useField(schema().name)
 
@@ -84,7 +108,7 @@ const FormItem = defineComponent(
     })
 
     /** 值变化处理，设置值后根据触发时机决定是否校验 */
-    const handleChange = (v: FieldValue<T, NamePath<T>>) => {
+    const handleChange = (v: FieldValue<Values, NamePath<Values>>) => {
       field.setValue(v)
       schema().componentProps?.onChange?.(v)
 
@@ -103,14 +127,22 @@ const FormItem = defineComponent(
     }
 
     // 使用 useStableRef 避免每次生成新对象引用
-    const componentProps = useStableRef<SchemxComponentProps<T>>(
-      (): SchemxComponentProps<T> => ({
-        ...schema().componentProps,
-        value: field.getValue(),
-        onChange: handleChange,
-        onBlur: handleBlur,
-        "onUpdate:value": (v) => field.setValue(v),
-      })
+    const componentProps = useStableRef<SchemxComponentProps<Values>>(
+      (): SchemxComponentProps<Values> => {
+        const currentSchema = schema()
+
+        return {
+          ...currentSchema.componentProps,
+          readonly: currentSchema.readonly,
+          disabled: currentSchema.disabled,
+          placeholder: currentSchema.placeholder,
+          formItemProps: currentSchema,
+          value: field.getValue(),
+          onChange: handleChange,
+          onBlur: handleBlur,
+          "onUpdate:value": (v) => field.setValue(v),
+        }
+      }
     )
 
     /**
@@ -184,7 +216,6 @@ const FormItem = defineComponent(
       const columnElement = h(component, componentProps.value, childSlots)
 
       const contentSlot = resolveSlot(slots, `${schema().name}Content`)
-
       if (contentSlot) {
         return contentSlot({
           ...schema(),
@@ -260,17 +291,7 @@ const FormItem = defineComponent(
       )
     }
   },
-  {
-    name: "SchemxItem",
-
-    props: {
-      schema: {
-        type: Object as PropType<SchemxViewSchema>,
-        required: true,
-      },
-    },
-  }
-)
+})
 
 export default FormItem
 
