@@ -32,7 +32,7 @@ import {
   isDependencyRuntimeNode,
   isFieldRuntimeNode,
   isGroupRuntimeNode,
-} from "@/node/helper"
+} from "../node/helper"
 
 /**
  * 字段节点视图状态。
