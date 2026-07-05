@@ -95,9 +95,15 @@ importers:
 
   examples/vant:
     dependencies:
+      '@schemx/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@schemx/vant':
-        specifier: ^0.2.0
-        version: 0.2.0(vant@4.10.0(vue@3.5.39(typescript@5.9.3)))(vue@3.5.39(typescript@5.9.3))
+        specifier: workspace:*
+        version: link:../../packages/vant
+      '@schemx/vue':
+        specifier: workspace:*
+        version: link:../../packages/vue
       vant:
         specifier: ^4.9.24
         version: 4.10.0(vue@3.5.39(typescript@5.9.3))
@@ -835,20 +841,6 @@ packages:
 
   '@rushstack/ts-command-line@4.19.1':
     resolution: {integrity: sha512-J7H768dgcpG60d7skZ5uSSwyCZs/S2HrWP1Ds8d1qYAyaaeJmpmmLr9BVw97RjFzmQPOYnoXcKA4GkqDCkduQg==}
-
-  '@schemx/core@0.2.0':
-    resolution: {integrity: sha512-OG0ETZnBTZI9M8WmeZZaCeN+ffghJ0g0R6HEsfh4yvYd3Lu2xGeVld94Lpr3Y0lb7UlnSod7K6YgcKtV7xXsJA==}
-
-  '@schemx/vant@0.2.0':
-    resolution: {integrity: sha512-PkXwxfrBhhQwkJf5LVLK9tFhMCs3P4M8CFi/F4se14rF5JizNdrdPuuWvK7nzlgzI0tzY0hrRrEfTfvFa/BYaA==}
-    peerDependencies:
-      vant: ^4.0.0
-      vue: ^3.0.0
-
-  '@schemx/vue@0.2.0':
-    resolution: {integrity: sha512-aOjg7fQs3UWY+mn9jW0HcSMAiR19nD0kKgjxww6xb6nr1j32UF5IkG/ziq0NFqqCNll07WYPr4f1e4GbozsHwQ==}
-    peerDependencies:
-      vue: ^3.0.0
 
   '@tybys/wasm-util@0.10.3':
     resolution: {integrity: sha512-F3fo1MYrRJYL3zER0OUOmkutjr1Vp23m7OsSgp7nq4SP6OqX6C/56XFIPAl5bt3zaBRjmW7SGz3u/6LwFpYcOg==}
@@ -3461,33 +3453,6 @@ snapshots:
       string-argv: 0.3.2
     transitivePeerDependencies:
       - '@types/node'
-
-  '@schemx/core@0.2.0':
-    dependencies:
-      '@preact/signals-core': 1.14.3
-      csstype: 3.2.3
-      es-toolkit: 1.49.0
-      simple-async-context: 1.0.4
-      tslib: 2.8.1
-
-  '@schemx/vant@0.2.0(vant@4.10.0(vue@3.5.39(typescript@5.9.3)))(vue@3.5.39(typescript@5.9.3))':
-    dependencies:
-      '@schemx/core': 0.2.0
-      '@schemx/vue': 0.2.0(vue@3.5.39(typescript@5.9.3))
-      classnames: 2.5.1
-      dayjs: 1.11.21
-      es-toolkit: 1.49.0
-      vant: 4.10.0(vue@3.5.39(typescript@5.9.3))
-      vue: 3.5.39(typescript@5.9.3)
-
-  '@schemx/vue@0.2.0(vue@3.5.39(typescript@5.9.3))':
-    dependencies:
-      '@schemx/core': 0.2.0
-      classnames: 2.5.1
-      csstype: 3.2.3
-      dayjs: 1.11.21
-      es-toolkit: 1.49.0
-      vue: 3.5.39(typescript@5.9.3)
 
   '@tybys/wasm-util@0.10.3':
     dependencies:
