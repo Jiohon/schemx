@@ -352,7 +352,8 @@ function normalizeValidationRules(
 /**
  * 生成 descriptor 的稳定 key。
  *
- * 优先使用 schema 上显式指定的 key；未指定时按类型前缀 + 层级路径自动生成。
+ * 优先使用 schema 上显式指定的 key；普通字段使用 name 保持身份稳定，
+ * group 和 dependency 按类型前缀与层级路径自动生成。
  * 依赖描述符的 key 中嵌入 trigger 字段列表，使得 trigger 变化时 key 改变，触发协调器重新挂载。
  *
  * @param schema - schema 字段配置联合类型。
@@ -385,8 +386,10 @@ function createDescriptorKey<TValues extends Values = Values>(
     return currentKey ?? key
   }
 
-  // 字段描述符：按层级路径生成 key
-  return currentKey ?? (parentKey ? `field:${parentKey}/${index}` : `field:${index}`)
+  // 字段描述符：使用必填的 name，避免同级 schema 插入或删除改变节点身份
+  const nameKey = serializeNamePath(schema.name)
+
+  return currentKey ?? (parentKey ? `field:${parentKey}/${nameKey}` : `field:${nameKey}`)
 }
 
 /**
