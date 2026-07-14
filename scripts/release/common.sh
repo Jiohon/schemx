@@ -194,6 +194,80 @@ is_exact_version() {
   [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
 }
 
+# 在不修改文件的情况下计算正式候选版本。
+next_stable_version() {
+  local current_version="$1"
+  local action="$2"
+  local major minor patch
+
+  if [[ "$action" == "current" ]]; then
+    printf '%s' "$current_version"
+    return
+  fi
+
+  if is_exact_version "$action"; then
+    printf '%s' "$action"
+    return
+  fi
+
+  if ! is_exact_version "$current_version"; then
+    die "无法从非正式版本计算下一版本：$current_version"
+  fi
+
+  IFS=. read -r major minor patch <<<"$current_version"
+  case "$action" in
+    patch)
+      patch=$((patch + 1))
+      ;;
+    minor)
+      minor=$((minor + 1))
+      patch=0
+      ;;
+    major)
+      major=$((major + 1))
+      minor=0
+      patch=0
+      ;;
+    *)
+      die "无法计算版本处理方式：$action"
+      ;;
+  esac
+
+  printf '%s.%s.%s' "$major" "$minor" "$patch"
+}
+
+# 确认远端 tag 不存在，并区分“未找到”与连接故障。
+assert_remote_tag_available() {
+  local tag_name="$1"
+  local lookup_output=""
+  local lookup_status=0
+
+  if lookup_output="$(git ls-remote --exit-code --tags origin "refs/tags/$tag_name" 2>&1)"; then
+    die "远端 Git tag 已存在：${tag_name}"
+  else
+    lookup_status=$?
+  fi
+
+  if [[ "$lookup_status" -ne 2 ]]; then
+    die "无法检查远端 Git tag ${tag_name}：$lookup_output"
+  fi
+}
+
+# 确认 GitHub Release 不存在，并阻止查询故障被当作未创建。
+assert_github_release_available() {
+  local tag_name="$1"
+  local repo="$2"
+  local lookup_output=""
+
+  if lookup_output="$(gh release view "$tag_name" --repo "$repo" 2>&1)"; then
+    die "GitHub Release 已存在：${tag_name}"
+  fi
+
+  if [[ "$lookup_output" != *"release not found"* && "$lookup_output" != *"HTTP 404"* ]]; then
+    die "无法检查 GitHub Release ${tag_name}：$lookup_output"
+  fi
+}
+
 # 验证版本动作或用户传入的精确正式版本号。
 assert_version_action() {
   local action="$1"

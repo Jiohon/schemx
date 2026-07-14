@@ -9,6 +9,11 @@ source "$ROOT_DIR/scripts/release/common.sh"
 
 PRERELEASE_BACKUP_DIR=""
 PRERELEASE_TARGETS=()
+LATEST_BACKUP_DIR=""
+LATEST_TRANSACTION_FILES=()
+PLANNED_PACKAGES=()
+PLANNED_VERSIONS=()
+PLANNED_CANDIDATES=()
 # 选择器通过 stdout 返回结果，取消操作也需要一个可识别值，避免误当成包名继续发布。
 RELEASE_CANCELLED_TARGET="__SCHEMX_RELEASE_CANCELLED__"
 
@@ -196,7 +201,7 @@ pack_target_packages() {
 
 # release:check 依次执行质量门禁和全量发布内容检查。
 run_check() {
-  run_quality_checks
+  run_quality_checks "${RELEASE_PACKAGES[@]}"
   pack_packages
 }
 
@@ -225,9 +230,69 @@ publish_one() {
   bash "$ROOT_DIR/scripts/release/publish-package.sh" "$pkg" "$tag"
 }
 
+# 按固定顺序发布目标包；中途失败时明确报告不可回滚的部分发布结果。
+publish_target_packages() {
+  local tag="$1"
+  local targets=()
+  local published=()
+  local remaining=()
+  local index pkg published_text remaining_text
+  shift
+  targets=("$@")
+
+  for index in "${!targets[@]}"; do
+    pkg="${targets[$index]}"
+    if publish_one "$pkg" "$tag"; then
+      published+=("$pkg")
+      continue
+    fi
+
+    remaining=("${targets[@]:$((index + 1))}")
+    published_text="无"
+    remaining_text="无"
+    if [[ "${#published[@]}" -gt 0 ]]; then
+      published_text="$(target_summary "${published[@]}")"
+    fi
+    if [[ "${#remaining[@]}" -gt 0 ]]; then
+      remaining_text="$(target_summary "${remaining[@]}")"
+    fi
+
+    info "发布中断"
+    warn "已发布：$published_text"
+    warn "失败：$pkg"
+    warn "未执行：$remaining_text"
+    return 1
+  done
+}
+
 # 避免 npm 上已有同版本时发布到流程末尾才失败。
 check_target_versions_available() {
   bash "$ROOT_DIR/scripts/release/check-versions-available.sh" "$@"
+}
+
+# 只读取当前版本并生成一次性候选版本计划，不修改任何文件。
+build_release_plan() {
+  local channel="$1"
+  local version_action="$2"
+  local pkg current_version candidate_version
+  shift 2
+
+  PLANNED_PACKAGES=()
+  PLANNED_VERSIONS=()
+  PLANNED_CANDIDATES=()
+
+  for pkg in "$@"; do
+    current_version="$(package_json_value "$pkg" version)"
+    if [[ "$channel" == "latest" ]]; then
+      candidate_version="$(next_stable_version "$current_version" "$version_action")"
+    else
+      candidate_version="$(next_prerelease_version "$current_version" "$channel")"
+    fi
+
+    PLANNED_PACKAGES+=("$pkg")
+    PLANNED_VERSIONS+=("$candidate_version")
+    PLANNED_CANDIDATES+=("$pkg=$candidate_version")
+  done
 }
 
 # 兼容“通道优先”和“目标优先”两种 CLI 写法，并归一化为全局选择结果。
@@ -278,12 +343,55 @@ version_commit_message() {
   printf 'chore(发布): 提升 packages 版本'
 }
 
+# 为正式版本写入建立文件级事务，失败时可以恢复写入前状态。
+begin_latest_version_transaction() {
+  local index file
+
+  LATEST_BACKUP_DIR="$(mktemp -d)"
+  LATEST_TRANSACTION_FILES=("$@")
+
+  for index in "${!LATEST_TRANSACTION_FILES[@]}"; do
+    file="${LATEST_TRANSACTION_FILES[$index]}"
+    cp "$file" "$LATEST_BACKUP_DIR/$index"
+  done
+}
+
+# 清理正式版本事务的临时备份。
+cleanup_latest_version_transaction() {
+  if [[ -n "$LATEST_BACKUP_DIR" && -d "$LATEST_BACKUP_DIR" ]]; then
+    rm -rf "$LATEST_BACKUP_DIR"
+  fi
+
+  LATEST_BACKUP_DIR=""
+  LATEST_TRANSACTION_FILES=()
+}
+
+# 提交前任一步骤失败时恢复文件，并撤销可能已产生的暂存状态。
+rollback_latest_version_transaction() {
+  local index file backup
+
+  if [[ -z "$LATEST_BACKUP_DIR" || ! -d "$LATEST_BACKUP_DIR" ]]; then
+    return
+  fi
+
+  git restore --staged -- "${LATEST_TRANSACTION_FILES[@]}" >/dev/null 2>&1 || true
+  for index in "${!LATEST_TRANSACTION_FILES[@]}"; do
+    file="${LATEST_TRANSACTION_FILES[$index]}"
+    backup="$LATEST_BACKUP_DIR/$index"
+    if [[ -f "$backup" ]]; then
+      cp "$backup" "$file"
+    fi
+  done
+
+  cleanup_latest_version_transaction
+}
+
 # 对正式版执行版本升级、锁文件同步与提交，确保 npm/tag/Release 指向同一提交。
 apply_latest_version_action() {
   local action="$1"
   local targets=()
   local files=()
-  local pkg
+  local index pkg candidate_version
   shift
   targets=("$@")
 
@@ -295,40 +403,50 @@ apply_latest_version_action() {
     die "指定版本只能用于单个发布目标，请选择 core、vue 或 vant。"
   fi
 
-  # 融合发布流程时，正式版本变更必须先自动提交，保证 npm、Git tag 和 GitHub Release 指向同一个版本提交。
-  info "提升正式版本：${action}（$(target_summary "${targets[@]}")）"
   for pkg in "${targets[@]}"; do
-    npm --prefix "$(package_path "$pkg")" version "$action" --no-git-tag-version
     files+=("$(package_path "$pkg")/package.json")
+  done
+  files+=("pnpm-lock.yaml")
+
+  begin_latest_version_transaction "${files[@]}"
+  trap rollback_latest_version_transaction EXIT
+
+  # 使用预检阶段确定的候选版本，保证检查、写入与发布指向同一版本。
+  info "提升正式版本：${action}（$(target_summary "${targets[@]}")）"
+  for index in "${!targets[@]}"; do
+    pkg="${targets[$index]}"
+    candidate_version="${PLANNED_VERSIONS[$index]}"
+    npm --prefix "$(package_path "$pkg")" version "$candidate_version" --no-git-tag-version
   done
 
   info "同步 pnpm-lock.yaml"
   pnpm install --lockfile-only
-  files+=("pnpm-lock.yaml")
 
   info "提交版本变更"
   git add "${files[@]}"
   git commit -m "$(version_commit_message "${targets[@]}")"
+  trap - EXIT
+  cleanup_latest_version_transaction
   assert_clean_git
 }
 
 # 生成真实可发布的临时 prerelease 版本，并备份原始 package.json。
 prepare_prerelease_versions() {
   local channel="$1"
-  local pkg pkg_json current_version next_version
-  shift
+  local index pkg pkg_json current_version next_version
 
   PRERELEASE_BACKUP_DIR="$(mktemp -d)"
-  PRERELEASE_TARGETS=("$@")
+  PRERELEASE_TARGETS=("${PLANNED_PACKAGES[@]}")
 
   # 预发布需要真实 npm semver，但不应把临时版本写回开发分支。
   info "生成临时 ${channel} 预发布版本"
-  for pkg in "${PRERELEASE_TARGETS[@]}"; do
+  for index in "${!PRERELEASE_TARGETS[@]}"; do
+    pkg="${PRERELEASE_TARGETS[$index]}"
     pkg_json="$(package_path "$pkg")/package.json"
     cp "$pkg_json" "$PRERELEASE_BACKUP_DIR/$pkg.json"
 
     current_version="$(package_json_value "$pkg" version)"
-    next_version="$(next_prerelease_version "$current_version" "$channel")"
+    next_version="${PLANNED_VERSIONS[$index]}"
     set_package_version "$pkg_json" "$next_version"
 
     printf '@schemx/%s: %s → %s\n' "$pkg" "$current_version" "$next_version"
@@ -360,7 +478,6 @@ run_latest_publish() {
   local target="$1"
   local version_action="$2"
   local targets=()
-  local pkg
 
   assert_main_branch
   assert_clean_git
@@ -370,14 +487,14 @@ run_latest_publish() {
 
   # 检查、构建、dry-run、npm 发布的目标集合必须完全一致。
   targets=($(resolve_targets "$target"))
-  apply_latest_version_action "$version_action" "${targets[@]}"
-  check_target_versions_available "${targets[@]}"
+  build_release_plan latest "$version_action" "${targets[@]}"
+  check_target_versions_available "${PLANNED_CANDIDATES[@]}"
+  bash "$ROOT_DIR/scripts/release/check-release-markers-available.sh" "${PLANNED_CANDIDATES[@]}"
   run_quality_checks "${targets[@]}"
   pack_target_packages "${targets[@]}"
+  apply_latest_version_action "$version_action" "${targets[@]}"
 
-  for pkg in "${targets[@]}"; do
-    publish_one "$pkg"
-  done
+  publish_target_packages "" "${targets[@]}"
 
   bash "$ROOT_DIR/scripts/release/create-release-tag.sh" "${targets[@]}"
   bash "$ROOT_DIR/scripts/release/create-github-release.sh" "${targets[@]}"
@@ -388,24 +505,22 @@ run_prerelease_publish() {
   local channel="$1"
   local target="$2"
   local targets=()
-  local pkg
 
   assert_release_channel "$channel"
   targets=($(resolve_targets "$target"))
   assert_prerelease_version_files_clean "${targets[@]}"
 
-  prepare_prerelease_versions "$channel" "${targets[@]}"
-  trap restore_prerelease_versions EXIT
-
   assert_npm_registry
   assert_npm_auth
-  check_target_versions_available "${targets[@]}"
+  build_release_plan "$channel" current "${targets[@]}"
+  check_target_versions_available "${PLANNED_CANDIDATES[@]}"
   run_quality_checks "${targets[@]}"
   pack_target_packages "${targets[@]}"
 
-  for pkg in "${targets[@]}"; do
-    publish_one "$pkg" "$channel"
-  done
+  prepare_prerelease_versions "$channel"
+  trap restore_prerelease_versions EXIT
+
+  publish_target_packages "$channel" "${targets[@]}"
 
   restore_prerelease_versions
   trap - EXIT

@@ -21,6 +21,8 @@ for pkg in "$@"; do
     die "Git tag $tag_name 已存在。"
   fi
 
+  assert_remote_tag_available "$tag_name"
+
   release_tags+=("$tag_name")
 done
 

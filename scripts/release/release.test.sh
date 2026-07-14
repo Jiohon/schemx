@@ -22,6 +22,11 @@ set -euo pipefail
 
 printf 'git %s\n' "$*" >>"${COMMAND_LOG:?}"
 
+if [[ -n "${MOCK_COMMAND_FAIL_MATCH:-}" && "git $*" == *"$MOCK_COMMAND_FAIL_MATCH"* ]]; then
+  printf 'mock git failure: %s\n' "$*" >&2
+  exit 1
+fi
+
 case "$1" in
   branch)
     if [[ "${2:-}" == "--show-current" ]]; then
@@ -45,6 +50,12 @@ case "$1" in
     fi
     ;;
   tag)
+    if [[ "${2:-}" == "-l" ]]; then
+      if [[ -n "${MOCK_LOCAL_TAG_EXISTS:-}" && "${3:-}" == "$MOCK_LOCAL_TAG_EXISTS" ]]; then
+        printf '%s\n' "$MOCK_LOCAL_TAG_EXISTS"
+      fi
+      exit 0
+    fi
     if [[ "${2:-}" == "--sort=-creatordate" ]]; then
       printf '@schemx/core@0.1.22\n'
       printf '@schemx/vue@0.1.19\n'
@@ -52,6 +63,17 @@ case "$1" in
       exit 0
     fi
     exit 0
+    ;;
+  ls-remote)
+    if [[ "${MOCK_REMOTE_TAG_ERROR:-0}" == "1" ]]; then
+      printf 'fatal: unable to access remote\n' >&2
+      exit 128
+    fi
+    if [[ "${MOCK_REMOTE_TAG_EXISTS:-0}" == "1" ]]; then
+      printf 'abc123\t%s\n' "${*: -1}"
+      exit 0
+    fi
+    exit 2
     ;;
   add)
     exit 0
@@ -82,6 +104,11 @@ set -euo pipefail
 
 printf 'pnpm %s\n' "$*" >>"${COMMAND_LOG:?}"
 
+if [[ -n "${MOCK_COMMAND_FAIL_MATCH:-}" && "pnpm $*" == *"$MOCK_COMMAND_FAIL_MATCH"* ]]; then
+  printf 'mock pnpm failure: %s\n' "$*" >&2
+  exit 1
+fi
+
 case "$1" in
   config)
     printf 'https://registry.npmjs.org/\n'
@@ -98,6 +125,7 @@ case "$1" in
       printf '0.0.0\n'
       exit 0
     fi
+    printf 'ERR_PNPM_NO_MATCHING_VERSION No matching version found\n' >&2
     exit 1
     ;;
   *)
@@ -110,6 +138,35 @@ cat >"$MOCK_BIN/npm" <<'MOCK'
 set -euo pipefail
 
 printf 'npm %s\n' "$*" >>"${COMMAND_LOG:?}"
+
+if [[ "${MOCK_NPM_VERSION_MUTATE:-0}" == "1" ]]; then
+  prefix=""
+  version=""
+  args=("$@")
+  for ((i = 0; i < ${#args[@]}; i++)); do
+    if [[ "${args[$i]}" == "--prefix" ]]; then
+      prefix="${args[$((i + 1))]}"
+    elif [[ "${args[$i]}" == "version" ]]; then
+      version="${args[$((i + 1))]}"
+    fi
+  done
+
+  if [[ -n "$prefix" && -n "$version" ]]; then
+    "${REAL_NODE:?}" -e '
+const fs = require("node:fs");
+const path = process.argv[1];
+const version = process.argv[2];
+const pkg = JSON.parse(fs.readFileSync(path, "utf8"));
+pkg.version = version;
+fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + "\n");
+' "$prefix/package.json" "$version"
+  fi
+fi
+
+if [[ -n "${MOCK_COMMAND_FAIL_MATCH:-}" && "npm $*" == *"$MOCK_COMMAND_FAIL_MATCH"* ]]; then
+  printf 'mock npm failure: %s\n' "$*" >&2
+  exit 1
+fi
 MOCK
 
 cat >"$MOCK_BIN/gh" <<'MOCK'
@@ -129,6 +186,17 @@ case "$1" in
     fi
     ;;
   release)
+    if [[ "${2:-}" == "view" ]]; then
+      if [[ "${MOCK_GITHUB_RELEASE_ERROR:-0}" == "1" ]]; then
+        printf 'failed to connect to api.github.com\n' >&2
+        exit 1
+      fi
+      if [[ "${MOCK_GITHUB_RELEASE_EXISTS:-0}" == "1" ]]; then
+        exit 0
+      fi
+      printf 'release not found\n' >&2
+      exit 1
+    fi
     if [[ "${2:-}" == "create" ]]; then
       tag_name="${3:-}"
       pkg="${tag_name#@schemx/}"
@@ -242,6 +310,45 @@ assert_log_not_contains() {
     cat "$COMMAND_LOG" >&2
     exit 1
   fi
+}
+
+# 断言两条命令在日志中的先后顺序。
+assert_log_order() {
+  local first="$1"
+  local second="$2"
+  local first_line second_line
+
+  first_line="$(grep -Fn -- "$first" "$COMMAND_LOG" | head -1 | cut -d: -f1 || true)"
+  second_line="$(grep -Fn -- "$second" "$COMMAND_LOG" | head -1 | cut -d: -f1 || true)"
+
+  if [[ -z "$first_line" || -z "$second_line" || "$first_line" -ge "$second_line" ]]; then
+    printf '期望命令 %s 早于 %s。\n实际日志：\n' "$first" "$second" >&2
+    cat "$COMMAND_LOG" >&2
+    exit 1
+  fi
+}
+
+# 断言两个输出片段的先后顺序。
+assert_text_order() {
+  local content="$1"
+  local first="$2"
+  local second="$3"
+  local before_second
+
+  before_second="${content%%"$second"*}"
+  if [[ "$content" != *"$first"* || "$content" != *"$second"* || "$before_second" != *"$first"* ]]; then
+    printf '期望输出 %s 早于 %s。\n实际输出：\n%s\n' "$first" "$second" "$content" >&2
+    exit 1
+  fi
+}
+
+# 根据测试工作区当前版本计算 patch 候选，避免版本发布后断言过期。
+expected_patch_version() {
+  local pkg="$1"
+  local current_version
+
+  current_version="$(node -p "require('$ROOT_DIR/packages/$pkg/package.json').version")"
+  bash -c "source '$ROOT_DIR/scripts/release/common.sh'; next_stable_version '$current_version' patch"
 }
 
 # 验证帮助只暴露统一发布入口。
@@ -440,6 +547,136 @@ test_release_channel_choices_put_latest_last() {
   fi
 }
 
+# 验证正式版本可以在不修改 package.json 的情况下计算。
+test_next_stable_version_calculates_without_mutating_files() {
+  local package_before output
+
+  package_before="$(cat "$ROOT_DIR/packages/core/package.json")"
+  output="$(bash -c "source '$ROOT_DIR/scripts/release/common.sh'; next_stable_version 1.2.3 minor")"
+
+  if [[ "$output" != "1.3.0" ]]; then
+    printf 'minor 候选版本应为 1.3.0，实际为 %s。\n' "$output" >&2
+    exit 1
+  fi
+
+  if [[ "$(cat "$ROOT_DIR/packages/core/package.json")" != "$package_before" ]]; then
+    printf '计算候选版本不应修改 package.json。\n' >&2
+    exit 1
+  fi
+}
+
+# 验证 npm 可用性检查使用调用方提供的候选版本。
+test_version_availability_uses_explicit_candidate() {
+  : >"$COMMAND_LOG"
+
+  bash "$ROOT_DIR/scripts/release/check-versions-available.sh" "core=9.8.7" >/dev/null
+
+  assert_log_contains "pnpm view @schemx/core@9.8.7 version --registry https://registry.npmjs.org/"
+}
+
+# 验证 npm 查询异常不会被误判为候选版本可用。
+test_version_availability_rejects_registry_lookup_error() {
+  local output status
+
+  export MOCK_COMMAND_FAIL_MATCH="pnpm view @schemx/core@9.8.7"
+  set +e
+  output="$(bash "$ROOT_DIR/scripts/release/check-versions-available.sh" "core=9.8.7" 2>&1)"
+  status=$?
+  set -e
+  unset MOCK_COMMAND_FAIL_MATCH
+
+  [[ "$status" -ne 0 ]]
+  assert_contains "$output" "无法确认 npm 候选版本"
+}
+
+# 验证正式版候选发布标记没有冲突时通过。
+test_release_markers_accept_available_candidate() {
+  local output
+
+  : >"$COMMAND_LOG"
+  output="$(bash "$ROOT_DIR/scripts/release/check-release-markers-available.sh" "core=9.8.7")"
+
+  assert_contains "$output" "@schemx/core@9.8.7 可创建"
+  assert_log_contains "git tag -l @schemx/core@9.8.7"
+  assert_log_contains "git ls-remote --exit-code --tags origin refs/tags/@schemx/core@9.8.7"
+  assert_log_contains "gh release view @schemx/core@9.8.7 --repo Jiohon/schemx"
+}
+
+# 验证本地候选 tag 冲突会阻止发布。
+test_release_markers_reject_local_tag() {
+  local output status
+
+  export MOCK_LOCAL_TAG_EXISTS="@schemx/core@9.8.7"
+  set +e
+  output="$(bash "$ROOT_DIR/scripts/release/check-release-markers-available.sh" "core=9.8.7" 2>&1)"
+  status=$?
+  set -e
+  unset MOCK_LOCAL_TAG_EXISTS
+
+  [[ "$status" -ne 0 ]]
+  assert_contains "$output" "本地 Git tag 已存在：@schemx/core@9.8.7"
+}
+
+# 验证远端候选 tag 冲突会阻止发布。
+test_release_markers_reject_remote_tag() {
+  local output status
+
+  export MOCK_REMOTE_TAG_EXISTS=1
+  set +e
+  output="$(bash "$ROOT_DIR/scripts/release/check-release-markers-available.sh" "core=9.8.7" 2>&1)"
+  status=$?
+  set -e
+  unset MOCK_REMOTE_TAG_EXISTS
+
+  [[ "$status" -ne 0 ]]
+  assert_contains "$output" "远端 Git tag 已存在：@schemx/core@9.8.7"
+}
+
+# 验证同名 GitHub Release 冲突会阻止发布。
+test_release_markers_reject_github_release() {
+  local output status
+
+  export MOCK_GITHUB_RELEASE_EXISTS=1
+  set +e
+  output="$(bash "$ROOT_DIR/scripts/release/check-release-markers-available.sh" "core=9.8.7" 2>&1)"
+  status=$?
+  set -e
+  unset MOCK_GITHUB_RELEASE_EXISTS
+
+  [[ "$status" -ne 0 ]]
+  assert_contains "$output" "GitHub Release 已存在：@schemx/core@9.8.7"
+}
+
+# 验证远端 tag 查询异常会中止预检。
+test_release_markers_reject_remote_lookup_error() {
+  local output status
+
+  export MOCK_REMOTE_TAG_ERROR=1
+  set +e
+  output="$(bash "$ROOT_DIR/scripts/release/check-release-markers-available.sh" "core=9.8.7" 2>&1)"
+  status=$?
+  set -e
+  unset MOCK_REMOTE_TAG_ERROR
+
+  [[ "$status" -ne 0 ]]
+  assert_contains "$output" "无法检查远端 Git tag"
+}
+
+# 验证 GitHub Release 查询异常会中止预检。
+test_release_markers_reject_github_lookup_error() {
+  local output status
+
+  export MOCK_GITHUB_RELEASE_ERROR=1
+  set +e
+  output="$(bash "$ROOT_DIR/scripts/release/check-release-markers-available.sh" "core=9.8.7" 2>&1)"
+  status=$?
+  set -e
+  unset MOCK_GITHUB_RELEASE_ERROR
+
+  [[ "$status" -ne 0 ]]
+  assert_contains "$output" "无法检查 GitHub Release"
+}
+
 # 验证 release:test 不会意外运行整个工作区测试集。
 test_release_test_runs_only_release_script_tests() {
   local script
@@ -449,6 +686,20 @@ test_release_test_runs_only_release_script_tests() {
     printf 'release:test 应只运行 release.test.sh。\n实际脚本：%s\n' "$script" >&2
     exit 1
   fi
+}
+
+# 验证 release:check 按发布包依赖拓扑运行质量门禁。
+test_release_check_uses_package_dependency_chain() {
+  : >"$COMMAND_LOG"
+
+  run_release check >/dev/null
+
+  assert_log_contains "pnpm --filter @schemx/core... --filter @schemx/vue... --filter @schemx/vant... test"
+  assert_log_contains "pnpm --filter @schemx/core... --filter @schemx/vue... --filter @schemx/vant... lint"
+  assert_log_contains "pnpm --filter @schemx/core... --filter @schemx/vue... --filter @schemx/vant... build"
+  assert_log_not_contains "pnpm test"
+  assert_log_not_contains "pnpm lint"
+  assert_log_not_contains "pnpm build"
 }
 
 # 验证 dev 发布使用临时版本和 dev tag，随后恢复工作区版本。
@@ -620,6 +871,7 @@ test_alpha_publish_uses_alpha_tag_and_restores_version() {
   assert_contains "$output" "tag       alpha"
   assert_contains "$output" "终端可能会停在认证提示处"
   assert_contains "$output" "完成后回到这里等待发布继续"
+  assert_text_order "$output" "运行目标依赖链测试：core" "生成临时 alpha 预发布版本"
   assert_log_contains "pnpm --dir packages/core publish --access public --registry https://registry.npmjs.org/ --tag alpha --no-git-checks"
   assert_log_not_contains "gh auth status"
   assert_log_not_contains "gh release create"
@@ -640,28 +892,153 @@ test_pack_accepts_target() {
 
 # 验证单包 patch 发布会升级版本、提交锁文件并发布目标包。
 test_latest_publish_patch_bumps_commits_and_publishes_target() {
+  local core_version vue_version vant_version
+
+  core_version="$(expected_patch_version core)"
+  vue_version="$(expected_patch_version vue)"
+  vant_version="$(expected_patch_version vant)"
   : >"$COMMAND_LOG"
 
   run_release publish latest vue patch >/dev/null
 
-  assert_log_contains "npm --prefix packages/vue version patch --no-git-tag-version"
-  assert_log_not_contains "npm --prefix packages/core version patch --no-git-tag-version"
-  assert_log_not_contains "npm --prefix packages/vant version patch --no-git-tag-version"
+  assert_log_contains "npm --prefix packages/vue version $vue_version --no-git-tag-version"
+  assert_log_not_contains "npm --prefix packages/core version $core_version --no-git-tag-version"
+  assert_log_not_contains "npm --prefix packages/vant version $vant_version --no-git-tag-version"
   assert_log_contains "pnpm install --lockfile-only"
   assert_log_contains "git add packages/vue/package.json pnpm-lock.yaml"
   assert_log_contains "git commit -m chore(发布): 提升 vue 版本"
   assert_log_contains "pnpm --dir packages/vue publish --access public --registry https://registry.npmjs.org/"
+  assert_log_order "pnpm --filter @schemx/vue... test" "npm --prefix packages/vue version"
+  assert_log_order "pnpm --filter @schemx/vue pack --dry-run" "npm --prefix packages/vue version"
+  assert_log_order "git commit -m chore(发布): 提升 vue 版本" "pnpm --dir packages/vue publish"
+}
+
+# 验证正式版 test 失败时不会提升版本或产生提交。
+test_latest_quality_failure_stops_before_version_transaction() {
+  local output status
+
+  : >"$COMMAND_LOG"
+  export MOCK_COMMAND_FAIL_MATCH="pnpm --filter @schemx/core... test"
+  set +e
+  output="$(run_release publish latest core patch 2>&1)"
+  status=$?
+  set -e
+  unset MOCK_COMMAND_FAIL_MATCH
+
+  if [[ "$status" -eq 0 ]]; then
+    printf '质量门禁失败时发布命令应失败。\n%s\n' "$output" >&2
+    exit 1
+  fi
+
+  assert_log_not_contains "npm --prefix packages/core version"
+  assert_log_not_contains "pnpm install --lockfile-only"
+  assert_log_not_contains "git commit -m chore(发布)"
+  assert_log_not_contains "pnpm --dir packages/core publish"
+}
+
+# 验证预发布质量门禁失败时不会写入临时版本。
+test_prerelease_quality_failure_stops_before_temporary_version() {
+  local before output status
+
+  before="$(cat "$ROOT_DIR/packages/core/package.json")"
+  : >"$COMMAND_LOG"
+  export MOCK_COMMAND_FAIL_MATCH="pnpm --filter @schemx/core... test"
+  set +e
+  output="$(run_release publish alpha core 2>&1)"
+  status=$?
+  set -e
+  unset MOCK_COMMAND_FAIL_MATCH
+
+  [[ "$status" -ne 0 ]]
+  [[ "$(cat "$ROOT_DIR/packages/core/package.json")" == "$before" ]]
+  assert_not_contains "$output" "生成临时 alpha 预发布版本"
+  assert_log_not_contains "pnpm --dir packages/core publish"
+}
+
+# 验证 lockfile 同步失败时恢复正式版本文件且不提交。
+test_latest_lockfile_failure_rolls_back_version_files() {
+  local before output status
+
+  before="$(cat "$ROOT_DIR/packages/core/package.json")"
+  : >"$COMMAND_LOG"
+  export MOCK_NPM_VERSION_MUTATE=1
+  export MOCK_COMMAND_FAIL_MATCH="pnpm install --lockfile-only"
+  set +e
+  output="$(run_release publish latest core patch 2>&1)"
+  status=$?
+  set -e
+  unset MOCK_COMMAND_FAIL_MATCH
+  unset MOCK_NPM_VERSION_MUTATE
+
+  [[ "$status" -ne 0 ]]
+  if [[ "$(cat "$ROOT_DIR/packages/core/package.json")" != "$before" ]]; then
+    printf 'lockfile 同步失败后应恢复 core/package.json。\n%s\n' "$output" >&2
+    exit 1
+  fi
+  assert_log_not_contains "git commit -m chore(发布)"
+  assert_log_not_contains "pnpm --dir packages/core publish"
+}
+
+# 验证版本 commit 失败时恢复正式版本文件且不发布。
+test_latest_commit_failure_rolls_back_version_files() {
+  local before output status
+
+  before="$(cat "$ROOT_DIR/packages/core/package.json")"
+  : >"$COMMAND_LOG"
+  export MOCK_NPM_VERSION_MUTATE=1
+  export MOCK_COMMAND_FAIL_MATCH="git commit -m chore(发布): 提升 core 版本"
+  set +e
+  output="$(run_release publish latest core patch 2>&1)"
+  status=$?
+  set -e
+  unset MOCK_COMMAND_FAIL_MATCH
+  unset MOCK_NPM_VERSION_MUTATE
+
+  [[ "$status" -ne 0 ]]
+  if [[ "$(cat "$ROOT_DIR/packages/core/package.json")" != "$before" ]]; then
+    printf '版本 commit 失败后应恢复 core/package.json。\n%s\n' "$output" >&2
+    exit 1
+  fi
+  assert_log_not_contains "pnpm --dir packages/core publish"
+}
+
+# 验证多包发布中途失败时输出部分发布状态，并停止后续 tag/Release。
+test_multi_package_publish_failure_reports_partial_result() {
+  local output status
+
+  : >"$COMMAND_LOG"
+  export MOCK_COMMAND_FAIL_MATCH="pnpm --dir packages/vue publish"
+  set +e
+  output="$(run_release publish latest all current 2>&1)"
+  status=$?
+  set -e
+  unset MOCK_COMMAND_FAIL_MATCH
+
+  [[ "$status" -ne 0 ]]
+  assert_contains "$output" "已发布：core"
+  assert_contains "$output" "失败：vue"
+  assert_contains "$output" "未执行：vant"
+  assert_log_contains "pnpm --dir packages/core publish"
+  assert_log_contains "pnpm --dir packages/vue publish"
+  assert_log_not_contains "pnpm --dir packages/vant publish"
+  assert_log_not_contains "git tag -a"
+  assert_log_not_contains "gh release create"
 }
 
 # 验证 all 的 patch 发布覆盖全部包并生成统一提交。
 test_latest_publish_patch_all_bumps_and_commits_all_packages() {
+  local core_version vue_version vant_version
+
+  core_version="$(expected_patch_version core)"
+  vue_version="$(expected_patch_version vue)"
+  vant_version="$(expected_patch_version vant)"
   : >"$COMMAND_LOG"
 
   run_release publish latest all patch >/dev/null
 
-  assert_log_contains "npm --prefix packages/core version patch --no-git-tag-version"
-  assert_log_contains "npm --prefix packages/vue version patch --no-git-tag-version"
-  assert_log_contains "npm --prefix packages/vant version patch --no-git-tag-version"
+  assert_log_contains "npm --prefix packages/core version $core_version --no-git-tag-version"
+  assert_log_contains "npm --prefix packages/vue version $vue_version --no-git-tag-version"
+  assert_log_contains "npm --prefix packages/vant version $vant_version --no-git-tag-version"
   assert_log_contains "pnpm install --lockfile-only"
   assert_log_contains "git add packages/core/package.json packages/vue/package.json packages/vant/package.json pnpm-lock.yaml"
   assert_log_contains "git commit -m chore(发布): 提升 packages 版本"
@@ -1002,7 +1379,17 @@ RELEASE_TESTS=(
   test_release_test_uses_shared_separator
   test_run_with_targets_separates_each_target
   test_release_channel_choices_put_latest_last
+  test_next_stable_version_calculates_without_mutating_files
+  test_version_availability_uses_explicit_candidate
+  test_version_availability_rejects_registry_lookup_error
+  test_release_markers_accept_available_candidate
+  test_release_markers_reject_local_tag
+  test_release_markers_reject_remote_tag
+  test_release_markers_reject_github_release
+  test_release_markers_reject_remote_lookup_error
+  test_release_markers_reject_github_lookup_error
   test_release_test_runs_only_release_script_tests
+  test_release_check_uses_package_dependency_chain
   test_latest_publish_is_main_only
   test_publish_without_npm_auth_shows_clear_message
   test_publish_accepts_npm_token_auth
@@ -1014,6 +1401,11 @@ RELEASE_TESTS=(
   test_release_output_omits_colors_without_tty
   test_pack_accepts_target
   test_latest_publish_patch_bumps_commits_and_publishes_target
+  test_latest_quality_failure_stops_before_version_transaction
+  test_prerelease_quality_failure_stops_before_temporary_version
+  test_latest_lockfile_failure_rolls_back_version_files
+  test_latest_commit_failure_rolls_back_version_files
+  test_multi_package_publish_failure_reports_partial_result
   test_latest_publish_patch_all_bumps_and_commits_all_packages
   test_latest_publish_explicit_version_requires_single_target
   test_publish_without_args_uses_channel_target_and_version_env_selection
