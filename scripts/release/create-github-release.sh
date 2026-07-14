@@ -13,10 +13,12 @@ fi
 
 repo="$(github_repository)"
 
+# 每个包单独生成 notes 与 Release，避免多包版本混入同一条发布记录。
 for pkg in "$@"; do
   tag_name="$(release_tag_name "$pkg")"
   title="$(release_title "$pkg")"
   notes_file="$(mktemp)"
+  # 临时 notes 文件必须在成功和失败路径都清理。
   cleanup_notes_file() {
     rm -f "$notes_file"
   }

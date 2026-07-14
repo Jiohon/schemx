@@ -21,6 +21,7 @@ tag_name="$(release_tag_name "$pkg")"
 title="$(release_title "$pkg")"
 previous_tag=""
 
+# 从当前分支可见 tag 中找到同包的最近一次发布，确定提交范围。
 while IFS= read -r candidate_tag; do
   if [[ "$candidate_tag" != "$tag_name" && "$candidate_tag" == "@schemx/$pkg@"* ]]; then
     previous_tag="$candidate_tag"
@@ -64,6 +65,7 @@ NOTES
   exit 0
 fi
 
+# 按 Conventional Commit 前缀输出一个非空的 Release notes 分组。
 print_section() {
   local title="$1"
   local pattern="$2"
@@ -81,6 +83,7 @@ print_section() {
   done
 }
 
+# 固定分类顺序，保证 GitHub Release 的阅读结构稳定。
 print_section "Features" '^feat(\(|:|!)'
 print_section "Fixes" '^fix(\(|:|!)'
 print_section "Performance" '^perf(\(|:|!)'
@@ -88,6 +91,7 @@ print_section "Refactors" '^refactor(\(|:|!)'
 print_section "Documentation" '^docs(\(|:|!)'
 print_section "Tooling" '^(chore|build|ci|test)(\(|:|!)'
 
+# 未被已知 Conventional Commit 类型覆盖的提交统一归入 Other。
 other_subjects=()
 for subject in "${commit_subjects[@]}"; do
   if [[ ! "$subject" =~ ^(feat|fix|perf|refactor|docs|chore|build|ci|test)(\(|:|!) ]]; then

@@ -7,6 +7,7 @@ cd "$ROOT_DIR"
 
 source "$ROOT_DIR/scripts/release/common.sh"
 
+# NPM_TOKEN 会先转换为临时 npmrc，再使用 pnpm whoami 验证实际发布权限。
 info "检查 npm 登录状态"
 configure_npm_token_auth
 if ! pnpm whoami --registry "$NPM_REGISTRY" >/dev/null 2>&1; then

@@ -50,11 +50,13 @@ const kindConfig = {
   },
 }
 
+// 所有参数与交互错误统一写入 stderr 并使用失败退出码。
 function fail(message) {
   process.stderr.write(` 错误：${message}\n`)
   process.exit(1)
 }
 
+// 取消不是发布失败；使用固定标记通知 Shell 调用方停止后续流程。
 function cancel() {
   // pnpm 会把非 0 退出码包装成 ELIFECYCLE；取消选择应停止发布但不算脚本失败。
   cancelPrompt("已取消选择", { output: process.stderr })
@@ -62,6 +64,7 @@ function cancel() {
   process.exit(0)
 }
 
+// 环境变量提供的自动化选择也必须受当前选项集约束。
 function validateOption(option) {
   if (!options.includes(option)) {
     fail(`${config.unknown}：${option}，可选值为 ${options.join("、")}`)
@@ -93,10 +96,12 @@ if (!process.stdin.isTTY || !process.stderr.isTTY) {
   fail(`当前终端不支持交互选择。请传入参数，或设置 ${config.env}。`)
 }
 
+// 在交互列表中补充通道或版本动作的解释。
 function optionLabel(option) {
   return config.labels?.[option] ? `${option} - ${config.labels[option]}` : option
 }
 
+// 后续选择展示已选通道和目标，避免多步交互失去上下文。
 function selectedContext() {
   if (kind === "channel") {
     return ""

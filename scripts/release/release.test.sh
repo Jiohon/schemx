@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 TMP_DIR="$(mktemp -d)"
 MOCK_BIN="$TMP_DIR/bin"
 COMMAND_LOG="$TMP_DIR/commands.log"
@@ -10,6 +10,7 @@ COMMAND_LOG="$TMP_DIR/commands.log"
 mkdir -p "$MOCK_BIN"
 touch "$COMMAND_LOG"
 
+# 删除隔离测试目录，避免 mock 工具和日志残留。
 cleanup() {
   rm -rf "$TMP_DIR"
 }
@@ -179,10 +180,12 @@ export REAL_NODE="$(command -v node)"
 export PATH="$MOCK_BIN:$PATH"
 export COMMAND_LOG
 
+# 在 mock PATH 下执行发布入口。
 run_release() {
-  bash "$ROOT_DIR/scripts/release.sh" "$@"
+  bash "$ROOT_DIR/scripts/release/release.sh" "$@"
 }
 
+# 断言文本包含预期片段。
 assert_contains() {
   local haystack="$1"
   local needle="$2"
@@ -193,6 +196,7 @@ assert_contains() {
   fi
 }
 
+# 断言文本不包含不应出现的片段。
 assert_not_contains() {
   local haystack="$1"
   local needle="$2"
@@ -203,6 +207,7 @@ assert_not_contains() {
   fi
 }
 
+# 断言片段出现次数，验证不会重复执行关键操作。
 assert_occurrences() {
   local haystack="$1"
   local needle="$2"
@@ -217,6 +222,7 @@ assert_occurrences() {
   fi
 }
 
+# 断言被 mock 的外部命令已被调用。
 assert_log_contains() {
   local needle="$1"
 
@@ -227,6 +233,7 @@ assert_log_contains() {
   fi
 }
 
+# 断言失败路径在危险命令前停止。
 assert_log_not_contains() {
   local needle="$1"
 
@@ -237,6 +244,7 @@ assert_log_not_contains() {
   fi
 }
 
+# 验证帮助只暴露统一发布入口。
 test_help_lists_channel_commands_without_package_shortcuts() {
   local output
   output="$(run_release help)"
@@ -244,10 +252,11 @@ test_help_lists_channel_commands_without_package_shortcuts() {
   assert_contains "$output" "pnpm release:publish [dev|alpha|beta|rc|next|latest] [all|core|vue|vant] [current|patch|minor|major|x.y.z]"
   assert_not_contains "$output" "pnpm release:publish:alpha"
   assert_not_contains "$output" "pnpm release:version:patch"
-  assert_not_contains "$output" "bash scripts/release.sh publish-alpha"
-  assert_not_contains "$output" "bash scripts/release.sh version"
+  assert_not_contains "$output" "bash scripts/release/release.sh publish-alpha"
+  assert_not_contains "$output" "bash scripts/release/release.sh version"
 }
 
+# 验证 package.json 不再保留分散的发布快捷命令。
 test_package_scripts_keep_single_publish_entry() {
   local scripts
   scripts="$(node -e "
@@ -260,6 +269,166 @@ console.log(Object.keys(pkg.scripts).filter((name) => name.startsWith('release:'
   assert_not_contains "$scripts" "release:version:"
 }
 
+# 验证根命令统一委托目标选择器，而不是维护 scope 前缀变体。
+test_root_scripts_use_bare_commands() {
+  node -e "
+const assert = require('node:assert/strict');
+const pkg = require('$ROOT_DIR/package.json');
+const scripts = pkg.scripts || {};
+
+// 运行类任务统一为裸命令，经 run-with-targets 按 scope 分组交互选择
+for (const name of [
+  'lint',
+  'lint:fix',
+  'format',
+  'format:check',
+  'type-check',
+  'check',
+  'test',
+  'build',
+  'build:analyze',
+  'dev',
+  'pack-local',
+  'install-local',
+  'check:package-config',
+  'check:bundle-boundaries',
+  'check:packages',
+]) {
+  assert.ok(scripts[name], \`缺少根命令 \${name}\`);
+}
+
+// 不再保留 packages:* / plugins:* / examples:* 前缀的运行类命令
+for (const name of [
+  'packages:build',
+  'packages:check',
+  'packages:lint',
+  'packages:pack-local',
+  'plugins:build',
+  'plugins:check',
+  'plugins:lint',
+  'plugins:pack-local',
+  'examples:vant:dev',
+  'examples:install-local',
+  'packages:check-config',
+  'packages:check-bundle-boundaries',
+  'packages:check-contract',
+  'packages:install-local-to-examples',
+]) {
+  assert.ok(!scripts[name], \`不应继续保留 scope 前缀命令 \${name}\`);
+}
+
+assert.equal(scripts['lint'], 'node scripts/run-with-targets.mjs lint');
+assert.equal(scripts['check:package-config'], 'node scripts/packages/check-config.mjs');
+assert.equal(scripts['check:bundle-boundaries'], 'node scripts/packages/check-bundle-boundaries.mjs');
+assert.equal(scripts['check:packages'], 'pnpm check:package-config && pnpm check:bundle-boundaries');
+"
+}
+
+# 验证本地 tarball 使用唯一版本以绕开缓存。
+test_pack_local_helper_creates_timestamped_versions() {
+  local output
+
+  output="$(node --input-type=module -e "
+import { createTimestampedVersion } from '$ROOT_DIR/scripts/packages/pack-local.mjs';
+console.log(createTimestampedVersion('0.2.0', '20260709153045'));
+")"
+
+  if [[ "$output" != "0.2.0-dev.20260709153045" ]]; then
+    printf '本地 pack 版本应追加 dev 时间戳。\n实际输出：%s\n' "$output" >&2
+    exit 1
+  fi
+}
+
+# 验证安装提示仅由 tarball 路径组成。
+test_pack_local_creates_install_command_from_tarballs() {
+  local output
+
+  output="$(node --input-type=module -e "
+import assert from 'node:assert/strict';
+import { createInstallCommand } from '$ROOT_DIR/scripts/packages/pack-local.mjs';
+
+assert.equal(
+  createInstallCommand(['/tmp/core.tgz', '/tmp/plugin.tgz']),
+  'pnpm i /tmp/core.tgz /tmp/plugin.tgz'
+);
+")"
+
+  if [[ -n "$output" ]]; then
+    printf '生成本地 tarball 安装命令时不应额外输出。\n实际输出：%s\n' "$output" >&2
+    exit 1
+  fi
+}
+
+# 验证插件打包脚本提供机器可读的 tarball 输出标记。
+test_plugin_pack_reports_generated_tarball_path() {
+  node -e "
+const assert = require('node:assert/strict');
+const { readFileSync } = require('node:fs');
+const source = readFileSync('$ROOT_DIR/scripts/plugins/pack-vite-plugin.sh', 'utf8');
+
+assert.ok(source.includes('__SCHEMX_LOCAL_TARBALL__='));
+"
+}
+
+# 验证本地打包脚本未回归已移除的手工 tarball 分析逻辑。
+test_pack_local_does_not_keep_manual_tarball_analysis() {
+  node -e "
+const assert = require('node:assert/strict');
+const { readFileSync } = require('node:fs');
+const source = readFileSync('$ROOT_DIR/scripts/packages/pack-local.mjs', 'utf8');
+
+assert.doesNotMatch(source, /function (formatSize|collectFiles|analyzeTarball|printTarballAnalysis)\\b/);
+assert.doesNotMatch(source, /\\b(mkdtempSync|readdirSync|rmSync|statSync|tmpdir|relative)\\b/);
+assert.match(source, /import \{ printSection \} from \"\.\.\/lib\/terminal\.mjs\"/);
+"
+}
+
+# 验证各脚本复用统一的终端分隔样式。
+test_terminal_section_uses_shared_separator() {
+  local output
+
+  output="$(node --input-type=module -e "
+import { printSection } from '$ROOT_DIR/scripts/lib/terminal.mjs';
+
+let output = '';
+printSection('构建 @schemx/core', {
+  output: { write(value) { output += value; } },
+});
+process.stdout.write(output);
+")"
+
+  assert_contains "$output" "------ 构建 @schemx/core ------"
+  assert_not_contains "$output" "═"
+}
+
+# 验证发布测试入口也遵循统一的终端输出约定。
+test_release_test_uses_shared_separator() {
+  node -e "
+const assert = require('node:assert/strict');
+const { readFileSync } = require('node:fs');
+const source = readFileSync('$ROOT_DIR/scripts/release/release.test.sh', 'utf8');
+
+assert.ok(source.includes('scripts/terminal.mjs'));
+assert.ok(source.includes('release:test ['));
+"
+}
+
+# 验证目标运行器逐包执行，避免递归 pnpm 混合日志。
+test_run_with_targets_separates_each_target() {
+  local output
+
+  output="$(node "$ROOT_DIR/scripts/run-with-targets.mjs" build 2>&1)"
+
+  assert_contains "$output" "构建 @schemx/core"
+  assert_contains "$output" "构建 @schemx/vue"
+  assert_contains "$output" "构建 @schemx/vant"
+  assert_not_contains "$output" "pnpm -r"
+  assert_log_contains "pnpm --filter @schemx/core run build"
+  assert_log_contains "pnpm --filter @schemx/vue run build"
+  assert_log_contains "pnpm --filter @schemx/vant run build"
+}
+
+# 验证风险更高的正式发布通道位于交互列表末尾。
 test_release_channel_choices_put_latest_last() {
   local output
 
@@ -271,16 +440,18 @@ test_release_channel_choices_put_latest_last() {
   fi
 }
 
+# 验证 release:test 不会意外运行整个工作区测试集。
 test_release_test_runs_only_release_script_tests() {
   local script
   script="$(node -p "require('$ROOT_DIR/package.json').scripts['release:test']")"
 
-  if [[ "$script" != "bash scripts/release.test.sh" ]]; then
+  if [[ "$script" != "bash scripts/release/release.test.sh" ]]; then
     printf 'release:test 应只运行 release.test.sh。\n实际脚本：%s\n' "$script" >&2
     exit 1
   fi
 }
 
+# 验证 dev 发布使用临时版本和 dev tag，随后恢复工作区版本。
 test_dev_publish_uses_dev_tag_and_restores_version() {
   local before after output
 
@@ -310,6 +481,7 @@ test_dev_publish_uses_dev_tag_and_restores_version() {
   assert_log_not_contains "git push"
 }
 
+# 验证 latest 发布在非 main 分支被拒绝。
 test_latest_publish_is_main_only() {
   local output status
 
@@ -328,6 +500,7 @@ test_latest_publish_is_main_only() {
   assert_contains "$output" "正式发布只能在 main 分支执行"
 }
 
+# 验证 npm 未认证时停止在发布命令之前，并给出处理提示。
 test_publish_without_npm_auth_shows_clear_message() {
   local output status
 
@@ -351,6 +524,7 @@ test_publish_without_npm_auth_shows_clear_message() {
   assert_not_contains "$output" "ELIFECYCLE"
 }
 
+# 验证 NPM_TOKEN 可通过临时 npmrc 完成非交互认证。
 test_publish_accepts_npm_token_auth() {
   local output status
 
@@ -373,6 +547,7 @@ test_publish_accepts_npm_token_auth() {
   assert_log_contains "pnpm --dir packages/core publish --access public --registry https://registry.npmjs.org/ --tag alpha --no-git-checks"
 }
 
+# 验证 latest 缺少 GitHub 认证时不会开始 npm 发布。
 test_publish_without_github_auth_stops_before_publish() {
   local output status
 
@@ -396,6 +571,7 @@ test_publish_without_github_auth_stops_before_publish() {
   assert_log_not_contains "pnpm --dir packages/core publish"
 }
 
+# 验证检测到重复版本时提供下一步版本升级建议。
 test_publish_existing_version_suggests_release_version() {
   local output status
 
@@ -417,6 +593,7 @@ test_publish_existing_version_suggests_release_version() {
   assert_log_not_contains "pnpm --dir packages/vue publish"
 }
 
+# 验证 alpha 发布使用 alpha tag 且不会遗留临时版本。
 test_alpha_publish_uses_alpha_tag_and_restores_version() {
   local before after
 
@@ -450,6 +627,7 @@ test_alpha_publish_uses_alpha_tag_and_restores_version() {
   assert_log_not_contains "git push"
 }
 
+# 验证 pack 子命令支持单个发布目标。
 test_pack_accepts_target() {
   : >"$COMMAND_LOG"
 
@@ -460,6 +638,7 @@ test_pack_accepts_target() {
   assert_log_not_contains "pnpm --filter @schemx/vue pack --pack-destination $ROOT_DIR"
 }
 
+# 验证单包 patch 发布会升级版本、提交锁文件并发布目标包。
 test_latest_publish_patch_bumps_commits_and_publishes_target() {
   : >"$COMMAND_LOG"
 
@@ -474,6 +653,7 @@ test_latest_publish_patch_bumps_commits_and_publishes_target() {
   assert_log_contains "pnpm --dir packages/vue publish --access public --registry https://registry.npmjs.org/"
 }
 
+# 验证 all 的 patch 发布覆盖全部包并生成统一提交。
 test_latest_publish_patch_all_bumps_and_commits_all_packages() {
   : >"$COMMAND_LOG"
 
@@ -487,6 +667,7 @@ test_latest_publish_patch_all_bumps_and_commits_all_packages() {
   assert_log_contains "git commit -m chore(发布): 提升 packages 版本"
 }
 
+# 验证精确版本不会被误用于多个包。
 test_latest_publish_explicit_version_requires_single_target() {
   local output status
 
@@ -504,6 +685,7 @@ test_latest_publish_explicit_version_requires_single_target() {
   assert_log_not_contains "npm --prefix packages/core version 1.2.3 --no-git-tag-version"
 }
 
+# 验证单包发布的质量门禁限定在该包及其依赖链。
 test_publish_checks_only_target_dependency_chain() {
   local output
 
@@ -525,6 +707,7 @@ test_publish_checks_only_target_dependency_chain() {
   assert_log_contains "pnpm --dir packages/vant publish --access public --registry https://registry.npmjs.org/ --tag alpha --no-git-checks"
 }
 
+# 验证强制颜色环境变量能覆盖非 TTY 输出。
 test_release_output_uses_colors_when_forced() {
   local output error_output status
   local cyan green yellow red bold
@@ -544,8 +727,8 @@ test_release_output_uses_colors_when_forced() {
   unset FORCE_COLOR
   unset MOCK_BRANCH
 
-  assert_contains "$output" "${cyan}${bold}◆ 发布计划"
-  assert_contains "$output" "${cyan}${bold}◆ 发布 @schemx/core"
+  assert_contains "$output" "${cyan}${bold}发布计划"
+  assert_contains "$output" "${cyan}${bold}发布 @schemx/core"
   assert_contains "$output" "${green}✓ @schemx/core@"
   assert_contains "$output" "可发布"
   assert_contains "$output" "${yellow}! 如果 npm 要求网页登录、二维码确认或 OTP"
@@ -568,6 +751,7 @@ test_release_output_uses_colors_when_forced() {
   assert_contains "$error_output" "${red}✖ 错误：正式发布只能在 main 分支执行。当前分支：feature/demo"
 }
 
+# 验证非 TTY 默认不输出 ANSI 转义字符。
 test_release_output_omits_colors_without_tty() {
   local output
 
@@ -584,6 +768,7 @@ test_release_output_omits_colors_without_tty() {
   assert_not_contains "$output" $'\033['
 }
 
+# 验证自动化可通过环境变量完成完整的交互选择链。
 test_publish_without_args_uses_channel_target_and_version_env_selection() {
   local output
 
@@ -607,6 +792,7 @@ test_publish_without_args_uses_channel_target_and_version_env_selection() {
   assert_log_not_contains "pnpm --dir packages/vue publish"
 }
 
+# 验证选择器 stdout 只输出机器可消费的选项值。
 test_selector_does_not_print_confirmation_line_after_enter() {
   local output status
 
@@ -627,6 +813,7 @@ test_selector_does_not_print_confirmation_line_after_enter() {
   assert_not_contains "$output" "请选择发布目标：all"
 }
 
+# 验证 latest 在 npm 发布后才创建并推送 Git tag。
 test_latest_publish_tags_and_pushes_after_publish() {
   local version
 
@@ -643,6 +830,7 @@ test_latest_publish_tags_and_pushes_after_publish() {
   assert_log_contains "gh release create @schemx/core@${version} --repo Jiohon/schemx --title @schemx/core@${version} --notes-file"
 }
 
+# 验证多包 latest 为每个包创建独立 tag 与 GitHub Release。
 test_latest_publish_all_creates_package_scoped_tags_and_releases() {
   local core_version vue_version vant_version
 
@@ -667,6 +855,7 @@ test_latest_publish_all_creates_package_scoped_tags_and_releases() {
   assert_log_contains "gh release create @schemx/vant@${vant_version} --repo Jiohon/schemx --title @schemx/vant@${vant_version} --notes-file"
 }
 
+# 验证自动化环境变量不能绕过目标白名单。
 test_selector_rejects_unknown_environment_target() {
   local output status
 
@@ -683,6 +872,7 @@ test_selector_rejects_unknown_environment_target() {
   assert_contains "$output" "未知发布目标"
 }
 
+# 验证非交互环境必须显式提供自动化选择值。
 test_selector_requires_tty_or_automation_target() {
   local output status
 
@@ -699,6 +889,7 @@ test_selector_requires_tty_or_automation_target() {
   assert_contains "$output" "不支持交互选择"
 }
 
+# 验证未知发布通道在选择器阶段即失败。
 test_selector_rejects_unknown_channel() {
   local output status
 
@@ -715,6 +906,7 @@ test_selector_rejects_unknown_channel() {
   assert_contains "$output" "未知发布模式"
 }
 
+# 验证允许 dev 等非 latest 通道通过选择器。
 test_selector_accepts_dev_channel() {
   local output
 
@@ -726,6 +918,7 @@ test_selector_accepts_dev_channel() {
   fi
 }
 
+# 验证取消选择不会被 pnpm 视作 lifecycle 失败。
 test_cancelled_selector_exits_without_lifecycle_failure() {
   local output status
 
@@ -748,16 +941,19 @@ test_cancelled_selector_exits_without_lifecycle_failure() {
   assert_log_not_contains "pnpm --dir packages/vue publish"
 }
 
+# 从调用栈中获取当前测试函数名，用于统一测试报告。
 release_test_name() {
   local name="$1"
   name="${name#test_}"
   printf '%s' "${name//_/ }"
 }
 
+# 获取毫秒时间戳，用于统计单个测试耗时。
 now_ms() {
   node -e 'process.stdout.write(String(Date.now()))'
 }
 
+# 将毫秒耗时格式化为便于阅读的字符串。
 format_duration() {
   local ms="$1"
   local centiseconds
@@ -777,6 +973,7 @@ format_duration() {
   fi
 }
 
+# 执行一个测试函数并输出通过/失败与耗时；失败不阻断后续测试。
 run_release_test() {
   local index="$1"
   local total="$2"
@@ -787,7 +984,7 @@ run_release_test() {
 
   label="$(release_test_name "$test_name")"
   started_at="$(now_ms)"
-  printf '\n◆ release:test [%02d/%02d] RUNNING %s\n' "$index" "$total" "$label" >&2
+  node "$ROOT_DIR/scripts/terminal.mjs" section "release:test [$index/$total] $label" >&2
   "$test_name"
   elapsed=$(($(now_ms) - started_at))
   printf '✓ release:test [%02d/%02d] SUCCESS %s (%s)\n' "$index" "$total" "$label" "$(format_duration "$elapsed")" >&2
@@ -796,6 +993,14 @@ run_release_test() {
 RELEASE_TESTS=(
   test_help_lists_channel_commands_without_package_shortcuts
   test_package_scripts_keep_single_publish_entry
+  test_root_scripts_use_bare_commands
+  test_pack_local_helper_creates_timestamped_versions
+  test_pack_local_creates_install_command_from_tarballs
+  test_plugin_pack_reports_generated_tarball_path
+  test_pack_local_does_not_keep_manual_tarball_analysis
+  test_terminal_section_uses_shared_separator
+  test_release_test_uses_shared_separator
+  test_run_with_targets_separates_each_target
   test_release_channel_choices_put_latest_last
   test_release_test_runs_only_release_script_tests
   test_latest_publish_is_main_only

@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT_DIR"
 
 source "$ROOT_DIR/scripts/release/common.sh"
@@ -12,6 +12,7 @@ PRERELEASE_TARGETS=()
 # 选择器通过 stdout 返回结果，取消操作也需要一个可识别值，避免误当成包名继续发布。
 RELEASE_CANCELLED_TARGET="__SCHEMX_RELEASE_CANCELLED__"
 
+# 输出统一命令入口与参数约束，供帮助和错误分支复用。
 usage() {
   cat <<'USAGE'
 用法：
@@ -25,9 +26,9 @@ usage() {
   major - 提升 major 版本，也就是 x.y.z 的 x 位
 
 也可以直接调用：
-  bash scripts/release.sh check
-  bash scripts/release.sh pack [all|core|vue|vant]
-  bash scripts/release.sh publish [dev|alpha|beta|rc|next|latest] [all|core|vue|vant] [current|patch|minor|major|x.y.z]
+  bash scripts/release/release.sh check
+  bash scripts/release/release.sh pack [all|core|vue|vant]
+  bash scripts/release/release.sh publish [dev|alpha|beta|rc|next|latest] [all|core|vue|vant] [current|patch|minor|major|x.y.z]
 USAGE
 }
 
@@ -35,6 +36,7 @@ SELECTED_CHANNEL=""
 SELECTED_TARGET=""
 SELECTED_VERSION_ACTION=""
 
+# 调用 Node 选择器，并保留取消标记给上层流程处理。
 select_release_option() {
   local kind="$1"
   local channel="$2"
@@ -51,6 +53,7 @@ select_release_option() {
   printf '%s' "$selected"
 }
 
+# 解析显式或交互选择的发布通道。
 select_release_channel() {
   local channel="${1:-}"
 
@@ -65,6 +68,7 @@ select_release_channel() {
   SELECTED_CHANNEL="$channel"
 }
 
+# 解析显式或交互选择的单包/all 发布目标。
 select_publish_target() {
   local target="${1:-}"
   local channel="${2:-latest}"
@@ -82,6 +86,7 @@ select_publish_target() {
   assert_publish_target "$SELECTED_TARGET"
 }
 
+# 在可交互终端读取并校验用户指定的正式版本号。
 prompt_custom_version() {
   local version
 
@@ -99,6 +104,7 @@ prompt_custom_version() {
   printf '%s' "$version"
 }
 
+# 仅 latest 发布需要版本动作；custom 会继续读取精确版本号。
 select_version_action() {
   local action="${1:-}"
   local channel="${2:-latest}"
@@ -118,6 +124,7 @@ select_version_action() {
   SELECTED_VERSION_ACTION="$action"
 }
 
+# 在执行任何写操作前展示最终发布计划，便于人工确认。
 print_publish_selection_summary() {
   info "发布计划"
   release_kv "通道" "$SELECTED_CHANNEL - $(release_channel_label "$SELECTED_CHANNEL")"
@@ -132,14 +139,17 @@ print_publish_selection_summary() {
   release_kv "tag" "$SELECTED_CHANNEL"
 }
 
+# 委托独立脚本校验正式发布分支。
 assert_main_branch() {
   bash "$ROOT_DIR/scripts/release/assert-main-branch.sh"
 }
 
+# 委托独立脚本校验工作区无未提交改动。
 assert_clean_git() {
   bash "$ROOT_DIR/scripts/release/assert-clean-git.sh"
 }
 
+# 预发布会临时改写 package.json，因此只要求这些目标文件事先干净。
 assert_prerelease_version_files_clean() {
   local pkg pkg_json
 
@@ -152,37 +162,45 @@ assert_prerelease_version_files_clean() {
   done
 }
 
+# 在发布前确认 npm token 或交互登录可用。
 assert_npm_auth() {
   bash "$ROOT_DIR/scripts/release/check-npm-auth.sh"
 }
 
+# 正式版创建 GitHub Release 前确认 gh 已认证。
 assert_github_auth() {
   bash "$ROOT_DIR/scripts/release/check-github-auth.sh"
 }
 
+# 打印当前 registry 与发布 registry，便于发现错误配置。
 assert_npm_registry() {
   bash "$ROOT_DIR/scripts/release/check-npm-registry.sh"
 }
 
+# 运行发布前质量门禁，可按目标缩小到依赖链。
 run_quality_checks() {
   bash "$ROOT_DIR/scripts/release/run-quality-checks.sh" "$@"
 }
 
+# 对全部发布包执行 dry-run，检查实际会发布的文件。
 pack_packages() {
   info "检查发布包内容"
 
   pack_target_packages "${RELEASE_PACKAGES[@]}"
 }
 
+# 对指定目标执行 dry-run，供单包发布复用。
 pack_target_packages() {
   bash "$ROOT_DIR/scripts/release/pack-packages.sh" "$@"
 }
 
+# release:check 依次执行质量门禁和全量发布内容检查。
 run_check() {
   run_quality_checks
   pack_packages
 }
 
+# 生成可供本地安装验证的 tarball，不发布也不改版本。
 run_pack() {
   local target="${1:-all}"
   local targets=()
@@ -191,11 +209,14 @@ run_pack() {
   targets=($(resolve_targets "$target"))
   info "生成本地 tarball"
 
+  # 每个目标单独 pack，方便定位和安装。
   for pkg in "${targets[@]}"; do
-    pnpm --filter "@schemx/$pkg" pack --pack-destination "$ROOT_DIR"
+    mkdir -p "$ROOT_DIR/.packs"
+    pnpm --filter "@schemx/$pkg" pack --pack-destination "$ROOT_DIR/.packs"
   done
 }
 
+# 发布一个已通过检查的包；预发布通道会传入 npm dist-tag。
 publish_one() {
   local pkg="$1"
   local tag="${2:-}"
@@ -204,10 +225,12 @@ publish_one() {
   bash "$ROOT_DIR/scripts/release/publish-package.sh" "$pkg" "$tag"
 }
 
+# 避免 npm 上已有同版本时发布到流程末尾才失败。
 check_target_versions_available() {
   bash "$ROOT_DIR/scripts/release/check-versions-available.sh" "$@"
 }
 
+# 兼容“通道优先”和“目标优先”两种 CLI 写法，并归一化为全局选择结果。
 resolve_publish_arguments() {
   local first="${1:-}"
   local second="${2:-}"
@@ -245,6 +268,7 @@ resolve_publish_arguments() {
   fi
 }
 
+# 根据单包或多包版本变更生成稳定的提交信息。
 version_commit_message() {
   if [[ "$#" -eq 1 ]]; then
     printf 'chore(发布): 提升 %s 版本' "$1"
@@ -254,6 +278,7 @@ version_commit_message() {
   printf 'chore(发布): 提升 packages 版本'
 }
 
+# 对正式版执行版本升级、锁文件同步与提交，确保 npm/tag/Release 指向同一提交。
 apply_latest_version_action() {
   local action="$1"
   local targets=()
@@ -287,6 +312,7 @@ apply_latest_version_action() {
   assert_clean_git
 }
 
+# 生成真实可发布的临时 prerelease 版本，并备份原始 package.json。
 prepare_prerelease_versions() {
   local channel="$1"
   local pkg pkg_json current_version next_version
@@ -309,6 +335,7 @@ prepare_prerelease_versions() {
   done
 }
 
+# 从备份恢复开发版本；可安全重复调用，供 EXIT trap 兜底。
 restore_prerelease_versions() {
   local pkg backup
 
@@ -328,6 +355,7 @@ restore_prerelease_versions() {
   PRERELEASE_TARGETS=()
 }
 
+# 正式发布必须在 main 且工作区干净，发布后创建 tag 和 GitHub Release。
 run_latest_publish() {
   local target="$1"
   local version_action="$2"
@@ -340,6 +368,7 @@ run_latest_publish() {
   assert_npm_auth
   assert_github_auth
 
+  # 检查、构建、dry-run、npm 发布的目标集合必须完全一致。
   targets=($(resolve_targets "$target"))
   apply_latest_version_action "$version_action" "${targets[@]}"
   check_target_versions_available "${targets[@]}"
@@ -354,6 +383,7 @@ run_latest_publish() {
   bash "$ROOT_DIR/scripts/release/create-github-release.sh" "${targets[@]}"
 }
 
+# 预发布不提交版本变更，只在发布窗口内使用临时版本并通过 trap 恢复。
 run_prerelease_publish() {
   local channel="$1"
   local target="$2"
@@ -381,6 +411,7 @@ run_prerelease_publish() {
   trap - EXIT
 }
 
+# 根据已解析通道分派到正式版或预发布流程。
 run_publish() {
   resolve_publish_arguments "$@"
   print_publish_selection_summary
@@ -393,6 +424,7 @@ run_publish() {
   run_prerelease_publish "$SELECTED_CHANNEL" "$SELECTED_TARGET"
 }
 
+# 作为唯一 CLI 入口，保持 check、pack、publish 的参数分派集中。
 main() {
   local command="${1:-}"
 

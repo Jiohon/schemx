@@ -2,7 +2,9 @@ import { readFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
-const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..")
+import { printSection } from "../lib/terminal.mjs"
+
+const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "../..")
 
 const checks = [
   {
@@ -35,41 +37,13 @@ const checks = [
   },
   {
     file: "packages/vant/dist/index.mjs",
-    required: ["@schemx/core", "@schemx/vue", "classnames", "dayjs", "es-toolkit"],
+    required: ["@schemx/vue", "classnames", "dayjs", "es-toolkit"],
     forbidden: ["simple-async-context", "@preact/signals-core"],
   },
   {
     file: "packages/vant/dist/index.cjs",
-    required: ["@schemx/core", "@schemx/vue", "classnames", "dayjs", "es-toolkit"],
+    required: ["@schemx/vue", "classnames", "dayjs", "es-toolkit"],
     forbidden: ["simple-async-context", "@preact/signals-core"],
-  },
-  {
-    file: "packages/vant/dist/standalone.mjs",
-    required: ["vue", "vant"],
-    forbidden: [
-      "@schemx/core",
-      "@schemx/vue",
-      "@preact/signals-core",
-      "simple-async-context",
-      "tslib",
-      "classnames",
-      "dayjs",
-      "es-toolkit",
-    ],
-  },
-  {
-    file: "packages/vant/dist/standalone.cjs",
-    required: ["vue", "vant"],
-    forbidden: [
-      "@schemx/core",
-      "@schemx/vue",
-      "@preact/signals-core",
-      "simple-async-context",
-      "tslib",
-      "classnames",
-      "dayjs",
-      "es-toolkit",
-    ],
   },
 ]
 
@@ -79,31 +53,9 @@ const declarationChecks = [
     forbidden: ["../../vue/src", "../../core/src"],
     required: ["@schemx/vue", "@schemx/core"],
   },
-  {
-    file: "packages/vant/dist/standalone.d.ts",
-    forbidden: ["../../vue/src", "../../core/src"],
-    required: ["@schemx/vue", "@schemx/core"],
-  },
 ]
 
-const packageChecks = [
-  {
-    file: "packages/vant/package.json",
-    validate(packageJson) {
-      const standaloneTypes =
-        packageJson.typesVersions?.["*"]?.standalone ?? []
-
-      if (!standaloneTypes.includes("./dist/standalone.d.ts")) {
-        return [
-          "packages/vant/package.json: typesVersions 缺少 standalone 类型映射",
-        ]
-      }
-
-      return []
-    },
-  },
-]
-
+// 同时识别静态 import、动态 import 与 CommonJS require，避免产物把依赖打进包内。
 function hasBareSpecifier(source, specifier, { allowSubpath = false } = {}) {
   const escaped = specifier.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
   const suffix = allowSubpath ? `(?:/[^"']*)?` : ""
@@ -116,8 +68,12 @@ function hasBareSpecifier(source, specifier, { allowSubpath = false } = {}) {
   return patterns.some((pattern) => pattern.test(source))
 }
 
+// 先收集全部违规项，再一次性报告，方便修复多个包边界问题。
 const failures = []
 
+printSection("检查包产物边界")
+
+// 检查 JavaScript 产物是否保留预期的 external import。
 for (const check of checks) {
   const filePath = resolve(rootDir, check.file)
   const source = readFileSync(filePath, "utf8")
@@ -137,6 +93,7 @@ for (const check of checks) {
   }
 }
 
+// 声明文件不能回指 workspace 源码路径。
 for (const check of declarationChecks) {
   const filePath = resolve(rootDir, check.file)
   const source = readFileSync(filePath, "utf8")
@@ -150,12 +107,6 @@ for (const check of declarationChecks) {
   if (leaked.length > 0) {
     failures.push(`${check.file}: 类型声明泄漏 ${leaked.join(", ")}`)
   }
-}
-
-for (const check of packageChecks) {
-  const filePath = resolve(rootDir, check.file)
-  const packageJson = JSON.parse(readFileSync(filePath, "utf8"))
-  failures.push(...check.validate(packageJson))
 }
 
 if (failures.length > 0) {

@@ -11,6 +11,7 @@ if [[ "$#" -eq 0 ]]; then
   die "缺少要检查的包名。"
 fi
 
+# npm 不允许覆盖已发布版本，因此在构建前尽早失败。
 info "检查 npm 上是否已存在当前版本"
 for pkg in "$@"; do
   package_name="$(package_json_value "$pkg" name)"
