@@ -21,6 +21,13 @@ import type {
 import type { SchemxRendererDefinition } from "./renderer"
 import type { SchemxRules } from "./rule"
 
+/**
+ * 从 SchemxRendererDefinition 中提取组件类型 key。
+ *
+ * 当 SchemxRendererDefinition 未注册任何渲染器时，回退为 string。
+ *
+ * @typeParam TValues - 表单值类型
+ */
 type SchemxComponentTypeKey<TValues extends Values> = [
   Extract<keyof SchemxRendererDefinition<TValues>, string>,
 ] extends [never]

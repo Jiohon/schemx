@@ -11,6 +11,7 @@ import { createDescriptor } from "../../descriptor"
 
 import type { SchemxField } from "../../types/schema"
 
+// 验证 createCompile().toDescriptors 对基础字段、分组、dependency、规则、属性等的编译正确性
 describe("createCompile().toDescriptors", () => {
   it("应该允许 createDescriptor 通过显式参数读取表单默认配置", () => {
     const descriptor = createDescriptor(
@@ -397,6 +398,7 @@ describe("createCompile().toDescriptors", () => {
   })
 })
 
+// 验证 createCompile 的 descriptor cache 复用与 invalidate 失效机制
 describe("createCompile", () => {
   it("应该封装 descriptor cache 并在同一 schema 引用下复用 descriptor", () => {
     const compile = createCompile()

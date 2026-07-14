@@ -29,6 +29,20 @@ const SelectorRenderer = defineComponent({
   },
 })
 
+const CountRenderer = defineComponent({
+  name: "CountRenderer",
+  props: {
+    count: Number,
+  },
+  setup(props) {
+    return () =>
+      h("div", {
+        "data-testid": "count-renderer",
+        "data-count": String(props.count),
+      })
+  },
+})
+
 describe("SchemxForm 动态 schemas", () => {
   it("外部 schemas prop 更新后同步 ViewSchemas", async () => {
     const rendererRegistry = createRendererRegistry()
@@ -168,6 +182,64 @@ describe("SchemxForm 动态 schemas", () => {
     expect(wrapper.text()).toContain("加急订单配置")
     expect(wrapper.text()).toContain("加急等级")
     expect(wrapper.text()).toContain("加急费用")
+
+    wrapper.unmount()
+  })
+
+  it("dependencies.componentProps 更新后应同步下发给已挂载 renderer", async () => {
+    const rendererRegistry = createRendererRegistry()
+    rendererRegistry.register("input", markRaw(InputRenderer))
+    rendererRegistry.register("rate", markRaw(CountRenderer))
+
+    const wrapper = mount(SchemxForm, {
+      props: {
+        rendererRegistry,
+        initialValues: { deliveryMethod: "express" },
+        schemas: [
+          {
+            name: "deliveryMethod",
+            label: "配送方式",
+            componentType: "input",
+          },
+          {
+            name: "serviceRating",
+            label: "服务评分",
+            componentType: "rate",
+            dependencies: {
+              triggerFields: ["deliveryMethod"],
+              componentProps: (values: any) => {
+                const countMap: Record<string, number> = {
+                  express: 5,
+                  selfPickup: 3,
+                  other: 7,
+                }
+
+                return {
+                  count: countMap[values.deliveryMethod as string] ?? 5,
+                }
+              },
+            },
+          },
+        ],
+      },
+    })
+
+    await nextTick()
+    await (wrapper.vm as any).waitForDependencies()
+    await new Promise((resolve) => setTimeout(resolve, 30))
+
+    expect(wrapper.get('[data-testid="count-renderer"]').attributes("data-count")).toBe(
+      "5"
+    )
+
+    ;(wrapper.vm as any).setFieldValue("deliveryMethod", "selfPickup")
+    await (wrapper.vm as any).waitForDependencies()
+    await new Promise((resolve) => setTimeout(resolve, 30))
+    await nextTick()
+
+    expect(wrapper.get('[data-testid="count-renderer"]').attributes("data-count")).toBe(
+      "3"
+    )
 
     wrapper.unmount()
   })

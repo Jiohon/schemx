@@ -10,6 +10,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import { withLock } from "../async"
 
+// 验证 withLock 异步锁的首次执行、执行中复用、完成重入、异常释放、连续调用仅执行一次
 describe("withLock", () => {
   it("首次调用执行原始异步函数", async () => {
     const fn = vi.fn().mockResolvedValue("result")

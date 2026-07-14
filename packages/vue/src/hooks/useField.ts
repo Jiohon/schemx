@@ -16,18 +16,15 @@
  * 5. 管理 onUnmounted 生命周期清理
  */
 
-import { computed, inject, InjectionKey, onUnmounted, provide, shallowRef } from "vue"
+import { computed, onUnmounted, shallowRef } from "vue"
 
 import { createField } from "@schemx/core"
 
 import { FieldInstance } from "../types/field"
 
-import { useFormContext } from "./useForm"
+import { useFormContext } from "./provideFormContext"
 
 import type { NamePath, SchemxInstance, Values } from "@schemx/core"
-
-/** 字段上下文注入 key */
-const FIELD_CONTEXT_KEY: InjectionKey<FieldInstance> = Symbol("schemx:field")
 
 /**
  * useField 针对 (form, name) 的缓存条目
@@ -168,51 +165,6 @@ export const useField = <TValues extends Values = Values>(
   })
 
   return activeEntry.result
-}
-
-/**
- * 向子组件树注入当前字段上下文。
- *
- * 应在 FormItem（或任何创建了 useField 的组件）的 setup 中调用。
- *
- * @param field - useField 返回的字段实例
- *
- * @example
- * ```typescript
- * // FormItem 中
- * const field = useField('date')
- * createFieldContext(field)
- *
- * ```
- */
-export function createFieldContext<TValues extends Values = Values>(
-  field: FieldInstance<TValues>
-): void {
-  provide(FIELD_CONTEXT_KEY, field as FieldInstance)
-}
-
-/**
- * 从最近的 FormItem 获取当前字段上下文。
- *
- * 必须在 FormItem 的组件子树内调用，否则抛出错误。
- *
- * @returns useField 返回的字段实例
- *
- * @throws 当不在 FormItem 子树内时抛出
- *
- * @example
- * const field = useFieldContext()
- * field.error.value  // string[] | undefined
- * field.getValue()   // 当前字段值（Vue 响应式）
- */
-export function useFieldContext(): ReturnType<typeof useField> {
-  const field = inject(FIELD_CONTEXT_KEY)
-
-  if (!field) {
-    throw new Error("[schemx] useFieldContext() must be used inside a FormItem tree")
-  }
-
-  return field
 }
 
 export default useField

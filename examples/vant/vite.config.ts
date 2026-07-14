@@ -90,14 +90,6 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: useSource
         ? [
-            {
-              find: "@schemx/vue/style.css",
-              replacement: resolve(pkgRoots.vue, "styles/index.css"),
-            },
-            {
-              find: "@schemx/vant/style.css",
-              replacement: resolve(pkgRoots.vant, "styles/index.scss"),
-            },
             { find: "@schemx/core", replacement: resolve(pkgRoots.core, "index.ts") },
             { find: "@schemx/vue", replacement: resolve(pkgRoots.vue, "index.ts") },
             { find: "@schemx/vant", replacement: resolve(pkgRoots.vant, "index.ts") },

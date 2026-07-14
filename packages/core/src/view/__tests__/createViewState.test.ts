@@ -1,3 +1,11 @@
+/**
+ * createViewState 单元测试
+ *
+ * 覆盖 createRootRuntimeViewState、createRuntimeViewState、deleteRuntimeViewState
+ * 对 root/field/group/dependency 节点的 viewState 创建与注册。
+ *
+ * @module core/view/__tests__/createViewState
+ */
 import { describe, expect, it } from "vitest"
 
 import { createFieldRuntimeState, setFieldDynamicOverrides } from "../../field"
@@ -13,7 +21,6 @@ import {
   createRuntimeViewState,
   createRootRuntimeViewState,
   deleteRuntimeViewState,
-  readRootViewSchemas,
 } from "../createViewState"
 
 import type {
@@ -22,6 +29,7 @@ import type {
   GroupDescriptor,
 } from "../../descriptor"
 
+// 验证 createViewState 对 root/field/group/dependency 的 viewState 创建、更新、删除
 describe("createViewState", () => {
   it("为 root 创建并注册 root viewState", () => {
     const resources = createRuntimeResources()
@@ -30,7 +38,6 @@ describe("createViewState", () => {
     const state = createRootRuntimeViewState(root, resources)
 
     expect(root.viewState).toBe(state)
-    expect(readRootViewSchemas(state)).toEqual([])
   })
 
   it("为 field 创建并注册 field viewState", () => {
@@ -138,13 +145,6 @@ describe("createViewState", () => {
     dependency.childNodes.value = [field]
     group.childNodes.value = [dependency]
     root.childNodes.value = [group]
-
-    expect(readRootViewSchemas(root.viewState!)).toMatchObject([
-      {
-        key: "group:0",
-        children: [{ key: "field:name" }],
-      },
-    ])
   })
 
   it("删除节点 viewState", () => {

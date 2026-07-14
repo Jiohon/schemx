@@ -1,3 +1,11 @@
+/**
+ * ReactiveMap（createSignalMap）的响应式能力测试。
+ *
+ * 覆盖读写、链式调用、迭代、延迟追踪、批量更新以及删除通知行为。
+ *
+ * @module core/reactivity/__tests__/reactiveMap.test
+ */
+
 import { describe, expect, it } from "vitest"
 
 import {
@@ -7,6 +15,7 @@ import {
   createSignalMap,
 } from "../index"
 
+// ReactiveMap 的基础读写、迭代、延迟追踪、批量更新和删除通知
 describe("ReactiveMap", () => {
   it("reads and writes keyed values", () => {
     const map = createSignalMap<string, unknown>()
@@ -131,6 +140,7 @@ describe("ReactiveMap", () => {
   })
 })
 
+// 响应式运行时：signal 与 map 的批量更新协作
 describe("reactivity runtime", () => {
   it("creates signals and batches updates", () => {
     const count = createSignal(0)

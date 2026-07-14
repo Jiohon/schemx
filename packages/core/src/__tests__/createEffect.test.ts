@@ -15,6 +15,7 @@ import { createEffect } from "../createEffect"
 
 import type { CreateEffectReturn } from "../createEffect"
 
+// 属性测试：通过 fast-check 验证 createEffect 对信号依赖追踪、dispose 清理、batch 协同的正确性
 describe("createEffect 属性测试", () => {
   // Feature: create-effect-api, Property 1: 创建后立即执行一次回调
   // **Validates: Requirements 1.1, 1.4**
@@ -214,6 +215,7 @@ describe("createEffect 属性测试", () => {
   })
 })
 
+// 单元测试：验证 createEffect 的边界情况，如无 cleanup 回调、undefined 返回值、batch 防抖等
 describe("createEffect 单元测试", () => {
   it("回调不返回清理函数时正常工作", () => {
     const s = signal(0)

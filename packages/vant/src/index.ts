@@ -6,8 +6,7 @@
  *
  * @module @schemx/vant
  */
-
-import "@/styles/index.scss"
+import "./styles/index.scss"
 
 /** 声明合并 side-effect：注册 Vant 渲染器类型到 SchemxRendererDefinition */
 import "./types/schemx"
@@ -15,16 +14,15 @@ import "./types/schemx"
 /** side-effect：将 Vant 渲染器注册到全局 rendererRegistry */
 import "./renderers/defaultRenderers"
 
+/** 渲染器组件 */
+export * from "./renderers"
+
+export { default as Cell } from "./components/Cell/index.vue"
+
+/** 工具函数 */
+export * from "./utils"
+
 /** 重新导出 @schemx/vue（含 SchemxForm 默认导出） */
 export { default } from "@schemx/vue"
 export { default as SchemxForm } from "@schemx/vue"
 export * from "@schemx/vue"
-
-/** 渲染器组件 */
-export * from "./renderers"
-
-export { default as Cell } from "@/components/Cell/index.vue"
-
-/** 工具函数 */
-export { getFieldProps, findTreeItem, getFileName } from "./utils"
-export type { FindTreeItemResult } from "./utils"

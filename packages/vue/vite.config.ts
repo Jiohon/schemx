@@ -1,12 +1,8 @@
 import { defineConfig, loadEnv } from "vite"
-import vue from "@vitejs/plugin-vue"
-import vueJsx from "@vitejs/plugin-vue-jsx"
-import dts from "vite-plugin-dts"
-import { visualizer } from "rollup-plugin-visualizer"
 import { resolve } from "path"
-import { injectStyleCss } from "@plugins/injectStyleCss"
+import { createVitePlugins } from "./vite.plugins"
 
-const externalPackages = ["vue", "@schemx/core", "classnames", "dayjs", "es-toolkit"]
+const externalPackages = ["vue", "@schemx/core", "classnames", "es-toolkit"]
 
 function isExternal(id: string) {
   return externalPackages.some((pkg) => id === pkg || id.startsWith(`${pkg}/`))
@@ -27,26 +23,7 @@ export default defineConfig(({ command, mode }) => {
           : {}),
       },
     },
-    plugins: [
-      vue(),
-      vueJsx(),
-      injectStyleCss(),
-      dts({
-        include: ["src/**/*.ts", "src/**/*.tsx"],
-        outDir: "dist",
-        tsconfigPath: "tsconfig.build.json",
-        // rollupTypes: true,
-      }),
-      analyze &&
-        visualizer({
-          filename: resolve(__dirname, "dist/analyze.html"),
-          gzipSize: true,
-          brotliSize: true,
-          open: false,
-          template: "treemap",
-          title: "@schemx/vue bundle analysis",
-        }),
-    ].filter(Boolean),
+    plugins: createVitePlugins({ analyze }),
     build: {
       lib: {
         entry: resolve(__dirname, "src/index.ts"),

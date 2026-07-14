@@ -1,7 +1,7 @@
 /**
  * schemx 统一导出入口
  *
- * @module @schemx/core
+ * @module @schemx/vue
  */
 
 import "./styles/index.css"
@@ -18,21 +18,7 @@ export { rendererRegistry } from "./utils/rendererProvider"
 export { validatorRegistry } from "./utils/rulesProvider"
 
 /** Hooks */
-export {
-  useConfigContext,
-  useForm,
-  useFormContext,
-  useField,
-  useFieldContext,
-  useWatch,
-  useWatchField,
-  useWatchFields,
-  useWatchAll,
-  useDictionary,
-  useEffect,
-  type UseDictionaryReturn,
-  type FormContextProps,
-} from "./hooks"
+export * from "./hooks"
 
 /** 高阶组件 */
 export { WithRemoteOptions } from "./hocs"

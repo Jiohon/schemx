@@ -1,7 +1,17 @@
+/**
+ * Dependency 节点的运行时流程测试。
+ *
+ * 覆盖 dependencyIndex 的维护、effect 的创建/重建/销毁，以及 trigger 变化
+ * 时 effect 的切换与 descriptor 更新。
+ *
+ * @module core/node/__tests__/dependencyFlow.test
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import { createRuntimeGraphHarness, flushRuntimeGraph } from "./runtimeGraphTestUtils"
 
+// dependency 节点的挂载/更新/卸载流程：索引维护、effect 生命周期、竞态保障
 describe("dependency flow", () => {
   it("dependencyIndex 跟随 dependency mount/update/unmount 维护触发字段反向查询", async () => {
     const { commitSchemas, context, root, scheduler } = createRuntimeGraphHarness()

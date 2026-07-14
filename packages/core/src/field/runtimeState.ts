@@ -147,6 +147,7 @@ export function createFieldRuntimeState<TValues extends Values>(
     const base = staticSchema.value
     const overrides = dynamicOverrides.value
 
+    // 合并静态 schema 与动态覆盖：动态覆盖优先，未覆盖的 key 回退到静态值，静态值再回退到默认值
     return {
       key,
       name: name.value,
@@ -168,6 +169,7 @@ export function createFieldRuntimeState<TValues extends Values>(
   const viewSchema = createComputed<SchemxResolvedBaseField<TValues>>(() => {
     const effective = effectiveSchema.value
 
+    // 以静态 schema 为基座，用有效呈现态覆盖运行时可变字段，保持 viewSchema 形状与 staticSchema 一致
     return {
       ...staticSchema.value,
       visible: effective.visible,
@@ -285,6 +287,7 @@ export function resetFieldDynamicOverrides<TValues extends Values>(
   }
 }
 
+/** 创建初始诊断信息，version 从 0 开始。 */
 function createInitialDiagnostics<
   TValues extends Values,
 >(): FieldRuntimeDiagnostics<TValues> {

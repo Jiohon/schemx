@@ -24,13 +24,6 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
-  "typesVersions": {
-    "*": {
-      "standalone": [
-        "./dist/standalone.d.ts"
-      ]
-    }
-  },
   "exports": {
     ".": {
       "import": {
@@ -40,16 +33,6 @@
       "require": {
         "types": "./dist/index.d.ts",
         "default": "./dist/index.cjs"
-      }
-    },
-    "./standalone": {
-      "import": {
-        "types": "./dist/standalone.d.ts",
-        "default": "./dist/standalone.mjs"
-      },
-      "require": {
-        "types": "./dist/standalone.d.ts",
-        "default": "./dist/standalone.cjs"
       }
     },
     "./style.css": "./dist/style.css"
@@ -65,25 +48,32 @@
     "**/index.ts"
   ],
   "peerDependencies": {
+    "@schemx/core": "workspace:*",
+    "@schemx/vue": "workspace:*",
     "vant": "^4.0.0",
     "vue": "^3.0.0"
   },
   "dependencies": {
-    "@schemx/core": "workspace:*",
-    "@schemx/vue": "workspace:*",
     "classnames": "^2.5.1",
     "dayjs": "^1.11.19",
     "es-toolkit": "catalog:"
   },
   "scripts": {
-    "build": "vite build && VITE_BUILD_STANDALONE=true vite build --emptyOutDir false && node ../../scripts/normalize-vant-dts.mjs",
-    "build:analyze": "VITE_ANALYZE=true vite build",
+    "build": "vite build",
+    "build:analyze": "vite build",
     "test": "vitest run --passWithNoTests",
     "lint": "eslint \"src/**/*.{ts,tsx,vue,js,jsx}\"",
+    "lint:fix": "eslint \"src/**/*.{ts,tsx,vue,js,jsx}\" --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx,vue,js,jsx,json,css,scss}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,vue,js,jsx,json,css,scss}\"",
+    "type-check": "tsc -p tsconfig.json --noEmit",
+    "check": "pnpm run lint && pnpm run format:check && pnpm run type-check",
     "prepublishOnly": "pnpm run build"
   },
   "license": "MIT",
   "devDependencies": {
+    "@schemx/core": "workspace:*",
+    "@schemx/vue": "workspace:*",
     "@vue/test-utils": "^2.4.6",
     "vant": "^4.9.0",
     "vue": "catalog:"

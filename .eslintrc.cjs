@@ -177,5 +177,14 @@ module.exports = {
         "vue/require-prop-types": "off",
       },
     },
+    {
+      files: ["plugins/vite-plugin-compat/src/**/*.ts"],
+      rules: {
+        "no-console": [
+          "error",
+          { allow: ["warn", "error", "log", "count", "debug", "info"] },
+        ],
+      },
+    },
   ],
 }

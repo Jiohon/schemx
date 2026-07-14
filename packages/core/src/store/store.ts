@@ -110,6 +110,15 @@ class StoreImpl<TValues extends Values = Values> {
     }
   }
 
+  /**
+   * 获取或惰性创建指定路径的字段 signal。
+   *
+   * 若该路径尚未注册对应 signal，则根据 initialValues 中的值创建新的
+   * FieldSignal。此方法确保字段读写时 signal 始终可用，避免空值判断。
+   *
+   * @param path - 字段路径
+   * @returns 该路径对应的 FieldSignal 实例
+   */
   private getOrCreateFieldSignal<TName extends NamePath<TValues>>(
     path: TName
   ): FieldSignal<FieldValue<TValues, TName>> {

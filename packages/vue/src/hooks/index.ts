@@ -5,10 +5,16 @@
  */
 
 /** useForm - 表单状态管理 */
-export { useForm, useFormContext } from "./useForm"
+export { useForm } from "./useForm"
+
+/** createFormContext - 表单上下文注入与消费 */
+export { createFormContext, useFormContext } from "./provideFormContext"
 
 /** useField - 单字段控制 */
-export { useField, createFieldContext, useFieldContext } from "./useField"
+export { useField } from "./useField"
+
+/** createFieldContext - 表单上下文注入与消费 */
+export { createFieldContext, useFieldContext } from "./provideFieldContext"
 
 /** useWatch - 字段变化监听 */
 export { useWatch, useWatchField, useWatchFields, useWatchAll } from "./useWatch"
@@ -24,12 +30,12 @@ export {
   type UseDictionaryReturn,
 } from "./useDictionary"
 
-/** useConfigContext - 表单上下文注入与消费 */
+/** useFormConfigContext - 表单上下文注入与消费 */
 export {
-  createConfigContext,
-  useConfigContext,
+  createFormConfigContext,
+  useFormConfigContext,
   type FormContextProps,
-} from "./useContext"
+} from "./provideFormConfigContext"
 
 /** useStableRef - 引用稳定化的 shallowRef */
 export { useStableRef } from "./useStableRef"

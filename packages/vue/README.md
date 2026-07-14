@@ -15,8 +15,10 @@
 ## 安装
 
 ```bash
-pnpm add @schemx/vue vue
+pnpm add @schemx/vue @schemx/core vue
 ```
+
+`@schemx/core` 是 `@schemx/vue` 的 peer dependency，业务项目需要显式安装。
 
 ## 快速开始
 
@@ -66,7 +68,7 @@ rendererRegistry.register("input", markRaw(InputRenderer))
 </template>
 ```
 
-`@schemx/vue` 的基础样式会随包入口自动加载，常规 Vite / Vue 项目不需要再手动引入 `@schemx/vue/style.css`。
+`@schemx/vue` 的 ESM 入口会自动加载基础样式，常规 Vite / Vue 项目不需要手动引入。直接使用 CommonJS 入口或构建工具未处理入口 CSS import 时，请显式引入 `@schemx/vue/style.css`。
 
 ## 自定义 Renderer
 
@@ -117,18 +119,39 @@ rendererRegistry.register("input", InputRenderer)
 
 ## Composition API
 
-| API                  | 说明                                          |
-| -------------------- | --------------------------------------------- |
-| `useForm()`          | 创建表单实例，并通过 Vue context 提供给子组件 |
-| `useField()`         | 获取字段级读写、校验和状态能力                |
-| `useWatch()`         | 监听字段变化                                  |
-| `useWatchField()`    | 监听单个字段                                  |
-| `useWatchFields()`   | 监听多个字段                                  |
-| `useWatchAll()`      | 监听整张表单                                  |
-| `useDictionary()`    | 管理依赖字段的远程或本地选项                  |
-| `useConfigContext()` | 获取表单上下文                                |
-| `useEffect()`        | 创建字段依赖追踪 effect                       |
-| `useFieldContext()`  | 获取当前字段上下文                            |
+| API                         | 说明                                                                       |
+| --------------------------- | -------------------------------------------------------------------------- |
+| `useForm()`                 | 创建由当前 Vue effect scope 管理生命周期的表单实例；不会自动执行 `provide` |
+| `createFormContext()`       | 向后代组件提供表单实例                                                     |
+| `useFormContext()`          | 获取上层提供的表单实例                                                     |
+| `useField()`                | 创建字段级读写、校验和状态控制器                                           |
+| `createFieldContext()`      | 向后代组件提供字段控制器                                                   |
+| `useFieldContext()`         | 获取当前字段控制器                                                         |
+| `createFormConfigContext()` | 向后代组件提供表单展示配置                                                 |
+| `useFormConfigContext()`    | 获取上层提供的表单展示配置                                                 |
+| `useWatch()`                | 按单字段、多字段或全表签名监听变化                                         |
+| `useWatchField()`           | 监听单个字段                                                               |
+| `useWatchFields()`          | 监听多个字段                                                               |
+| `useWatchAll()`             | 监听整张表单                                                               |
+| `useDictionary()`           | 管理依赖字段的远程或本地选项                                               |
+| `useEffect()`               | 创建字段依赖追踪 effect，并在 scope 销毁时清理                             |
+| `useStableRef()`            | 创建引用保持稳定的 `shallowRef`                                            |
+| `useViewSchemas()`          | 把 `subscribeViewSchemas()` 桥接为 Vue `shallowRef`                        |
+
+## 根入口导出
+
+以下内容均可直接从 `@schemx/vue` 引入：
+
+| 分类            | API                                                                                                           |
+| --------------- | ------------------------------------------------------------------------------------------------------------- |
+| 表单组件        | 默认导出的表单组件、命名导出的 `schemxForm`、`FormItem`、`FormGroup`                                          |
+| 全局注册表      | `rendererRegistry`、`validatorRegistry`                                                                       |
+| Composition API | 上表中的全部 context、field、watch、dictionary、effect 和 ViewSchemas API                                     |
+| 高阶组件        | `WithRemoteOptions`                                                                                           |
+| 类型            | `SchemxInstallOptions`、`SchemxDictionary`、`SchemxWithDictionary`、`UseDictionaryReturn`、`FormContextProps` |
+| Core API        | `@schemx/core` 根入口的全部公开 API 与类型                                                                    |
+
+`schemxForm` 与默认导出指向同一个可安装组件。`@schemx/vue` 不额外导出命名为 `SchemxForm` 的组件；需要该命名时，可以在业务代码中自行给默认导入命名。
 
 ## Adapter 边界
 

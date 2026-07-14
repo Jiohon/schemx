@@ -1,3 +1,11 @@
+/**
+ * 运行时节点（RuntimeNode）的测试辅助工具。
+ *
+ * 提供创建 RootRuntimeNode、FieldRuntimeNode、GroupRuntimeNode 和
+ * DependencyRuntimeNode 的工厂函数，用于隔离测试节点结构操作。
+ *
+ * @module core/node/__tests__/runtimeNodeTestUtils
+ */
 import {
   createDependencyRuntimeNode,
   createFieldRuntimeNode,
@@ -20,6 +28,11 @@ import type {
   Scope,
 } from "../types"
 
+/**
+ * 创建测试用的 RootRuntimeNode，支持注入自定义 id、key 和 dispose scope。
+ *
+ * @param options - 可选覆盖参数
+ */
 export function createTestRootRuntimeNode(
   options: {
     id?: number
@@ -36,6 +49,11 @@ export function createTestRootRuntimeNode(
   }
 }
 
+/**
+ * 创建测试用的 FieldRuntimeNode，默认挂载到 parent 的 dispose scope 下。
+ *
+ * @param options - 必填 key、parent、descriptor，可选 id 和 dispose
+ */
 export function createTestFieldRuntimeNode(options: {
   id?: number
   key: string
@@ -51,6 +69,11 @@ export function createTestFieldRuntimeNode(options: {
   })
 }
 
+/**
+ * 创建测试用的 GroupRuntimeNode，默认挂载到 parent 的 dispose scope 下。
+ *
+ * @param options - 必填 key、parent、descriptor，可选 id 和 dispose
+ */
 export function createTestGroupRuntimeNode(options: {
   id?: number
   key: string
@@ -66,6 +89,11 @@ export function createTestGroupRuntimeNode(options: {
   })
 }
 
+/**
+ * 创建测试用的 DependencyRuntimeNode，默认挂载到 parent 的 dispose scope 下。
+ *
+ * @param options - 必填 key、parent、descriptor，可选 id 和 dispose
+ */
 export function createTestDependencyRuntimeNode(options: {
   id?: number
   key: string

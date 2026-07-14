@@ -5,7 +5,7 @@
  */
 import type { DatePickerProps, FieldProps, PopupProps } from "vant"
 
-import type { SchemxBaseComponentProps } from "@schemx/vue"
+import type { SchemxBaseComponentProps } from "@schemx/core"
 
 export type DateValue = string | string[] | Date
 
@@ -16,6 +16,7 @@ export type DateValue = string | string[] | Date
  */
 export interface DateRendererProps
   extends
+    /* @vue-ignore */
     Omit<SchemxBaseComponentProps, "onChange" | "onBlur" | "value" | "onUpdate:value">,
     /* @vue-ignore */
     Partial<Omit<DatePickerProps, "modelValue" | "onUpdate:modelValue">> {

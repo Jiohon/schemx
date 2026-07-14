@@ -1,7 +1,8 @@
 /**
  * Schema 编译器入口。
  *
- * 仅用于向外导出，实现见 `./createCompile`，类型见 `./types`。
+ * 聚合 createCompile 工厂函数与 Compile/CompileCache/CompileOptions/CompileError 类型。
+ * 实现见 `./createCompile`，类型见 `./types`。
  *
  * @module core/compiler
  */

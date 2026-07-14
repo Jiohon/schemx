@@ -41,7 +41,7 @@ const createDescriptor = (schema = createSchema()): FieldDescriptor<TestValues> 
   staticSchema: schema,
 })
 
-const createConfigContext = () => {
+const createFormConfigContext = () => {
   const scheduler = createScheduler()
   const instance = {
     registerRules: vi.fn(),
@@ -60,6 +60,7 @@ const createConfigContext = () => {
   }
 }
 
+// createValidationEffect 基本功能：规则注册与可见性/只读/禁用联动
 describe("createValidationEffect", () => {
   it("应该创建只负责规则注册的 ValidationEffect", async () => {
     const scope = createRuntimeScope()
@@ -67,9 +68,12 @@ describe("createValidationEffect", () => {
     const runtimeState = createFieldRuntimeState({
       nodeId: 1,
       key: descriptor.key,
-      descriptor: { name: descriptor.staticSchema.name, staticSchema: descriptor.staticSchema },
+      descriptor: {
+        name: descriptor.staticSchema.name,
+        staticSchema: descriptor.staticSchema,
+      },
     })
-    const { context, instance, scheduler } = createConfigContext()
+    const { context, instance, scheduler } = createFormConfigContext()
 
     const validation = createValidationEffect({
       context,
@@ -91,6 +95,7 @@ describe("createValidationEffect", () => {
   })
 })
 
+// 规则管理：visible=false / readonly / disabled 时注销规则并清空错误
 describe("rule management", () => {
   it("应该在 visible=false 时从 Validator 注销规则并清空错误", async () => {
     const scope = createRuntimeScope()
@@ -98,9 +103,12 @@ describe("rule management", () => {
     const runtimeState = createFieldRuntimeState({
       nodeId: 1,
       key: descriptor.key,
-      descriptor: { name: descriptor.staticSchema.name, staticSchema: descriptor.staticSchema },
+      descriptor: {
+        name: descriptor.staticSchema.name,
+        staticSchema: descriptor.staticSchema,
+      },
     })
-    const { context, instance, scheduler } = createConfigContext()
+    const { context, instance, scheduler } = createFormConfigContext()
 
     createValidationEffect({
       context,
@@ -121,9 +129,12 @@ describe("rule management", () => {
     const runtimeState = createFieldRuntimeState({
       nodeId: 1,
       key: descriptor.key,
-      descriptor: { name: descriptor.staticSchema.name, staticSchema: descriptor.staticSchema },
+      descriptor: {
+        name: descriptor.staticSchema.name,
+        staticSchema: descriptor.staticSchema,
+      },
     })
-    const { context, instance, scheduler } = createConfigContext()
+    const { context, instance, scheduler } = createFormConfigContext()
 
     createValidationEffect({
       context,
@@ -144,9 +155,12 @@ describe("rule management", () => {
     const runtimeState = createFieldRuntimeState({
       nodeId: 1,
       key: descriptor.key,
-      descriptor: { name: descriptor.staticSchema.name, staticSchema: descriptor.staticSchema },
+      descriptor: {
+        name: descriptor.staticSchema.name,
+        staticSchema: descriptor.staticSchema,
+      },
     })
-    const { context, instance, scheduler } = createConfigContext()
+    const { context, instance, scheduler } = createFormConfigContext()
 
     createValidationEffect({
       context,
@@ -167,10 +181,13 @@ describe("rule management", () => {
     const runtimeState = createFieldRuntimeState({
       nodeId: 1,
       key: descriptor.key,
-      descriptor: { name: descriptor.staticSchema.name, staticSchema: descriptor.staticSchema },
+      descriptor: {
+        name: descriptor.staticSchema.name,
+        staticSchema: descriptor.staticSchema,
+      },
     })
     const trigger = createSignal(0)
-    const { context, instance, scheduler } = createConfigContext()
+    const { context, instance, scheduler } = createFormConfigContext()
 
     createValidationEffect({
       context,
@@ -226,6 +243,7 @@ function createTestSchemaForUS2(
   } as SchemxResolvedBaseField
 }
 
+// validationEffect 从 effectiveSchema 读取 rules、visible/readonly/disabled 和 label 信息
 describe("validationEffect 读取 effectiveSchema (US2)", () => {
   it("effectiveSchema 应包含 rules 信息供 validation 读取", () => {
     const schema = createTestSchemaForUS2({ rules: [{ required: true }] as any })

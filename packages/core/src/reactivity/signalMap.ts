@@ -23,6 +23,16 @@ import type { Signal } from "./signal"
  * @typeParam K - key 类型
  * @typeParam V - value 类型
  */
+/**
+ * 按 key 细粒度追踪更新的响应式 Map 内部实现。
+ *
+ * 通过每个 key 独立 signal 实现字段级更新隔离，另含一个结构版本 signal
+ * 用于追踪 key 的新增/删除。内部类不直接暴露，通过 `SignalMap` 类型
+ * 和 `createSignalMap` 工厂提供公共 API。
+ *
+ * @typeParam K - key 类型
+ * @typeParam V - value 类型
+ */
 class SignalMapImpl<K, V> {
   /** 每个 key 独占一个 signal，保证字段级更新能细粒度触发 */
   private signals = new Map<K, Signal<V>>()

@@ -174,7 +174,9 @@ export type DependencyRenderer<TValues extends Values = Values> = (
  * 创建字段 descriptor 的选项。
  */
 export interface CreateFieldDescriptorOptions<TValues extends Values = Values> {
+  /** 待编译的字段 schema。 */
   readonly schema: SchemxBaseField<TValues>
+  /** 父级 descriptor 的 key，用于生成子节点 key 前缀。 */
   readonly parentKey?: string
 }
 
@@ -182,8 +184,11 @@ export interface CreateFieldDescriptorOptions<TValues extends Values = Values> {
  * 创建分组 descriptor 的选项。
  */
 export interface CreateGroupDescriptorOptions<TValues extends Values = Values> {
+  /** 待编译的分组 schema。 */
   readonly schema: SchemxGroupField<TValues>
+  /** schema 在同级列表中的位置。 */
   readonly index: number
+  /** 父级 descriptor 的 key。 */
   readonly parentKey?: string
 }
 
@@ -191,7 +196,9 @@ export interface CreateGroupDescriptorOptions<TValues extends Values = Values> {
  * 创建 dependency descriptor 的选项。
  */
 export interface CreateDependencyDescriptorOptions<TValues extends Values = Values> {
+  /** 待编译的依赖 schema。 */
   readonly schema: SchemxDependencyField<TValues>
+  /** 父级 descriptor 的 key。 */
   readonly parentKey?: string
 }
 
@@ -199,7 +206,10 @@ export interface CreateDependencyDescriptorOptions<TValues extends Values = Valu
  * 创建任意 descriptor 的选项。
  */
 export interface CreateDescriptorOptions<TValues extends Values = Values> {
+  /** 待编译的 schema（字段/分组/依赖联合类型）。 */
   readonly schema: SchemxField<TValues>
+  /** schema 在同级列表中的位置。 */
   readonly index: number
+  /** 父级 descriptor 的 key。 */
   readonly parentKey?: string
 }

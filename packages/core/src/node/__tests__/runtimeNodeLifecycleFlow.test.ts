@@ -1,9 +1,19 @@
+/**
+ * 运行时节点生命周期与字段资源释放的测试。
+ *
+ * 覆盖节点生命周期事件触发、descriptor 同步、effectDispose 管理、fieldIndex
+ * 维护以及字段删除后的 scope 释放（US3）等行为。
+ *
+ * @module core/node/__tests__/runtimeNodeLifecycleFlow.test
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import { createRawFieldSchema, createRuntimeGraphHarness } from "./runtimeGraphTestUtils"
 
 import type { FieldRuntimeNode } from "../types"
 
+// 节点生命周期：create/update/remove 事件触发时机、descriptor 同步、effectDispose 与 fieldIndex 维护
 describe("node lifecycle flow", () => {
   it("create/update/remove transition 每类生命周期事件只触发一次", () => {
     const hooks = {
@@ -171,6 +181,7 @@ function createTestSchema(overrides: Partial<SchemxResolvedBaseField> = {}): Sch
   } as SchemxResolvedBaseField
 }
 
+// US3: 字段删除后的 runtimeState 标记与 scope 释放行为
 describe("字段删除和 scope 释放 (US3)", () => {
   it("dispose 后 runtimeState 应标记为 dispose", () => {
     const schema = createTestSchema()

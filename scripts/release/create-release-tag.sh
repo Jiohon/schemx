@@ -11,6 +11,7 @@ if [[ "$#" -eq 0 ]]; then
   die "缺少用于生成 release tag 的包名。"
 fi
 
+# 先验证所有 tag 均不存在，避免只创建部分 tag 后才失败。
 release_tags=()
 
 for pkg in "$@"; do
@@ -23,6 +24,7 @@ for pkg in "$@"; do
   release_tags+=("$tag_name")
 done
 
+# 所有本地 tag 创建成功后，再统一推送 main 和 tag。
 for tag_name in "${release_tags[@]}"; do
   info "创建 release tag：$tag_name"
   git tag -a "$tag_name" -m "release: $tag_name"

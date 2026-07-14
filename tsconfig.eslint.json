@@ -22,6 +22,8 @@
     "packages/*/src/**/*.ts",
     "packages/*/src/**/*.tsx",
     "packages/*/src/**/*.vue",
+    "plugins/*/src/**/*.ts",
+    "plugins/*/src/**/*.tsx",
     "examples/*/src/**/*.ts",
     "examples/*/src/**/*.tsx",
     "examples/*/src/**/*.vue"

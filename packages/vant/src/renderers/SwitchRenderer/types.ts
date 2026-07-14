@@ -6,7 +6,7 @@
 
 import type { SwitchProps } from "vant"
 
-import type { SchemxBaseComponentProps } from "@schemx/vue"
+import type { SchemxBaseComponentProps } from "@schemx/core"
 
 export type SwitchValue = boolean | string | number
 
@@ -17,6 +17,7 @@ export type SwitchValue = boolean | string | number
  */
 export interface SwitchRendererProps
   extends
+    /* @vue-ignore */
     Omit<SchemxBaseComponentProps, "onChange" | "onBlur" | "value" | "onUpdate:value">,
     /* @vue-ignore */
     Partial<

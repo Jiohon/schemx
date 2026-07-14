@@ -1,7 +1,7 @@
 /**
  * Graph 模块统一导出。
  *
- * 提供 RuntimeNode、RuntimeNodeManager 和资源作用域。
+ * 提供 RuntimeNode、RuntimeNodeManager、资源作用域和生命周期管理。
  *
  * @module core/node
  */

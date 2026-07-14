@@ -426,6 +426,32 @@ schemas.update((current) => [
 ])
 ```
 
+## 根入口导出
+
+以下 API 均可直接从 `@schemx/core` 引入：
+
+| 分类        | API                                                                                                    |
+| ----------- | ------------------------------------------------------------------------------------------------------ |
+| 表单与字段  | `createForm`、`createField`、`createSchemas`、`isSchemxSchemas`                                        |
+| 响应式      | `createEffect`、`createWatch`、`createWatchField`、`createWatchFields`、`createWatchAll`               |
+| 校验        | `createValidator`、`createValidatorsRegistry`                                                          |
+| 渲染器      | `createRendererRegistry`                                                                               |
+| schema 判断 | `isBaseSchema`、`isGroupSchema`、`isDependencySchema`、`isBaseResolvedSchema`、`isGroupResolvedSchema` |
+| 路径工具    | `getByPath`、`setByPath`、`collectObjectPathsByLeaf`                                                   |
+
+根入口公开类型如下：
+
+| 分类            | 类型                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 表单与上下文    | `CreateFormOptions`、`SchemxInstance`、`SchemxProps`、`SchemxContext`、`SchemxGlobalContext`、`SchemxFormItemProps`                                                                                                                                                                                                                                                                                                                                                              |
+| 字段与 schema   | `Values`、`Dynamic`、`NamePath`、`FieldValue`、`DeepReadonly`、`CSSProperties`、`SchemxSchemas`、`SchemxSchemasInput`、`SchemxSchemasListener`、`SchemxFieldInstance`、`SchemxFieldDefinition`、`SchemxGroupFieldDefinition`、`SchemxBaseComponentProps`、`SchemxComponentProps`、`SchemxBase`、`SchemxGroupField`、`SchemxBaseField`、`SchemxResolvedField`、`SchemxDependencyField`、`SchemxField`、`SchemxDependencies`、`SchemxConditionFn`、`SchemxDependenciesStaticProps` |
+| ViewSchemas     | `SchemxViewDebugMeta`、`SchemxViewFieldSchema`、`SchemxViewGroupSchema`、`SchemxViewSchema`                                                                                                                                                                                                                                                                                                                                                                                      |
+| Renderer        | `RendererRegistryType`、`RegistryOptions`、`RendererMap`、`SchemxRendererKey`、`SchemxRendererDefinition`                                                                                                                                                                                                                                                                                                                                                                        |
+| Validator       | `Validator`、`ValidateResult`、`ValidateError`、`FieldError`、`ValidationTrigger`、`StandardSchemaV1`、`SchemxRuleDefinition`、`SchemxRuleDefinitionKey`、`SchemxRuleBuiltinKey`、`SchemxRules`、`ValidatorsRegistryType`、`ValidatorsRegistryOptions`、`ValidatorsFactory`、`ValidatorsEntry`、`ValidatorsEntryMap`                                                                                                                                                             |
+| Effect 与 Watch | `CleanupFn`、`EffectCallback`、`CreateEffectReturn`、`WatchFieldCallback`、`WatchFieldsCallback`、`WatchAllCallback`、`CreateWatchOptions`、`CreateWatchReturn`                                                                                                                                                                                                                                                                                                                  |
+
+内部 descriptor、runtime node、reconciler 和 scheduler 不属于公共入口。
+
 ## API 速查
 
 ### createForm(options)
@@ -459,9 +485,9 @@ schemas.update((current) => [
 | 校验       | `registerRules`、`unregisterRules`、`validateField`、`validate`、`getFieldError`、`setFieldError` |
 | 提交与重置 | `submit`、`reset`、`resetFields`                                                                  |
 | 响应式     | `effect`、`batch`                                                                                 |
-| schema     | `setSchemas`、`updateSchemas`                                                                     |
+| schema     | `setSchemas`、`updateSchemas`、`updateFieldSchema`                                                |
 | 默认配置   | `updateDefaultProps`                                                                              |
-| view       | `getViewSchemas`、`subscribeViewSchemas`、`getViewRevision`、`waitForDependencies`                |
+| view       | `getViewSchemas`、`subscribeViewSchemas`、`waitForDependencies`                                   |
 | renderer   | `getRenderer`、`registerRenderer`、`hasRenderer`                                                  |
 | validator  | `getValidator`、`registerValidator`、`hasValidator`                                               |
 | 生命周期   | `destroy`                                                                                         |
@@ -472,19 +498,19 @@ schemas.update((current) => [
 
 ```text
 raw schemas
-  -> compileToDescriptors
-  -> createReconcilePlan
-  -> commitReconcilePlan
+  -> createCompile().toDescriptors()
+  -> createReconcilePlan()
+  -> commitReconcilePlan()
   -> RuntimeNodeManager
-  -> viewGraph
+  -> RuntimeViewState
   -> ViewSchemas
 ```
 
-- `compileToDescriptors` 将 raw schema 标准化为内部 descriptor。
-- `createReconcilePlan` 根据 descriptor 与现有 runtime node 计算结构变更。
-- `commitReconcilePlan` 提交创建、更新、移除和排序操作。
+- `createCompile().toDescriptors()` 将 raw schema 标准化为内部 descriptor。
+- `createReconcilePlan()` 根据 descriptor 与现有 runtime node 计算结构变更。
+- `commitReconcilePlan()` 提交创建、更新、移除和排序操作。
 - `RuntimeNodeManager` 负责 runtime node 的树结构、父子关系、子树删除和资源清理。
-- `viewGraph` 负责把运行时节点投影为 UI 层消费的 ViewSchemas。
+- `RuntimeViewState` 保存节点的可渲染状态，并投影为 UI 层消费的 ViewSchemas。
 - `ViewSchemas` 是给框架适配层渲染的公开投影。
 
 ### 模块边界
@@ -500,7 +526,7 @@ src/
 ├── validator/          # 规则注册与校验状态
 ├── view/               # ViewSchemas 构建与订阅
 ├── reactivity/         # signal、effect、batch
-├── registry/           # renderer / rule registry
+├── registry/           # renderer / validator registry
 ├── scheduler/          # 异步任务调度
 ├── lifecycle/          # lifecycle bus
 ├── types/              # 公开类型

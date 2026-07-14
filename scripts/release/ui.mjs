@@ -2,8 +2,11 @@
 
 import { createColors } from "picocolors"
 
+import { printSection } from "../lib/terminal.mjs"
+
 const [command = "", ...args] = process.argv.slice(2)
 
+// 支持标准禁用/强制颜色环境变量，并在非 TTY 时默认关闭颜色。
 function colorsEnabled() {
   if (process.env.NO_COLOR) {
     return false
@@ -22,6 +25,7 @@ function colorsEnabled() {
 
 const color = createColors(colorsEnabled())
 
+// 中文等宽字符按两个终端列计算，确保键值输出对齐。
 function displayWidth(value) {
   let width = 0
 
@@ -33,22 +37,27 @@ function displayWidth(value) {
   return width
 }
 
+// 按显示宽度而非字符串长度补齐标签。
 function padLabel(label, width) {
   return label + " ".repeat(Math.max(1, width - displayWidth(label)))
 }
 
+// 保留多行提示的换行语义，供 success/warn/error 共用。
 function lines(message) {
   return message.split(/\r?\n/)
 }
 
+// 集中输出入口，方便所有 UI 分支使用同一流。
 function write(value) {
   process.stdout.write(value)
 }
 
+// 复用仓库统一的阶段横幅。
 function section(title) {
-  write(`\n${color.cyan(color.bold(`◆ ${title}`))}\n`)
+  printSection(title, { output: process.stdout })
 }
 
+// 为每个非空行添加成功标识。
 function success(message) {
   for (const line of lines(message)) {
     if (line) {
@@ -57,6 +66,7 @@ function success(message) {
   }
 }
 
+// 首行突出警告标识，后续行保持缩进以便阅读长提示。
 function warn(message) {
   const [first = "", ...rest] = lines(message)
 
@@ -69,6 +79,7 @@ function warn(message) {
   }
 }
 
+// 错误始终保留首行前缀，后续行用于承载详细原因。
 function error(message) {
   const [first = "", ...rest] = lines(message)
 
@@ -78,6 +89,7 @@ function error(message) {
   }
 }
 
+// 输出可配置宽度的键值行。
 function kv(label, value, width = "8") {
   write(`  ${padLabel(label, Number(width))}${value}\n`)
 }

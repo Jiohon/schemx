@@ -13,6 +13,7 @@ import { describe, expect, it, vi } from "vitest"
 import { createSchemas } from "../createSchemas"
 import { createForm } from "../createForm"
 
+// 属性测试：验证 createForm 创建的表单实例 onValuesChange 回调的正确性
 describe("CreateFormInstance 属性测试", () => {
   // Feature: pure-signal-core-refactor, Property 10: onValuesChange 回调正确性
   // **Validates: Requirements 8.7, 8.8**
@@ -89,6 +90,7 @@ const safeTypeStr = fc
       !["__proto__", "constructor", "prototype"].includes(s)
   )
 
+// 属性测试：验证 createForm 与 RendererRegistry 集成的正确性（自定义 registry 传递、委托一致性、注册-查询往返）
 describe("渲染器注册中心下沉 属性测试", () => {
   // **Feature: renderer-registry-into-createform, Property 1: 自定义 RendererRegistry 传递**
   // **Validates: Requirements 1.1, 5.2**
@@ -207,6 +209,7 @@ import { createRendererRegistry, createValidatorsRegistry } from "../registry"
 
 import type { StandardSchemaV1 } from "../types"
 
+// 单元测试：验证 createForm 返回对象包含 getRenderer/registerRenderer/hasRenderer 方法
 describe("渲染器注册中心下沉 单元测试", () => {
   it("form 返回对象包含 getRenderer、registerRenderer、hasRenderer 方法", () => {
     const form = createForm({})
@@ -242,6 +245,7 @@ describe("渲染器注册中心下沉 单元测试", () => {
   })
 })
 
+// 单元测试：验证 createForm 生命周期 hooks、dependency 子树水合、字段规则注册等集成行为
 describe("字段规则注册上下文 单元测试", () => {
   it("createForm 应该注册并触发生命周期 hooks", () => {
     const mount = vi.fn()
@@ -740,6 +744,7 @@ function createMockStandardSchema(id: string): StandardSchemaV1 {
   } as StandardSchemaV1
 }
 
+// 属性测试：验证 createForm 与 RulesRegistry 集成的注册-查询往返、覆盖注册、跨路径一致性
 describe("RulesRegistry 快捷方法 属性测试", () => {
   // **Feature: rules-registry-and-getinternals, Property 1: 注册-查询往返**
   // **Validates: Requirements 3.1, 3.2, 4.1**
@@ -832,6 +837,7 @@ describe("RulesRegistry 快捷方法 属性测试", () => {
  *
  * @module core/__tests__/createForm (rules-registry-getinternals unit tests)
  */
+// 单元测试：验证 createForm 返回对象包含 getValidator/registerValidator/hasValidator 方法
 describe("RulesRegistry 快捷方法单元测试", () => {
   // 6.1 验证 createForm 返回对象包含 getRule、registerRule、hasRule 方法
   // Validates: Requirements 1.1, 1.2, 1.3, 5.4
@@ -888,6 +894,7 @@ describe("RulesRegistry 快捷方法单元测试", () => {
   })
 })
 
+// 验证 destroy 后 onValuesChange 不再触发、setFieldValue 不报错
 describe("destroy 清理", () => {
   it("destroy 后 onValuesChange 不再被触发", () => {
     const onValuesChange = vi.fn()
@@ -919,6 +926,7 @@ describe("destroy 清理", () => {
   })
 })
 
+// 验证 setSchemas/updateSchemas/updateFieldSchema 动态更新 ViewSchemas 的行为
 describe("动态 schemas", () => {
   it("setSchemas 后更新 ViewSchemas 并保留已有字段值", () => {
     const form = createForm({

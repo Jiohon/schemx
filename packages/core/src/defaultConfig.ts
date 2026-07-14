@@ -1,3 +1,9 @@
+/**
+ * 字段级默认配置。
+ *
+ * 各字段的静态默认值，字段未显式设置时使用。
+ * 部分属性（如 readonly、disabled）可被 FormContext 全局配置覆盖。
+ */
 export const defaultConfig = {
   /**
    * 是否展示必填的 * 号（静态默认值）
@@ -79,6 +85,12 @@ export const defaultConfig = {
   colon: true,
 } as const
 
+/** defaultConfig 的键集合，用于类型安全的配置访问。 */
 export type DefaultConfigKey = keyof typeof defaultConfig
 
+/**
+ * defaultConfig 的所有键数组。
+ *
+ * 运行时需遍历默认配置字段时使用。
+ */
 export const defaultConfigKey = Object.keys(defaultConfig) as DefaultConfigKey[]

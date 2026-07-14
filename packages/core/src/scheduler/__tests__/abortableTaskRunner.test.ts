@@ -1,9 +1,17 @@
+/**
+ * createAbortableTaskRunner 单元测试
+ *
+ * 覆盖可中止任务运行器的基本执行、新旧任务 abort、scope dispose 后不提交结果、dispose 后不再执行等行为。
+ *
+ * @module core/scheduler/__tests__/abortableTaskRunner
+ */
 import { describe, expect, it, vi } from "vitest"
 
 import { createRuntimeScope } from "../../node/scope"
 import { createAbortableTaskRunner } from "../abortableTaskRunner"
 import { createScheduler } from "../scheduler"
 
+// 验证 createAbortableTaskRunner 的任务执行、中止、scope 清理、dispose 等行为
 describe("createAbortableTaskRunner", () => {
   it("run 应通过 scheduler 跟踪任务并提交成功结果", async () => {
     const scope = createRuntimeScope()

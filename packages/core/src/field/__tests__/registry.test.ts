@@ -43,6 +43,7 @@ const createEntry = (name: string) => {
   return { name, node, descriptor, runtimeState }
 }
 
+// createFieldRegistry 的基本注册、查询和 find 行为
 describe("createFieldRegistry", () => {
   it("应该创建空 Registry", () => {
     const registry = createFieldRegistry()
@@ -87,6 +88,7 @@ describe("createFieldRegistry", () => {
   })
 })
 
+// 字段列表查询和按 name 注销的行为
 describe("list and unregister", () => {
   it("应该列出所有字段 entry", () => {
     const registry = createFieldRegistry()

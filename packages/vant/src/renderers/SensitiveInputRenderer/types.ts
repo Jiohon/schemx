@@ -4,7 +4,7 @@
  * @module renderers/SensitiveInputRenderer/types
  */
 
-import type { SchemxInputProps } from "@/components/Input"
+import type { SchemxInputProps } from "../../components/Input/types"
 
 export type SensitiveInputValue = string
 

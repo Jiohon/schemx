@@ -8,27 +8,33 @@ RELEASE_PACKAGES=(core vue vant)
 RELEASE_CHANNELS=(dev alpha beta rc next latest)
 RELEASE_VERSION_ACTIONS=(current patch minor major custom)
 
+# 将 Shell 层的输出交给 Node UI，集中处理颜色和对齐。
 release_ui() {
   node "$ROOT_DIR/scripts/release/ui.mjs" "$@"
 }
 
+# 输出发布流程的阶段标题。
 info() {
   release_ui section "$1"
 }
 
+# 输出成功结果。
 success() {
   release_ui success "$1"
 }
 
+# 输出需要人工留意但不立即中止的提示。
 warn() {
   release_ui warn "$1"
 }
 
+# 输出错误并终止当前发布流程。
 die() {
   release_ui error "$1" >&2
   exit 1
 }
 
+# 输出对齐的键值信息，供发布计划和认证状态复用。
 release_kv() {
   local label="$1"
   local value="$2"
@@ -37,21 +43,25 @@ release_kv() {
   release_ui kv "$label" "$value" "$width"
 }
 
+# 生成面向用户的可发布包列表。
 package_choices() {
   local IFS="、"
   printf '%s' "${RELEASE_PACKAGES[*]}"
 }
 
+# 生成面向用户的发布通道列表。
 release_channel_choices() {
   local IFS="、"
   printf '%s' "${RELEASE_CHANNELS[*]}"
 }
 
+# 生成正式版可选的版本处理方式。
 version_action_choices() {
   local IFS="、"
   printf '%s' "${RELEASE_VERSION_ACTIONS[*]}"
 }
 
+# 返回发布通道的简短中文名称。
 release_channel_label() {
   case "$1" in
     latest) printf '正式版发布' ;;
@@ -64,6 +74,7 @@ release_channel_label() {
   esac
 }
 
+# 返回发布通道的用途与约束，供交互确认展示。
 release_channel_description() {
   case "$1" in
     latest) printf '发布到 npm latest，仅允许 main 分支。' ;;
@@ -76,6 +87,7 @@ release_channel_description() {
   esac
 }
 
+# 返回版本处理方式的说明，同时兼容直接传入的精确版本号。
 version_action_label() {
   case "$1" in
     current) printf '使用当前版本' ;;
@@ -93,10 +105,12 @@ version_action_label() {
   esac
 }
 
+# 将逻辑包名转换为仓库内 packages 路径。
 package_path() {
   printf 'packages/%s' "$1"
 }
 
+# 从指定包的 package.json 读取单个字段。
 package_json_value() {
   local pkg="$1"
   local field="$2"
@@ -104,6 +118,7 @@ package_json_value() {
   node -p "const pkg=require('./$(package_path "$pkg")/package.json'); pkg['$field']"
 }
 
+# 验证包名属于可发布集合。
 assert_package() {
   local pkg="$1"
   local item
@@ -117,6 +132,7 @@ assert_package() {
   die "未知包：$pkg，可选值为 $(package_choices)"
 }
 
+# 验证发布目标，允许 all 或单个已知包。
 assert_publish_target() {
   local target="$1"
 
@@ -127,6 +143,7 @@ assert_publish_target() {
   assert_package "$target"
 }
 
+# 以退出码形式判断发布目标是否合法，供条件分支使用。
 is_publish_target() {
   local target="$1"
   local item
@@ -144,6 +161,7 @@ is_publish_target() {
   return 1
 }
 
+# 验证发布通道属于受支持集合。
 assert_release_channel() {
   local channel="$1"
   local item
@@ -157,6 +175,7 @@ assert_release_channel() {
   die "未知发布模式：${channel}，可选值为 $(release_channel_choices)"
 }
 
+# 以退出码形式判断发布通道是否合法。
 is_release_channel() {
   local channel="$1"
   local item
@@ -170,10 +189,12 @@ is_release_channel() {
   return 1
 }
 
+# 仅接受无 prerelease/build metadata 的 x.y.z 正式版本。
 is_exact_version() {
   [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
 }
 
+# 验证版本动作或用户传入的精确正式版本号。
 assert_version_action() {
   local action="$1"
 
@@ -190,6 +211,7 @@ assert_version_action() {
   die "版本处理方式只能是 current、patch、minor、major 或 x.y.z"
 }
 
+# 将 all 展开为稳定的发布顺序，单包目标则原样返回。
 resolve_targets() {
   local target="${1:-all}"
 
@@ -202,11 +224,13 @@ resolve_targets() {
   printf '%s\n' "$target"
 }
 
+# 用中文顿号拼接目标名，供日志展示。
 target_summary() {
   local IFS="、"
   printf '%s' "$*"
 }
 
+# 仅改写 package.json 的版本字段，用于短暂的预发布版本窗口。
 set_package_version() {
   local pkg_json="$1"
   local version="$2"
@@ -221,6 +245,7 @@ fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
 " "$pkg_json" "$version"
 }
 
+# 基于当前正式版本生成唯一的 npm prerelease 版本，避免覆盖已发布版本。
 next_prerelease_version() {
   local current_version="$1"
   local channel="$2"
@@ -240,6 +265,7 @@ next_prerelease_version() {
   printf '%s.%s.%s-%s.%s.%s' "$major" "$minor" "$patch" "$channel" "$timestamp" "$sha"
 }
 
+# 生成与 npm 包版本一一对应的 Git tag 名称。
 release_tag_name() {
   local pkg="$1"
   local version
@@ -248,6 +274,7 @@ release_tag_name() {
   printf '@schemx/%s@%s' "$pkg" "$version"
 }
 
+# 生成 GitHub Release 的标题。
 release_title() {
   local pkg="$1"
   local version
@@ -256,6 +283,7 @@ release_title() {
   printf '@schemx/%s@%s' "$pkg" "$version"
 }
 
+# 优先使用显式环境变量，否则从 origin remote 规范化出 owner/repo。
 github_repository() {
   local repo="${GITHUB_REPOSITORY:-}"
 
@@ -287,6 +315,7 @@ github_repository() {
   printf '%s' "$repo"
 }
 
+# 将 registry URL 转为 npmrc 所需的 token 键名。
 npm_registry_auth_key() {
   local registry="$1"
 
@@ -297,6 +326,7 @@ npm_registry_auth_key() {
   printf '//%s:_authToken' "$registry"
 }
 
+# NPM_TOKEN 存在时写入临时 npmrc，避免修改用户全局认证配置。
 configure_npm_token_auth() {
   local npm_token="${NPM_TOKEN:-}"
   local auth_key user_config

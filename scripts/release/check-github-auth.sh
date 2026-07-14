@@ -7,6 +7,7 @@ cd "$ROOT_DIR"
 
 source "$ROOT_DIR/scripts/release/common.sh"
 
+# 使用 gh 的认证状态，而非仅检查命令存在，确保后续可创建 Release。
 info "检查 GitHub CLI 登录状态"
 if ! command -v gh >/dev/null 2>&1; then
   die "未找到 GitHub CLI。请先安装 gh，并执行 \`gh auth login\`。"

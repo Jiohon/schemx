@@ -39,6 +39,11 @@ class RuntimeFieldRegistry<
 > {
   private fields = new Map<string, FieldRegistryEntry<TValues>>()
 
+  /**
+   * 注册字段到索引。
+   *
+   * @param entry - 字段索引条目，包含 name 和 node。
+   */
   register(entry: FieldRegistryEntry<TValues>): void {
     const key = entry.name
     this.fields.set(key, {
@@ -47,6 +52,15 @@ class RuntimeFieldRegistry<
     })
   }
 
+  /**
+   * 注销字段索引。
+   *
+   * 传入 node 参数时做一致性校验：仅当当前条目的 node 引用相等时才执行注销，
+   * 避免在字段复用过程中误释放正在使用的注册。
+   *
+   * @param name - 字段名称路径。
+   * @param node - 可选。做 node 一致性校验，防止误释放。
+   */
   unregister(name: TName, node?: FieldRuntimeNode<TValues>): void {
     const key = name
     const current = this.fields.get(key)
@@ -58,20 +72,43 @@ class RuntimeFieldRegistry<
     this.fields.delete(key)
   }
 
+  /**
+   * 按名称路径获取字段索引条目。
+   *
+   * @param name - 字段名称路径。
+   * @returns 字段索引条目，未找到时返回 undefined。
+   */
   get(name: TName): FieldRegistryEntry<TValues> | undefined {
     const key = name
 
     return this.fields.get(key)
   }
 
+  /**
+   * 按名称路径获取字段索引条目（同 get）。
+   *
+   * @param name - 字段名称路径。
+   * @returns 字段索引条目，未找到时返回 undefined。
+   */
   getByName(name: TName): FieldRegistryEntry<TValues> | undefined {
     return this.get(name)
   }
 
+  /**
+   * 按路径获取字段索引条目（同 get）。
+   *
+   * @param path - 字段名称路径。
+   * @returns 字段索引条目，未找到时返回 undefined。
+   */
   getByPath(path: TName): FieldRegistryEntry<TValues> | undefined {
     return this.get(path)
   }
 
+  /**
+   * 列出所有已注册字段。
+   *
+   * @returns 字段索引条目数组。
+   */
   list(): FieldRegistryEntry<TValues>[] {
     return Array.from(this.fields.values())
   }

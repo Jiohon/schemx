@@ -1,3 +1,10 @@
+/**
+ * 动态属性解析工具单元测试
+ *
+ * 覆盖 resolveDynamicProp、resolveDynamicProps、resolveDynamicPropBatch。
+ *
+ * @module utils/__tests__/dynamic
+ */
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import {
@@ -6,6 +13,7 @@ import {
   resolveDynamicProps,
 } from "../dynamic"
 
+// 验证 resolveDynamicProp 解析静态值、函数值、空值默认值
 describe("resolveDynamicProp", () => {
   it("解析静态值、函数值和空值默认值", async () => {
     await expect(resolveDynamicProp("hello", {}, "")).resolves.toBe("hello")
@@ -18,6 +26,7 @@ describe("resolveDynamicProp", () => {
   })
 })
 
+// 验证 resolveDynamicProps 批量解析动态属性并保留每个字段的结果类型
 describe("resolveDynamicProps", () => {
   it("批量解析动态属性并保留每个字段的结果类型", async () => {
     const results = await resolveDynamicProps(
@@ -46,6 +55,7 @@ describe("resolveDynamicProps", () => {
   })
 })
 
+// 验证 resolveDynamicPropBatch 旧异步解析晚于新解析时不再提交旧结果
 describe("resolveDynamicPropBatch", () => {
   afterEach(() => {
     vi.useRealTimers()

@@ -11,6 +11,7 @@ import { createFieldSignal } from "../fieldSignal"
 import { createFieldSignalMap } from "../fieldSignalMap"
 import { createSignal } from "../signal"
 
+// createSignal 的 subscribe / name / valueOf / toJSON 等转换能力
 describe("createSignal", () => {
   it("应该支持 signals-core 的 subscribe / name / value 转换能力", () => {
     const watched = vi.fn()
@@ -47,6 +48,7 @@ describe("createSignal", () => {
   })
 })
 
+// createFieldSignal 管理字段值、初始值、touched 和 pending 状态
 describe("createFieldSignal", () => {
   it("应该管理字段值、初始值、touched 和 pending", () => {
     const field = createFieldSignal({
@@ -82,6 +84,7 @@ describe("createFieldSignal", () => {
   })
 })
 
+// FieldSignalMap 按路径创建/查询/删除字段 signal，并支持数组路径标准化
 describe("FieldSignalMap", () => {
   it("应该按路径创建、查询和删除字段 signal", () => {
     const map = createFieldSignalMap<string, number>()

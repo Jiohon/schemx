@@ -1,3 +1,12 @@
+/**
+ * RuntimeNodeManager 的单元测试。
+ *
+ * 覆盖 nodeResources 结构、节点创建/注册/查询、insertChild / replaceChildren /
+ * removeSubtree 等结构操作的正确性。
+ *
+ * @module core/node/__tests__/runtimeNodeManager.test
+ */
+
 import { describe, expect, it } from "vitest"
 
 import { createCompile } from "../../compiler"
@@ -46,6 +55,7 @@ function createTreeManager(): RuntimeNodeManager {
   return createRuntimeNodeManager(createRuntimeContext())
 }
 
+// RuntimeNodeManager 的 API：资源结构、节点创建、结构操作（insertChild/replaceChildren/removeSubtree）
 describe("RuntimeNodeManager", () => {
   it("nodeResources 应该只保留结构表和跨节点索引", () => {
     const resources = createRuntimeResources()

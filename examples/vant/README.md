@@ -14,14 +14,14 @@
 ## 运行示例
 
 ```bash
-# 在仓库根目录
-pnpm dev:vant
+# 在仓库根目录（交互选择目标，选 Examples · vant）
+pnpm dev
 
 # 或只运行示例包
 pnpm --filter vant-demo dev
 ```
 
-然后在浏览器中访问 http://localhost:5173 查看示例。
+然后在浏览器中访问 <http://localhost:5173> 查看示例。
 
 ## 快速开始
 

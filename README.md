@@ -25,8 +25,8 @@
 
 ## 包说明
 
-| 包                                | 职责                         | 适用场景                                      |
-| --------------------------------- | ---------------------------- | --------------------------------------------- |
+| 包                                | 职责                         | 适用场景                                     |
+| --------------------------------- | ---------------------------- | -------------------------------------------- |
 | [`@schemx/core`](./packages/core) | 框架无关的 headless 表单引擎 | 构建表单运行时、字段依赖、校验和 ViewSchemas |
 | [`@schemx/vue`](./packages/vue)   | Vue 3 适配层                 | 把 ViewSchemas 渲染为 Vue 组件树             |
 | [`@schemx/vant`](./packages/vant) | Vant renderer 适配包         | 使用 Vant 4 快速落地移动端动态表单           |
@@ -50,6 +50,8 @@ raw schemas
 
 `@schemx/vant` 是基于 Vant 4 的 renderer 集合，面向移动端表单场景。它复用 `@schemx/core` 和 `@schemx/vue` 的能力，并在包入口自动注册默认 renderer。
 
+`@schemx/vue` 和 `@schemx/vant` 会把下游能力声明为 `peerDependencies`。业务项目需要显式安装对应依赖，避免发布包替用户隐式拉入核心运行时版本。
+
 ## 何时使用
 
 - 表单字段来自后端配置、低代码配置或业务 schema。
@@ -63,9 +65,8 @@ raw schemas
 ## 选择入口
 
 - 只需要表单运行时、校验、依赖和 ViewSchemas：使用 `@schemx/core`。
-- 已有 Vue 组件库或业务组件，需要自己注册 renderer：使用 `@schemx/vue`。
-- 项目使用 Vue 3 + Vant 4，希望直接使用内置移动端 renderer：使用 `@schemx/vant`。
-- uni-app + pnpm 场景遇到 symlink 解析导致的依赖预构建问题：使用 `@schemx/vant/standalone`。
+- 已有 Vue 组件库或业务组件，需要自己注册 renderer：安装 `@schemx/vue`、`@schemx/core` 和 `vue`。
+- 项目使用 Vue 3 + Vant 4，希望直接使用内置移动端 renderer：安装 `@schemx/vant`、`@schemx/vue`、`@schemx/core`、`vant` 和 `vue`。
 
 具体 API 和使用示例见各包 README。
 
@@ -73,7 +74,7 @@ raw schemas
 
 ```bash
 pnpm install
-pnpm dev:vant
+pnpm --filter vant-demo dev
 ```
 
 常用检查命令：
@@ -122,23 +123,23 @@ pnpm release:publish alpha vue
 
 ### 常用命令
 
-| 命令 | 作用 | 使用 |
-| --- | --- | --- |
-| `pnpm release:check` | 执行完整发布前检查：安装一致性、测试、lint、构建和发布包内容检查。 | 发布前本地自检：`pnpm release:check` |
-| `pnpm release:pack [target]` | 生成本地 tarball，用于检查实际发布包内容。 | 全部包：`pnpm release:pack`；单包：`pnpm release:pack vant` |
+| 命令                                                | 作用                                                                                                              | 使用                                                                                                                        |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm release:check`                                | 执行完整发布前检查：安装一致性、测试、lint、构建和发布包内容检查。                                                | 发布前本地自检：`pnpm release:check`                                                                                        |
+| `pnpm release:pack [target]`                        | 生成本地 tarball，用于检查实际发布包内容。                                                                        | 全部包：`pnpm release:pack`；单包：`pnpm release:pack vant`                                                                 |
 | `pnpm release:publish [channel] [target] [version]` | 发布到指定通道。`latest` 可选择 `current`、`patch`、`minor`、`major` 或 `x.y.z`；预发布通道会临时生成版本并恢复。 | 交互选择：`pnpm release:publish`；正式版：`pnpm release:publish latest vue patch`；预发布：`pnpm release:publish alpha vue` |
-| `pnpm release:test` | 运行发布脚本自身的测试，不发布、不改版本。 | 修改发布脚本后执行：`pnpm release:test` |
+| `pnpm release:test`                                 | 运行发布脚本自身的测试，不发布、不改版本。                                                                        | 修改发布脚本后执行：`pnpm release:test`                                                                                     |
 
 ### 发布通道
 
-| 类型 | 用途 |
-| --- | --- |
-| `latest` | 正式版 |
-| `dev` | 日常开发测试，不稳定 |
-| `alpha` | 内部预览，API 可能还会变 |
-| `beta` | 外部测试，功能基本完整 |
-| `rc` | release candidate，候选正式版 |
-| `next` | 下一版本预览 |
+| 类型     | 用途                          |
+| -------- | ----------------------------- |
+| `latest` | 正式版                        |
+| `dev`    | 日常开发测试，不稳定          |
+| `alpha`  | 内部预览，API 可能还会变      |
+| `beta`   | 外部测试，功能基本完整        |
+| `rc`     | release candidate，候选正式版 |
+| `next`   | 下一版本预览                  |
 
 ## 相关文档
 

@@ -34,6 +34,7 @@ const dependencyField: SchemxField = {
   children: () => [],
 } as any
 
+// 验证 isBaseResolvedSchema 类型守卫：基础字段返回 true，group/dependency 返回 false
 describe("isBaseResolvedSchema", () => {
   it("基础字段配置返回 true", () => {
     expect(isBaseResolvedSchema(baseField)).toBe(true)
@@ -48,6 +49,7 @@ describe("isBaseResolvedSchema", () => {
   })
 })
 
+// 验证 isGroupResolvedSchema 类型守卫：group 返回 true，其他类型返回 false
 describe("isGroupResolvedSchema", () => {
   it("group 类型返回 true", () => {
     expect(isGroupResolvedSchema(groupField)).toBe(true)
@@ -59,6 +61,7 @@ describe("isGroupResolvedSchema", () => {
   })
 })
 
+// 验证 isDependencyResolvedSchema 类型守卫：dependency 返回 true，其他类型返回 false
 describe("isDependencyResolvedSchema", () => {
   it("dependency 类型返回 true", () => {
     expect(isDependencyResolvedSchema(dependencyField)).toBe(true)
@@ -70,6 +73,7 @@ describe("isDependencyResolvedSchema", () => {
   })
 })
 
+// 验证 findSchema 在平铺和 group 嵌套 schemas 中按名称递归查找
 describe("findSchema", () => {
   it("平铺 schemas 中按名称查找", () => {
     const schemas: SchemxField[] = [baseField]

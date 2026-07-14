@@ -67,8 +67,6 @@
 
   import type { SchemxInputProps, TextAreaAutosize } from "./types"
 
-  import "./index.scss"
-
   defineOptions({
     name: "SchemxInput",
     inheritAttrs: false,
@@ -227,7 +225,10 @@
   /** 失焦事件 */
   const handleBlur = (event: FocusEvent): void => {
     // 数字类型在 blur 时处理 min/max
-    if ((props.type === "number" || props.type === "digit") && internalValue.value !== "") {
+    if (
+      (props.type === "number" || props.type === "digit") &&
+      internalValue.value !== ""
+    ) {
       const { min, max } = props
       const numValue = parseFloat(internalValue.value)
 
@@ -311,18 +312,14 @@
   /** 聚焦方法 */
   const focus = (): void => {
     const input = fieldRef.value?.$el?.querySelector?.("input, textarea") as
-      | HTMLInputElement
-      | HTMLTextAreaElement
-      | null
+      HTMLInputElement | HTMLTextAreaElement | null
     input?.focus?.()
   }
 
   /** 失焦方法 */
   const blur = (): void => {
     const input = fieldRef.value?.$el?.querySelector?.("input, textarea") as
-      | HTMLInputElement
-      | HTMLTextAreaElement
-      | null
+      HTMLInputElement | HTMLTextAreaElement | null
     input?.blur?.()
   }
 
@@ -346,3 +343,15 @@
     }
   )
 </script>
+<style lang="scss">
+  .schemx-input {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    font-size: var(--van-field-font-size, var(--van-font-size-md, 14px));
+
+    .van-field {
+      padding: 0px;
+    }
+  }
+</style>

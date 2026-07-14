@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest"
 
 import { createStrictSingleton } from "../single"
 
+// 验证 createStrictSingleton 的首次创建、幂等性、工厂返回 null/undefined 抛错、reset 后重新创建、返回对象冻结
 describe("createStrictSingleton", () => {
   it("首次调用 getInstance 执行工厂函数并返回实例", () => {
     const singleton = createStrictSingleton(() => ({ value: 42 }))

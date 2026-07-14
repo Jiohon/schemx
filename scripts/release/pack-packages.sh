@@ -11,6 +11,7 @@ if [[ "$#" -eq 0 ]]; then
   die "缺少要检查发布内容的包名。"
 fi
 
+# dry-run 使用 pnpm 的实际发布文件计算逻辑。
 for pkg in "$@"; do
   pnpm --filter "@schemx/$pkg" pack --dry-run
 done

@@ -24,6 +24,7 @@ const fieldNameArb = fc
 
 const safeValueArb = fc.oneof(fc.integer(), fc.string(), fc.boolean(), fc.constant(null))
 
+// 属性测试：验证 createWatchField/createWatchFields/createWatchAll 的回调载荷、immediate、inequality、dispose 行为
 describe("createWatch 属性测试", () => {
   it("Property 11: createWatchField 回调接收 { value, prevValue } 载荷", () => {
     fc.assert(
@@ -122,6 +123,7 @@ describe("createWatch 属性测试", () => {
   // 需要配合 form.effect 内部的其他 signal 读取才能触发。
   // 此处仅验证 immediate 模式下的回调行为（见 Property 14）。
 
+  // 验证 immediate: true 时 createWatchField/createWatchFields/createWatchAll 立即执行回调
   describe("Property 14: immediate 选项触发初始回调", () => {
     it("createWatchField: immediate: true 时立即执行一次回调", () => {
       fc.assert(
@@ -224,6 +226,7 @@ describe("createWatch 属性测试", () => {
     })
   })
 
+  // 验证 inequality: true 时新旧值深度相等不触发回调
   describe("Property 15: inequality 选项跳过相等值", () => {
     it("createWatchField: inequality: true 且新旧值深度相等时不触发回调", () => {
       fc.assert(

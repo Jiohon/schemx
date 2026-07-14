@@ -1,3 +1,11 @@
+/**
+ * subscribeViewSchemas 单元测试
+ *
+ * 覆盖 ViewSchemas 订阅的基本行为：真实 ViewSchemas 输出、dependencies 更新 visible、
+ * 取消订阅、取消后不再回调、回调错误不中断订阅、root dispose 回调空 ViewSchemas。
+ *
+ * @module core/view/__tests__/subscribeViewSchemas
+ */
 import { describe, expect, it, vi } from "vitest"
 
 import createForm from "../../createForm"
@@ -23,6 +31,7 @@ function createRootWithViewState(): {
   return { root, resources }
 }
 
+// 验证 subscribeViewSchemas 的订阅回调、取消订阅、dependencies 更新 ViewSchema、root dispose 等行为
 describe("subscribeViewSchemas", () => {
   it("root viewState 应输出真实 ViewSchemas", async () => {
     const form = createForm({

@@ -31,6 +31,14 @@ export type NormalizedTrigger = "blur" | "change" | "submit"
  *
  * @returns 配置有效时返回 true
  */
+/**
+ * 判断触发时机配置是否有效。
+ *
+ * undefined 和空数组视为无效，其余值（包括单个字符串、非空数组）视为有效。
+ *
+ * @param v - 触发时机配置
+ * @returns 配置有效时返回 true
+ */
 function isValidTrigger(v: TriggerConfig | undefined): v is TriggerConfig {
   if (v === undefined) return false
 
@@ -79,6 +87,16 @@ export function mergeTrigger(
  *
  * @param t - 原始触发类型
  *
+ * @returns 归一化后的触发类型
+ */
+/**
+ * 归一化触发类型字符串。
+ *
+ * 将带 `on` 前缀的格式统一为短格式：
+ * `"onBlur"` → `"blur"`、`"onChange"` → `"change"`、`"onSubmit"` → `"submit"`。
+ * 不认识的值回退到默认配置的触发时机。
+ *
+ * @param t - 原始触发类型
  * @returns 归一化后的触发类型
  */
 function normalizeTrigger(t: ValidationTrigger): NormalizedTrigger {

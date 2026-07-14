@@ -181,6 +181,14 @@ export function createUploadRequiredRule<TValues extends Values = Values>(
   return buildStandardSchema(validate)
 }
 
+/**
+ * 构建符合 Standard Schema v1 接口的校验对象。
+ *
+ * 将校验函数包装为带有 `~standard` 属性的标准校验 schema。
+ *
+ * @param validate - 校验函数，接收输入值并返回校验结果。
+ * @returns 符合 StandardSchemaV1 接口的校验 schema。
+ */
 const buildStandardSchema = (
   validate: StandardSchemaV1.Props["validate"]
 ): StandardSchemaV1<unknown, unknown> => {
@@ -193,12 +201,24 @@ const buildStandardSchema = (
   }
 }
 
+/**
+ * 构建包含校验失败问题的 Standard Schema 结果。
+ *
+ * @param message - 错误提示信息。
+ * @returns 包含 issues 的校验失败结果。
+ */
 const standardIssueResult = (message: string): StandardSchemaV1.Result<unknown> => {
   return {
     issues: [{ message }],
   }
 }
 
+/**
+ * 构建校验通过的 Standard Schema 结果。
+ *
+ * @param value - 校验通过的值。
+ * @returns 包含 value 的校验成功结果。
+ */
 const standardValueResult = (value: unknown): StandardSchemaV1.Result<unknown> => {
   return { value }
 }

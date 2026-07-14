@@ -12,7 +12,7 @@ import type {
   PickerFieldNames as VantPickerFieldNames,
 } from "vant"
 
-import type { SchemxBaseComponentProps } from "@schemx/vue"
+import type { SchemxBaseComponentProps } from "@schemx/core"
 
 export type PickerValue = PickerProps["modelValue"][number] | PickerProps["modelValue"]
 
@@ -30,6 +30,7 @@ export type PickerFieldNames = VantPickerFieldNames
  */
 export interface PickerRendererProps
   extends
+    /* @vue-ignore */
     Omit<SchemxBaseComponentProps, "onChange" | "onBlur" | "value" | "onUpdate:value">,
     /* @vue-ignore */
     Partial<Omit<PickerProps, "modelValue" | "onUpdate:modelValue">> {

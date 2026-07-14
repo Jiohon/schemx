@@ -142,6 +142,7 @@ export function createValidationEffect<TValues extends Values = Values>(
     })
   }
 
+  // 作用域释放时同步注销校验规则并清空错误
   scope.add(() => {
     registrationVersion += 1
     context.instance.unregisterRules(name)
@@ -169,6 +170,7 @@ export function createValidationEffect<TValues extends Values = Values>(
   }
 }
 
+/** 判断 rules 是否非空：数组时检查长度，非数组时做 truthy 判断。 */
 function hasRules(rules: SchemxBaseField<Values>["rules"]): boolean {
   return Array.isArray(rules) ? rules.length > 0 : Boolean(rules)
 }

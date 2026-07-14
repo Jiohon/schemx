@@ -86,13 +86,13 @@ export type ValidationTrigger =
  *
  * 这些配置会作为 schema 编译和字段呈现态的默认值，字段自身配置优先级更高。
  */
-export type SchemxDefaultProps = Pick<SchemxBaseField, DefaultConfigKey>
-
 /**
  * 表单级默认配置。
  *
  * 这些配置会作为 schema 编译和字段呈现态的默认值，字段自身配置优先级更高。
  */
+export type SchemxDefaultProps = Pick<SchemxBaseField, DefaultConfigKey>
+
 /**
  * schemx 组件 Props
  *

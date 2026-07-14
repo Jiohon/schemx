@@ -6,7 +6,7 @@
 
 import type { CheckboxProps } from "vant"
 
-import type { SchemxBaseComponentProps } from "@schemx/vue"
+import type { SchemxBaseComponentProps } from "@schemx/core"
 
 export type CheckboxOptionValue = CheckboxProps["name"]
 export type CheckboxValue = CheckboxOptionValue[] | string
@@ -16,10 +16,9 @@ export type CheckboxValue = CheckboxOptionValue[] | string
  *
  * 描述单个复选项的配置信息。
  */
-export interface CheckboxOption
-  extends Partial<
-    Omit<CheckboxProps, "modelValue" | "onUpdate:modelValue" | "onChange" | "name">
-  > {
+export interface CheckboxOption extends Partial<
+  Omit<CheckboxProps, "modelValue" | "onUpdate:modelValue" | "onChange" | "name">
+> {
   /** 选项标签 */
   label?: string
   /** 选项值 */
@@ -35,6 +34,7 @@ export interface CheckboxOption
  */
 export interface CheckboxRendererProps
   extends
+    /* @vue-ignore */
     Omit<SchemxBaseComponentProps, "onChange" | "onBlur" | "value" | "onUpdate:value">,
     /* @vue-ignore */
     Partial<

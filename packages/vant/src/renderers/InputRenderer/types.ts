@@ -6,12 +6,12 @@
 
 import type { FieldProps } from "vant"
 
-import type { InputValue, TextAreaAutosize } from "@/components/Input"
+import type { InputValue, TextAreaAutosize } from "../../components/Input/types"
 
-import type { SchemxBaseComponentProps } from "@schemx/vue"
+import type { SchemxBaseComponentProps } from "@schemx/core"
 
 export type { InputValue }
-export { cutString, formatNumber, getStringLength } from "@/components/Input"
+export { cutString, formatNumber, getStringLength } from "../../components/Input/types"
 
 /**
  * 输入渲染器 Props

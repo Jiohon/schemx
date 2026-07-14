@@ -1,3 +1,12 @@
+/**
+ * RuntimeNode 创建时的初始状态测试。
+ *
+ * 覆盖 root/field/dependency 节点的 childNodes、descriptor、fieldState、
+ * effectState 等字段的初始值。
+ *
+ * @module core/node/__tests__/runtimeNode.test
+ */
+
 import { describe, expect, it } from "vitest"
 
 
@@ -37,6 +46,7 @@ function createDependencyDescriptor(key: string): DependencyDescriptor {
   }
 }
 
+// 各种 RuntimeNode 创建时的初始状态验证
 describe("node child helpers", () => {
   it("应该读写 root.childNodes", () => {
     const root = createTestRootRuntimeNode()
