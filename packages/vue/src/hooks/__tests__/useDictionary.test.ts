@@ -15,9 +15,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { SchemxDictionary } from "@/types/dictionary"
 
-import { FORM_CONTEXT_KEY } from "../useContext"
+import { SCHEMX_FORM_INSTANCE_KEY } from "../provideFormContext"
 import { normalizeError, useDictionary, type UseDictionaryReturn } from "../useDictionary"
-import { SCHEMX_FORM_INSTANCE_KEY } from "../useForm"
 
 // ========== normalizeError 单元测试 ==========
 
@@ -72,7 +71,6 @@ function mountUseDictionary(options: SchemxDictionary) {
     global: {
       provide: {
         [SCHEMX_FORM_INSTANCE_KEY]: form,
-        [FORM_CONTEXT_KEY]: {},
       },
     },
   })

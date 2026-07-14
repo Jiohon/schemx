@@ -14,9 +14,11 @@ import { createForm } from "@schemx/core"
 import { mount } from "@vue/test-utils"
 import { describe, expect, it, vi } from "vitest"
 
-import { FORM_CONTEXT_KEY } from "@/hooks/useContext"
-import type { FormContextProps } from "@/hooks/useContext"
-import { FORM_INSTANCE_KEY } from "@/hooks/useForm"
+import {
+  SCHEMX_FORM_CONFIG_KEY,
+  type FormContextProps,
+} from "@/hooks/provideFormConfigContext"
+import { SCHEMX_FORM_INSTANCE_KEY } from "@/hooks/provideFormContext"
 
 import FormItem from "../index"
 
@@ -135,8 +137,8 @@ describe("FormItem 集成测试", () => {
       props: { schema: form.getViewSchemas()[0] },
       global: {
         provide: {
-          [FORM_INSTANCE_KEY]: form,
-          [FORM_CONTEXT_KEY]: createFormContext(),
+          [SCHEMX_FORM_INSTANCE_KEY]: form,
+          [SCHEMX_FORM_CONFIG_KEY]: createFormContext(),
         },
       },
     })
@@ -177,8 +179,8 @@ describe("FormItem 集成测试", () => {
       props: { schema },
       global: {
         provide: {
-          [FORM_INSTANCE_KEY]: form,
-          [FORM_CONTEXT_KEY]: createFormContext(),
+          [SCHEMX_FORM_INSTANCE_KEY]: form,
+          [SCHEMX_FORM_CONFIG_KEY]: createFormContext(),
         },
       },
     })
@@ -211,8 +213,8 @@ describe("FormItem 集成测试", () => {
       props: { schema: form.getViewSchemas()[0] },
       global: {
         provide: {
-          [FORM_INSTANCE_KEY]: form,
-          [FORM_CONTEXT_KEY]: createFormContext(),
+          [SCHEMX_FORM_INSTANCE_KEY]: form,
+          [SCHEMX_FORM_CONFIG_KEY]: createFormContext(),
         },
       },
     })
@@ -244,8 +246,8 @@ describe("FormItem 集成测试", () => {
       props: { schema: form.getViewSchemas()[0] },
       global: {
         provide: {
-          [FORM_INSTANCE_KEY]: form,
-          [FORM_CONTEXT_KEY]: createFormContext(),
+          [SCHEMX_FORM_INSTANCE_KEY]: form,
+          [SCHEMX_FORM_CONFIG_KEY]: createFormContext(),
         },
       },
     })
@@ -281,8 +283,8 @@ describe("FormItem 集成测试", () => {
       props: { schema: form.getViewSchemas()[0] },
       global: {
         provide: {
-          [FORM_INSTANCE_KEY]: form,
-          [FORM_CONTEXT_KEY]: createFormContext(),
+          [SCHEMX_FORM_INSTANCE_KEY]: form,
+          [SCHEMX_FORM_CONFIG_KEY]: createFormContext(),
         },
       },
     })
@@ -318,8 +320,8 @@ describe("FormItem 集成测试", () => {
       props: { schema: form.getViewSchemas()[0] },
       global: {
         provide: {
-          [FORM_INSTANCE_KEY]: form,
-          [FORM_CONTEXT_KEY]: createFormContext(),
+          [SCHEMX_FORM_INSTANCE_KEY]: form,
+          [SCHEMX_FORM_CONFIG_KEY]: createFormContext(),
         },
       },
     })
@@ -354,8 +356,8 @@ describe("FormItem 集成测试", () => {
       props: { schema: form.getViewSchemas()[0] },
       global: {
         provide: {
-          [FORM_INSTANCE_KEY]: form,
-          [FORM_CONTEXT_KEY]: createFormContext(),
+          [SCHEMX_FORM_INSTANCE_KEY]: form,
+          [SCHEMX_FORM_CONFIG_KEY]: createFormContext(),
         },
       },
     })
@@ -396,8 +398,8 @@ describe("FormItem 集成测试", () => {
       props: { schema: form.getViewSchemas()[0] },
       global: {
         provide: {
-          [FORM_INSTANCE_KEY]: form,
-          [FORM_CONTEXT_KEY]: createFormContext(),
+          [SCHEMX_FORM_INSTANCE_KEY]: form,
+          [SCHEMX_FORM_CONFIG_KEY]: createFormContext(),
         },
       },
     })
@@ -444,8 +446,8 @@ describe("FormItem 集成测试", () => {
       props: { schema: form.getViewSchemas()[0] },
       global: {
         provide: {
-          [FORM_INSTANCE_KEY]: form,
-          [FORM_CONTEXT_KEY]: createFormContext(),
+          [SCHEMX_FORM_INSTANCE_KEY]: form,
+          [SCHEMX_FORM_CONFIG_KEY]: createFormContext(),
         },
       },
     })
