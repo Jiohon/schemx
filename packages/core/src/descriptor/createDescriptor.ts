@@ -59,35 +59,39 @@ export function createDescriptor<TValues extends Values = Values>(
   parentKey: string | undefined,
   context: DescriptorContext<TValues>
 ): FormDescriptor<TValues> {
-  schema.key = createDescriptorKey(schema, index, parentKey)
+  const key = createDescriptorKey(schema, index, parentKey)
+  schema.key = key
 
   // 根据 schema 类型分发到不同的 descriptor 构建函数
   if (isGroupSchema(schema)) {
     // 分组：递归处理所有子节点
     const children = schema.children.map((schemaChild, index) =>
-      createDescriptor(schemaChild, index, schema.key, context)
+      createDescriptor(schemaChild, index, key, context)
     )
 
-    return createGroupDescriptor(schema, children)
+    return createGroupDescriptor(schema, key, children)
   }
 
   if (isDependencySchema(schema)) {
     // 依赖：编译为含动态 renderer 的描述符
-    return createDependencyDescriptor(schema)
+    return createDependencyDescriptor(schema, key)
   }
 
   // 普通字段：编译为含静态 schema + 校验 + 动态属性的描述符
-  return createFieldDescriptor(schema, context)
+  return createFieldDescriptor(schema, key, context)
 }
 
 /**
  * 创建字段 descriptor。
  *
- * @param options - 字段 descriptor 创建选项。
+ * @param schema - 字段 schema。
+ * @param key - 已生成的 descriptor key。
+ * @param context - 当前表单实例默认配置与公开 API。
  * @returns 字段 descriptor。
  */
 function createFieldDescriptor<TValues extends Values = Values>(
   schema: SchemxBaseField<TValues>,
+  key: string,
   context: DescriptorContext<TValues>
 ): FieldDescriptor<TValues> {
   // 先合并默认值得到规范化 schema，再提取校验与动态属性
@@ -95,7 +99,7 @@ function createFieldDescriptor<TValues extends Values = Values>(
 
   return {
     type: "field",
-    key: schema.key!,
+    key,
     name: schema.name,
     componentType: schema.componentType,
     staticSchema: normalizedSchema,
@@ -107,21 +111,24 @@ function createFieldDescriptor<TValues extends Values = Values>(
 /**
  * 创建分组 descriptor。
  *
- * @param options - 分组 descriptor 创建选项。
+ * @param schema - 分组 schema。
+ * @param key - 已生成的 descriptor key。
+ * @param children - 子级 descriptors。
  * @returns 分组 descriptor。
  */
 function createGroupDescriptor<TValues extends Values = Values>(
   schema: SchemxGroupField<TValues>,
+  key: string,
   children: FormDescriptor<TValues>[]
 ): GroupDescriptor<TValues> {
   const { children: _rawChildren, ...schemaWithoutChildren } = schema
 
   return {
     type: "group",
-    key: schema.key!,
+    key,
     staticSchema: {
       ...schemaWithoutChildren,
-      key: schema.key!,
+      key,
       children: [],
     },
     children,
@@ -131,17 +138,16 @@ function createGroupDescriptor<TValues extends Values = Values>(
 /**
  * 创建 dependency descriptor。
  *
- * @param options - dependency descriptor 创建选项。
+ * @param schema - dependency schema。
+ * @param key - 已生成的 descriptor key。
  * @returns dependency descriptor。
  */
 function createDependencyDescriptor<TValues extends Values = Values>(
-  schema: SchemxDependencyField<TValues>
+  schema: SchemxDependencyField<TValues>,
+  key: string
 ): DependencyDescriptor<TValues> {
   // 拷贝 trigger 字段列表快照，避免外部意外修改
   const trigger = [...schema.to]
-
-  // 将 trigger 字段序列化为字符串，用于参与 key 生成以保证依赖重算时身份稳定
-  const triggerKey = trigger.map(serializeNamePath).join(",")
 
   // 包装 renderer：注入 formApi 和 abortSignal，运行时由 compiler 调用
   const renderer: DependencyRenderer<TValues> = (formApi, abortSignal) => {
@@ -154,7 +160,7 @@ function createDependencyDescriptor<TValues extends Values = Values>(
 
   return {
     type: "dependency",
-    key: schema.key!,
+    key,
     triggerFields: trigger,
     renderer,
   }

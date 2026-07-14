@@ -15,8 +15,8 @@ import { mount } from "@vue/test-utils"
 import { describe, expect, it, vi } from "vitest"
 
 import {
-  SCHEMX_FORM_CONFIG_KEY,
   type FormContextProps,
+  SCHEMX_FORM_CONFIG_KEY,
 } from "@/hooks/provideFormConfigContext"
 import { SCHEMX_FORM_INSTANCE_KEY } from "@/hooks/provideFormContext"
 

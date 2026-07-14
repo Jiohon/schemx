@@ -36,11 +36,10 @@ export type Exact<T, U extends T> = T & Record<Exclude<keyof U, keyof T>, never>
  */
 type Primitive = string | number | boolean | bigint | symbol | null | undefined
 
-// eslint-disable-next-line @typescript-eslint/ban-types
 /**
  * 内置类型联合，包括原始类型、函数、Date、Error、RegExp。
  */
-type Builtin = Primitive | Function | Date | Error | RegExp
+type Builtin = Primitive | CallableFunction | NewableFunction | Date | Error | RegExp
 
 /**
  * 深层只读工具类型。
