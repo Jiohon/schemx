@@ -210,7 +210,20 @@ export function createDependencyEffect<TValues extends Values = Values>(
 }
 
 /**
- * 设置 trigger 字段监听。
+ * 设置 trigger 字段的响应式监听。
+ *
+ * 通过 createSignalEffect 订阅 trigger 字段值变化，
+ * 首次执行跳过调度，后续变化通过 scheduler 调度异步执行 renderer。
+ * 监听生命周期绑定到 resourceScope，随 scope 释放自动清理。
+ *
+ * @typeParam TValues - 表单值类型
+ * @typeParam TName - trigger 字段的 name path 类型
+ * @param triggers - 触发字段名列表
+ * @param formApi - 表单 API
+ * @param run - 执行 renderer 的回调
+ * @param scope - 资源作用域
+ * @param scheduler - 任务调度器
+ * @param taskId - 调度任务 ID
  */
 function setupTriggerSubscription<
   TValues extends Values = Values,

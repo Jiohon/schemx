@@ -1,6 +1,8 @@
 /**
  * Schema compiler 类型定义。
  *
+ * 定义 Compile 门面接口和 CompileCache 缓存结构，以及编译错误类型。
+ *
  * @module core/compiler/types
  */
 
@@ -15,6 +17,8 @@ import type {
 
 /**
  * 编译器选项。
+ *
+ * 编译 schema 时需要的表单级配置：默认属性和表单实例方法。
  */
 export interface CompileOptions<TValues extends Values> {
   /**
@@ -23,7 +27,7 @@ export interface CompileOptions<TValues extends Values> {
    * 这些配置会作为 schema 编译和字段呈现态的默认值，字段自身配置优先级更高。
    */
   defaultProps: SchemxDefaultProps
-  /** Form 表单实例方法。 */
+  /** 表单实例方法，用于在编译时提供表单操作能力。 */
   formInstance: SchemxInstance<TValues>
 }
 
@@ -38,7 +42,9 @@ export interface CompileOptions<TValues extends Values> {
  * 后续编译会跳过所有缓存条目。
  */
 export interface CompileCache<TValues extends Values = Values> {
+  /** 当前缓存版本号，递增后所有缓存条目失效。 */
   version: number
+  /** 以 schema 对象引用为键的 descriptor 缓存表。 */
   entries: WeakMap<
     SchemxField<TValues>,
     { version: number; descriptor: FormDescriptor<TValues> }
@@ -49,13 +55,20 @@ export interface CompileCache<TValues extends Values = Values> {
  * Schema compiler 门面。
  *
  * 封装 descriptor cache 与失效版本，让调用方不直接操作 cache 结构。
+ * 提供编译 schema 列表、获取缓存版本号和失效缓存的入口。
  */
 export interface Compile<TValues extends Values = Values> {
   /** 当前 compiler 实例持有的 descriptor 引用缓存。 */
   readonly cache: CompileCache<TValues>
   /** 获取当前缓存版本号。 */
   getCacheVersion(): number
-  /** 将 schema 列表编译为 descriptor 列表，并复用未失效的缓存条目。 */
+  /**
+   * 将 schema 列表编译为 descriptor 列表，并复用未失效的缓存条目。
+   *
+   * @param schemas - 待编译的 schema 列表。
+   * @param parentKey - 父级 descriptor key，用于生成嵌套 key。
+   * @returns 编译后的 descriptor 列表。
+   */
   toDescriptors(
     schemas: readonly SchemxField<TValues>[],
     parentKey?: string
@@ -67,18 +80,23 @@ export interface Compile<TValues extends Values = Values> {
 }
 
 /**
- * 编译错误。
+ * 编译错误类。
+ *
+ * 当 schema 编译过程中遇到无法处理的配置时抛出。
+ * 附加 schema key 和 name 以便定位问题字段。
  */
 class CompileErrorImpl extends Error {
-  /** Schema key（如果可提取）。 */
+  /** 触发错误的 schema 的 key（如存在）。 */
   readonly schemaKey?: string
 
-  /** Schema name path。 */
+  /** 触发错误的 schema 的 name path（如存在）。 */
   readonly schemaName?: NamePath
 
   /**
-   * @param message - 错误信息。
-   * @param schema - 触发错误的 schema，用于提取 name 和 key 附加到错误实例。
+   * 构造编译错误。
+   *
+   * @param message - 错误描述。
+   * @param schema - 触发错误的 schema 对象，用于提取 name 和 key 附加到错误实例。
    */
   constructor(message: string, schema?: any) {
     super(message)
@@ -96,5 +114,7 @@ class CompileErrorImpl extends Error {
 
 /**
  * CompileError 运行时构造器。
+ *
+ * 将内部类暴露为可导出的构造器，外部可通过 `instanceof CompileError` 判断。
  */
 export const CompileError = CompileErrorImpl

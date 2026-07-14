@@ -20,7 +20,9 @@ const Comp1 = defineComponent({ render: () => null })
 const Comp2 = defineComponent({ render: () => null })
 const Comp3 = defineComponent({ render: () => null })
 
+// 验证 Registry 的 register/registerAll/getRenderer/hasRenderer/unregister/setDefault/clear 等完整 API
 describe("Registry", () => {
+  // 验证 register/hasRenderer/getRenderer 的基本注册、覆盖、override:false、默认类型回退
   describe("register / hasRenderer / getRenderer", () => {
     it("注册并获取渲染器", () => {
       const reg = createRendererRegistry()
@@ -55,6 +57,7 @@ describe("Registry", () => {
     })
   })
 
+  // 验证 registerAll 批量注册多个渲染器
   describe("registerAll", () => {
     it("批量注册多个渲染器", () => {
       const reg = createRendererRegistry()
@@ -66,6 +69,7 @@ describe("Registry", () => {
     })
   })
 
+  // 验证 unregister 移除已注册渲染器、不存在的返回 false、智能选择新默认、最后一个保留默认类型
   describe("unregister", () => {
     it("移除已注册的渲染器", () => {
       const reg = createRendererRegistry()
@@ -98,6 +102,7 @@ describe("Registry", () => {
     })
   })
 
+  // 验证 setDefault/getDefault 设置已注册类型为默认、未注册类型无效、构造时指定默认类型
   describe("setDefault / getDefault", () => {
     it("设置已注册的类型为默认", () => {
       const reg = createRendererRegistry()
@@ -125,6 +130,7 @@ describe("Registry", () => {
     })
   })
 
+  // 验证 getTypes 返回所有已注册类型、size 返回数量、clear 清空所有渲染器
   describe("getTypes / size / clear", () => {
     it("getTypes 返回所有已注册类型", () => {
       const reg = createRendererRegistry()
@@ -148,6 +154,7 @@ describe("Registry", () => {
     })
   })
 
+  // 验证 createRendererRegistry 工厂创建独立 Registry 实例
   describe("createRendererRegistry 工厂函数", () => {
     it("创建独立的 Registry 实例", () => {
       const reg = createRendererRegistry("number")

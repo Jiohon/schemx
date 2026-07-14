@@ -1,6 +1,10 @@
 /**
  * Schema compiler 实现。
  *
+ * 将用户传入的 SchemxField schema 数组编译为 FormDescriptor 列表。
+ * 通过 WeakMap 以 schema 对象引用为键缓存 descriptor，配合 version 机制
+ * 在编译选项变化时失效缓存，使未变更的 schema 复用同一 descriptor 引用。
+ *
  * @module core/compiler/createCompile
  */
 
@@ -17,7 +21,7 @@ import type { SchemxField } from "../types/schema"
 /**
  * 创建一个初始 compiler 缓存。
  *
- * @returns 初始 CompileCache，version 从 0 开始。
+ * @returns 初始 CompileCache，version 从 0 开始，entries 为空 WeakMap。
  */
 function createCompileCache<TValues extends Values = Values>(): CompileCache<TValues> {
   return {
@@ -32,8 +36,8 @@ function createCompileCache<TValues extends Values = Values>(): CompileCache<TVa
  * 每个 compiler 实例维护自己的 descriptor cache。调用方通过 `invalidate()`
  * 失效缓存，而不是直接操作缓存版本。
  *
- * @param options - 编译选项。
- * @returns schema compiler 门面。
+ * @param options - 编译选项，包含默认属性和表单实例。
+ * @returns schema compiler 门面，提供 toDescriptors、invalidate 等方法。
  */
 export function createCompile<TValues extends Values = Values>(
   options: Partial<CompileOptions<TValues>> = {}
@@ -82,8 +86,7 @@ export function createCompile<TValues extends Values = Values>(
     for (let i = 0; i < normalized.length; i++) {
       const schema = normalized[i]
 
-      let descriptor: FormDescriptor<TValues>
-
+      // 命中缓存且版本未过期时直接复用之前的 descriptor
       const cached = compileCache.entries.get(schema)
 
       if (cached && cached.version === compileCache.version) {
@@ -91,8 +94,14 @@ export function createCompile<TValues extends Values = Values>(
         continue
       }
 
-      descriptor = createDescriptor(schema, i, parentKey, createFallbackCompileContext())
+      const descriptor: FormDescriptor<TValues> = createDescriptor(
+        schema,
+        i,
+        parentKey,
+        createFallbackCompileContext()
+      )
 
+      // 写入缓存，下次相同 schema 引用可跳过编译
       compileCache.entries.set(schema, {
         version: compileCache.version,
         descriptor,

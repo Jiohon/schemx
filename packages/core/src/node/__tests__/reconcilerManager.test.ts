@@ -1,3 +1,12 @@
+/**
+ * Reconciler 与 RuntimeNodeManager 的集成测试。
+ *
+ * 覆盖 reconciler 的节点创建/复用/替换/删除流程，以及 RuntimeNodeManager
+ * 创建 field 节点时挂载 FieldRuntimeState 的 US1 场景。
+ *
+ * @module core/node/__tests__/reconcilerManager.test
+ */
+
 import { setFieldDynamicOverrides } from "../../field/runtimeState"
 import { describe, expect, it, vi } from "vitest"
 
@@ -88,6 +97,7 @@ function createGraphRuntime(listener: LifecycleListener<RuntimeNode> = {}) {
   }
 }
 
+// RuntimeReconciler 与 DefaultRuntimeNodeManager 的集成：节点创建、复用、替换、生命周期
 describe("RuntimeReconciler + DefaultRuntimeNodeManager", () => {
   it("createReconciler(context) 内部初始化 RuntimeNodeManager 并创建 root", () => {
     const { context, root } = createGraphRuntime()
@@ -248,6 +258,7 @@ function createTestSchema(
   } as SchemxResolvedBaseField
 }
 
+// US1: RuntimeNodeManager 创建 field 节点时挂载 FieldRuntimeState 的验证
 describe("RuntimeNodeManager 创建 field 节点时挂载 FieldRuntimeState (US1)", () => {
   it("createFieldRuntimeState 应该能基于 descriptor 创建运行态", () => {
     const schema = createTestSchema({ label: "用户名" })

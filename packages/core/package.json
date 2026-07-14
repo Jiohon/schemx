@@ -43,16 +43,18 @@
   "dependencies": {
     "@preact/signals-core": "^1.14.0",
     "csstype": "^3.2.3",
-    "es-toolkit": "catalog:",
-    "simple-async-context": "^1.0.4",
-    "tslib": "^2.6.0"
+    "es-toolkit": "catalog:"
   },
   "scripts": {
     "build": "vite build",
-    "build:analyze": "VITE_ANALYZE=true vite build",
+    "build:analyze": "vite build",
     "test": "vitest run",
     "lint": "eslint \"src/**/*.{ts,tsx,vue,js,jsx}\" --ignore-pattern \"**/__tests__/**\" --ignore-pattern \"**/*.test.*\" --ignore-pattern \"**/*.spec.*\"",
+    "lint:fix": "eslint \"src/**/*.{ts,tsx,vue,js,jsx}\" --ignore-pattern \"**/__tests__/**\" --ignore-pattern \"**/*.test.*\" --ignore-pattern \"**/*.spec.*\" --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx,vue,js,jsx,json,css,scss}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,vue,js,jsx,json,css,scss}\"",
     "type-check": "tsc -p tsconfig.json --noEmit",
+    "check": "pnpm run lint && pnpm run format:check && pnpm run type-check",
     "prepublishOnly": "pnpm run build"
   },
   "license": "MIT",

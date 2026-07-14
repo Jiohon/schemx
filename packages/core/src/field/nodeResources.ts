@@ -1,3 +1,12 @@
+/**
+ * NodeResources - 字段运行时节点的资源挂载与更新。
+ *
+ * 管理 FieldRuntimeNode 的生命周期：创建字段运行态、视图状态、注册字段索引、
+ * 创建校验和 dependencies effect。
+ *
+ * @module core/field/nodeResources
+ */
+
 import { createRuntimeViewState, updateRuntimeViewState } from "../view/createViewState"
 
 import { createDependenciesEffect } from "./dependenciesEffect"
@@ -10,6 +19,17 @@ import type { SchemxContext } from "../schemxContext"
 import type { Values } from "../types"
 import type { FieldRuntimeState } from "./runtimeState"
 
+/**
+ * 挂载字段运行时节点的资源。
+ *
+ * 依次创建字段运行态、写入初始值、创建视图状态、注册字段索引、
+ * 创建校验和 dependencies effect。
+ *
+ * @typeParam TValues - 表单值类型
+ * @param node - 目标字段运行时节点
+ * @param descriptor - 字段 descriptor
+ * @param context - 运行时上下文
+ */
 export function mountFieldNodeResources<TValues extends Values>(
   node: FieldRuntimeNode<TValues>,
   descriptor: FieldDescriptor<TValues>,
@@ -29,6 +49,18 @@ export function mountFieldNodeResources<TValues extends Values>(
   recreateFieldEffects(node, descriptor, runtimeState, context)
 }
 
+/**
+ * 更新字段运行时节点的资源。
+ *
+ * 当字段名变化时先注销旧索引；更新静态 schema、视图状态、重新注册索引，
+ * 然后重建校验和 dependencies effect。
+ *
+ * @typeParam TValues - 表单值类型
+ * @param node - 目标字段运行时节点
+ * @param previousDescriptor - 上一轮 descriptor（用于比较字段名）
+ * @param nextDescriptor - 最新 descriptor
+ * @param context - 运行时上下文
+ */
 export function updateFieldNodeResources<TValues extends Values>(
   node: FieldRuntimeNode<TValues>,
   previousDescriptor: FieldDescriptor<TValues> | undefined,
@@ -54,6 +86,15 @@ export function updateFieldNodeResources<TValues extends Values>(
   recreateFieldEffects(node, nextDescriptor, runtimeState, context)
 }
 
+/**
+ * 卸载字段运行时节点的资源。
+ *
+ * 从字段索引注销，销毁 effect 并清理节点引用。
+ *
+ * @typeParam TValues - 表单值类型
+ * @param node - 目标字段运行时节点
+ * @param context - 运行时上下文
+ */
 export function unmountFieldNodeResources<TValues extends Values>(
   node: FieldRuntimeNode<TValues>,
   context: SchemxContext<TValues>
@@ -66,6 +107,19 @@ export function unmountFieldNodeResources<TValues extends Values>(
   node.fieldState = null
 }
 
+/**
+ * 重建字段的校验和 dependencies effect。
+ *
+ * 销毁旧 effectDispose 作用域，在子作用域中重新创建
+ * createValidationEffect 和 createDependenciesEffect。
+ * effect 销毁时自动清理 node.effectDispose 引用。
+ *
+ * @typeParam TValues - 表单值类型
+ * @param node - 字段运行时节点
+ * @param descriptor - 字段 descriptor
+ * @param runtimeState - 字段运行态
+ * @param context - 运行时上下文
+ */
 function recreateFieldEffects<TValues extends Values>(
   node: FieldRuntimeNode<TValues>,
   descriptor: FieldDescriptor<TValues>,
@@ -97,6 +151,16 @@ function recreateFieldEffects<TValues extends Values>(
   })
 }
 
+/**
+ * 写入字段初始值。
+ *
+ * 如果 descriptor.staticSchema 中定义了 initialValue 且当前字段值
+ * 尚未设置，则写入该初始值。仅在首次挂载时生效。
+ *
+ * @typeParam TValues - 表单值类型
+ * @param descriptor - 字段 descriptor
+ * @param context - 运行时上下文
+ */
 function applyFieldInitialValue<TValues extends Values>(
   descriptor: FieldDescriptor<TValues>,
   context: SchemxContext<TValues>

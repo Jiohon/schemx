@@ -29,6 +29,16 @@ import type {
   RuntimeNodeResourceContext,
 } from "./types"
 
+/**
+ * 创建 RuntimeNodeManager 实例。
+ *
+ * Manager 通过 SchemxContext 中的 nodeResources 管理所有节点的生命周期和树结构。
+ * 内部维护自增 ID，确保每个节点有唯一的 RuntimeNodeId。
+ *
+ * @typeParam TValues - 表单值类型
+ * @param context - 表单运行时上下文
+ * @returns RuntimeNodeManager 实例
+ */
 export function createRuntimeNodeManager<TValues extends Values = Values>(
   context: SchemxContext<TValues>
 ): RuntimeNodeManager<TValues> {
@@ -51,6 +61,12 @@ export function createRuntimeNodeManager<TValues extends Values = Values>(
 
   /**
    * 根据 descriptor 创建节点，并将节点挂载到指定父节点。
+   *
+   * 从 descriptor.type 推断节点类型，自动继承父节点 scope 作为 dispose。
+   *
+   * @param descriptor - 表单描述符
+   * @param parent - 目标父容器节点
+   * @returns 新创建的描述节点
    */
   function create(
     descriptor: FormDescriptor<TValues>,
@@ -71,6 +87,12 @@ export function createRuntimeNodeManager<TValues extends Values = Values>(
 
   /**
    * 创建并注册一个尚未挂载的描述节点。
+   *
+   * 根据 type 创建对应的节点类型（field / group / dependency），
+   * 分配自增 ID，注册到 resources.nodes Map 后返回。
+   *
+   * @param createOptions - 创建选项
+   * @returns 新创建的描述节点（尚未挂载到父节点）
    */
   function createNode(
     createOptions: CreateRuntimeNodeOptions
@@ -110,6 +132,9 @@ export function createRuntimeNodeManager<TValues extends Values = Values>(
 
   /**
    * 根据节点 ID 获取 RuntimeNode。
+   *
+   * @param nodeId - 节点 ID
+   * @returns RuntimeNode 实例，不存在时返回 undefined
    */
   function getNode(nodeId: number): RuntimeNode<TValues> | undefined {
     return resources.nodes.get(nodeId)
@@ -119,11 +144,20 @@ export function createRuntimeNodeManager<TValues extends Values = Values>(
    * 深度优先遍历指定节点及其全部后代节点。
    *
    * 当检测到重复节点或循环引用时直接抛出异常，避免无限递归。
+   *
+   * @param root - 遍历起始节点
+   * @returns 包含 root 自身及其所有后代节点的数组
+   * @throws 检测到循环引用或重复节点时抛出
    */
   function traverse(root: RuntimeNode<TValues>): RuntimeNode<TValues>[] {
     const result: RuntimeNode<TValues>[] = []
     const visited = new Set<RuntimeNode<TValues>>()
 
+    /**
+     * 递归访问节点及其子节点，收集到 result 并检测循环/重复引用。
+     *
+     * @param node - 当前访问的节点
+     */
     function visit(node: RuntimeNode<TValues>): void {
       if (visited.has(node)) {
         throw new Error(`Circular or duplicated runtime node detected: ${node.id}.`)
@@ -152,6 +186,10 @@ export function createRuntimeNodeManager<TValues extends Values = Values>(
    * - 如果节点已属于其他父节点，会先从原父节点中移除。
    * - 如果节点已属于当前父节点，相当于调整节点位置。
    * - index 未传入时，默认将节点移动或插入到末尾。
+   *
+   * @param parent - 目标父容器节点
+   * @param child - 要插入的子节点
+   * @param index - 插入位置索引，默认末尾
    */
   function insertChild(
     parent: ContainerRuntimeNode<TValues>,
@@ -184,6 +222,9 @@ export function createRuntimeNodeManager<TValues extends Values = Values>(
    * - 自动按引用去重，并保留首次出现时的顺序。
    * - 自动从旧父节点迁移传入的节点。
    * - 自动清理被移除节点的 parent 引用。
+   *
+   * @param parent - 目标父容器节点
+   * @param children - 新的子节点列表
    */
   function replaceChildren(
     parent: ContainerRuntimeNode<TValues>,
@@ -246,6 +287,9 @@ export function createRuntimeNodeManager<TValues extends Values = Values>(
    * 从指定父节点中移除一个直接子节点。
    *
    * 不会释放节点资源，也不会删除节点的后代节点。
+   *
+   * @param parent - 父容器节点
+   * @param child - 要移除的子节点
    */
   function removeChild(
     parent: ContainerRuntimeNode<TValues>,
@@ -263,10 +307,17 @@ export function createRuntimeNodeManager<TValues extends Values = Values>(
    * - 释放节点 scope；
    * - 删除节点相关资源；
    * - 从 nodes Map 中移除节点。
+   *
+   * @param node - 要删除的子树根节点
    */
   function removeSubtree(node: RuntimeNode<TValues>): void {
     const visited = new Set<RuntimeNode<TValues>>()
 
+    /**
+     * 递归卸载并移除子树节点，复用 visited 集合检测循环引用。
+     *
+     * @param current - 当前待移除的节点
+     */
     function remove(current: RuntimeNode<TValues>): void {
       if (current.disposed.value) {
         return
@@ -321,6 +372,9 @@ export function createRuntimeNodeManager<TValues extends Values = Values>(
    *
    * 即使 child.parent 与传入 parent 不一致，也会尝试清理
    * parent.childNodes 中可能存在的异常引用。
+   *
+   * @param parent - 父容器节点
+   * @param child - 要解除关系的子节点
    */
   function detachChild(
     parent: ContainerRuntimeNode<TValues>,
@@ -343,6 +397,9 @@ export function createRuntimeNodeManager<TValues extends Values = Values>(
    * 批量设置容器节点的子节点。
    *
    * 始终创建新数组，确保响应式系统能够检测到变更。
+   *
+   * @param node - 容器节点
+   * @param children - 新的子节点列表
    */
   function setChildren(
     node: ContainerRuntimeNode<TValues>,
@@ -358,6 +415,10 @@ export function createRuntimeNodeManager<TValues extends Values = Values>(
    * - 节点成为自己的子节点；
    * - 祖先节点挂载到自己的后代节点；
    * - 形成任何父节点方向的循环引用。
+   *
+   * @param parent - 目标父容器节点
+   * @param child - 要挂载的子节点
+   * @throws 如果形成循环引用则抛出
    */
   function assertCanAttach(
     parent: ContainerRuntimeNode<TValues>,
@@ -386,6 +447,9 @@ export function createRuntimeNodeManager<TValues extends Values = Values>(
 
   /**
    * 禁止继续操作已经释放的节点。
+   *
+   * @param node - 要检查的节点
+   * @throws 如果节点已释放则抛出
    */
   function assertNodeAvailable(node: RuntimeNode<TValues>): void {
     if (node.disposed.value) {
@@ -410,6 +474,11 @@ export function createRuntimeNodeManager<TValues extends Values = Values>(
 
 /**
  * 将节点注册到 RuntimeNode 资源容器。
+ *
+ * @typeParam TValues - 表单值类型
+ * @param resources - 资源注册表
+ * @param node - 要注册的节点
+ * @throws 如果节点 ID 已存在则抛出
  */
 function registerNode<TValues extends Values>(
   resources: RuntimeNodeResourceContext<TValues>,
@@ -424,6 +493,10 @@ function registerNode<TValues extends Values>(
 
 /**
  * 将索引限制在有效的数组插入范围内。
+ *
+ * @param index - 原始索引值
+ * @param length - 数组长度
+ * @returns 限制后的有效索引
  */
 function normalizeIndex(index: number, length: number): number {
   if (!Number.isFinite(index)) {
@@ -435,6 +508,11 @@ function normalizeIndex(index: number, length: number): number {
 
 /**
  * TypeScript 穷尽检查。
+ *
+ * 当 switch 语句未覆盖所有可能的节点类型时触发编译错误。
+ *
+ * @param value - 未被识别的类型值
+ * @throws 始终抛出
  */
 function assertNever(value: never): never {
   throw new Error(`Unsupported runtime node type: ${String(value)}.`)

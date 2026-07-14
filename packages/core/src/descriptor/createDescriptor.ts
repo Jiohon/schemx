@@ -35,6 +35,10 @@ import type {
   SchemxGroupField,
 } from "../types/schema"
 
+/**
+ * createDescriptor 的运行时上下文。
+ * 仅依赖表单的默认属性配置与实例引用，不依赖完整 SchemxContext。
+ */
 type DescriptorContext<TValues extends Values = Values> = Pick<
   SchemxContext<TValues>,
   "defaultProps" | "instance"
@@ -57,7 +61,9 @@ export function createDescriptor<TValues extends Values = Values>(
 ): FormDescriptor<TValues> {
   schema.key = createDescriptorKey(schema, index, parentKey)
 
+  // 根据 schema 类型分发到不同的 descriptor 构建函数
   if (isGroupSchema(schema)) {
+    // 分组：递归处理所有子节点
     const children = schema.children.map((schemaChild, index) =>
       createDescriptor(schemaChild, index, schema.key, context)
     )
@@ -66,9 +72,11 @@ export function createDescriptor<TValues extends Values = Values>(
   }
 
   if (isDependencySchema(schema)) {
+    // 依赖：编译为含动态 renderer 的描述符
     return createDependencyDescriptor(schema)
   }
 
+  // 普通字段：编译为含静态 schema + 校验 + 动态属性的描述符
   return createFieldDescriptor(schema, context)
 }
 
@@ -82,6 +90,7 @@ function createFieldDescriptor<TValues extends Values = Values>(
   schema: SchemxBaseField<TValues>,
   context: DescriptorContext<TValues>
 ): FieldDescriptor<TValues> {
+  // 先合并默认值得到规范化 schema，再提取校验与动态属性
   const normalizedSchema = buildNormalizedFieldSchema(schema, context)
 
   return {
@@ -128,10 +137,13 @@ function createGroupDescriptor<TValues extends Values = Values>(
 function createDependencyDescriptor<TValues extends Values = Values>(
   schema: SchemxDependencyField<TValues>
 ): DependencyDescriptor<TValues> {
+  // 拷贝 trigger 字段列表快照，避免外部意外修改
   const trigger = [...schema.to]
 
+  // 将 trigger 字段序列化为字符串，用于参与 key 生成以保证依赖重算时身份稳定
   const triggerKey = trigger.map(serializeNamePath).join(",")
 
+  // 包装 renderer：注入 formApi 和 abortSignal，运行时由 compiler 调用
   const renderer: DependencyRenderer<TValues> = (formApi, abortSignal) => {
     const values = formApi.getValues()
 
@@ -150,6 +162,9 @@ function createDependencyDescriptor<TValues extends Values = Values>(
 
 /**
  * 根据 componentType 和 placeholder 配置生成字段占位提示文本。
+ *
+ * 仅当 schema 未显式指定 placeholder 时自动生成；输入型组件用"请输入"，
+ * 选择型组件用"请选择"，label 缺失时 fallback 到字段名。
  *
  * @param schema - 字段 schema。
  * @returns 占位提示文本。
@@ -171,10 +186,11 @@ function getPlaceholder<TValues extends Values>(
 /**
  * 合并默认值与 schema 配置，生成规范化字段 schema。
  *
- * 字段自身配置优先级最高，其次是表单级 defaultProps，最后是 defaultConfig。
+ * 合并优先级（高→低）：字段自身配置 > 表单级 defaultProps > defaultConfig。
  * 只读态会强制 contentAlign 为 right、labelPosition 为 left。
  *
  * @param schema - 原始字段 schema。
+ * @param context - 运行时上下文，提供 defaultProps 与表单实例。
  * @returns 规范化后的字段 schema。
  */
 function buildNormalizedFieldSchema<TValues extends Values>(
@@ -183,6 +199,7 @@ function buildNormalizedFieldSchema<TValues extends Values>(
 ): SchemxResolvedBaseField<TValues> {
   const { defaultProps, instance } = context
 
+  // 解构分离出需要单独合并的属性，其余（如 label、name）直接透传
   const {
     componentProps: cp,
     visible,
@@ -195,6 +212,7 @@ function buildNormalizedFieldSchema<TValues extends Values>(
     ...rest
   } = schema
 
+  // 逐项合并优先级链：字段配置 ?? defaultProps ?? defaultConfig
   const mergedVisible = visible ?? defaultConfig.visible
   const mergedReadonly = readonly ?? defaultProps.readonly ?? defaultConfig.readonly
   const mergedDisabled = disabled ?? defaultProps.disabled ?? defaultConfig.disabled
@@ -209,7 +227,9 @@ function buildNormalizedFieldSchema<TValues extends Values>(
     validationTrigger ?? defaultProps.validationTrigger ?? defaultConfig.validationTrigger
 
   const mergedPlaceholder = getPlaceholder(schema)
+  // rules 统一为数组并过滤空值，用于推导 required 默认值
   const rulesArray = (Array.isArray(rules) ? rules : [rules]).filter(Boolean)
+  // 显式 required 优先，否则有 rules 时默认 true
   const mergedRequired = required ?? (rulesArray.length > 0 || defaultConfig.required)
 
   const normalizedSchema: SchemxResolvedBaseField<TValues> = {
@@ -235,15 +255,18 @@ function buildNormalizedFieldSchema<TValues extends Values>(
     validationTrigger: normalizeTrigger(mergedValidationTrigger),
   }
 
+  // 使用 Object.hasOwn 判断：仅当 schema 显式设置了 initialValue 才保留
   if (Object.hasOwn(schema, "initialValue")) {
     normalizedSchema.initialValue = rest.initialValue
   }
 
+  // 只读模式下覆盖对齐方式，保证展示一致性
   if (mergedReadonly) {
     normalizedSchema.contentAlign = "right"
     normalizedSchema.labelPosition = "left"
   }
 
+  // 将所有合并后的 props 灌入 componentProps，渲染器直接取用
   normalizedSchema.componentProps = {
     ...cp,
     align: mergedAlign,
@@ -259,6 +282,9 @@ function buildNormalizedFieldSchema<TValues extends Values>(
 
 /**
  * 根据字段 dependencies 配置构建动态属性描述。
+ *
+ * 动态属性描述是一个轻量声明，仅记录来源和触发字段，不包含运行期响应式逻辑。
+ * 实际的依赖追踪与属性重算由 DynamicProps 领域层在 node 实例化后完成。
  *
  * @param dependencies - 字段 dependencies 配置，缺省时返回 null。
  * @returns 动态属性描述，或 null 表示字段无动态属性。
@@ -279,6 +305,9 @@ function createFieldDynamicProps<TValues extends Values>(
 
 /**
  * 从规范化 schema 中提取校验描述。
+ *
+ * 仅提取 rules 与 trigger，不在此处做校验规则的运行时编译——rules 是纯声明式数据，
+ * 由后续的 Validation 领域层按需消费。
  *
  * @param schema - 规范化字段 schema。
  * @returns 校验描述，或 null 表示字段无校验资源。
@@ -301,6 +330,8 @@ function createFieldValidation<TValues extends Values>(
 /**
  * 规范化校验规则：过滤空值，空数组视为无规则。
  *
+ * 规则本身不在此处做深层校验或转换，仅做 null/空数组到 null 的归一化。
+ *
  * @param rules - 原始 rules 配置。
  * @returns 规范化后的 rules，或 null 表示无规则。
  */
@@ -321,7 +352,8 @@ function normalizeValidationRules(
 /**
  * 生成 descriptor 的稳定 key。
  *
- * 优先使用显式 key，否则按 parentKey + index 拼装。
+ * 优先使用 schema 上显式指定的 key；未指定时按类型前缀 + 层级路径自动生成。
+ * 依赖描述符的 key 中嵌入 trigger 字段列表，使得 trigger 变化时 key 改变，触发协调器重新挂载。
  *
  * @param schema - schema 字段配置联合类型。
  * @param index - schema 在同级列表中的位置。
@@ -335,6 +367,7 @@ function createDescriptorKey<TValues extends Values = Values>(
 ): string {
   const currentKey = schema.key
 
+  // 依赖描述符：key 中嵌入 trigger 字段串，使得 trigger 列表变化时 key 改变，触发重新挂载
   if (isDependencySchema(schema)) {
     const triggerKey = schema.to.map(serializeNamePath).join(",")
 
@@ -345,17 +378,22 @@ function createDescriptorKey<TValues extends Values = Values>(
     return currentKey ?? key
   }
 
+  // 分组描述符：按层级路径生成 key
   if (isGroupSchema(schema)) {
     const key = parentKey ? `group:${parentKey}/${index}` : `group:${index}`
 
     return currentKey ?? key
   }
 
+  // 字段描述符：按层级路径生成 key
   return currentKey ?? (parentKey ? `field:${parentKey}/${index}` : `field:${index}`)
 }
 
 /**
  * 将 NamePath 序列化为字符串，数组用 `.` 连接。
+ *
+ * 例如 `["user", "address", "city"]` 序列化为 `"user.address.city"`。
+ * 用于生成依赖描述符 key 中的 trigger 标识。
  *
  * @param name - 字段名路径。
  * @returns 序列化后的字符串。
@@ -370,6 +408,9 @@ function serializeNamePath(name: NamePath): string {
 
 /**
  * 把外部校验触发方式映射为内部 NormalizedTrigger，未识别值回落到 submit。
+ *
+ * 同时兼容 `onBlur`/`onChange`/`onSubmit`（组件库常见命名）和 `blur`/`change`/`submit`
+ * 两种写法，统一为不带 `on` 前缀的短格式。
  *
  * @param trigger - 原始触发方式或其数组。
  * @returns 规范化后的触发方式或其数组。

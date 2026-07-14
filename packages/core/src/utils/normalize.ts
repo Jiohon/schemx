@@ -17,17 +17,23 @@ import type {
 } from "../types"
 
 /**
- * 检查 label 是否合法
- * @param schema
- * @returns boolean
+ * 检查 name 是否合法
+ *
+ * 要求同时满足：存在 name 属性，且 name 不为 null、undefined 或空字符串。
+ *
+ * @param schema - 基础字段配置
+ * @returns name 合法时返回 true
  */
 const isLegalName = <T extends Values>(schema: SchemxBaseField<T>) =>
   Object.hasOwn(schema, "name") && [null, undefined, ""].every((i) => i !== schema.name)
 
 /**
  * 检查 componentType 是否合法
- * @param schema
- * @returns boolean
+ *
+ * 要求同时满足：存在 componentType 属性，且类型为字符串。
+ *
+ * @param schema - 字段配置
+ * @returns componentType 合法时返回 true
  */
 const isLegalComponentType = <T extends Values>(schema: SchemxField<T>) =>
   Object.hasOwn(schema, "componentType") && typeof schema.componentType === "string"

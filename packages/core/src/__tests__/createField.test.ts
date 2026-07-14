@@ -1,3 +1,11 @@
+/**
+ * createField 单元测试
+ *
+ * 验证 createField 工厂函数根据字段路径推导类型的能力，
+ * 以及 setValue/getValue 对表单字段值的双向绑定。
+ *
+ * @module core/__tests__/createField
+ */
 import { describe, expect, expectTypeOf, it } from "vitest"
 
 import { createField } from "../createField"
@@ -11,6 +19,7 @@ interface TypedForm {
   }
 }
 
+// createField 测试：验证字段类型推导和 setValue/getValue 双向绑定
 describe("createField", () => {
   it("根据字段路径推导字段值类型", () => {
     const form = createForm<TypedForm>({

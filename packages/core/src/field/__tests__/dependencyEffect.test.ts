@@ -1,3 +1,12 @@
+/**
+ * Dependency effect（依赖渲染节点）的行为测试。
+ *
+ * 覆盖 dependency 节点的 schema 渲染、子节点提交、竞态处理、renderer 失败
+ * 回退以及空/group schema 输出等场景。
+ *
+ * @module core/field/__tests__/dependencyEffect.test
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import {
@@ -7,6 +16,7 @@ import {
 } from "./dependencyRuntimeTestUtils"
 import * as fieldModule from "../index"
 
+// 依赖渲染器（dependency effect）的核心行为：子 schema 渲染与提交
 describe("dependency effect", () => {
   it("只导出 createDependencyEffect 作为 dependency effect 创建入口", () => {
     expect(fieldModule).toHaveProperty("createDependencyEffect")

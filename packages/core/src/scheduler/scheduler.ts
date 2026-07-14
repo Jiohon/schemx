@@ -142,6 +142,9 @@ export function createScheduler(): Scheduler {
 
   /**
    * 执行所有待执行任务。
+   *
+   * 如果已有正在执行的 flush 则复用其 Promise，防止并发执行。
+   * flush 完成后自动检查空闲状态并通知等待者。
    */
   const flush = async (): Promise<void> => {
     if (disposed) {
@@ -162,6 +165,9 @@ export function createScheduler(): Scheduler {
 
   /**
    * 单次 flush 执行。
+   *
+   * 循环从队列中取出批次执行，直到所有队列为空或调度器被释放。
+   * 对每个任务按序执行，遇到异步任务则通过 track() 等待其完成。
    */
   const flushOnce = async (): Promise<void> => {
     while (!disposed) {
@@ -193,6 +199,9 @@ export function createScheduler(): Scheduler {
 
   /**
    * 调度任务。
+   *
+   * 按优先级将任务加入对应队列，通过 queueMicrotask 异步触发 flush。
+   * 已释放的调度器或任务直接忽略。
    */
   const schedule = (task: ScheduledTask): void => {
     // 跳过已 disposed 的调度器或任务
@@ -206,6 +215,9 @@ export function createScheduler(): Scheduler {
 
   /**
    * 从所有队列取出一批任务。
+   *
+   * 按优先级顺序遍历队列，取出当前所有已调度的任务并清空队列。
+   * 同一批次内按 sync → pre → normal → post 顺序执行。
    */
   const takeBatch = (): ScheduledTask[] => {
     const batch: ScheduledTask[] = []
@@ -226,6 +238,9 @@ export function createScheduler(): Scheduler {
 
   /**
    * 跟踪异步任务。
+   *
+   * 增加飞行中任务计数，任务完成后减少计数并检查空闲状态。
+   * 用于确保 whenIdle 能正确等待所有异步任务完成。
    */
   const track = async <T>(promise: Promise<T>): Promise<T> => {
     pendingAsync += 1
@@ -240,6 +255,13 @@ export function createScheduler(): Scheduler {
 
   /**
    * 等待所有任务完成。
+   *
+   * 如果当前空闲则立即 resolve true；
+   * 否则注册回调，等待所有队列清空且异步任务完成后 resolve。
+   * 超时未完成则 resolve false。
+   *
+   * @param timeout - 超时时间（毫秒），默认 10000
+   * @returns true 表示所有任务已完成，false 表示超时
    */
   const whenIdle = (timeout = 10000): Promise<boolean> => {
     if (isIdle()) {
@@ -260,7 +282,9 @@ export function createScheduler(): Scheduler {
   }
 
   /**
-   * 检查是否空闲。
+   * 检查调度器是否空闲。
+   *
+   * 空闲条件：无正在执行的 flush、无飞行中异步任务、队列为空。
    */
   const isIdle = (): boolean => {
     return !currentFlush && pendingAsync === 0 && !hasQueuedTasks()
@@ -288,6 +312,9 @@ export function createScheduler(): Scheduler {
 
   /**
    * 释放调度器。
+   *
+   * 标记已释放，清空所有任务队列，并通知所有等待者。
+   * 释放后 schedule() 和 flush() 将不再执行新任务。
    */
   const dispose = (): void => {
     disposed = true
@@ -305,7 +332,9 @@ export function createScheduler(): Scheduler {
 }
 
 /**
- * 检查是否为 PromiseLike。
+ * 检查值是否为 PromiseLike（具有 then 方法的对象）。
+ *
+ * 用于区分同步任务与异步任务，以便 track() 正确计数。
  */
 const isPromiseLike = (value: unknown): value is PromiseLike<unknown> => {
   return (

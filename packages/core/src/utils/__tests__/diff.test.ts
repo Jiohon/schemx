@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest"
 
 import { diff } from "../../../../vue/src/utils/diff"
 
+// 验证 diff 对象浅层差异比较：属性值不同、完全相同、嵌套对象深度比较、新增属性、空对象
 describe("diff", () => {
   it("属性值不同时返回变化的属性新值", () => {
     const result = diff({ a: 1, b: 2 }, { a: 1, b: 3 })

@@ -1,3 +1,13 @@
+/**
+ * Reconciler 的 plan 生成与 commit 执行的测试。
+ *
+ * 覆盖 createReconcilePlan 的 create/update/remove 操作推导、descriptor
+ * 引用不变时不产生 update、commitReconcilePlan 的调用顺序以及
+ * createReconciler 的递归 group 提交。
+ *
+ * @module core/reconciler/__tests__/reconciler.test
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import {
@@ -14,6 +24,7 @@ import type {
   Scope,
 } from "../../node"
 
+// createReconcilePlan 的 create/update/remove 操作推导与 descriptor 引用判别
 describe("reconciler plan", () => {
   it("只根据入参计算 create/update/remove 和下一轮 children 顺序", () => {
     const reused = createNode(1, "name", "field")
@@ -61,6 +72,7 @@ describe("reconciler plan", () => {
   })
 })
 
+// commitReconcilePlan 按 plan 调用 tree manager 和 lifecycle，并确保 mount 先于 replaceChildren
 describe("reconciler commit", () => {
   it("按 plan 调用 tree manager 和 lifecycle，不直接操作资源表", () => {
     const calls: string[] = []
@@ -181,6 +193,7 @@ describe("reconciler commit", () => {
   })
 })
 
+// createReconciler 组合 plan 和 commit，递归处理 group children
 describe("createReconciler", () => {
   it("组合 plan 和 commit，并在提交后递归处理 group children", () => {
     const root = createRoot()

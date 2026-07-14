@@ -205,6 +205,13 @@ export function createFieldSignalMap<K, V>(
   return new FieldSignalMapImpl<K, V>(options)
 }
 
+/**
+ * 释放字段 signal 的底层状态，将其各子 signal 重置为默认值。
+ *
+ * 在 delete/clear 时调用，确保旧 signal 的订阅者收到值变更通知。
+ *
+ * @param signal - 待释放的字段 signal。
+ */
 function disposeSignal(signal: FieldSignal<unknown>): void {
   signal.value.value = undefined
   signal.initialValue.value = undefined
@@ -212,6 +219,14 @@ function disposeSignal(signal: FieldSignal<unknown>): void {
   signal.pending.value = false
 }
 
+/**
+ * 默认字段路径标准化函数。
+ *
+ * 数组路径按 `.` 连接为字符串，非数组路径直接转为字符串。
+ *
+ * @param key - 原始字段路径。
+ * @returns 标准化后的字符串 key。
+ */
 function defaultNormalizeFieldKey(key: unknown): string {
   if (Array.isArray(key)) {
     return key.map((part) => String(part)).join(".")

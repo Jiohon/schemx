@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest"
 
 import { collectObjectPathsByLeaf, getByPath, setByPath } from "../path"
 
+// 验证 getByPath 获取嵌套路径值、空路径返回整体、不存在路径返回 undefined
 describe("getByPath", () => {
   it("有效嵌套路径返回对应值", () => {
     const obj = { user: { address: { city: "Beijing" } } }
@@ -31,6 +32,7 @@ describe("getByPath", () => {
   })
 })
 
+// 验证 setByPath 设置嵌套路径值、null/undefined 对象不抛异常
 describe("setByPath", () => {
   it("有效路径设置嵌套值", () => {
     const obj: Record<string, any> = { user: {} }
@@ -47,6 +49,7 @@ describe("setByPath", () => {
   })
 })
 
+// 验证 collectObjectPathsByLeaf 仅返回叶子节点路径，含数组索引
 describe("collectObjectPathsByLeaf", () => {
   it("仅返回叶子节点路径", () => {
     const obj = { name: "a", address: { city: "BJ", zip: "100000" } }

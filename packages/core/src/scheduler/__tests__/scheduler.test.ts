@@ -9,6 +9,7 @@ import { describe, expect, it, vi } from "vitest"
 import { createRuntimeScope } from "../../node/scope"
 import { createScheduler } from "../scheduler"
 
+// 验证 schedule 按 sync/pre/normal/post 优先级顺序执行任务
 describe("schedule", () => {
   it("应该调度 sync/pre/normal/post 任务", async () => {
     const scheduler = createScheduler()
@@ -79,6 +80,7 @@ describe("schedule", () => {
   })
 })
 
+// 验证 flush 等待同步/异步任务完成、flush 期间新调度任务继续执行
 describe("flush", () => {
   it("应该等待所有同步任务完成", async () => {
     const scheduler = createScheduler()
@@ -147,6 +149,7 @@ describe("flush", () => {
   })
 })
 
+// 验证 whenIdle 在空闲时立即返回 true、有任务时等待完成、超时返回 false
 describe("whenIdle", () => {
   it("应该在空闲队列时立即返回 true", async () => {
     const scheduler = createScheduler()
@@ -194,6 +197,7 @@ describe("whenIdle", () => {
   })
 })
 
+// 验证 track 追踪外部 Promise，whenIdle 等待其完成，支持链式调用
 describe("track", () => {
   it("应该在 track 后 whenIdle 等待该任务", async () => {
     const scheduler = createScheduler()
@@ -224,6 +228,7 @@ describe("track", () => {
   })
 })
 
+// 验证 scope disposed 后不执行关联的同步/异步任务
 describe("scope cancellation", () => {
   it("应该在 scope disposed 后不执行关联任务", async () => {
     const scheduler = createScheduler()
@@ -272,6 +277,7 @@ describe("scope cancellation", () => {
   })
 })
 
+// 验证任务抛错后其他任务继续执行，onError 回调被调用
 describe("error handling", () => {
   it("应该在任务抛错后继续执行其他任务", async () => {
     const scheduler = createScheduler()
@@ -322,6 +328,7 @@ describe("error handling", () => {
   })
 })
 
+// 验证 dispose 后不再执行新调度任务
 describe("dispose", () => {
   it("应该在 dispose 后不再执行任务", async () => {
     const scheduler = createScheduler()

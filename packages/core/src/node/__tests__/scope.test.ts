@@ -1,7 +1,17 @@
+/**
+ * Scope（RuntimeDispose）资源生命周期管理测试。
+ *
+ * 覆盖 scope 的创建、子 scope 释放顺序、cleanup 重复注册、提前注销
+ * 以及 disposed 后注册立即执行等行为。
+ *
+ * @module core/node/__tests__/scope.test
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import { createRuntimeDispose, createScope } from "../scope"
 
+// Scope 资源生命周期：子 scope 释放顺序、cleanup 注册与提前注销、disposed 后注册
 describe("Scope", () => {
   it("createRuntimeDispose 创建 RuntimeDispose 生命周期边界", () => {
     const dispose = createRuntimeDispose()

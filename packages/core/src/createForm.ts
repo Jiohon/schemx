@@ -107,12 +107,7 @@ import {
   type ValidateResult,
   type Validator,
 } from "./validator"
-import {
-  readRootViewSchemas,
-  type RootViewState,
-  type SchemxViewSchema,
-  subscribeViewSchemas,
-} from "./view"
+import { type SchemxViewSchema, subscribeViewSchemas } from "./view"
 import { createRootRuntimeViewState } from "./view/createViewState"
 
 import type { Compile } from "./compiler/types"
@@ -288,6 +283,15 @@ class CreateForm<
   /** node 生命周期事件总线，连接 reconciler 与字段资源挂载流程 */
   private lifecycleBus: LifecycleBus<RuntimeNode<TValues>>
 
+  /**
+   * 创建表单实例。
+   *
+   * 解析 options 并装配各子系统：统一保存用户回调、隔离 validator/renderer 注册表、
+   * 处理 modelValue 优先级、共享 defaultProps 引用、统一 schema source，
+   * 创建 compile/scheduler/view state/lifecycle bus 与 root runtime node。
+   *
+   * @param options - 表单配置选项
+   */
   constructor(options: CreateFormOptions<TValues> = {}) {
     const {
       schemas: schemasInput,
@@ -769,7 +773,7 @@ class CreateForm<
       return []
     }
 
-    return readRootViewSchemas<TValues>(rootViewState as RootViewState<TValues>)
+    return rootViewState.viewSchemas.value
   }
 
   /**

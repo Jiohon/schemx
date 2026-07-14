@@ -1,3 +1,13 @@
+/**
+ * FieldRuntimeState 的单元测试。
+ *
+ * 覆盖 runtimeState 的创建、staticSchema/dynamicOverrides/effectiveSchema
+ * 三层合并，以及 setFieldStaticSchema、setFieldDynamicOverrides、
+ * resetFieldDynamicOverrides 等操作。
+ *
+ * @module core/field/__tests__/runtimeState.test
+ */
+
 import { describe, expect, it } from "vitest"
 import {
   createFieldRuntimeState,
@@ -24,6 +34,7 @@ function createTestSchema(overrides: Partial<SchemxResolvedBaseField> = {}): Sch
   } as SchemxResolvedBaseField
 }
 
+// 字段运行态各层次的创建与初始状态
 describe("FieldRuntimeState", () => {
   describe("createFieldRuntimeState", () => {
     it("应该创建包含所有层次的字段运行态", () => {
@@ -384,6 +395,7 @@ describe("FieldRuntimeState", () => {
   })
 })
 
+// effectiveSchema 合并逻辑：静态 schema、动态覆盖与默认值的多层合并
 describe("effectiveSchema 合并逻辑 (US1)", () => {
   it("应该合并静态 schema、动态覆盖和默认值", () => {
     const schema = createTestSchema({

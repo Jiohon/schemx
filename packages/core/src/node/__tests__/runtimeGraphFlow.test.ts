@@ -1,3 +1,12 @@
+/**
+ * 运行时图（Runtime Graph）的节点流测试。
+ *
+ * 覆盖同 key 节点复用、不同 kind 的节点替换、嵌套 group 提交、removed-node
+ * cleanup 观察时机等流程行为。
+ *
+ * @module core/node/__tests__/runtimeGraphFlow.test
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import { createCompile } from "../../compiler"
@@ -5,6 +14,7 @@ import { createRawFieldSchema, createRuntimeGraphHarness } from "./runtimeGraphT
 
 import type { RuntimeNode } from "../types"
 
+// 运行时节点流：key 复用、kind 替换、嵌套提交、cleanup 观察与 reconciler 入参隔离
 describe("runtime node flow", () => {
   it("root schema commit 复用同 key 节点并释放被移除节点", () => {
     const { commitSchemas, root } = createRuntimeGraphHarness()

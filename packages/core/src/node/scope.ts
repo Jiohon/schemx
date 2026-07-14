@@ -22,11 +22,15 @@ import type {
 /**
  * 创建一个资源生命周期作用域。
  *
+ * 已释放的 scope 再调用 `add()` 时会立即执行 cleanup，这让调用方无需为异步
+ * mount 流程额外判断资源是否已经过期。
+ *
  * @returns 新创建的 `Scope`。
  *
  * @remarks
- * 已释放的 scope 再调用 `add()` 时会立即执行 cleanup，这让调用方无需为异步
- * mount 流程额外判断资源是否已经过期。
+ * 内部维护 cleanupRecords 数组和 childScopes 数组。dispose 时先释放子 scope，
+ * 再按 LIFO 顺序执行当前 scope 的 cleanup。cleanup 抛错会被捕获并上报，
+ * 不影响后续 cleanup 执行。
  */
 export function createScope(): Scope {
   let disposed = false
@@ -35,6 +39,12 @@ export function createScope(): Scope {
 
   /**
    * 注册释放函数。
+   *
+   * 每次 add 都创建独立记录；同一个 cleanup 函数重复注册也应独立释放。
+   * 返回的 handle 可提前释放该 cleanup 而不影响 scope 整体生命周期。
+   *
+   * @param cleanup - 释放函数
+   * @returns 释放句柄，可提前执行该 cleanup
    */
   const add = (cleanup: ScopeCleanup): ScopeCleanupHandle => {
     if (disposed) {
@@ -74,6 +84,11 @@ export function createScope(): Scope {
 
   /**
    * 创建子 scope。
+   *
+   * 子 scope 会被父 scope 跟踪；父 scope dispose 时自动释放子 scope。
+   * 子 scope 提前释放后自动从父 scope 摘除。
+   *
+   * @returns 子 Scope 实例
    */
   const child = (): Scope => {
     const childScope = createScope()
@@ -90,6 +105,9 @@ export function createScope(): Scope {
 
   /**
    * 释放当前 scope 及所有子 scope。
+   *
+   * 幂等：首次调用后 disposed 标记为 true，后续调用直接返回。
+   * 释放顺序：先子后父，同层级按 LIFO。
    */
   const disposeScope = (): void => {
     if (disposed) {
@@ -128,6 +146,11 @@ export function createScope(): Scope {
 
 /**
  * 创建一个 Runtime 资源生命周期边界。
+ *
+ * `createRuntimeDispose` 是 `createScope` 的语义别名，用于在 RuntimeNode 和
+ * RuntimeNodeManager 上下文中强调 dispose 语义。
+ *
+ * @returns RuntimeDispose 实例
  */
 export function createRuntimeDispose(): RuntimeDispose {
   return createScope()
@@ -135,9 +158,18 @@ export function createRuntimeDispose(): RuntimeDispose {
 
 /**
  * `createScope` 的兼容别名。
+ *
+ * 在需要明确"运行时作用域"语义的上下文中使用。
  */
 export const createRuntimeScope = createScope
 
+/**
+ * 创建一个已释放状态的 handle。
+ *
+ * 当 scope 已释放后调用 add() 时返回此 handle，避免调用方额外判空。
+ *
+ * @returns 已释放状态的 ScopeCleanupHandle
+ */
 const createDisposedHandle = (): ScopeCleanupHandle => {
   return {
     disposed: true,
@@ -145,8 +177,15 @@ const createDisposedHandle = (): ScopeCleanupHandle => {
   }
 }
 
+/** 空操作函数。 */
 const noop = (): void => {}
 
+/**
+ * 从数组中移除第一个匹配项。
+ *
+ * @param items - 目标数组
+ * @param item - 要移除的元素
+ */
 const removeItem = <T>(items: T[], item: T): void => {
   const index = items.indexOf(item)
   if (index >= 0) {
@@ -154,6 +193,13 @@ const removeItem = <T>(items: T[], item: T): void => {
   }
 }
 
+/**
+ * 执行 cleanup 并捕获错误。
+ *
+ * cleanup 抛错不阻断后续清理流程，错误通过 reportRuntimeCleanupError 上报。
+ *
+ * @param cleanup - 要执行的 cleanup 函数
+ */
 const runCleanup = (cleanup: ScopeCleanup): void => {
   try {
     cleanup()
@@ -165,7 +211,6 @@ const runCleanup = (cleanup: ScopeCleanup): void => {
 /**
  * 报告 cleanup 错误。
  *
- * @remarks
  * Scope 会吞掉 cleanup 抛出的错误以保证后续清理继续执行；这个函数是统一的
  * 错误上报出口。
  *

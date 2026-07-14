@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest"
 
 import { createRequiredRule } from "../defaultRules"
 
+// 验证 createRequiredRule 对 undefined/null/空字符串/有效值/数字0/布尔false 的校验行为
 describe("createRequiredRule", () => {
   const schema = createRequiredRule({ label: "用户名" } as any)
 
@@ -66,6 +67,7 @@ describe("createRequiredRule", () => {
 
 import { createSelectRequiredRule, createUploadRequiredRule } from "../defaultRules"
 
+// 验证 createRequiredRule 无 label 时使用通用提示"此项为必填项"
 describe("createRequiredRule — 无 label 通用提示", () => {
   const schema = createRequiredRule()
 
@@ -75,6 +77,7 @@ describe("createRequiredRule — 无 label 通用提示", () => {
   })
 })
 
+// 验证 createSelectRequiredRule 对 undefined/null/空字符串/空数组/非空值的校验行为
 describe("createSelectRequiredRule", () => {
   const schema = createSelectRequiredRule({ label: "城市" } as any)
 
@@ -117,6 +120,7 @@ describe("createSelectRequiredRule", () => {
   })
 })
 
+// 验证 createUploadRequiredRule 对 undefined/null/空数组/非空数组的校验行为
 describe("createUploadRequiredRule", () => {
   const schema = createUploadRequiredRule({ label: "文件" } as any)
 

@@ -1,3 +1,12 @@
+/**
+ * createDependenciesEffect 与 runtimeState 集成的测试。
+ *
+ * 覆盖依赖响应的动态覆盖写入、effectiveSchema 合并、异步竞态处理以及
+ * diagnostics 版本递增等行为。
+ *
+ * @module core/field/__tests__/dependenciesEffect.test
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import { createDependenciesEffect } from "../dependenciesEffect"
@@ -48,6 +57,7 @@ function createDependenciesDescriptor(
   } as FieldDescriptor<{ country?: string }>
 }
 
+// US2: dependenciesEffect 写入 dynamicOverrides 的边界行为
 describe("dependenciesEffect 写入 dynamicOverrides (US2)", () => {
   it("setFieldDynamicOverrides 应该写入动态覆盖到 runtimeState", () => {
     const schema = createTestSchema({ visible: true, disabled: false })
@@ -142,6 +152,7 @@ describe("dependenciesEffect 写入 dynamicOverrides (US2)", () => {
   })
 })
 
+// US3: 异步依赖响应中的竞态条件处理
 describe("异步 dependencies 竞态处理 (US3)", () => {
   it("最新结果应该获胜，旧结果不应覆盖", () => {
     const schema = createTestSchema({ visible: true })
@@ -246,6 +257,7 @@ describe("异步 dependencies 竞态处理 (US3)", () => {
   })
 })
 
+// US2: createDependenciesEffect 完整流程 —— 从监听触发字段到写入 runtimeState
 describe("createDependenciesEffect 写入 runtimeState (US2)", () => {
   it("只应写入 dynamicOverrides，并驱动 effectiveSchema", async () => {
     const scheduler = createScheduler()

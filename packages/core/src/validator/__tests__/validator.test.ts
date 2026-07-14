@@ -68,7 +68,9 @@ const createAsyncSchema = (
 
 const baseValues: TestForm = { name: "John", age: 25, email: "j@t.com" }
 
+// 单元测试：验证 Validator 的 register/unregister、getFieldError/setFieldError、validateField、validate 等完整 API
 describe("Validator", () => {
+  // 验证 register/unregister 的规则注册、注销、注销时清除错误、defaultMessage 空值拦截
   describe("register / unregister", () => {
     it("注册规则后可校验", async () => {
       const v = createValidator<TestForm>()
@@ -121,6 +123,7 @@ describe("Validator", () => {
     })
   })
 
+  // 验证 getFieldError/setFieldError/resetErrors 的错误读写与清空
   describe("getFieldError / setFieldError / resetErrors", () => {
     it("无错误时返回 undefined", () => {
       const v = createValidator<TestForm>()
@@ -145,6 +148,7 @@ describe("Validator", () => {
     })
   })
 
+  // 验证 validateField 对无规则字段、校验通过/失败、路径数组、异步校验、null 值 defaultMessage 的处理
   describe("validateField", () => {
     it("无规则字段校验通过", async () => {
       const v = createValidator<TestForm>()
@@ -221,6 +225,7 @@ describe("Validator", () => {
     })
   })
 
+  // 验证 validate 全量校验：所有字段通过返回 ok、部分失败返回所有错误、校验前清空旧错误
   describe("validate（全量校验）", () => {
     it("所有字段通过时返回 ok", async () => {
       const v = createValidator<TestForm>()
@@ -255,6 +260,7 @@ describe("Validator", () => {
     })
   })
 
+  // 验证 createValidator 工厂创建 Validator 实例
   describe("createValidator 工厂函数", () => {
     it("创建 Validator 实例", () => {
       const v = createValidator<TestForm>()
@@ -263,6 +269,7 @@ describe("Validator", () => {
   })
 })
 
+// 属性测试：验证 Validator 错误 signal 的 setFieldError/getFieldError 往返一致性与 reset 清空
 describe("Validator 错误 signal 属性测试", () => {
   // Feature: signal-map-abstraction, Property 11: Validator 错误 signal 往返一致性
   // **Validates: Requirements 3.4, 3.5, 3.6, 4.1, 4.3, 4.4**
@@ -292,6 +299,7 @@ describe("Validator 错误 signal 属性测试", () => {
 // 注意：Validator 已重构为使用 ReactiveMap 管理错误。
 // 本属性测试聚焦于 setFieldError/getFieldError 往返一致性、reset 清空。
 // **Validates: Requirements 6.2, 6.3, 6.4**
+// 属性测试：验证多路径下 setFieldError/getFieldError 往返一致性与 reset 清空所有错误
 describe("Validator 错误往返一致性（P9）", () => {
   it("Property 9: 对于任意路径和错误数组，setFieldError 后 getFieldError 返回相同值，reset 清空所有错误", () => {
     fc.assert(
@@ -327,6 +335,7 @@ describe("Validator 错误往返一致性（P9）", () => {
   })
 })
 
+// 验证 getFieldError 在无错误时返回 undefined
 describe("Validator getFieldError 无错误", () => {
   it("getFieldError 无错误时返回 undefined", () => {
     const v = createValidator<TestForm>()

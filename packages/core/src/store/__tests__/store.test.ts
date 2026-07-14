@@ -33,7 +33,9 @@ interface NestedForm {
   tags: string[]
 }
 
+// 单元测试：验证 Store 的构造、字段读写、嵌套字段、快照、touched/pending 状态、reset/destroy 等完整 API
 describe("Store", () => {
+  // 验证 Store 无参/有参构造、initialValues 深拷贝
   describe("构造", () => {
     it("无参构造创建空 store", () => {
       const store = createStore()
@@ -63,6 +65,7 @@ describe("Store", () => {
     })
   })
 
+  // 验证 getFieldValue/setFieldValue 对基本字段和嵌套字段的读写、不存在的字段返回 undefined
   describe("getFieldValue / setFieldValue", () => {
     it("获取和设置基本字段", () => {
       const store = createStore<TestForm>({
@@ -91,6 +94,7 @@ describe("Store", () => {
     })
   })
 
+  // 验证 getFieldsValue 无参/路径数组、setFieldsValue 批量设置
   describe("getFieldsValue / setFieldsValue", () => {
     it("无参返回全量值", () => {
       const store = createStore<TestForm>({
@@ -119,6 +123,7 @@ describe("Store", () => {
     })
   })
 
+  // 验证 getFieldsSnapshot 返回深拷贝快照、不受后续修改影响、非 reactive 对象
   describe("getFieldsSnapshot", () => {
     it("返回指定字段快照", () => {
       const store = createStore<TestForm>({
@@ -156,6 +161,7 @@ describe("Store", () => {
     })
   })
 
+  // 验证 getInitialValue/getInitialValues/setInitialValue/setInitialValues 的读写行为
   describe("getInitialValue / getInitialValues / setInitialValue / setInitialValues", () => {
     it("获取指定字段初始值", () => {
       const store = createStore<TestForm>({
@@ -219,6 +225,7 @@ describe("Store", () => {
     })
   })
 
+  // 验证 isFieldTouched/isFieldsTouched/getTouchedFields/setFieldTouched/setFieldsTouched 的 touched 状态管理
   describe("isFieldTouched / isFieldsTouched / getTouchedFields", () => {
     it("未修改字段返回 false", () => {
       const store = createStore<TestForm>({
@@ -291,6 +298,7 @@ describe("Store", () => {
     })
   })
 
+  // 验证 setFieldPending/setFieldsPending/isFieldPending/isFieldsPending/getPendingFields 的 pending 状态管理
   describe("pending 状态", () => {
     it("支持设置和获取单字段 pending 状态", () => {
       const store = createStore<TestForm>({
@@ -318,6 +326,7 @@ describe("Store", () => {
     })
   })
 
+  // 验证 reset/resetField/resetFields/destroy 的恢复初始值、清理 touched/pending、清空字段 signal 等行为
   describe("reset / resetField / resetFields / destroy", () => {
     it("reset 恢复到初始值", () => {
       const store = createStore<TestForm>({
@@ -403,6 +412,7 @@ describe("Store", () => {
   })
 })
 
+// 属性测试：通过 fast-check 验证 Store setFieldValue 往返一致性和 reset 状态正确性
 describe("Store 属性测试", () => {
   // Feature: pure-signal-core-refactor, Property 2: Store setFieldValue/setFieldsValue 往返一致性
   // **Validates: Requirements 3.1, 3.4**

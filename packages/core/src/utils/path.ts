@@ -183,6 +183,15 @@ export function normalizeNamePath<
     .replace(/^\./, "")
 }
 
+/**
+ * 将 NamePath 统一转为 es-toolkit 运行时接受的路径格式。
+ *
+ * 数组路径转换成 `(string|number)[]` 格式（保留数字索引），
+ * 字符串路径保持原样。
+ *
+ * @param path - 字段路径（字符串或数组）
+ * @returns 标准化后的运行时路径，适配 es-toolkit 的 get/set 接口
+ */
 const normalizeRuntimePath = (path: NamePath): RuntimePath => {
   if (Array.isArray(path)) {
     return path.map((part) => (typeof part === "number" ? part : String(part)))

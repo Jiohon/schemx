@@ -1,7 +1,17 @@
+/**
+ * createComputed 响应式计算测试。
+ *
+ * 覆盖 computed 的只读语义、自动依赖追踪、懒计算、链式 computed 以及
+ * 复杂对象/数组类型支持。
+ *
+ * @module core/reactivity/__tests__/computed.test
+ */
+
 import { describe, expect, it } from "vitest"
 import { createComputed } from "../computed"
 import { createSignal } from "../signal"
 
+// createComputed 核心功能：只读、依赖追踪、懒计算、链式、复杂类型
 describe("createComputed", () => {
   it("应该返回只读 signal", () => {
     const c = createComputed(() => 42)

@@ -27,6 +27,12 @@ import type {
 /**
  * 支持动态配置的字段呈现态键列表。
  */
+/**
+ * 可通过 dependencies 动态配置的字段属性 key 列表。
+ *
+ * 这些属性可以在运行时根据 trigger 字段值动态计算，
+ * 覆盖静态 schema 中对应的值。
+ */
 export const FIELD_DEPENDENCIES_PROP_KEYS = [
   "componentProps",
   "placeholder",
@@ -39,6 +45,14 @@ export const FIELD_DEPENDENCIES_PROP_KEYS = [
 
 type DependenciesPropKey = (typeof FIELD_DEPENDENCIES_PROP_KEYS)[number]
 
+/**
+ * dependencies 动态属性解析结果类型。
+ *
+ * 从 FIELD_DEPENDENCIES_PROP_KEYS 中选取非空值 key，
+ * 其中 rules 单独处理（不与其它 key 共用类型约束）。
+ *
+ * @typeParam TValues - 表单值类型
+ */
 export type DependenciesResolvedProps<TValues extends Values> = Partial<
   Pick<SchemxResolvedBaseField<TValues>, Exclude<DependenciesPropKey, "rules">> & {
     rules?: SchemxResolvedBaseField<TValues>["rules"]

@@ -24,6 +24,7 @@ function createTestSchema(
   } as SchemxResolvedBaseField
 }
 
+// 验证 viewState 性能边界：单字段动态属性变化不触发其他字段 viewSchema 重建、多次覆盖不泄漏、版本号递增
 describe("computed viewState 性能边界 (US3)", () => {
   it("单字段动态属性变化不应触发其他字段 viewSchema 重建", () => {
     const schema1 = createTestSchema({ label: "字段A", visible: true })
