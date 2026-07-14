@@ -11,6 +11,7 @@
 - 删除 Vant 用户侧的 `vite-plugin-package-resolution-compat` 安装与配置说明；
 - 明确 ESM 样式自动加载边界以及 Vue 上下文 API 的职责；
 - 确保示例与当前公开类型和方法名称一致。
+- 补齐 Vue 与 Vant 聚合入口已经定义、但包根入口遗漏的公开导出。
 
 ## 修改范围
 
@@ -27,6 +28,9 @@
 - 补充 `createFormContext()`、`useFormContext()`、`createFieldContext()`、`createFormConfigContext()` 和 `useViewSchemas()`；
 - 将 `useFormConfigContext()` 的说明修正为表单级展示配置上下文；
 - 保留 ESM 自动加载 `@schemx/vue/style.css` 的说明。
+- 从包根入口完整重新导出 `./hooks`，使上下文创建函数、
+  `useViewSchemas()` 和 `useStableRef()` 可由使用者直接导入；
+- 添加根入口导出回归测试。
 
 ### `@schemx/vant`
 
@@ -34,10 +38,19 @@
 - 保留包自身构建阶段的 `injectStyleCss()`，确保 ESM 入口继续自动加载自身样式；
 - 明确 `vant/lib/index.css` 仅用于 Vant 组件库样式，可由业务已有的自动按需方案替代；
 - 复核 Renderer 列表和表单实例方法。
+- 从包根入口完整重新导出 `./utils`，补齐只读展示、呈现模式和交互判断工具；
+- 添加根入口导出回归测试。
+
+### `@schemx/core` 公开边界
+
+- 根入口继续使用明确的公共导出清单；
+- README 完整记录现有根入口工厂函数、注册表、监听函数、schema 工具和公开类型；
+- 不导出 compiler、reconciler、RuntimeNodeManager 等内部基础设施。
 
 ## 非目标
 
-- 不修改三个包的公开 API、运行时逻辑或依赖声明；
+- 不修改运行时逻辑或依赖声明；
+- 不扩大 Core 内部基础设施的公开范围；
 - 不移除 `packages/vant/vite.plugins.ts` 中的 `injectStyleCss()`；
 - 不重写 README 的整体信息架构；
 - 不修改插件自身文档或示例项目文档。
@@ -48,6 +61,7 @@
 - 搜索并确认 Core README 不再出现旧运行时名称；
 - 搜索并确认 Vant README 不再出现 `vite-plugin-package-resolution-compat`；
 - 对照 `src/index.ts`、公开类型和 `package.json` exports 复核 API 与样式说明；
+- 运行 Vue 与 Vant 根入口导出测试；
 - 运行三个包的类型检查，确保文档修改没有伴随意外代码变更。
 
 ## 验收标准
