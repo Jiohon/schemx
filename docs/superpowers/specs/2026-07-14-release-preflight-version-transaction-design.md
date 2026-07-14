@@ -13,6 +13,7 @@
 - 正式版和所有预发布通道在 test、lint、build、pack 等前置操作完成前不修改版本；
 - 前置操作失败时不产生版本文件改动、Git commit、npm publish、Git tag 或 GitHub Release；
 - 在不改写 `package.json` 的情况下计算候选版本并检查 npm 是否已存在；
+- 在 npm publish 前检查候选 Git tag 和 GitHub Release 是否冲突；
 - 正式版的版本写入和锁文件同步具备失败回滚能力；
 - 预发布继续使用临时版本，并在成功或失败后恢复原始文件；
 - 明确 npm 多包发布无法原子化时的停止和恢复边界；
@@ -79,10 +80,11 @@
 4. 校验 npm registry 和 npm 认证；
 5. 正式版额外校验 GitHub CLI 认证；
 6. 使用候选版本检查 npm 是否已存在；
-7. 运行目标依赖链 test；
-8. 运行目标依赖链 lint；
-9. 构建目标依赖链；
-10. 对目标发布包执行 `pack --dry-run`。
+7. 正式版检查候选 tag 在本地、远端和 GitHub Release 中均不存在；
+8. 运行目标依赖链 test；
+9. 运行目标依赖链 lint；
+10. 构建目标依赖链；
+11. 对目标发布包执行 `pack --dry-run`。
 
 预检期间不得执行以下操作：
 
@@ -95,6 +97,8 @@
 - 创建 GitHub Release。
 
 `pack --dry-run` 在预检阶段验证发布文件集合。候选版本的 semver 合法性和 npm 冲突由版本计划与显式可用性检查负责，避免为了检查包内容提前改写版本。
+
+正式版候选 tag 由版本计划直接生成。预检同时检查本地 tag、远端 `origin` tag 和同名 GitHub Release，避免 npm 包发布成功后才发现发布标记冲突。创建 tag 的脚本仍保留最终防御性检查，以覆盖预检结束后的并发变化。
 
 ## 正式版本事务
 
@@ -146,6 +150,7 @@ npm registry 不支持跨包原子事务。发布 `all` 时，如果前面的包
 | --- | --- | --- | --- | --- |
 | 参数、分支、工作区或认证 | 否 | 否 | 否 | 直接退出 |
 | 候选版本已存在 | 否 | 否 | 否 | 输出升级建议并退出 |
+| 候选 tag 或 GitHub Release 已存在 | 否 | 否 | 否 | 输出冲突对象并退出 |
 | test、lint、build 或 pack | 否 | 否 | 否 | 直接退出 |
 | 正式版版本写入或 lockfile 同步 | 临时 | 否 | 否 | 恢复备份并退出 |
 | 正式版 commit | 临时 | 否 | 否 | 恢复文件和暂存状态并退出 |
@@ -162,6 +167,7 @@ npm registry 不支持跨包原子事务。发布 `all` 时，如果前面的包
 - 正式版的 test、lint、build、pack 均早于 `npm version` 和 `git commit`；
 - 预发布的 test、lint、build、pack 均早于临时版本写入；
 - 候选版本可用性检查使用计划版本，而不是当前文件版本；
+- 正式版在质量门禁前检查候选 tag 和 GitHub Release；
 - 正式版 commit 早于 npm publish，tag 和 GitHub Release 晚于全部 publish。
 
 ### 失败路径测试
@@ -169,6 +175,7 @@ npm registry 不支持跨包原子事务。发布 `all` 时，如果前面的包
 - test 失败时不修改版本、不执行 lockfile 同步、不 commit、不 publish；
 - lint、build、pack 失败时遵循同一约束；
 - 候选版本冲突时不进入质量门禁和版本事务；
+- 本地或远端 tag、GitHub Release 冲突时不进入质量门禁和版本事务；
 - 正式版 lockfile 同步失败时恢复版本文件且不 commit；
 - 正式版 commit 失败时恢复文件和暂存状态；
 - 预发布 publish 失败时恢复原始版本；
@@ -187,6 +194,7 @@ npm registry 不支持跨包原子事务。发布 `all` 时，如果前面的包
 - 任一质量门禁失败后，不存在新的版本 commit；
 - 正式版和预发布均只在预检通过后写入候选版本；
 - npm 可用性检查与实际 publish 使用完全相同的候选版本；
+- 正式版在 publish 前完成本地/远端 tag 与 GitHub Release 冲突检查；
 - 正式版版本事务在 publish 前失败时可以完整回滚；
 - 预发布无论成功或失败都恢复原始版本文件；
 - 多包部分发布时输出准确、可操作的恢复信息；
