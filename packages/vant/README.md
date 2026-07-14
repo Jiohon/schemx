@@ -18,41 +18,7 @@ pnpm add @schemx/vant @schemx/vue @schemx/core vant vue
 
 `@schemx/core`、`@schemx/vue`、`vant` 和 `vue` 都是 `@schemx/vant` 的 peer dependencies，业务项目需要显式安装。
 
-### uni-app 兼容配置
-
-在 pnpm workspace 或本地 tarball 场景中，uni-app 的 H5 开发服务器可能无法从 `@schemx/*` 包中继续解析 `classnames`、`dayjs`、`es-toolkit` 等依赖。此时安装兼容插件：
-
-```bash
-pnpm add -D @schemx/vite-plugin-package-resolution-compat
-```
-
-然后在 uni-app 项目的 `vite.config.ts` 中启用安装包解析兼容插件：
-
-```ts
-import { defineConfig } from "vite"
-import uni from "@dcloudio/vite-plugin-uni"
-import { createPackageResolutionCompatPlugin } from "@schemx/vite-plugin-package-resolution-compat"
-
-export default defineConfig({
-  plugins: [
-    createPackageResolutionCompatPlugin({
-      packages: ["@schemx/core", "@schemx/vue", "@schemx/vant"],
-      fallbackDependencies: [
-        "@preact/signals-core",
-        "es-toolkit",
-        "csstype",
-        "classnames",
-        "dayjs",
-        "@vant/use",
-        "vant",
-      ],
-    }),
-    uni(),
-  ],
-})
-```
-
-该插件会将 `@schemx/*` 排除在 Vite 依赖预构建之外，并在普通解析阶段使用 importer 的真实路径重试依赖解析。普通 Vite / Vue 项目没有上述依赖解析错误时，不需要安装或启用该插件。
+业务项目直接引入 `@schemx/vant` 即可，不需要为该包额外配置 Schemx Vite 插件。
 
 ## 快速开始
 
@@ -123,7 +89,7 @@ export default defineConfig({
 </template>
 ```
 
-`@schemx/vant` 的 ESM 入口会自动加载自身样式和 `@schemx/vue` 基础样式。直接使用 CommonJS 入口或构建工具未处理入口 CSS import 时，请显式引入 `@schemx/vant/style.css` 和 `@schemx/vue/style.css`。上面的 `vant/lib/index.css` 是 Vant 组件库样式；如果业务项目已经通过 Vant 插件或自动按需方案处理样式，可以省略这一行。
+`@schemx/vant` 的 ESM 入口会自动加载自身样式和 `@schemx/vue` 基础样式，常规 Vite / Vue 项目不需要手动引入 Schemx 样式。直接使用 CommonJS 入口或构建工具未处理入口 CSS import 时，才需要显式引入 `@schemx/vant/style.css` 和 `@schemx/vue/style.css`。上面的 `vant/lib/index.css` 是 Vant 组件库样式；如果业务项目已经通过 Vant 官方插件或自动按需方案处理样式，可以省略这一行。
 
 ## 内置 Renderer
 
@@ -180,16 +146,39 @@ const schemas: SchemxField[] = [
 
 ## 表单实例
 
-通过组件 `ref` 可以调用常用实例方法：
+通过组件 `ref` 可以调用完整的 `SchemxInstance`：
 
-| 方法                         | 说明             |
-| ---------------------------- | ---------------- |
-| `submit()`                   | 校验并提交表单   |
-| `validate()`                 | 校验整张表单     |
-| `reset()`                    | 恢复初始值       |
-| `setFieldValue(name, value)` | 设置单个字段值   |
-| `setFieldsValue(values)`     | 批量设置字段值   |
-| `getFieldsSnapshot()`        | 获取当前表单快照 |
+| 分类       | 方法                                                                                              |
+| ---------- | ------------------------------------------------------------------------------------------------- |
+| 值         | `getFieldValue`、`getFieldsValue`、`setFieldValue`、`setFieldsValue`                              |
+| 快照       | `getFieldSnapshot`、`getFieldsSnapshot`                                                           |
+| 初始值     | `getInitialValue`、`getInitialValues`、`setInitialValues`                                         |
+| touched    | `isFieldTouched`、`setFieldTouched`、`getTouchedFields`                                           |
+| pending    | `setFieldPending`、`isFieldPending`、`getPendingFields`                                           |
+| 校验       | `registerRules`、`unregisterRules`、`validateField`、`validate`、`getFieldError`、`setFieldError` |
+| 提交与重置 | `submit`、`reset`、`resetFields`                                                                  |
+| 响应式     | `effect`、`batch`                                                                                 |
+| schema     | `setSchemas`、`updateSchemas`、`updateFieldSchema`                                                |
+| 默认配置   | `updateDefaultProps`                                                                              |
+| view       | `getViewSchemas`、`subscribeViewSchemas`、`waitForDependencies`                                   |
+| renderer   | `getRenderer`、`registerRenderer`、`hasRenderer`                                                  |
+| validator  | `getValidator`、`registerValidator`、`hasValidator`                                               |
+| 生命周期   | `destroy`                                                                                         |
+
+## 根入口导出
+
+以下内容均可直接从 `@schemx/vant` 引入：
+
+| 分类            | API                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 表单组件        | 默认导出、命名导出的 `SchemxForm`，以及 `@schemx/vue` 的全部组件与 API                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Renderer 组件   | `InputRenderer`、`TextRenderer`、`TextAreaRenderer`、`SensitiveInputRenderer`、`NumberRenderer`、`SwitchRenderer`、`RadioRenderer`、`CheckboxRenderer`、`DateRenderer`、`CalendarRenderer`、`PickerRenderer`、`SelectPickerRenderer`、`SelectorRenderer`、`RateRenderer`、`SliderRenderer`、`StepperRenderer`、`UploadRenderer`、`CascaderRenderer`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Renderer 类型   | `InputRendererProps`、`InputValue`、`TextRendererProps`、`TextValue`、`TextAreaRendererProps`、`TextAreaAutosize`、`TextAreaValue`、`SensitiveInputRendererProps`、`SensitiveInputValue`、`NumberRendererProps`、`NumberValue`、`SwitchRendererProps`、`SwitchValue`、`RadioRendererProps`、`RadioOption`、`RadioValue`、`CheckboxRendererProps`、`CheckboxOption`、`CheckboxValue`、`DateRendererProps`、`DateValue`、`CalendarRendererProps`、`CalendarValue`、`PickerRendererProps`、`PickerFieldNames`、`PickerValue`、`SelectPickerFieldNames`、`SelectPickerOption`、`SelectPickerRendererProps`、`SelectPickerValue`、`SelectorRendererProps`、`SelectorOption`、`SelectorProps`、`SelectValue`、`RateRendererProps`、`RateValue`、`SliderRendererProps`、`SliderValue`、`StepperRendererProps`、`StepperValue`、`UploadRendererProps`、`UploadFile`、`UploadValue`、`CascaderRendererProps`、`CascaderFieldNames`、`CascaderValue` |
+| Renderer 元数据 | `DEFAULT_RENDERER_TYPES`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| 基础组件        | `Cell`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| 工具            | `getFieldProps`、`isEmptyDisplayValue`、`getReadonlyDisplayValue`、`resolveRendererMode`、`isRendererInteractive`、`findTreeItem`、`getFileName`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| 工具类型        | `RendererMode`、`FindTreeItemResult`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Vue 与 Core API | `@schemx/vue` 根入口的全部公开 API 与类型，包含 `@schemx/core` 的公开导出                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 
 ## 相关包
 

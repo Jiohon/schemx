@@ -20,8 +20,7 @@ export * from "./renderers"
 export { default as Cell } from "./components/Cell/index.vue"
 
 /** 工具函数 */
-export { getFieldProps, findTreeItem, getFileName } from "./utils"
-export type { FindTreeItemResult } from "./utils"
+export * from "./utils"
 
 /** 重新导出 @schemx/vue（含 SchemxForm 默认导出） */
 export { default } from "@schemx/vue"
