@@ -47,13 +47,16 @@ function configurePlugin(plugin: Plugin) {
     throw new Error("Missing configResolved hook")
   }
 
-  plugin.configResolved.call({} as never, {
-    logger: {
-      info: (message: string) => infoMessages.push(message),
-      warn: (message: string) => warnMessages.push(message),
-    },
-    resolve: { preserveSymlinks: true },
-  } as never)
+  plugin.configResolved.call(
+    {} as never,
+    {
+      logger: {
+        info: (message: string) => infoMessages.push(message),
+        warn: (message: string) => warnMessages.push(message),
+      },
+      resolve: { preserveSymlinks: true },
+    } as never
+  )
 
   return { infoMessages, warnMessages }
 }
@@ -67,12 +70,7 @@ async function callResolve(
     throw new Error("Missing resolveId hook")
   }
 
-  return plugin.resolveId.call(
-    { resolve } as never,
-    "dependency",
-    importer,
-    {} as never
-  )
+  return plugin.resolveId.call({ resolve } as never, "dependency", importer, {} as never)
 }
 
 describe("createRealpathFallbackPlugin", () => {
@@ -144,10 +142,7 @@ describe("createRealpathFallbackPlugin", () => {
   test("fallback 成功时输出真实 importer 和解析结果", async () => {
     const { logicalImporter, normalizedRealImporter, temporaryDirectory } =
       createSymlinkFixture()
-    const expectedResolution = path.join(
-      temporaryDirectory,
-      "store/dependency/index.mjs"
-    )
+    const expectedResolution = path.join(temporaryDirectory, "store/dependency/index.mjs")
     const plugin = pluginModule.createRealpathFallbackPlugin({
       detailedLog: true,
       include: ["dependency"],
@@ -163,9 +158,7 @@ describe("createRealpathFallbackPlugin", () => {
 
     expect(infoMessages).toHaveLength(1)
     expect(infoMessages[0]).toContain("status      : fallback-resolved")
-    expect(infoMessages[0]).toContain(
-      `realImporter: ${normalizedRealImporter}`
-    )
+    expect(infoMessages[0]).toContain(`realImporter: ${normalizedRealImporter}`)
     expect(infoMessages[0]).toContain(`resolved    : ${expectedResolution}`)
     expect(warnMessages).toEqual([])
   })
@@ -184,17 +177,12 @@ describe("createRealpathFallbackPlugin", () => {
     expect(infoMessages).toEqual([])
     expect(warnMessages).toHaveLength(1)
     expect(warnMessages[0]).toContain("status      : fallback-failed")
-    expect(warnMessages[0]).toContain(
-      `realImporter: ${normalizedRealImporter}`
-    )
+    expect(warnMessages[0]).toContain(`realImporter: ${normalizedRealImporter}`)
   })
 
   test("真实路径未变化时输出详细结果", async () => {
     const temporaryDirectory = fs.mkdtempSync(
-      path.join(
-        fs.realpathSync.native(os.tmpdir()),
-        "schemx-realpath-fallback-"
-      )
+      path.join(fs.realpathSync.native(os.tmpdir()), "schemx-realpath-fallback-")
     )
     temporaryDirectories.push(temporaryDirectory)
     const importer = path.join(temporaryDirectory, "package/index.mjs")
