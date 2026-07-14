@@ -6,7 +6,7 @@
 
 import type { CheckboxProps, FieldProps, PopupProps, RadioProps } from "vant"
 
-import type { SchemxBaseComponentProps } from "@schemx/vue"
+import type { SchemxBaseComponentProps } from "@schemx/core"
 
 export type SelectPickerPrimitiveValue = RadioProps["name"] | CheckboxProps["name"]
 export type SelectPickerValue = SelectPickerPrimitiveValue | SelectPickerPrimitiveValue[]

@@ -3,7 +3,16 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+
+      "@schemx/core": ["../core/src/index.ts"],
+      "@schemx/core/*": ["../core/src/*"],
+
+      "@schemx/vue": ["../vue/src/index.ts"],
+      "@schemx/vue/*": ["../vue/src/*"],
+
+      "@schemx/vant": ["src/index.ts"],
+      "@schemx/vant/*": ["src/*"]
     },
     "rootDir": "./src",
     "composite": true,
@@ -13,7 +22,10 @@
     "declarationDir": "./dist",
     "outDir": "./dist"
   },
-  "references": [{ "path": "../core" }, { "path": "../vue" }],
+  "references": [
+    { "path": "../core/tsconfig.json" },
+    { "path": "../vue/tsconfig.json" }
+  ],
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue", "src/**/*.d.ts"],
   "exclude": [
     "node_modules",

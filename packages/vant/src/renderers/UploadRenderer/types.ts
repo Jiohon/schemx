@@ -6,7 +6,7 @@
 
 import type { UploaderFileListItem, UploaderProps } from "vant"
 
-import type { SchemxBaseComponentProps } from "@schemx/vue"
+import type { SchemxBaseComponentProps } from "@schemx/core"
 
 export type UploadValue = UploadFile[]
 
@@ -43,6 +43,7 @@ export interface UploadFile {
  */
 export interface UploadRendererProps
   extends
+    /* @vue-ignore */
     Omit<SchemxBaseComponentProps, "onChange" | "onBlur" | "value" | "onUpdate:value">,
     /* @vue-ignore */
     Partial<Omit<UploaderProps, "modelValue" | "onUpdate:modelValue" | "imageFit">> {

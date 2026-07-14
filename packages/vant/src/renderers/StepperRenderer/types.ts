@@ -6,7 +6,7 @@
 
 import type { StepperProps } from "vant"
 
-import type { SchemxBaseComponentProps } from "@schemx/vue"
+import type { SchemxBaseComponentProps } from "@schemx/core"
 
 export type StepperValue = StepperProps["modelValue"]
 
@@ -17,6 +17,7 @@ export type StepperValue = StepperProps["modelValue"]
  */
 export interface StepperRendererProps
   extends
+    /* @vue-ignore */
     Omit<SchemxBaseComponentProps, "onChange" | "onBlur" | "value" | "onUpdate:value">,
     /* @vue-ignore */
     Partial<Omit<StepperProps, "modelValue" | "onUpdate:modelValue" | "onChange">> {

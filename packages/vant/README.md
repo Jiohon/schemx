@@ -13,46 +13,46 @@
 ## 安装
 
 ```bash
-pnpm add @schemx/vant vant vue
+pnpm add @schemx/vant @schemx/vue @schemx/core vant vue
 ```
 
-### uni-app / pnpm
+`@schemx/core`、`@schemx/vue`、`vant` 和 `vue` 都是 `@schemx/vant` 的 peer dependencies，业务项目需要显式安装。
 
-uni-app 的依赖预构建在部分场景下会按 `node_modules/@schemx/vant`
-这类 symlink 路径解析依赖，可能无法继续进入 pnpm 的 `.pnpm`
-真实包目录寻找传递依赖。如果遇到 `Could not resolve "@schemx/vue"`、
-`Could not resolve "@schemx/core"`、`Could not resolve "@preact/signals-core"`
-等错误，推荐改用 standalone 入口：
+### uni-app 兼容配置
 
-```ts
-import Schemx from "@schemx/vant/standalone"
+在 pnpm workspace 或本地 tarball 场景中，uni-app 的 H5 开发服务器可能无法从 `@schemx/*` 包中继续解析 `classnames`、`dayjs`、`es-toolkit` 等依赖。此时安装兼容插件：
+
+```bash
+pnpm add -D @schemx/vite-plugin-package-resolution-compat
 ```
 
-如果不希望逐处修改业务代码，也可以在 uni-app 项目的 Vite 配置中把根入口
-`@schemx/vant` 指向 standalone 入口：
+然后在 uni-app 项目的 `vite.config.ts` 中启用安装包解析兼容插件：
 
 ```ts
-// vite.config.ts
 import { defineConfig } from "vite"
+import uni from "@dcloudio/vite-plugin-uni"
+import { createPackageResolutionCompatPlugin } from "@schemx/vite-plugin-package-resolution-compat"
 
 export default defineConfig({
-  resolve: {
-    alias: [
-      {
-        find: /^@schemx\/vant$/,
-        replacement: "@schemx/vant/standalone",
-      },
-    ],
-  },
+  plugins: [
+    createPackageResolutionCompatPlugin({
+      packages: ["@schemx/core", "@schemx/vue", "@schemx/vant"],
+      fallbackDependencies: [
+        "@preact/signals-core",
+        "es-toolkit",
+        "csstype",
+        "classnames",
+        "dayjs",
+        "@vant/use",
+        "vant",
+      ],
+    }),
+    uni(),
+  ],
 })
 ```
 
-standalone 入口会内联 `@schemx/core`、`@schemx/vue` 以及它们的运行时依赖，
-但仍保持 `vue`、`vant` 为外部依赖，因此安装命令不变：
-
-```bash
-pnpm add @schemx/vant vant vue
-```
+该插件会将 `@schemx/*` 排除在 Vite 依赖预构建之外，并在普通解析阶段使用 importer 的真实路径重试依赖解析。普通 Vite / Vue 项目没有上述依赖解析错误时，不需要安装或启用该插件。
 
 ## 快速开始
 
@@ -123,30 +123,30 @@ pnpm add @schemx/vant vant vue
 </template>
 ```
 
-`@schemx/vant` 会自动加载自身样式和 `@schemx/vue` 基础样式。上面的 `vant/lib/index.css` 是 Vant 组件库样式；如果业务项目已经通过 Vant 插件或自动按需方案处理样式，可以省略这一行。
+`@schemx/vant` 的 ESM 入口会自动加载自身样式和 `@schemx/vue` 基础样式。直接使用 CommonJS 入口或构建工具未处理入口 CSS import 时，请显式引入 `@schemx/vant/style.css` 和 `@schemx/vue/style.css`。上面的 `vant/lib/index.css` 是 Vant 组件库样式；如果业务项目已经通过 Vant 插件或自动按需方案处理样式，可以省略这一行。
 
 ## 内置 Renderer
 
-| `componentType`   | 说明          |
-| ----------------- | ------------- |
-| `text`            | 文本展示      |
-| `input`           | 单行文本输入  |
-| `sensitiveInput`  | 脱敏输入      |
-| `textarea`        | 多行文本输入  |
-| `number`          | 数字输入      |
-| `switch`          | 开关          |
-| `radio`           | 单选          |
-| `checkbox`        | 多选          |
-| `date`            | 日期选择      |
-| `calendar`        | 日历选择      |
-| `picker`          | Picker 选择   |
-| `selectPicker`    | 弹窗单选/多选 |
-| `selector`        | 选项选择      |
-| `rate`            | 评分          |
-| `slider`          | 滑块          |
-| `stepper`         | 步进器        |
-| `upload`          | 文件上传      |
-| `cascader`        | 级联选择      |
+| `componentType`  | 说明          |
+| ---------------- | ------------- |
+| `text`           | 文本展示      |
+| `input`          | 单行文本输入  |
+| `sensitiveInput` | 脱敏输入      |
+| `textarea`       | 多行文本输入  |
+| `number`         | 数字输入      |
+| `switch`         | 开关          |
+| `radio`          | 单选          |
+| `checkbox`       | 多选          |
+| `date`           | 日期选择      |
+| `calendar`       | 日历选择      |
+| `picker`         | Picker 选择   |
+| `selectPicker`   | 弹窗单选/多选 |
+| `selector`       | 选项选择      |
+| `rate`           | 评分          |
+| `slider`         | 滑块          |
+| `stepper`        | 步进器        |
+| `upload`         | 文件上传      |
+| `cascader`       | 级联选择      |
 
 ## 字段联动
 
