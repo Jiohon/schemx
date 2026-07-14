@@ -15,12 +15,17 @@ import classnames from "classnames"
 
 import {
   createFieldContext,
-  useConfigContext,
+  useFormConfigContext,
   useField,
   useFormContext,
   useStableRef,
-} from "@/hooks"
-import { extractChildSlots, mergeTrigger, resolveSlot, shouldValidateOn } from "@/utils"
+} from "../../hooks"
+import {
+  extractChildSlots,
+  mergeTrigger,
+  resolveSlot,
+  shouldValidateOn,
+} from "../../utils"
 import type { TriggerConfig } from "@/utils"
 
 import FormGroup from "../FormGroup"
@@ -80,7 +85,7 @@ const FieldFormItem = defineComponent({
   setup(props, { slots }) {
     const schemaRef = toRef(props, "schema")
     const form = useFormContext<Values>()
-    const formContext = useConfigContext()
+    const formContext = useFormConfigContext()
 
     const schema = () => schemaRef.value
 

@@ -15,7 +15,7 @@
     "declarationDir": "./dist",
     "outDir": "./dist"
   },
-  "references": [{ "path": "../core" }],
+  "references": [{ "path": "../core/tsconfig.json" }],
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue", "src/**/*.d.ts"],
   "exclude": ["node_modules", "dist", "src/**/__tests__", "src/**/*.test.ts", "src/**/*.spec.ts"]
 }

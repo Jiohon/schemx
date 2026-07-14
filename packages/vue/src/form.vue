@@ -12,13 +12,14 @@
   import { omit } from "es-toolkit"
 
   import FormItem from "./components/FormItem"
-  import { createConfigContext, useForm, useViewSchemas } from "./hooks"
+  import { createFormConfigContext, useForm, useViewSchemas } from "./hooks"
   import { getSectionPosition } from "./utils/helpers"
 
   import type { SchemxFormProps } from "./types/index"
   import type { SchemxViewSchema, Values } from "@schemx/core"
 
   import "./styles/index.css"
+  import { createFormContext } from "./hooks/provideFormContext"
 
   defineOptions({ name: "SchemxForm" })
 
@@ -46,7 +47,7 @@
    *
    * 为子组件提供表单配置信息。
    */
-  createConfigContext(
+  createFormConfigContext(
     omit(props, [
       "form",
       "modelValue",
@@ -92,6 +93,14 @@
           props.onFieldsChange?.(changedPaths, allPaths)
         },
       })
+
+  /**
+   * 注册表单上下文。
+   *
+   * 无论实例来自 props.form 还是 useForm，都必须同步注册，
+   * 从而保证 FormItem、useField 等后代逻辑能够获取同一个实例。
+   */
+  createFormContext(form)
 
   watch(
     () => props.schemas,

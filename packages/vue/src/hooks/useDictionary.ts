@@ -12,11 +12,10 @@ import { onMounted, Ref, ref } from "vue"
 
 import type { SchemxDictionary } from "@/types/dictionary"
 
-import { useFormContext } from "./useForm"
+import { useFormContext } from "./provideFormContext"
 import { useWatchFields } from "./useWatch"
 
 import type { NamePath, Values } from "@schemx/core"
-
 
 export type { SchemxDictionary, SchemxWithDictionary } from "@/types/dictionary"
 

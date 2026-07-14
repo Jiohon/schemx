@@ -47,25 +47,29 @@
     "**/index.ts"
   ],
   "peerDependencies": {
+    "@schemx/core": "workspace:*",
     "vue": "^3.0.0"
   },
   "dependencies": {
-    "@schemx/core": "workspace:*",
     "classnames": "^2.5.1",
     "csstype": "^3.2.3",
-    "dayjs": "^1.11.19",
     "es-toolkit": "catalog:"
   },
   "scripts": {
     "build": "vite build",
-    "build:analyze": "VITE_ANALYZE=true vite build",
+    "build:analyze": "vite build",
     "test": "vitest run",
     "lint": "eslint \"src/**/*.{ts,tsx,vue,js,jsx}\"",
+    "lint:fix": "eslint \"src/**/*.{ts,tsx,vue,js,jsx}\" --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx,vue,js,jsx,json,css,scss}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,vue,js,jsx,json,css,scss}\"",
     "type-check": "tsc -p tsconfig.json --noEmit",
+    "check": "pnpm run lint && pnpm run format:check && pnpm run type-check",
     "prepublishOnly": "pnpm run build"
   },
   "license": "MIT",
   "devDependencies": {
+    "@schemx/core": "workspace:*",
     "@vue/test-utils": "^2.4.6",
     "vue": "catalog:",
     "zod": "^4.3.6"

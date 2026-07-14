@@ -1,7 +1,7 @@
 /**
  * schemx 统一导出入口
  *
- * @module @schemx/core
+ * @module @schemx/vue
  */
 
 import "./styles/index.css"
@@ -19,7 +19,7 @@ export { validatorRegistry } from "./utils/rulesProvider"
 
 /** Hooks */
 export {
-  useConfigContext,
+  useFormConfigContext,
   useForm,
   useFormContext,
   useField,
