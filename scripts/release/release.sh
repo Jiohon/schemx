@@ -41,7 +41,6 @@ SELECTED_CHANNEL=""
 SELECTED_TARGET=""
 SELECTED_VERSION_ACTION=""
 SELECTED_RELEASE_OPTION=""
-CUSTOM_VERSION=""
 
 # 调用 Node 选择器，并通过全局变量返回结果，保持整个提示链路连接 TTY。
 select_release_option() {
@@ -105,25 +104,6 @@ select_publish_target() {
   assert_publish_target "$SELECTED_TARGET"
 }
 
-# 在可交互终端读取并校验用户指定的正式版本号。
-prompt_custom_version() {
-  local version
-  CUSTOM_VERSION=""
-
-  if [[ ! -t 0 || ! -t 2 ]]; then
-    die "当前终端不支持输入指定版本。请传入 x.y.z，例如：pnpm release:publish latest vue 0.1.21。"
-  fi
-
-  printf '请输入正式版本号（x.y.z）：' >&2
-  read -r version
-
-  if ! is_exact_version "$version"; then
-    die "版本号必须是 x.y.z 格式。"
-  fi
-
-  CUSTOM_VERSION="$version"
-}
-
 # 仅 latest 发布需要版本动作；custom 会继续读取精确版本号。
 select_version_action() {
   local action="${1:-}"
@@ -138,8 +118,8 @@ select_version_action() {
   fi
 
   if [[ "$action" == "custom" ]]; then
-    prompt_custom_version
-    action="$CUSTOM_VERSION"
+    select_release_option custom-version "$channel" "$SELECTED_TARGET"
+    action="$SELECTED_RELEASE_OPTION"
   fi
 
   assert_version_action "$action"

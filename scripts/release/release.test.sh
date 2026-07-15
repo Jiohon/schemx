@@ -559,6 +559,25 @@ test_release_channel_choices_put_latest_last() {
   fi
 }
 
+# 验证选择 custom 后由同一个 Clack 交互会话读取完整的正式版本号。
+test_custom_version_uses_clack_prompt() {
+  local selected
+
+  selected="$(SCHEMX_RELEASE_VERSION_ACTION=custom SCHEMX_RELEASE_CUSTOM_VERSION=0.2.3 node "$ROOT_DIR/scripts/select-release-option.mjs" --kind version-action --channel latest --target core current patch minor major custom)"
+
+  if [[ "$selected" != "0.2.3" ]]; then
+    printf 'custom 版本输入应返回完整版本号。实际结果：%s\n' "$selected" >&2
+    exit 1
+  fi
+
+  selected="$(SCHEMX_RELEASE_CUSTOM_VERSION=0.2.3 node "$ROOT_DIR/scripts/select-release-option.mjs" --kind custom-version --channel latest --target core)"
+
+  if [[ "$selected" != "0.2.3" ]]; then
+    printf '直接 custom 版本输入应返回完整版本号。实际结果：%s\n' "$selected" >&2
+    exit 1
+  fi
+}
+
 # 验证正式版本可以在不修改 package.json 的情况下计算。
 test_next_stable_version_calculates_without_mutating_files() {
   local package_before output
@@ -1429,6 +1448,7 @@ RELEASE_TESTS=(
   test_release_test_uses_shared_separator
   test_run_with_targets_separates_each_target
   test_release_channel_choices_put_latest_last
+  test_custom_version_uses_clack_prompt
   test_next_stable_version_calculates_without_mutating_files
   test_version_availability_uses_explicit_candidate
   test_version_availability_rejects_registry_lookup_error

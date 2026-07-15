@@ -4,6 +4,7 @@ import {
   isCancel,
   multiselect,
   select,
+  text,
 } from "@clack/prompts"
 
 // 所有交互提示都显式使用当前终端流，保证方向键、空格和 Enter 能传递给 Clack。
@@ -18,6 +19,11 @@ function withTerminal(options = {}) {
 /** 单选提示。 */
 export function promptSelect(options) {
   return select(withTerminal(options))
+}
+
+/** 文本输入提示。 */
+export function promptText(options) {
+  return text(withTerminal(options))
 }
 
 /** 多选提示。 */

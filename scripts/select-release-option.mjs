@@ -5,6 +5,7 @@ import {
   isPromptCancelled,
   promptGroupMultiselect,
   promptSelect,
+  promptText,
 } from "./lib/prompts.mjs"
 import { writeFileSync } from "node:fs"
 
@@ -57,6 +58,11 @@ const kindConfig = {
     unknown: "未知版本处理方式",
     labels: versionLabels,
   },
+  "custom-version": {
+    env: "SCHEMX_RELEASE_CUSTOM_VERSION",
+    title: "请输入正式版本号（x.y.z）",
+    unknown: "版本号必须是 x.y.z 格式",
+  },
 }
 
 // 所有参数与交互错误统一写入 stderr 并使用失败退出码。
@@ -83,6 +89,42 @@ function cancel() {
   cancelSelection("已取消选择")
   writeSelected("__SCHEMX_RELEASE_CANCELLED__")
   process.exit(0)
+}
+
+function isExactVersion(version) {
+  return /^\d+\.\d+\.\d+$/.test(version)
+}
+
+async function selectCustomVersion() {
+  const environmentVersion = process.env.SCHEMX_RELEASE_CUSTOM_VERSION
+
+  if (environmentVersion !== undefined) {
+    if (!isExactVersion(environmentVersion)) {
+      fail("版本号必须是 x.y.z 格式。")
+    }
+    return environmentVersion
+  }
+
+  if (!process.stdin.isTTY || !process.stderr.isTTY) {
+    fail(
+      "当前终端不支持输入指定版本。请传入 x.y.z，例如：pnpm release:publish latest vue 0.1.21。"
+    )
+  }
+
+  const version = await promptText({
+    message: "请输入正式版本号（x.y.z）",
+    placeholder: "0.1.0",
+    validate(value) {
+      return isExactVersion(value) ? undefined : "版本号必须是 x.y.z 格式。"
+    },
+    output: process.stderr,
+  })
+
+  if (isPromptCancelled(version)) {
+    cancel()
+  }
+
+  return version
 }
 
 // 环境变量提供的自动化选择也必须受当前选项集约束。
@@ -126,18 +168,28 @@ if (!config) {
   fail(`未知选择类型：${kind}，可选值为 ${Object.keys(kindConfig).join("、")}`)
 }
 
-if (options.length === 0) {
-  fail("缺少选项列表")
-}
-
 if (!channelLabels[channel]) {
   fail(`未知发布模式：${channel}，可选值为 ${Object.keys(channelLabels).join("、")}`)
+}
+
+if (kind === "custom-version") {
+  writeSelected(await selectCustomVersion())
+  process.exit(0)
+}
+
+if (options.length === 0) {
+  fail("缺少选项列表")
 }
 
 const envOption = process.env[config.env]
 if (envOption) {
   // 自动化场景不应依赖 TTY 交互，CI/测试可通过环境变量指定选择项。
-  writeSelected(validateOption(envOption))
+  const selectedOption = validateOption(envOption)
+  writeSelected(
+    kind === "version-action" && selectedOption === "custom"
+      ? await selectCustomVersion()
+      : selectedOption
+  )
   process.exit(0)
 }
 
@@ -191,4 +243,10 @@ if (isPromptCancelled(selected)) {
   cancel()
 }
 
-writeSelected(Array.isArray(selected) ? selected.join(",") : selected)
+writeSelected(
+  kind === "version-action" && selected === "custom"
+    ? await selectCustomVersion()
+    : Array.isArray(selected)
+      ? selected.join(",")
+      : selected
+)
