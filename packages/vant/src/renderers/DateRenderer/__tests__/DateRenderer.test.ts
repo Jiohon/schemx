@@ -57,4 +57,18 @@ describe("DateRenderer", () => {
 
     wrapper.unmount()
   })
+
+  it("支持使用 format 函数返回日期格式", () => {
+    const wrapper = mount(DateRenderer, {
+      props: {
+        readonly: true,
+        value: "2026-06-11",
+        format: () => "DD/MM/YYYY",
+      },
+    })
+
+    expect(wrapper.get(".schemx-cell__value").text()).toBe("11/06/2026")
+
+    wrapper.unmount()
+  })
 })

@@ -7,19 +7,26 @@
 -->
 
 <script lang="ts" setup generic="T extends Values = Values">
-  import { watch, watchEffect } from "vue"
+  import { onUnmounted, watch, watchEffect } from "vue"
 
   import { omit } from "es-toolkit"
 
+  import { createWatch } from "@schemx/core"
+
   import FormItem from "./components/FormItem"
-  import { createFormConfigContext, useForm, useViewSchemas } from "./hooks"
+  import {
+    createFormConfigContext,
+    formConfigContextOmitKey,
+    useForm,
+    useViewSchemas,
+    createFormContext,
+  } from "./hooks"
   import { getSectionPosition } from "./utils/helpers"
 
   import type { SchemxFormProps } from "./types/index"
   import type { SchemxViewSchema, Values } from "@schemx/core"
 
   import "./styles/index.css"
-  import { createFormContext } from "./hooks/provideFormContext"
 
   defineOptions({ name: "SchemxForm" })
 
@@ -36,6 +43,7 @@
     onFieldsChange: undefined,
     rendererRegistry: undefined,
     validatorRegistry: undefined,
+    visible: true,
   })
 
   const emit = defineEmits<{
@@ -47,19 +55,7 @@
    *
    * 为子组件提供表单配置信息。
    */
-  createFormConfigContext(
-    omit(props, [
-      "form",
-      "modelValue",
-      "rendererRegistry",
-      "defaultRendererType",
-      "validatorRegistry",
-      "onFinish",
-      "onFinishFailed",
-      "onValuesChange",
-      "onFieldsChange",
-    ])
-  )
+  createFormConfigContext(omit(props, formConfigContextOmitKey))
 
   /**
    * 获取或创建表单实例
@@ -71,7 +67,10 @@
     ? props.form
     : useForm<T>({
         schemas: props.schemas,
-        initialValues: props.initialValues,
+        initialValues: Object.keys(props.modelValue).length > 0
+          ? props.modelValue
+          : props.initialValues,
+
         rendererRegistry: props.rendererRegistry,
         defaultRendererType: props.defaultRendererType,
         validatorRegistry: props.validatorRegistry,
@@ -86,7 +85,6 @@
           props.onFinishFailed?.(errors)
         },
         onValuesChange: (changedValues, latestSnapshot) => {
-          emit("update:modelValue", latestSnapshot as T)
           props.onValuesChange?.(changedValues, latestSnapshot)
         },
         onFieldsChange: (changedPaths, allPaths) => {
@@ -101,6 +99,25 @@
    * 从而保证 FormItem、useField 等后代逻辑能够获取同一个实例。
    */
   createFormContext(form)
+
+  let syncingFromModel = false
+
+  watch(
+    () => props.modelValue,
+    (values) => {
+      syncingFromModel = true
+      form.setFieldsValue(values)
+      syncingFromModel = false
+    }
+  )
+
+  const disposeWatch = createWatch(form, (latestSnapshot) => {
+    if (syncingFromModel) return
+
+    emit("update:modelValue", latestSnapshot)
+  })
+
+  onUnmounted(disposeWatch)
 
   watch(
     () => props.schemas,
@@ -134,7 +151,7 @@
 </script>
 
 <template>
-  <div :class="['schemx', props.class]">
+  <div :class="['schemx', props.class]" :style="props.style">
     <FormItem
       v-for="schema in viewSchemas"
       :key="schema.key"

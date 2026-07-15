@@ -6,6 +6,7 @@
       :readonly-placeholder="props.readonlyPlaceholder"
       :readonly="isReadonly"
       :disabled="props.disabled"
+      :align="props.contentAlign"
       @click="handleClick"
     />
 
@@ -127,7 +128,7 @@
   const labelName = computed(() => props.fieldNames?.label || "label")
   const valueName = computed(() => props.fieldNames?.value || "value")
   const disabledName = computed(() => props.fieldNames?.disabled || "disabled")
-  const isReadonly = computed(() => props.readonly || Boolean(props.view))
+  const isReadonly = computed(() => props.readonly)
 
   const popupProps = computed((): SelectPickerRendererProps["popupProps"] => {
     const {
@@ -137,7 +138,6 @@
       onConfirm: _onConfirm,
       className: _className,
       popupClassName: _popupClassName,
-      view: _view,
       options: _options,
       columns: _columns,
       fieldNames: _fieldNames,
@@ -258,7 +258,7 @@
   const handleClose = (): void => {
     pendingValue.value = undefined
     showPicker.value = false
-    props.onBlur?.()
+    props.onBlur?.(activeValue.value)
   }
 
   const handleConfirm = (): void => {

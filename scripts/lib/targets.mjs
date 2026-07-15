@@ -1,4 +1,8 @@
-import { groupMultiselect, isCancel, cancel as cancelPrompt } from "@clack/prompts"
+import {
+  cancelSelection,
+  isPromptCancelled,
+  promptGroupMultiselect,
+} from "./prompts.mjs"
 import { readdirSync, readFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -150,15 +154,15 @@ async function promptTargets(scopeList, options) {
     return []
   }
 
-  const selected = await groupMultiselect({
+  const selected = await promptGroupMultiselect({
     message: options.title ?? "请选择目标",
     options: grouped,
     required: true,
     output: stderr,
   })
 
-  if (isCancel(selected)) {
-    cancelPrompt("已取消选择", { output: stderr })
+  if (isPromptCancelled(selected)) {
+    cancelSelection("已取消选择", { output: stderr })
     return null
   }
 

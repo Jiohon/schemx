@@ -58,7 +58,6 @@ describe("CheckboxRenderer", () => {
         value: ["reading"],
         options: [{ label: "阅读", value: "reading" }],
         fieldNames: { label: "label", value: "value" },
-        view: true,
         readonlyPlaceholder: "-",
         onChange: vi.fn(),
         formItemProps: { name: "hobbies" } as any,
@@ -68,7 +67,6 @@ describe("CheckboxRenderer", () => {
 
     expect(checkboxGroupAttrs).not.toHaveProperty("options")
     expect(checkboxGroupAttrs).not.toHaveProperty("fieldNames")
-    expect(checkboxGroupAttrs).not.toHaveProperty("view")
     expect(checkboxGroupAttrs).not.toHaveProperty("readonlyPlaceholder")
     expect(checkboxGroupAttrs).not.toHaveProperty("onChange")
     expect(checkboxGroupAttrs).not.toHaveProperty("formItemProps")

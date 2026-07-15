@@ -5,6 +5,7 @@
       :readonly-placeholder="props.readonlyPlaceholder"
       :readonly="props.readonly"
       :disabled="props.disabled"
+      :align="props.contentAlign"
       :value="fieldValue"
       @click="handleClick"
     />
@@ -217,6 +218,6 @@
 
   /** 弹窗关闭（确认/取消/遮罩）统一出口，触发 blur 校验 */
   const handleClose = (): void => {
-    props.onBlur?.()
+    props.onBlur?.(modelValue.value)
   }
 </script>

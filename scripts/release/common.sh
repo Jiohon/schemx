@@ -132,33 +132,52 @@ assert_package() {
   die "未知包：$pkg，可选值为 $(package_choices)"
 }
 
-# 验证发布目标，允许 all 或单个已知包。
-assert_publish_target() {
-  local target="$1"
-
-  if [[ "$target" == "all" ]]; then
-    return
-  fi
-
-  assert_package "$target"
-}
-
-# 以退出码形式判断发布目标是否合法，供条件分支使用。
+# 以退出码验证发布目标，允许 all、单包或逗号分隔的多个已知包。
 is_publish_target() {
   local target="$1"
-  local item
+  local pkg candidate marker
+  local selected=()
+  local seen=","
 
   if [[ "$target" == "all" ]]; then
     return 0
   fi
+  if [[ -z "$target" ]]; then
+    return 1
+  fi
 
-  for item in "${RELEASE_PACKAGES[@]}"; do
-    if [[ "$item" == "$target" ]]; then
-      return 0
+  IFS=',' read -r -a selected <<< "$target" || true
+  if [[ "${#selected[@]}" -eq 0 ]]; then
+    return 1
+  fi
+
+  for pkg in "${selected[@]}"; do
+    if [[ -z "$pkg" ]]; then
+      return 1
     fi
+    for candidate in "${RELEASE_PACKAGES[@]}"; do
+      if [[ "$candidate" == "$pkg" ]]; then
+        break
+      fi
+    done
+    if [[ "$candidate" != "$pkg" ]]; then
+      return 1
+    fi
+    marker=",${pkg},"
+    if [[ "$seen" == *"$marker"* ]]; then
+      return 1
+    fi
+    seen+="${pkg},"
   done
+}
 
-  return 1
+# 验证发布目标，允许 all、单包或逗号分隔的多个已知包。
+assert_publish_target() {
+  local target="$1"
+
+  if ! is_publish_target "$target"; then
+    die "未知或重复的发布目标：${target}，可选值为 all、$(package_choices)，多个包请用英文逗号分隔"
+  fi
 }
 
 # 验证发布通道属于受支持集合。
@@ -285,17 +304,23 @@ assert_version_action() {
   die "版本处理方式只能是 current、patch、minor、major 或 x.y.z"
 }
 
-# 将 all 展开为稳定的发布顺序，单包目标则原样返回。
+# 将 all 或逗号分隔目标展开为稳定的发布顺序。
 resolve_targets() {
   local target="${1:-all}"
+  local pkg marker
 
+  assert_publish_target "$target"
   if [[ "$target" == "all" ]]; then
     printf '%s\n' "${RELEASE_PACKAGES[@]}"
     return
   fi
 
-  assert_package "$target"
-  printf '%s\n' "$target"
+  for pkg in "${RELEASE_PACKAGES[@]}"; do
+    marker=",${pkg},"
+    if [[ ",${target}," == *"$marker"* ]]; then
+      printf '%s\n' "$pkg"
+    fi
+  done
 }
 
 # 用中文顿号拼接目标名，供日志展示。

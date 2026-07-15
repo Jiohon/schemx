@@ -29,23 +29,23 @@ vi.mock("vant", () => ({
 import CalendarRenderer from "../index.vue"
 
 describe("CalendarRenderer", () => {
-  it("view 状态展示格式化日期且不渲染 Calendar", async () => {
+  it("未知 view 属性不切换为只读展示", async () => {
     const wrapper = mount(CalendarRenderer, {
       props: {
         view: true,
         value: "2026-06-12",
         format: "YYYY/MM/DD",
-      },
+      } as any,
     })
 
     const cell = wrapper.findComponent({ name: "SchemxCell" })
 
     expect(cell.get(".schemx-cell__value").text()).toBe("2026/06/12")
-    expect(wrapper.findComponent({ name: "Calendar" }).exists()).toBe(false)
+    expect(wrapper.findComponent({ name: "Calendar" }).exists()).toBe(true)
 
     await cell.vm.$emit("click")
 
-    expect(wrapper.findComponent({ name: "Calendar" }).exists()).toBe(false)
+    expect(wrapper.findComponent({ name: "Calendar" }).props("show")).toBe(true)
 
     wrapper.unmount()
   })

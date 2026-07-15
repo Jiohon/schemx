@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest"
 import InputRenderer from "../index.vue"
 
 describe("InputRenderer 容器聚焦", () => {
-  it("非 view 状态引用底层 SchemxInput 组件", () => {
+  it("默认状态引用底层 SchemxInput 组件", () => {
     const wrapper = mount(InputRenderer, {
       props: {
         value: "可编辑内容",

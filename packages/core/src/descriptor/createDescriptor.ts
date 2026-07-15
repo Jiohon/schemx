@@ -60,8 +60,6 @@ export function createDescriptor<TValues extends Values = Values>(
   context: DescriptorContext<TValues>
 ): FormDescriptor<TValues> {
   const key = createDescriptorKey(schema, index, parentKey)
-  schema.key = key
-
   // 根据 schema 类型分发到不同的 descriptor 构建函数
   if (isGroupSchema(schema)) {
     // 分组：递归处理所有子节点
@@ -95,7 +93,7 @@ function createFieldDescriptor<TValues extends Values = Values>(
   context: DescriptorContext<TValues>
 ): FieldDescriptor<TValues> {
   // 先合并默认值得到规范化 schema，再提取校验与动态属性
-  const normalizedSchema = buildNormalizedFieldSchema(schema, context)
+  const normalizedSchema = buildNormalizedFieldSchema(schema, key, context)
 
   return {
     type: "field",
@@ -201,15 +199,23 @@ function getPlaceholder<TValues extends Values>(
  */
 function buildNormalizedFieldSchema<TValues extends Values>(
   schema: SchemxBaseField<TValues>,
+  key: string,
   context: DescriptorContext<TValues>
 ): SchemxResolvedBaseField<TValues> {
   const { defaultProps, instance } = context
 
   // 解构分离出需要单独合并的属性，其余（如 label、name）直接透传
   const {
+    contentAlign,
+    labelIcon,
+    labelAlign,
+    labelPosition,
+    labelWidth,
+    colon,
     componentProps: cp,
     visible,
     readonly,
+    readonlyPlaceholder,
     disabled,
     required,
     rules,
@@ -219,15 +225,14 @@ function buildNormalizedFieldSchema<TValues extends Values>(
   } = schema
 
   // 逐项合并优先级链：字段配置 ?? defaultProps ?? defaultConfig
-  const mergedVisible = visible ?? defaultConfig.visible
+  const mergedVisible = visible ?? defaultProps.visible ?? defaultConfig.visible
   const mergedReadonly = readonly ?? defaultProps.readonly ?? defaultConfig.readonly
   const mergedDisabled = disabled ?? defaultProps.disabled ?? defaultConfig.disabled
+  const mergedContentAlign =
+    contentAlign ?? defaultProps.contentAlign ?? defaultConfig.contentAlign
   const mergedAlign = mergedReadonly
     ? "right"
-    : (cp?.align ??
-      rest.contentAlign ??
-      defaultProps.contentAlign ??
-      defaultConfig.contentAlign)
+    : (cp?.align ?? mergedContentAlign)
 
   const mergedValidationTrigger =
     validationTrigger ?? defaultProps.validationTrigger ?? defaultConfig.validationTrigger
@@ -236,34 +241,31 @@ function buildNormalizedFieldSchema<TValues extends Values>(
   // rules 统一为数组并过滤空值，用于推导 required 默认值
   const rulesArray = (Array.isArray(rules) ? rules : [rules]).filter(Boolean)
   // 显式 required 优先，否则有 rules 时默认 true
-  const mergedRequired = required ?? (rulesArray.length > 0 || defaultConfig.required)
+  const mergedRequired =
+    required ?? (rulesArray.length > 0 ? true : (defaultProps.required ?? defaultConfig.required))
+
+  const mergedReadonlyPlaceholder = cp?.readonlyPlaceholder ?? readonlyPlaceholder
 
   const normalizedSchema: SchemxResolvedBaseField<TValues> = {
     ...(rest ?? {}),
-    key: rest.key,
-    name: rest.name,
-    label: rest.label,
-    componentType: rest.componentType,
+    key,
 
     visible: mergedVisible,
     readonly: mergedReadonly,
+    readonlyPlaceholder: mergedReadonlyPlaceholder,
     disabled: mergedDisabled,
     required: mergedRequired,
     placeholder: mergedPlaceholder,
 
-    labelIcon: rest.labelIcon || defaultConfig.labelIcon,
-    labelAlign: rest.labelAlign || defaultConfig.labelAlign,
-    labelPosition: rest.labelPosition || defaultConfig.labelPosition,
-    labelWidth: rest.labelWidth || defaultConfig.labelWidth,
-    colon: rest.colon ?? defaultConfig.colon,
+    labelIcon: labelIcon ?? defaultProps.labelIcon ?? defaultConfig.labelIcon,
+    labelAlign: labelAlign ?? defaultProps.labelAlign ?? defaultConfig.labelAlign,
+    labelPosition: labelPosition ?? defaultProps.labelPosition ?? defaultConfig.labelPosition,
+    labelWidth: labelWidth ?? defaultProps.labelWidth ?? defaultConfig.labelWidth,
+    contentAlign: mergedContentAlign,
+    colon: colon ?? defaultProps.colon ?? defaultConfig.colon,
 
     rules,
     validationTrigger: normalizeTrigger(mergedValidationTrigger),
-  }
-
-  // 使用 Object.hasOwn 判断：仅当 schema 显式设置了 initialValue 才保留
-  if (Object.hasOwn(schema, "initialValue")) {
-    normalizedSchema.initialValue = rest.initialValue
   }
 
   // 只读模式下覆盖对齐方式，保证展示一致性
@@ -273,10 +275,12 @@ function buildNormalizedFieldSchema<TValues extends Values>(
   }
 
   // 将所有合并后的 props 灌入 componentProps，渲染器直接取用
+
   normalizedSchema.componentProps = {
     ...cp,
     align: mergedAlign,
     readonly: mergedReadonly,
+    readonlyPlaceholder: mergedReadonlyPlaceholder,
     disabled: mergedDisabled,
     placeholder: mergedPlaceholder,
     formItemProps: normalizedSchema,

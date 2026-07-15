@@ -46,6 +46,7 @@ const FormGroup = defineComponent(
             { "schemx-group--collapsed": collapsed.value },
             schema.class as string | undefined
           )}
+          style={schema.style}
           data-key={schema.key}
         >
           {schema.label && (

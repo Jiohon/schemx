@@ -5,9 +5,9 @@
  * 的正确性属性。每个属性测试至少运行 100 次迭代。
  *
  * 回调签名：
- * - createWatchField:  (payload: { value, prevValue }, latestSnapshot) => void
- * - createWatchFields: (payload: { changedPaths, changedValues, prevValues }, latestSnapshot) => void
- * - createWatchAll:    (payload: { changedPaths, changedValues, prevValues }, latestSnapshot) => void
+ * - createWatchField:  (latestSnapshot, payload: { value, prevValue }) => void
+ * - createWatchFields: (latestSnapshot, payload: { changedPaths, changedValues, prevValues }) => void
+ * - createWatchAll:    (latestSnapshot, payload: { changedPaths, changedValues, prevValues }) => void
  *
  * @module core/__tests__/createWatch
  */
@@ -26,6 +26,26 @@ const safeValueArb = fc.oneof(fc.integer(), fc.string(), fc.boolean(), fc.consta
 
 // 属性测试：验证 createWatchField/createWatchFields/createWatchAll 的回调载荷、immediate、inequality、dispose 行为
 describe("createWatch 属性测试", () => {
+  it("createWatchAll 应持续监听任意字段变化", () => {
+    const form = createForm({ initialValues: { name: "Alice", age: 18 } })
+    const changes: string[][] = []
+
+    const dispose = createWatchAll(
+      form,
+      (_snapshot, { changedPaths }) => {
+        changes.push(changedPaths as string[])
+      },
+      {}
+    )
+
+    form.setFieldValue("name", "Bob")
+    form.setFieldValue("age", 20)
+
+    expect(changes).toEqual([["name"], ["age"]])
+    dispose()
+    form.destroy()
+  })
+
   it("Property 11: createWatchField 回调接收 { value, prevValue } 载荷", () => {
     fc.assert(
       fc.property(
@@ -48,7 +68,7 @@ describe("createWatch 属性测试", () => {
           createWatchField(
             form,
             fieldName,
-            (payload) => {
+            (_snapshot, payload) => {
               receivedPayload = payload
               callCount++
             },
@@ -96,7 +116,7 @@ describe("createWatch 属性测试", () => {
           createWatchFields(
             form,
             fieldNames,
-            (payload, latestSnapshot) => {
+            (latestSnapshot, payload) => {
               receivedPayload = payload
               receivedSnapshot = latestSnapshot
               callCount++
@@ -119,10 +139,6 @@ describe("createWatch 属性测试", () => {
     )
   })
 
-  // NOTE: createWatchAll 当前使用 getFieldsSnapshot() 不建立 signal 依赖追踪，
-  // 需要配合 form.effect 内部的其他 signal 读取才能触发。
-  // 此处仅验证 immediate 模式下的回调行为（见 Property 14）。
-
   // 验证 immediate: true 时 createWatchField/createWatchFields/createWatchAll 立即执行回调
   describe("Property 14: immediate 选项触发初始回调", () => {
     it("createWatchField: immediate: true 时立即执行一次回调", () => {
@@ -138,7 +154,7 @@ describe("createWatch 属性测试", () => {
           createWatchField(
             form,
             fieldName,
-            (payload) => {
+            (_snapshot, payload) => {
               callCount++
               receivedPayload = payload
             },
@@ -176,7 +192,7 @@ describe("createWatch 属性测试", () => {
             createWatchFields(
               form,
               fieldNames,
-              (payload) => {
+              (_snapshot, payload) => {
                 callCount++
                 receivedPayload = payload
               },
@@ -208,7 +224,7 @@ describe("createWatch 属性测试", () => {
 
           createWatchAll(
             form,
-            (_payload, latestSnapshot) => {
+            (latestSnapshot, _payload) => {
               callCount++
               receivedSnapshot = latestSnapshot
             },

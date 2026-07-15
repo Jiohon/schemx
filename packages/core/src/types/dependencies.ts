@@ -89,6 +89,17 @@ export interface SchemxDependencies<T extends Values = Values> {
   readonly?: SchemxConditionFn<T, NonNullable<SchemxBase<T>["readonly"]>>
 
   /**
+   * 占位提示文本 - 只读状态
+   *
+   * 条件函数返回 `string` 类型，用于动态计算输入框的占位文本。
+   * 未配置时使用 {@link SchemxBase.readonlyPlaceholder} 的静态默认值。
+   */
+  readonlyPlaceholder?: SchemxConditionFn<
+    T,
+    NonNullable<SchemxBase<T>["readonlyPlaceholder"]>
+  >
+
+  /**
    * 是否禁用
    *
    * 条件函数返回 `boolean` 类型，禁用状态下字段不可交互。
@@ -157,8 +168,7 @@ export type SchemxDependenciesConditionKey = Exclude<
  */
 export type SchemxDependenciesStaticProps<T extends Values = Values> = {
   [P in SchemxDependenciesConditionKey]-?: SchemxDependencies<T>[P] extends
-    | SchemxConditionFn<T, infer R>
-    | undefined
+    SchemxConditionFn<T, infer R> | undefined
     ? R
     : never
 }

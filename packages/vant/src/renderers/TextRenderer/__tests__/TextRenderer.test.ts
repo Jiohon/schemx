@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest"
 import TextRenderer from "../index.vue"
 
 describe("TextRenderer", () => {
-  it("非 view 状态引用底层 SchemxInput 组件", () => {
+  it("默认状态引用底层 SchemxInput 组件", () => {
     const wrapper = mount(TextRenderer, {
       props: {
         value: "文本内容",

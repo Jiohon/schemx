@@ -218,6 +218,11 @@ export interface SchemxBase<
   readonly?: boolean
 
   /**
+   * 占位提示文本（静态默认值） - 只读状态
+   */
+  readonlyPlaceholder?: string
+
+  /**
    * 是否禁用（静态默认值）
    *
    * 未设置时继承 FormContext 的全局 `disabled` 配置。
@@ -438,9 +443,7 @@ export interface SchemxDependencyField<
  * @typeParam  TValues - 表单值类型
  */
 export type SchemxField<TValues extends Values = Values> =
-  | SchemxBaseField<TValues>
-  | SchemxGroupField<TValues>
-  | SchemxDependencyField<TValues>
+  SchemxBaseField<TValues> | SchemxGroupField<TValues> | SchemxDependencyField<TValues>
 
 /**
  * 编译后的字段静态 schema。
@@ -467,5 +470,4 @@ export type SchemxResolvedGroupField<TValues extends Values = Values> = Omit<
  * 解析后的静态 schema 类型。
  */
 export type SchemxResolvedField<TValues extends Values = Values> =
-  | SchemxResolvedBaseField<TValues>
-  | SchemxResolvedGroupField<TValues>
+  SchemxResolvedBaseField<TValues> | SchemxResolvedGroupField<TValues>

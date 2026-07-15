@@ -38,6 +38,7 @@ export const FIELD_DEPENDENCIES_PROP_KEYS = [
   "placeholder",
   "required",
   "readonly",
+  "readonlyPlaceholder",
   "disabled",
   "visible",
   "rules",

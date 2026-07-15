@@ -55,7 +55,6 @@ describe("RadioRenderer", () => {
         value: "female",
         options: [{ label: "女", value: "female" }],
         fieldNames: { label: "label", value: "value" },
-        view: true,
         readonlyPlaceholder: "-",
         onChange: vi.fn(),
         formItemProps: { name: "gender" } as any,
@@ -65,7 +64,6 @@ describe("RadioRenderer", () => {
 
     expect(radioGroupAttrs).not.toHaveProperty("options")
     expect(radioGroupAttrs).not.toHaveProperty("fieldNames")
-    expect(radioGroupAttrs).not.toHaveProperty("view")
     expect(radioGroupAttrs).not.toHaveProperty("readonlyPlaceholder")
     expect(radioGroupAttrs).not.toHaveProperty("onChange")
     expect(radioGroupAttrs).not.toHaveProperty("formItemProps")

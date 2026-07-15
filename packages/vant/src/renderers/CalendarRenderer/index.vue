@@ -6,7 +6,7 @@
       :readonly="isReadonly"
       :disabled="props.disabled"
       :value="modelValue"
-      :content-align="align"
+      :align="align"
       @click="handleClick"
     />
 
@@ -79,7 +79,7 @@
   )
 
   const title = computed(() => props.title || placeholder.value)
-  const isReadonly = computed(() => props.readonly || Boolean(props.view))
+  const isReadonly = computed(() => props.readonly)
 
   // 剔除 Schemx 契约字段，避免内部事件和表单元信息透传给 Vant 组件。
   const calendarProps = computed(() => {
@@ -98,7 +98,6 @@
       readonlyPlaceholder: _readonlyPlaceholder,
       disabled: _disabled,
       placeholder: _placeholder,
-      view: _view,
       formItemProps: _formItemProps,
       minDate = minSelectableDate,
       maxDate = maxSelectableDate,
@@ -119,7 +118,6 @@
       readonlyPlaceholder: _attrsReadonlyPlaceholder,
       disabled: _attrsDisabled,
       placeholder: _attrsPlaceholder,
-      view: _attrsView,
       formItemProps: _attrsFormItemProps,
       formInstance: _attrsFormInstance,
       ...attrsRest
@@ -161,7 +159,7 @@
   const handleConfirm = (date: Date | Date[]): void => {
     if (isReadonly.value || props.disabled) return
 
-    const value = getValue(date as any)
+    const value = getValue(date)
 
     calendarValue.value = date
     props.onConfirm?.(value)
@@ -176,6 +174,6 @@
 
   /** 弹窗关闭（确认/遮罩）统一出口，触发 blur 校验 */
   const handleClose = (): void => {
-    props.onBlur?.()
+    props.onBlur?.(getValue(calendarValue.value))
   }
 </script>

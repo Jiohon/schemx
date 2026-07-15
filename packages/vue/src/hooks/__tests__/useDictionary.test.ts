@@ -86,6 +86,22 @@ describe("useDictionary 集成测试", () => {
     vi.restoreAllMocks()
   })
 
+  it("依赖字段变化时将最新表单快照传给 onDepsChange", async () => {
+    const onDepsChange = vi.fn()
+    const { wrapper, form } = mountUseDictionary({
+      api: vi.fn().mockResolvedValue([]),
+      dependsOn: ["country"],
+      onDepsChange,
+    })
+
+    form.setFieldValue("country", "CN")
+    await nextTick()
+
+    expect(onDepsChange).toHaveBeenCalledWith({ country: "CN" }, expect.anything())
+
+    wrapper.unmount()
+  })
+
   // --- Loading 状态 ---
 
   describe("Loading 状态", () => {

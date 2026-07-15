@@ -29,3 +29,6 @@ export { default as FormGroup } from "./components/FormGroup"
 
 /** schemx/core 导出 */
 export * from "@schemx/core"
+
+/** Types */
+export * from "./types"

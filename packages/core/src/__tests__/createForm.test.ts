@@ -13,6 +13,30 @@ import { describe, expect, it, vi } from "vitest"
 import { createSchemas } from "../createSchemas"
 import { createForm } from "../createForm"
 
+describe("字段初始值", () => {
+  it("字段 initialValue 应成为 reset 的初始值基准", () => {
+    const form = createForm({
+      schemas: [
+        {
+          name: "name",
+          label: "姓名",
+          componentType: "input",
+          initialValue: "Alice",
+        },
+      ],
+    })
+
+    expect(form.getFieldValue("name")).toBe("Alice")
+    expect(form.getInitialValue("name")).toBe("Alice")
+
+    form.setFieldValue("name", "Bob")
+    form.reset()
+
+    expect(form.getFieldValue("name")).toBe("Alice")
+    form.destroy()
+  })
+})
+
 // 属性测试：验证 createForm 创建的表单实例 onValuesChange 回调的正确性
 describe("CreateFormInstance 属性测试", () => {
   // Feature: pure-signal-core-refactor, Property 10: onValuesChange 回调正确性

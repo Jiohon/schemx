@@ -100,6 +100,26 @@ describe("dependenciesEffect 写入 dynamicOverrides (US2)", () => {
     expect(state.effectiveSchema.value.visible).toBe(false)
   })
 
+  it("动态 readonlyPlaceholder 应写入最终 ViewSchema", () => {
+    const schema = createTestSchema({ readonlyPlaceholder: "静态提示" })
+    const state = createFieldRuntimeState({
+      nodeId: 1,
+      key: "field-1",
+      descriptor: { name: "province" as any, staticSchema: schema },
+    })
+
+    setFieldDynamicOverrides(
+      state,
+      { readonlyPlaceholder: "动态提示" },
+      {
+        source: "dependencies",
+        triggerFields: ["country" as any],
+      }
+    )
+
+    expect(state.viewSchema.value.readonlyPlaceholder).toBe("动态提示")
+  })
+
   it("diagnostics 应记录 dependencies 来源", () => {
     const schema = createTestSchema()
     const state = createFieldRuntimeState({

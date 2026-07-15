@@ -63,6 +63,19 @@ describe("createCompile().toDescriptors", () => {
     }
   })
 
+  it("编译时不应向调用方传入的 schema 写入生成 key", () => {
+    const schema: SchemxField = {
+      name: "username",
+      label: "用户名",
+      componentType: "input",
+    }
+
+    const [descriptor] = createCompile().toDescriptors([schema])
+
+    expect(descriptor.key).toBe("field:username")
+    expect(schema).not.toHaveProperty("key")
+  })
+
   it("应该保留显式配置的空 placeholder", () => {
     const schemas: SchemxField[] = [
       {
@@ -183,7 +196,7 @@ describe("createCompile().toDescriptors", () => {
       expect(descriptors[0].staticSchema.labelAlign).toBe("left")
       expect(descriptors[0].staticSchema.labelPosition).toBe("top")
       expect(descriptors[0].staticSchema.labelWidth).toBe("96px")
-      expect(descriptors[0].staticSchema).not.toHaveProperty("contentAlign")
+      expect(descriptors[0].staticSchema.contentAlign).toBe("right")
       expect(descriptors[0].staticSchema.colon).toBe(false)
     }
   })
@@ -385,6 +398,42 @@ describe("createCompile().toDescriptors", () => {
     if (descriptors[0].type === "field") {
       expect(descriptors[0].staticSchema.readonly).toBe(true)
       expect(descriptors[0].staticSchema.disabled).toBe(true)
+    }
+  })
+
+  it("应该为未显式配置的字段合并全部表单默认属性", () => {
+    const schemas: SchemxField[] = [{ name: "f1", label: "F1", componentType: "input" }]
+
+    const descriptors = createCompile({
+      defaultProps: {
+        required: true,
+        readonly: false,
+        disabled: true,
+        visible: false,
+        labelIcon: "info",
+        labelAlign: "center",
+        labelPosition: "top",
+        labelWidth: "120px",
+        contentAlign: "left",
+        validationTrigger: "change",
+        colon: false,
+      },
+    }).toDescriptors(schemas)
+
+    if (descriptors[0].type === "field") {
+      expect(descriptors[0].staticSchema).toMatchObject({
+        required: true,
+        readonly: false,
+        disabled: true,
+        visible: false,
+        labelIcon: "info",
+        labelAlign: "center",
+        labelPosition: "top",
+        labelWidth: "120px",
+        contentAlign: "left",
+        validationTrigger: ["change"],
+        colon: false,
+      })
     }
   })
 

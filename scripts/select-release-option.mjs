@@ -1,6 +1,12 @@
 #!/usr/bin/env node
 
-import { cancel as cancelPrompt, isCancel, select } from "@clack/prompts"
+import {
+  cancelSelection,
+  isPromptCancelled,
+  promptGroupMultiselect,
+  promptSelect,
+} from "./lib/prompts.mjs"
+import { writeFileSync } from "node:fs"
 
 const args = process.argv.slice(2)
 const kindOptionIndex = args.indexOf("--kind")
@@ -11,6 +17,9 @@ const channel =
   channelOptionIndex === -1 ? "latest" : args.splice(channelOptionIndex, 2)[1] || "latest"
 const targetOptionIndex = args.indexOf("--target")
 const target = targetOptionIndex === -1 ? "" : args.splice(targetOptionIndex, 2)[1] || ""
+const resultFileOptionIndex = args.indexOf("--result-file")
+const resultFile =
+  resultFileOptionIndex === -1 ? "" : args.splice(resultFileOptionIndex, 2)[1] || ""
 const options = args
 
 const channelLabels = {
@@ -56,19 +65,60 @@ function fail(message) {
   process.exit(1)
 }
 
+// 交互发布流程通过临时文件取回结果，避免 Shell 命令替换把 stdout 变成管道。
+function writeSelected(value) {
+  const result = `${value}\n`
+
+  if (resultFile) {
+    writeFileSync(resultFile, result)
+    return
+  }
+
+  process.stdout.write(result)
+}
+
 // 取消不是发布失败；使用固定标记通知 Shell 调用方停止后续流程。
 function cancel() {
   // pnpm 会把非 0 退出码包装成 ELIFECYCLE；取消选择应停止发布但不算脚本失败。
-  cancelPrompt("已取消选择", { output: process.stderr })
-  process.stdout.write("__SCHEMX_RELEASE_CANCELLED__\n")
+  cancelSelection("已取消选择")
+  writeSelected("__SCHEMX_RELEASE_CANCELLED__")
   process.exit(0)
 }
 
 // 环境变量提供的自动化选择也必须受当前选项集约束。
 function validateOption(option) {
+  if (kind === "target") {
+    const selected = option
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)
+
+    if (selected.length === 0) {
+      fail("至少选择一个发布目标")
+    }
+
+    if (selected.includes("all") && selected.length > 1) {
+      fail("all 不能与其他发布目标同时使用")
+    }
+
+    if (new Set(selected).size !== selected.length) {
+      fail(`发布目标不能重复：${option}`)
+    }
+
+    for (const item of selected) {
+      if (!options.includes(item)) {
+        fail(`${config.unknown}：${item}，可选值为 ${options.join("、")}`)
+      }
+    }
+
+    return selected.join(",")
+  }
+
   if (!options.includes(option)) {
     fail(`${config.unknown}：${option}，可选值为 ${options.join("、")}`)
   }
+
+  return option
 }
 
 const config = kindConfig[kind]
@@ -87,8 +137,7 @@ if (!channelLabels[channel]) {
 const envOption = process.env[config.env]
 if (envOption) {
   // 自动化场景不应依赖 TTY 交互，CI/测试可通过环境变量指定选择项。
-  validateOption(envOption)
-  process.stdout.write(`${envOption}\n`)
+  writeSelected(validateOption(envOption))
   process.exit(0)
 }
 
@@ -110,24 +159,36 @@ function selectedContext() {
   const lines = [`发布通道：${channel} - ${channelLabels[channel]}`]
 
   if (target) {
-    lines.push(`发布目标：${target}`)
+    lines.push(`发布目标：${target.split(",").join("、")}`)
   }
 
   return `\n${lines.join("\n")}`
 }
 
-const selected = await select({
-  message: `${config.title}${selectedContext()}`,
-  options: options.map((option) => ({
-    value: option,
-    label: optionLabel(option),
-  })),
-  initialValue: options[0],
-  output: process.stderr,
-})
+const selected =
+  kind === "target"
+    ? await promptGroupMultiselect({
+        message: `${config.title}${selectedContext()}`,
+        options: {
+          发布包: options
+            .filter((option) => option !== "all")
+            .map((option) => ({ value: option, label: optionLabel(option) })),
+        },
+        required: true,
+        output: process.stderr,
+      })
+    : await promptSelect({
+        message: `${config.title}${selectedContext()}`,
+        options: options.map((option) => ({
+          value: option,
+          label: optionLabel(option),
+        })),
+        initialValue: options[0],
+        output: process.stderr,
+      })
 
-if (isCancel(selected)) {
+if (isPromptCancelled(selected)) {
   cancel()
 }
 
-process.stdout.write(`${selected}\n`)
+writeSelected(Array.isArray(selected) ? selected.join(",") : selected)

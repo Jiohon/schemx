@@ -8,6 +8,7 @@
  */
 
 import { createRuntimeViewState, updateRuntimeViewState } from "../view/createViewState"
+import { setByPath } from "../utils"
 
 import { createDependenciesEffect } from "./dependenciesEffect"
 import { createFieldRuntimeState, setFieldStaticSchema } from "./runtimeState"
@@ -16,7 +17,7 @@ import { createValidationEffect } from "./validationEffect"
 import type { FieldDescriptor } from "../descriptor"
 import type { FieldRuntimeNode } from "../node"
 import type { SchemxContext } from "../schemxContext"
-import type { Values } from "../types"
+import type { NamePath, Values } from "../types"
 import type { FieldRuntimeState } from "./runtimeState"
 
 /**
@@ -173,8 +174,10 @@ function applyFieldInitialValue<TValues extends Values>(
     return
   }
 
-  context.instance.setFieldValue(
-    descriptor.name,
-    descriptor.staticSchema.initialValue as never
-  )
+  const initialValue = descriptor.staticSchema.initialValue as never
+  const initialValues = {} as Partial<TValues>
+
+  setByPath<TValues, NamePath<TValues>, never>(initialValues, descriptor.name, initialValue)
+  context.instance.setInitialValues(initialValues)
+  context.instance.setFieldValue(descriptor.name, initialValue)
 }

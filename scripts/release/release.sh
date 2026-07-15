@@ -23,7 +23,7 @@ usage() {
 用法：
   pnpm release:check
   pnpm release:pack
-  pnpm release:publish [dev|alpha|beta|rc|next|latest] [all|core|vue|vant] [current|patch|minor|major|x.y.z]
+  pnpm release:publish [dev|alpha|beta|rc|next|latest] [all|core[,vue,vant]] [current|patch|minor|major|x.y.z]
 
 版本处理：
   patch - 提升 patch 版本，也就是 x.y.z 的 z 位
@@ -32,30 +32,42 @@ usage() {
 
 也可以直接调用：
   bash scripts/release/release.sh check
-  bash scripts/release/release.sh pack [all|core|vue|vant]
-  bash scripts/release/release.sh publish [dev|alpha|beta|rc|next|latest] [all|core|vue|vant] [current|patch|minor|major|x.y.z]
+  bash scripts/release/release.sh pack [all|core[,vue,vant]]
+  bash scripts/release/release.sh publish [dev|alpha|beta|rc|next|latest] [all|core[,vue,vant]] [current|patch|minor|major|x.y.z]
 USAGE
 }
 
 SELECTED_CHANNEL=""
 SELECTED_TARGET=""
 SELECTED_VERSION_ACTION=""
+SELECTED_RELEASE_OPTION=""
+CUSTOM_VERSION=""
 
-# 调用 Node 选择器，并保留取消标记给上层流程处理。
+# 调用 Node 选择器，并通过全局变量返回结果，保持整个提示链路连接 TTY。
 select_release_option() {
   local kind="$1"
   local channel="$2"
   local target="$3"
-  local selected
+  local selected result_file
   shift 3
+  SELECTED_RELEASE_OPTION=""
 
-  selected="$(node "$ROOT_DIR/scripts/select-release-option.mjs" --kind "$kind" --channel "$channel" --target "$target" "$@")"
-  if [[ "$selected" == "$RELEASE_CANCELLED_TARGET" ]]; then
-    printf '%s' "$selected"
-    return 0
+  # 不使用任何命令替换包裹本函数：否则 selector 会继承被捕获的 stdout，
+  # Clack 将无法稳定显示当前焦点。结果改由临时文件返回。
+  result_file="$(mktemp)"
+  if ! node "$ROOT_DIR/scripts/select-release-option.mjs" \
+    --kind "$kind" \
+    --channel "$channel" \
+    --target "$target" \
+    --result-file "$result_file" \
+    "$@"; then
+    rm -f "$result_file"
+    return 1
   fi
+  IFS= read -r selected <"$result_file" || true
+  rm -f "$result_file"
 
-  printf '%s' "$selected"
+  SELECTED_RELEASE_OPTION="$selected"
 }
 
 # 解析显式或交互选择的发布通道。
@@ -63,7 +75,8 @@ select_release_channel() {
   local channel="${1:-}"
 
   if [[ -z "$channel" ]]; then
-    channel="$(select_release_option channel latest "" "${RELEASE_CHANNELS[@]}")"
+    select_release_option channel latest "" "${RELEASE_CHANNELS[@]}"
+    channel="$SELECTED_RELEASE_OPTION"
   fi
   if [[ "$channel" == "$RELEASE_CANCELLED_TARGET" ]]; then
     exit 0
@@ -73,7 +86,7 @@ select_release_channel() {
   SELECTED_CHANNEL="$channel"
 }
 
-# 解析显式或交互选择的单包/all 发布目标。
+# 解析显式或交互选择的一个或多个发布目标。
 select_publish_target() {
   local target="${1:-}"
   local channel="${2:-latest}"
@@ -84,7 +97,8 @@ select_publish_target() {
     return
   fi
 
-  SELECTED_TARGET="$(select_release_option target "$channel" "" all "${RELEASE_PACKAGES[@]}")"
+  select_release_option target "$channel" "" all "${RELEASE_PACKAGES[@]}"
+  SELECTED_TARGET="$SELECTED_RELEASE_OPTION"
   if [[ "$SELECTED_TARGET" == "$RELEASE_CANCELLED_TARGET" ]]; then
     exit 0
   fi
@@ -94,6 +108,7 @@ select_publish_target() {
 # 在可交互终端读取并校验用户指定的正式版本号。
 prompt_custom_version() {
   local version
+  CUSTOM_VERSION=""
 
   if [[ ! -t 0 || ! -t 2 ]]; then
     die "当前终端不支持输入指定版本。请传入 x.y.z，例如：pnpm release:publish latest vue 0.1.21。"
@@ -106,7 +121,7 @@ prompt_custom_version() {
     die "版本号必须是 x.y.z 格式。"
   fi
 
-  printf '%s' "$version"
+  CUSTOM_VERSION="$version"
 }
 
 # 仅 latest 发布需要版本动作；custom 会继续读取精确版本号。
@@ -115,14 +130,16 @@ select_version_action() {
   local channel="${2:-latest}"
 
   if [[ -z "$action" ]]; then
-    action="$(select_release_option version-action "$channel" "$SELECTED_TARGET" current patch minor major custom)"
+    select_release_option version-action "$channel" "$SELECTED_TARGET" current patch minor major custom
+    action="$SELECTED_RELEASE_OPTION"
   fi
   if [[ "$action" == "$RELEASE_CANCELLED_TARGET" ]]; then
     exit 0
   fi
 
   if [[ "$action" == "custom" ]]; then
-    action="$(prompt_custom_version)"
+    prompt_custom_version
+    action="$CUSTOM_VERSION"
   fi
 
   assert_version_action "$action"
@@ -131,10 +148,13 @@ select_version_action() {
 
 # 在执行任何写操作前展示最终发布计划，便于人工确认。
 print_publish_selection_summary() {
+  local targets=()
+
+  targets=($(resolve_targets "$SELECTED_TARGET"))
   info "发布计划"
   release_kv "通道" "$SELECTED_CHANNEL - $(release_channel_label "$SELECTED_CHANNEL")"
   release_kv "说明" "$(release_channel_description "$SELECTED_CHANNEL")"
-  release_kv "目标" "$SELECTED_TARGET"
+  release_kv "目标" "$(target_summary "${targets[@]}")"
 
   if [[ "$SELECTED_CHANNEL" == "latest" ]]; then
     release_kv "版本" "$SELECTED_VERSION_ACTION - $(version_action_label "$SELECTED_VERSION_ACTION")"
@@ -302,6 +322,7 @@ resolve_publish_arguments() {
   local third="${3:-}"
   local target_arg=""
   local version_arg=""
+  local selected_targets=()
 
   SELECTED_CHANNEL=""
   SELECTED_TARGET=""
@@ -325,7 +346,8 @@ resolve_publish_arguments() {
 
   if [[ "$SELECTED_CHANNEL" == "latest" ]]; then
     select_version_action "$version_arg" "$SELECTED_CHANNEL"
-    if is_exact_version "$SELECTED_VERSION_ACTION" && [[ "$SELECTED_TARGET" == "all" ]]; then
+    selected_targets=($(resolve_targets "$SELECTED_TARGET"))
+    if is_exact_version "$SELECTED_VERSION_ACTION" && [[ "${#selected_targets[@]}" -ne 1 ]]; then
       die "指定版本只能用于单个发布目标，请选择 core、vue 或 vant。"
     fi
   elif [[ -n "$version_arg" ]]; then

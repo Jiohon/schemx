@@ -1,4 +1,4 @@
-import * as CSS from "csstype"
+import { StyleValue } from "vue"
 
 import type {
   SchemxRendererDefinition,
@@ -21,7 +21,7 @@ declare module "@schemx/core" {
      *
      * 应用到表单项容器元素上。
      */
-    style?: CSS.Properties
+    style?: StyleValue
   }
 
   interface SchemxGroupFieldDefinition {
@@ -37,6 +37,6 @@ declare module "@schemx/core" {
      *
      * 应用到表单项容器元素上。
      */
-    style?: CSS.Properties
+    style?: StyleValue
   }
 }

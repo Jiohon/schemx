@@ -27,7 +27,6 @@ describe("SelectorRenderer", () => {
         value: "college",
         options: [{ label: "大专", value: "college" }],
         fieldNames: { label: "label", value: "value" },
-        view: true,
         readonlyPlaceholder: "-",
         formItemProps: { name: "education" } as any,
         formInstance: {} as any,
@@ -38,7 +37,6 @@ describe("SelectorRenderer", () => {
 
     expect(selector.props("options")).toHaveLength(1)
     expect(selector.props("fieldNames")).toEqual({ label: "label", value: "value" })
-    expect(selector.attributes("view")).toBeUndefined()
     expect(selector.attributes("readonly-placeholder")).toBeUndefined()
     expect(selector.attributes("form-item-props")).toBeUndefined()
     expect(selector.attributes("form-instance")).toBeUndefined()

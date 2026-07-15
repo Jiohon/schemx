@@ -13,6 +13,7 @@ import { Component, computed, defineComponent, h, PropType, SetupContext } from 
 import type { SchemxDictionary } from "@/types/dictionary"
 
 import { useDictionary } from "../hooks/useDictionary"
+import { useFieldContext } from "../hooks/provideFieldContext"
 
 import type { NamePath } from "@schemx/core"
 
@@ -77,8 +78,11 @@ export function WithRemoteOptions(WrappedComponent: Component) {
       },
     },
     setup(props, { attrs, slots }: SetupContext) {
-      // 仅在 dict 配置存在时调用 useDictionary
-      const dictResult = props.dict ? useDictionary(props.dict, props.fieldName) : null
+      // 内嵌于 FormItem 时自动从字段 Context 获取目标字段；显式 fieldName
+      // 保留给脱离 FormItem 的独立使用场景。
+      const fieldName =
+        props.fieldName ?? (props.dict ? useFieldContext().name : undefined)
+      const dictResult = props.dict ? useDictionary(props.dict, fieldName) : null
 
       const childrenProps = computed(() => {
         return {

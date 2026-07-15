@@ -46,6 +46,6 @@ declare module "@schemx/core" {
     slider: SliderRendererProps
     stepper: StepperRendererProps
     upload: UploadRendererProps
-    cascader: CascaderRendererProps
+    cascader: SchemxWithDictionary<CascaderRendererProps>
   }
 }

@@ -1,10 +1,18 @@
 <template>
   <div :class="['schemx-renderer', 'schemx-upload-renderer', props.className]">
+    <SchemxCell
+      v-if="props.readonly && innerFileList.length === 0"
+      :value="''"
+      :readonly="true"
+      :disabled="props.disabled"
+      :readonly-placeholder="props.readonlyPlaceholder"
+    />
     <Uploader
+      v-else
       v-bind="uploadProps"
       ref="uploadRef"
       result-type="file"
-      :multiple="true"
+      :multiple="multiple"
       :class="rootClass"
       :model-value="innerFileList"
       :show-upload="showUploadComputed"
@@ -36,6 +44,7 @@
   import classNames from "classnames"
 
   import { getFileName } from "@/utils"
+  import SchemxCell from "@/components/Cell/index.vue"
 
   import type { UploadFile, UploadRendererProps, UploadValue } from "./types"
 
@@ -54,10 +63,10 @@
     showUpload: true,
     disableUpload: false,
     deletable: true,
-    view: false,
     readonly: false,
     readonlyPlaceholder: "-",
     disabled: false,
+    multiple: true,
     uploader: () => Promise.resolve({}),
     propsHttp: () => ({
       res: "data",
@@ -78,11 +87,12 @@
   /** 内部上传中的文件列表（status 为 uploading 的文件） */
   const uploadingFiles = ref<UploadFile[]>([])
 
-  const httpRes = Object.assign({}, props.propsHttp, {
+  const httpRes = computed(() => ({
     res: "data",
     url: "link",
     name: "originalName",
-  })
+    ...props.propsHttp,
+  }))
 
   /**
    * 将外部值标准化为文件对象
@@ -138,18 +148,20 @@
     { deep: true }
   )
 
-  const viewComputed = computed(() => props.view)
   const readonlyComputed = computed(() => props.readonly)
   const disabledComputed = computed(() => props.disabled)
+  const multiple = computed(() => {
+    const rendererProps = props as typeof props & { multiple?: boolean }
+
+    return rendererProps.multiple ?? uploadAttrs.multiple ?? true
+  })
   const deletableComputed = computed(() =>
-    viewComputed.value || readonlyComputed.value ? false : props.deletable
+    readonlyComputed.value ? false : props.deletable
   )
   const showUploadComputed = computed(() =>
-    viewComputed.value || readonlyComputed.value ? false : props.showUpload
+    readonlyComputed.value || props.disableUpload ? false : props.showUpload
   )
-  const uploaderReadonlyComputed = computed(
-    () => viewComputed.value || readonlyComputed.value
-  )
+  const uploaderReadonlyComputed = computed(() => readonlyComputed.value)
 
   const uploadProps = computed(() => {
     const rendererProps = props as typeof props & { formInstance?: unknown }
@@ -160,7 +172,6 @@
       showUpload: _showUpload,
       disableUpload: _disableUpload,
       deletable: _deletable,
-      view: _view,
       readonly: _readonly,
       readonlyPlaceholder: _readonlyPlaceholder,
       disabled: _disabled,
@@ -180,7 +191,6 @@
       showUpload: _attrsShowUpload,
       disableUpload: _attrsDisableUpload,
       deletable: _attrsDeletable,
-      view: _attrsView,
       readonly: _attrsReadonly,
       readonlyPlaceholder: _attrsReadonlyPlaceholder,
       disabled: _attrsDisabled,
@@ -223,8 +233,8 @@
 
     const completedFile: UploadFile = {
       ...uploadingFiles.value[index],
-      url: res[httpRes.res][httpRes.url],
-      name: res[httpRes.res][httpRes.name],
+      url: res[httpRes.value.res][httpRes.value.url],
+      name: res[httpRes.value.res][httpRes.value.name],
       status: "done",
       message: "上传成功",
     }

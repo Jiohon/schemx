@@ -44,6 +44,23 @@ const CountRenderer = defineComponent({
 })
 
 describe("SchemxForm 动态 schemas", () => {
+  it("字段变化时以最新表单快照同步 modelValue", async () => {
+    const wrapper = mount(SchemxForm, {
+      props: {
+        initialValues: { name: "Alice" },
+        schemas: [],
+      },
+    })
+
+    ;(wrapper.vm as any).setFieldValue("name", "Bob")
+    await nextTick()
+
+    const emissions = wrapper.emitted("update:modelValue")
+    expect(emissions?.at(-1)).toEqual([{ name: "Bob" }])
+
+    wrapper.unmount()
+  })
+
   it("外部 schemas prop 更新后同步 ViewSchemas", async () => {
     const rendererRegistry = createRendererRegistry()
     rendererRegistry.register("input", markRaw(InputRenderer))

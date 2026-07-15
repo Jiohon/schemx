@@ -123,8 +123,8 @@ const FieldFormItem = defineComponent({
     }
 
     /** 失焦处理，根据触发时机决定是否校验 */
-    const handleBlur = () => {
-      // schema().componentProps?.onBlur?.()
+    const handleBlur = (v: FieldValue<Values, NamePath<Values>>) => {
+      schema().componentProps?.onBlur?.(v)
 
       if (canVerified.value && shouldValidateOn("blur", trigger.value)) {
         field.validate()
@@ -272,7 +272,7 @@ const FieldFormItem = defineComponent({
       const labelPosition = schema().labelPosition || formContext.labelPosition
 
       return (
-        <div class={classnames("schemx-item-wrapper")}>
+        <div class={classnames("schemx-item-wrapper")} style={schema().style}>
           <div
             class={classnames(
               "schemx-item",
@@ -283,7 +283,7 @@ const FieldFormItem = defineComponent({
                 "is-disabled": schema().disabled,
               }
             )}
-            style={{ ...(schema().style ?? {}) }}
+            style={{ ...((schema().style ?? {}) as CSSStyleValue) }}
           >
             {renderLabel()}
 

@@ -234,8 +234,20 @@ cat >"$MOCK_BIN/node" <<'MOCK'
 set -euo pipefail
 
 if [[ "${MOCK_RELEASE_CANCEL:-0}" == "1" && "${1:-}" == */select-release-option.mjs ]]; then
+  result_file=""
+  for ((index = 1; index <= $#; index++)); do
+    if [[ "${!index}" == "--result-file" ]]; then
+      next_index=$((index + 1))
+      result_file="${!next_index}"
+      break
+    fi
+  done
   printf '已取消选择\n' >&2
-  printf '__SCHEMX_RELEASE_CANCELLED__\n'
+  if [[ -n "$result_file" ]]; then
+    printf '__SCHEMX_RELEASE_CANCELLED__\n' >"$result_file"
+  else
+    printf '__SCHEMX_RELEASE_CANCELLED__\n'
+  fi
   exit 0
 fi
 
@@ -356,7 +368,7 @@ test_help_lists_channel_commands_without_package_shortcuts() {
   local output
   output="$(run_release help)"
 
-  assert_contains "$output" "pnpm release:publish [dev|alpha|beta|rc|next|latest] [all|core|vue|vant] [current|patch|minor|major|x.y.z]"
+  assert_contains "$output" "pnpm release:publish [dev|alpha|beta|rc|next|latest] [all|core[,vue,vant]] [current|patch|minor|major|x.y.z]"
   assert_not_contains "$output" "pnpm release:publish:alpha"
   assert_not_contains "$output" "pnpm release:version:patch"
   assert_not_contains "$output" "bash scripts/release/release.sh publish-alpha"
@@ -890,6 +902,22 @@ test_pack_accepts_target() {
   assert_log_not_contains "pnpm --filter @schemx/vue pack --pack-destination $ROOT_DIR"
 }
 
+# 验证逗号分隔的多个发布目标会按稳定顺序分别执行。
+test_publish_accepts_multiple_targets() {
+  local output
+
+  : >"$COMMAND_LOG"
+
+  export MOCK_BRANCH="feature/demo"
+  output="$(run_release publish alpha vue,core)"
+  unset MOCK_BRANCH
+
+  assert_contains "$output" "目标    core、vue"
+  assert_log_contains "pnpm --dir packages/core publish --access public --registry https://registry.npmjs.org/ --tag alpha --no-git-checks"
+  assert_log_contains "pnpm --dir packages/vue publish --access public --registry https://registry.npmjs.org/ --tag alpha --no-git-checks"
+  assert_log_not_contains "pnpm --dir packages/vant publish"
+}
+
 # 验证单包 patch 发布会升级版本、提交锁文件并发布目标包。
 test_latest_publish_patch_bumps_commits_and_publishes_target() {
   local core_version vue_version vant_version
@@ -1295,6 +1323,28 @@ test_selector_accepts_dev_channel() {
   fi
 }
 
+# 验证环境变量可提供多个发布目标，并拒绝重复目标。
+test_selector_accepts_multiple_environment_targets() {
+  local output status
+
+  output="$(SCHEMX_RELEASE_TARGET=vue,core node "$ROOT_DIR/scripts/select-release-option.mjs" --kind target all core vue)"
+  if [[ "$output" != "vue,core" ]]; then
+    printf '多目标环境变量应按输入返回。实际输出：%s\n' "$output" >&2
+    exit 1
+  fi
+
+  set +e
+  output="$(SCHEMX_RELEASE_TARGET=core,core node "$ROOT_DIR/scripts/select-release-option.mjs" --kind target all core vue 2>&1)"
+  status=$?
+  set -e
+  if [[ "$status" -eq 0 ]]; then
+    printf '选择器应拒绝重复发布目标。\n' >&2
+    exit 1
+  fi
+
+  assert_contains "$output" "发布目标不能重复"
+}
+
 # 验证取消选择不会被 pnpm 视作 lifecycle 失败。
 test_cancelled_selector_exits_without_lifecycle_failure() {
   local output status
@@ -1400,6 +1450,7 @@ RELEASE_TESTS=(
   test_release_output_uses_colors_when_forced
   test_release_output_omits_colors_without_tty
   test_pack_accepts_target
+  test_publish_accepts_multiple_targets
   test_latest_publish_patch_bumps_commits_and_publishes_target
   test_latest_quality_failure_stops_before_version_transaction
   test_prerelease_quality_failure_stops_before_temporary_version
@@ -1416,6 +1467,7 @@ RELEASE_TESTS=(
   test_selector_requires_tty_or_automation_target
   test_selector_rejects_unknown_channel
   test_selector_accepts_dev_channel
+  test_selector_accepts_multiple_environment_targets
   test_cancelled_selector_exits_without_lifecycle_failure
 )
 
