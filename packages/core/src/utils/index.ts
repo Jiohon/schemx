@@ -7,7 +7,6 @@
 export {
   isBaseResolvedSchema,
   isGroupResolvedSchema,
-  isDependencyResolvedSchema,
   isBaseSchema,
   isGroupSchema,
   isDependencySchema,

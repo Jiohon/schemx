@@ -274,7 +274,6 @@ const schemas: SchemxField<Values>[] = [
 ```ts
 const group: SchemxField<Values> = {
   key: "basic-info",
-  componentType: "group",
   label: "基本信息",
   readonly: false,
   collapsible: true,
@@ -298,7 +297,6 @@ const group: SchemxField<Values> = {
 
 ```ts
 const dependency: SchemxField<Values> = {
-  componentType: "dependency",
   to: ["nickname"],
   dependencies: {
     triggerFields: ["editable"],

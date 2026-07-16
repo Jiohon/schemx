@@ -27,13 +27,11 @@ describe("容器状态运行时链路", () => {
     commitSchemas(root, [
       {
         key: "profile",
-        componentType: "group",
         label: "资料",
         readonly: true,
         children: [
           {
             key: "dynamic",
-            componentType: "dependency",
             to: ["mode"],
             disabled: true,
             renderer: () => [
@@ -80,7 +78,6 @@ describe("容器状态运行时链路", () => {
     commitSchemas(root, [
       {
         key: "profile",
-        componentType: "group",
         label: "资料",
         dependencies: {
           triggerFields: ["show"],
@@ -128,7 +125,6 @@ describe("容器状态运行时链路", () => {
     commitSchemas(root, [
       {
         key: "enterprise-fields",
-        componentType: "dependency",
         to: ["mode"],
         dependencies: {
           triggerFields: ["status"],
@@ -147,7 +143,6 @@ describe("容器状态运行时链路", () => {
     commitSchemas(root, [
       {
         key: "enterprise-fields",
-        componentType: "dependency",
         to: ["mode"],
         readonly: true,
         dependencies: {
@@ -192,7 +187,6 @@ describe("容器状态运行时链路", () => {
     commitSchemas(root, [
       {
         key: "dynamic-fields",
-        componentType: "dependency",
         to: ["mode"],
         renderer: firstRenderer,
       },
@@ -205,7 +199,6 @@ describe("容器状态运行时链路", () => {
     commitSchemas(root, [
       {
         key: "dynamic-fields",
-        componentType: "dependency",
         to: ["mode"],
         renderer: nextRenderer,
       },
@@ -231,7 +224,6 @@ describe("容器状态运行时链路", () => {
     commitSchemas(root, [
       {
         key: "profile",
-        componentType: "group",
         label: "资料",
         dependencies: {
           triggerFields: ["show"],
@@ -248,7 +240,6 @@ describe("容器状态运行时链路", () => {
     commitSchemas(root, [
       {
         key: "profile",
-        componentType: "group",
         label: "资料",
         children,
       },
@@ -273,7 +264,6 @@ describe("容器状态运行时链路", () => {
     commitSchemas(root, [
       {
         key: "profile",
-        componentType: "group",
         label: "资料",
         dependencies,
         children: [],
@@ -288,7 +278,6 @@ describe("容器状态运行时链路", () => {
     commitSchemas(root, [
       {
         key: "profile",
-        componentType: "group",
         label: "更新后的资料",
         readonly: true,
         dependencies,
@@ -314,7 +303,6 @@ describe("容器状态运行时链路", () => {
     commitSchemas(root, [
       {
         key: "profile",
-        componentType: "group",
         label: "资料",
         dependencies: {
           triggerFields: ["show"],
@@ -331,7 +319,6 @@ describe("容器状态运行时链路", () => {
     commitSchemas(root, [
       {
         key: "profile",
-        componentType: "group",
         label: "资料",
         dependencies: {
           triggerFields: ["show"],
@@ -365,7 +352,6 @@ describe("容器状态运行时链路", () => {
     commitSchemas(root, [
       {
         key: "profile",
-        componentType: "group",
         label: "资料",
         dependencies: {
           triggerFields: ["mode"],

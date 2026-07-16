@@ -8,5 +8,6 @@
  */
 
 export { createCompile } from "./createCompile"
+export { CompileError } from "./types"
 
-export type { Compile, CompileCache, CompileOptions, CompileError } from "./types"
+export type { Compile, CompileCache, CompileOptions } from "./types"

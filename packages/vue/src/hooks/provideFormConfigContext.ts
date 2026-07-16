@@ -61,6 +61,11 @@ export interface FormContextProps<TValues extends Values = Values> extends Omit<
  *
  * @remarks
  * 该函数只注册上下文，不创建或销毁表单实例，也不改变传入配置的所有权。
+ *
+ * @example
+ * ```ts
+ * createFormConfigContext({ readonly: true, labelAlign: "right" })
+ * ```
  */
 export const createFormConfigContext = <TValues extends Values = Values>(
   props: FormContextProps<TValues>
@@ -72,6 +77,11 @@ export const createFormConfigContext = <TValues extends Values = Values>(
  * `createFormConfigContext` 的兼容别名。
  *
  * @deprecated 请使用 createFormConfigContext。
+ *
+ * @example
+ * ```ts
+ * createContext({ disabled: true })
+ * ```
  */
 export const createContext = createFormConfigContext
 
@@ -108,5 +118,10 @@ export function useFormConfigContext(): FormContextProps {
  * `useFormConfigContext` 的兼容别名。
  *
  * @deprecated 请使用 useFormConfigContext。
+ *
+ * @example
+ * ```ts
+ * const context = useContext()
+ * ```
  */
 export const useContext = useFormConfigContext

@@ -52,6 +52,14 @@ export interface SensitiveInputRendererProps extends Omit<
   revealWhenReadonly?: boolean
 }
 
+/**
+ * 将敏感值显示为首尾各一段、中间掩码的文本。
+ *
+ * @example
+ * ```ts
+ * defaultMaskFormatter("13800138000") // => "138****8000"
+ * ```
+ */
 export function defaultMaskFormatter(value: string): string {
   const chars = [...value]
   const length = chars.length

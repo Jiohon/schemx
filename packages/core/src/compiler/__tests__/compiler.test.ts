@@ -97,7 +97,6 @@ describe("createCompile().toDescriptors", () => {
     const schemas: SchemxField[] = [
       {
         label: "基本信息",
-        componentType: "group",
         children: [
           { name: "name", label: "姓名", componentType: "input" },
           { name: "age", label: "年龄", componentType: "number" },
@@ -111,6 +110,7 @@ describe("createCompile().toDescriptors", () => {
     expect(descriptors[0].type).toBe("group")
     if (descriptors[0].type === "group") {
       expect(descriptors[0].children).toHaveLength(2)
+      expect(descriptors[0].staticSchema).not.toHaveProperty("componentType")
       expect(descriptors[0].children[0].type).toBe("field")
       expect(descriptors[0].children[1].type).toBe("field")
     }
@@ -119,7 +119,6 @@ describe("createCompile().toDescriptors", () => {
   it("应该编译 dependency schema", () => {
     const schemas: SchemxField[] = [
       {
-        componentType: "dependency",
         to: ["user", "type"],
         renderer: () => [{ name: "extra", label: "Extra", componentType: "input" }],
       },
@@ -132,6 +131,64 @@ describe("createCompile().toDescriptors", () => {
     if (descriptors[0].type === "dependency") {
       expect(descriptors[0].triggerFields).toEqual(["user", "type"])
     }
+  })
+
+  it("应该把 group 和 dependency 作为普通 Renderer key 编译", () => {
+    const schemas: SchemxField[] = [
+      { name: "groupRenderer", label: "Group Renderer", componentType: "group" },
+      {
+        name: "dependencyRenderer",
+        label: "Dependency Renderer",
+        componentType: "dependency",
+      },
+    ]
+
+    const descriptors = createCompile().toDescriptors(schemas)
+
+    expect(descriptors.map((descriptor) => descriptor.type)).toEqual(["field", "field"])
+  })
+
+  it("旧 Group 和 Dependency 语法应该抛出可迁移的 CompileError", () => {
+    const compile = createCompile()
+    const legacyGroup = {
+      key: "legacy-group",
+      componentType: "group",
+      label: "旧 Group",
+      children: [],
+    } as unknown as SchemxField
+    const legacyDependency = {
+      key: "legacy-dependency",
+      componentType: "dependency",
+      to: ["mode"],
+      renderer: () => [],
+    } as unknown as SchemxField
+
+    expect(() => compile.toDescriptors([legacyGroup])).toThrowError(CompileError)
+    expect(() => compile.toDescriptors([legacyGroup])).toThrow("请删除 componentType")
+    expect(() => compile.toDescriptors([legacyDependency])).toThrowError(CompileError)
+    expect(() => compile.toDescriptors([legacyDependency])).toThrow(
+      "请删除 componentType"
+    )
+
+    try {
+      compile.toDescriptors([legacyGroup])
+    } catch (error) {
+      expect(error).toBeInstanceOf(CompileError)
+      expect((error as InstanceType<typeof CompileError>).schemaKey).toBe("legacy-group")
+    }
+  })
+
+  it("同时匹配多种结构的 schema 应该抛出 CompileError", () => {
+    const ambiguous = {
+      key: "ambiguous",
+      name: "ambiguous",
+      label: "歧义配置",
+      componentType: "input",
+      children: [],
+    } as unknown as SchemxField
+
+    expect(() => createCompile().toDescriptors([ambiguous])).toThrowError(CompileError)
+    expect(() => createCompile().toDescriptors([ambiguous])).toThrow("同时匹配")
   })
 
   it("应该处理 required 规则", () => {
@@ -274,7 +331,6 @@ describe("createCompile().toDescriptors", () => {
     const schemas: SchemxField[] = [
       {
         label: "基本信息",
-        componentType: "group",
         children: [],
         tooltip: "基础资料",
         style: { marginTop: 8 },
@@ -321,11 +377,9 @@ describe("createCompile().toDescriptors", () => {
     const schemas: SchemxField[] = [
       {
         label: "外层",
-        componentType: "group",
         children: [
           {
             label: "内层",
-            componentType: "group",
             children: [{ name: "deep", label: "Deep", componentType: "input" }],
           },
         ],
@@ -348,7 +402,6 @@ describe("createCompile().toDescriptors", () => {
       { name: "name", label: "姓名", componentType: "input" },
       {
         label: "详情",
-        componentType: "group",
         children: [{ name: "email", label: "邮箱", componentType: "input" }],
       },
     ]
@@ -374,7 +427,6 @@ describe("createCompile().toDescriptors", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
     const schemas: SchemxField[] = [
       {
-        componentType: "dependency",
         to: [],
         renderer: () => [],
       },
@@ -464,7 +516,6 @@ describe("createCompile", () => {
   it("同一 schema 引用位于不同编译位置时不应复用 descriptor", () => {
     const compile = createCompile()
     const schema: SchemxField = {
-      componentType: "group",
       label: "共享分组",
       children: [],
     }

@@ -109,11 +109,9 @@ describe("RuntimeReconciler + DefaultRuntimeNodeManager", () => {
     const { commitChildren, root } = createGraphRuntime()
     const descriptors = createCompile().toDescriptors([
       {
-        componentType: "group",
         label: "root group",
         children: [
           {
-            componentType: "group",
             label: "nested group",
             children: [
               {

@@ -59,7 +59,6 @@ function group(key: string) {
   return {
     key,
     label: key,
-    componentType: "group",
     visible: true,
     children: [],
   }

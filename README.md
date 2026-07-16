@@ -2,7 +2,9 @@
 
 `schemx` 是一套 Schema 驱动的动态表单引擎，用来把「表单业务规则」从「具体 UI 组件」中拆出来。
 
-它的核心目标不是再封装一个输入框组件库，而是解决动态表单中最容易失控的部分：字段状态、校验、联动、运行时 schema 更新、可渲染视图投影和 UI 适配边界。业务只描述 schema，core 负责把 schema 编译成稳定的运行时结构，上层适配器再把 ViewSchemas 渲染成具体界面。
+它的核心目标不是再封装一个输入框组件库，而是解决动态表单中最容易失控的部分：字段状态、校验、联动、运行时 Schema 更新、可渲染视图投影和 UI 适配边界。业务只描述 Schema，Core 负责把 Schema 编译成稳定的运行时结构，上层适配器再把 ViewSchemas 渲染成具体界面。
+
+[包说明](#包说明) · [快速开始](#快速开始) · [示例项目](#示例项目) · [本地开发](#本地开发) · [发布脚本](#发布脚本)
 
 ## 解决的问题
 
@@ -12,13 +14,13 @@
 - 条件字段和远程配置会改变表单结构，普通静态表单模型难以表达。
 - 表单值、字段状态、校验状态和 UI 渲染耦合后，局部改动容易触发大范围重渲染。
 - 同一份表单规则需要在不同 UI 组件库、业务系统或端上复用。
-- 字符串字段路径、动态 schema 和 renderer props 难以获得可靠类型提示。
+- 字符串字段路径、动态 Schema 和 Renderer Props 难以获得可靠类型提示。
 
 `schemx` 将这些问题拆成几个稳定边界：
 
 - **Schema 协议**：用配置描述字段、分组、动态属性和条件子树。
 - **运行时表单引擎**：管理值、初始值、touched、pending、校验和提交。
-- **运行时 schema node**：把原始 schema 编译为可增量更新的运行时结构。
+- **运行时 Schema Node**：把原始 Schema 编译为可增量更新的运行时结构。
 - **ViewSchemas 投影**：向 UI 层输出已经解析好的渲染数据。
 - **Renderer registry**：把 `componentType` 映射到具体 UI 组件。
 - **Validator registry**：复用字符串规则，并接入 Standard Schema 生态。
@@ -31,12 +33,33 @@
 | [`@schemx/vue`](./packages/vue)   | Vue 3 适配层                 | 把 ViewSchemas 渲染为 Vue 组件树             |
 | [`@schemx/vant`](./packages/vant) | Vant renderer 适配包         | 使用 Vant 4 快速落地移动端动态表单           |
 
+## 快速开始
+
+根据项目所需的层级安装依赖：
+
+```bash
+# 仅使用框架无关的表单运行时
+pnpm add @schemx/core
+
+# 接入自定义 Vue Renderer
+pnpm add @schemx/vue @schemx/core vue
+
+# 使用内置 Vant Renderer
+pnpm add @schemx/vant @schemx/vue @schemx/core vant vue
+```
+
+各入口的完整示例、样式导入方式和 API 说明见对应的包文档：
+
+- [`@schemx/core` 使用说明](./packages/core/README.md)
+- [`@schemx/vue` 使用说明](./packages/vue/README.md)
+- [`@schemx/vant` 使用说明](./packages/vant/README.md)
+
 ## 架构边界
 
 ```text
 raw schemas
   -> @schemx/core
-  -> runtime schema node
+  -> runtime Schema Node
   -> validation / dependency / scheduler
   -> ViewSchemas
   -> @schemx/vue
@@ -44,7 +67,7 @@ raw schemas
   -> @schemx/vant 或业务 renderer
 ```
 
-`@schemx/core` 不依赖具体 UI 框架，也不渲染 DOM。它只负责把表单规则、字段状态和运行时 schema 维护好，并输出 UI 层可消费的 ViewSchemas。
+`@schemx/core` 不依赖具体 UI 框架，也不渲染 DOM。它只负责把表单规则、字段状态和运行时 Schema 维护好，并输出 UI 层可消费的 ViewSchemas。
 
 `@schemx/vue` 只负责 Vue 组件树的适配，不绑定具体组件库。业务可以通过 `rendererRegistry` 接入自己的输入框、选择器、上传组件或设计系统组件。
 
@@ -54,13 +77,13 @@ raw schemas
 
 ## 何时使用
 
-- 表单字段来自后端配置、低代码配置或业务 schema。
+- 表单字段来自后端配置、低代码配置或业务 Schema。
 - 字段显隐、禁用、只读、必填、校验规则需要根据其他字段动态变化。
-- 表单结构会在运行时增删，例如条件字段、多步骤问卷或远程 schema。
+- 表单结构会在运行时增删，例如条件字段、多步骤问卷或远程 Schema。
 - 同一套表单能力需要复用到多个 UI 组件库或多个业务端。
 - 需要把表单运行时能力和 UI 组件实现解耦。
 
-如果只是少量静态字段，且没有字段联动、动态 schema 或跨端复用诉求，直接使用 UI 组件库自带表单能力通常更简单。
+如果只是少量静态字段，且没有字段联动、动态 Schema 或跨端复用诉求，直接使用 UI 组件库自带表单能力通常更简单。
 
 ## 选择入口
 
@@ -68,11 +91,11 @@ raw schemas
 - 已有 Vue 组件库或业务组件，需要自己注册 renderer：安装 `@schemx/vue`、`@schemx/core` 和 `vue`。
 - 项目使用 Vue 3 + Vant 4，希望直接使用内置移动端 renderer：安装 `@schemx/vant`、`@schemx/vue`、`@schemx/core`、`vant` 和 `vue`。
 
-具体 API 和使用示例见各包 README。
+具体 API 和使用示例见各包文档。
 
 ## 容器状态与动态子树
 
-`componentType: "group"` 和 `componentType: "dependency"` 都可以作为容器使用 `visible`、`readonly`、`disabled` 与 `dependencies`。容器状态会递归传递给所有后代字段：祖先隐藏时后代不可见，祖先只读或禁用时后代不能通过自身配置解除限制。
+Group 和 Dependency 都可以作为容器使用 `visible`、`readonly`、`disabled` 与 `dependencies`。Group 通过 `children` 声明，Dependency 通过 `to` 和 `renderer` 声明；容器不使用 `componentType`。容器状态会递归传递给所有后代字段：祖先隐藏时后代不可见，祖先只读或禁用时后代不能通过自身配置解除限制。
 
 ```ts
 const schemas = [
@@ -80,7 +103,6 @@ const schemas = [
   {
     key: "profile",
     label: "资料",
-    componentType: "group",
     collapsible: true,
     destroyOnCollapse: false,
     dependencies: {
@@ -94,27 +116,37 @@ const schemas = [
 
 Dependency 的 `to` 只负责重建动态子树；容器 `dependencies.triggerFields` 只负责更新呈现状态。两者可以监听同一字段，但需要分别声明。容器 dependencies 只支持 `visible`、`readonly`、`disabled`，不支持副作用型 `trigger`。
 
-可在 [Vant 示例项目](./examples/vant) 中直接操作 Group 和 Dependency 的容器状态，完整语义见 [容器状态设计文档](./docs/group-state-extension-design.md)。
+可在 [Vant 示例项目](./examples/vant) 中直接操作 Group 和 Dependency 的容器状态。
 
-## 设计文档
+## 示例项目
 
-- [Group 与 Dependency 容器状态扩展方案](./docs/group-state-extension-design.md)：定义容器状态继承、动态依赖、折叠行为、运行时改造范围和验收标准。
+- [Vant 示例](./examples/vant/README.md)：覆盖内置 Renderer、校验、联动、动态 Schema、容器状态和插槽。
+- [uni-app + Vant 示例](./examples/uniapp-vant)：验证 H5 与多种小程序构建目标下的集成方式。
 
 ## 本地开发
 
+仓库使用 pnpm workspace。先安装依赖，再通过根命令交互选择要运行的包、构建插件或示例：
+
 ```bash
 pnpm install
+pnpm dev
+```
+
+也可以绕过交互选择，直接运行指定 workspace：
+
+```bash
 pnpm --filter vant-demo dev
 ```
 
-常用检查命令：
-
-```bash
-pnpm build
-pnpm test
-pnpm type-check
-pnpm lint
-```
+| 命令                | 作用                                              |
+| ------------------- | ------------------------------------------------- |
+| `pnpm dev`          | 交互选择并启动具有 `dev` 或 `dev:h5` 脚本的目标。 |
+| `pnpm build`        | 交互选择并构建目标；非交互环境默认构建全部目标。  |
+| `pnpm test`         | 交互选择并运行测试；非交互环境默认运行全部测试。  |
+| `pnpm type-check`   | 交互选择并执行 TypeScript 类型检查。              |
+| `pnpm lint`         | 交互选择并执行 ESLint 检查。                      |
+| `pnpm format:check` | 交互选择并执行 Prettier 格式检查。                |
+| `pnpm check`        | 交互选择并执行目标自身的完整静态检查。            |
 
 ## 发布脚本
 
@@ -170,10 +202,3 @@ pnpm release:publish alpha vue
 | `beta`   | 外部测试，功能基本完整        |
 | `rc`     | release candidate，候选正式版 |
 | `next`   | 下一版本预览                  |
-
-## 相关文档
-
-- [core 使用说明](./packages/core)
-- [Vue 适配层说明](./packages/vue)
-- [Vant renderer 说明](./packages/vant)
-- [Vant 示例项目](./examples/vant)

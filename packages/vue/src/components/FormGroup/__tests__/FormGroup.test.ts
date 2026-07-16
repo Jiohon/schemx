@@ -216,7 +216,6 @@ function createSchema(
 ): SchemxViewGroupSchema {
   return {
     key: "profile",
-    componentType: "group",
     label: "资料",
     children: [],
     visible: true,

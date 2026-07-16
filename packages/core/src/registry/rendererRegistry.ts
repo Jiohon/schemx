@@ -346,6 +346,12 @@ export type RendererRegistryType<
  * @remarks
  * 用于组件内部创建独立的注册中心实例，
  * 不建议外部直接使用，除非有特殊需求。
+ *
+ * @example
+ * ```ts
+ * const registry = createRendererRegistry("input")
+ * registry.register("input", InputRenderer)
+ * ```
  */
 export function createRendererRegistry<T extends SchemxRendererKey, R = unknown>(
   defaultType?: T

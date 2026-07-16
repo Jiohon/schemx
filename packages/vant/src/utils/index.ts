@@ -32,6 +32,12 @@ export function getFieldProps<T extends Record<string, any>>(
 
 /**
  * 判断值是否应按空值展示。
+ *
+ * @example
+ * ```ts
+ * isEmptyDisplayValue([]) // => true
+ * isEmptyDisplayValue(0)  // => false
+ * ```
  */
 export function isEmptyDisplayValue(value: unknown): boolean {
   return (
@@ -46,6 +52,12 @@ export function isEmptyDisplayValue(value: unknown): boolean {
  * 获取只读态展示值。
  *
  * 只在值为空时回退到 readonlyPlaceholder，保留 0、false 等有效值。
+ *
+ * @example
+ * ```ts
+ * getReadonlyDisplayValue(undefined, "未填写") // => "未填写"
+ * getReadonlyDisplayValue(0, "未填写")         // => 0
+ * ```
  */
 export function getReadonlyDisplayValue<T>(
   value: T,
@@ -60,6 +72,12 @@ export type RendererMode = "editable" | "disabled" | "readonly"
  * 解析渲染器当前呈现模式。
  *
  * disabled/readonly 仍会阻止交互。
+ *
+ * @example
+ * ```ts
+ * resolveRendererMode({ readonly: true }) // => "readonly"
+ * resolveRendererMode({ disabled: true, readonly: true }) // => "disabled"
+ * ```
  */
 export function resolveRendererMode(options: {
   disabled?: boolean
@@ -73,6 +91,12 @@ export function resolveRendererMode(options: {
 
 /**
  * 判断当前状态是否允许用户交互。
+ *
+ * @example
+ * ```ts
+ * isRendererInteractive("editable") // => true
+ * isRendererInteractive("disabled") // => false
+ * ```
  */
 export function isRendererInteractive(mode: RendererMode): boolean {
   return mode === "editable"
@@ -102,16 +126,18 @@ export interface FindTreeItemResult {
  * @param options.valueKey - value 字段名，默认 `"value"`
  * @param options.childrenKey - children 字段名，默认 `"children"`
  *
- * @returns 查找结果，包含匹配节点、label 路径和 value 路径
+ * @returns `{ node, labels, values }`：匹配节点、label 路径和 value 路径
  *
  * @example
- * const result = findTreeItem(options, "guangzhou", {
+ * const result = findTreeItem(tree, "guangzhou", {
  *   labelKey: "text",
  *   valueKey: "value",
  *   childrenKey: "children",
  * })
- * // result.labels => ["广东", "广州"]
- * // result.values => ["guangdong", "guangzhou"]
+ * const { node, labels, values } = result
+ * // node => { text: "广州", value: "guangzhou" }
+ * // labels => ["广东", "广州"]
+ * // values => ["guangdong", "guangzhou"]
  */
 export function findTreeItem(
   tree: any[],

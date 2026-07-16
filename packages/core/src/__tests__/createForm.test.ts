@@ -161,9 +161,7 @@ describe("渲染器注册中心下沉 属性测试", () => {
 
           const form = createForm({ rendererRegistry: registry })
 
-          expect(form.getRenderer(queryType)).toBe(
-            registry.getRenderer(queryType)
-          )
+          expect(form.getRenderer(queryType)).toBe(registry.getRenderer(queryType))
 
           form.destroy()
         }
@@ -312,7 +310,6 @@ describe("字段规则注册上下文 单元测试", () => {
           initialValue: "express",
         },
         {
-          componentType: "dependency",
           to: ["orderType"],
           renderer: async (values: any) => {
             await Promise.resolve()
@@ -322,7 +319,6 @@ describe("字段规则注册上下文 单元测试", () => {
             return [
               {
                 label: "标准订单配置",
-                componentType: "group",
                 children: [
                   {
                     name: "expectedDate",
@@ -337,7 +333,6 @@ describe("字段规则注册上下文 单元测试", () => {
                     componentType: "radio",
                   },
                   {
-                    componentType: "dependency",
                     to: ["deliveryMode"],
                     renderer: (deliveryValues: any) => {
                       if (deliveryValues.deliveryMode !== "pickup") return []
@@ -401,7 +396,6 @@ describe("字段规则注册上下文 单元测试", () => {
           componentType: "selector",
         },
         {
-          componentType: "dependency",
           to: ["orderType"],
           renderer: (values: any) => {
             if (values.orderType !== "standard") return []
@@ -409,7 +403,6 @@ describe("字段规则注册上下文 单元测试", () => {
             return [
               {
                 label: "标准订单配置",
-                componentType: "group",
                 children: [
                   {
                     name: "deliveryMode",
@@ -418,7 +411,6 @@ describe("字段规则注册上下文 单元测试", () => {
                     initialValue: "courier",
                   },
                   {
-                    componentType: "dependency",
                     to: ["deliveryMode"],
                     renderer: (deliveryValues: any) => {
                       if (deliveryValues.deliveryMode !== "courier") return []
@@ -446,7 +438,6 @@ describe("字段规则注册上下文 单元测试", () => {
     expect(form.getViewSchemas()).toMatchObject([
       { name: "orderType" },
       {
-        componentType: "group",
         children: [{ name: "deliveryMode" }, { name: "receiverPhone" }],
       },
     ])
@@ -460,7 +451,6 @@ describe("字段规则注册上下文 单元测试", () => {
         return [
           {
             label: "标准订单配置",
-            componentType: "group",
             children: [
               {
                 name: "quantity",
@@ -484,7 +474,6 @@ describe("字段规则注册上下文 单元测试", () => {
       return [
         {
           label: "加急订单配置",
-          componentType: "group",
           children: [
             {
               name: "expressLevel",
@@ -509,7 +498,6 @@ describe("字段规则注册上下文 单元测试", () => {
           componentType: "selector",
         },
         {
-          componentType: "dependency",
           to: ["orderType"],
           renderer,
         },
@@ -521,7 +509,6 @@ describe("字段规则注册上下文 单元测试", () => {
     expect(form.getViewSchemas()).toMatchObject([
       { name: "orderType" },
       {
-        componentType: "group",
         label: "标准订单配置",
         children: [{ name: "quantity" }, { name: "expectedDate" }],
       },
@@ -534,7 +521,6 @@ describe("字段规则注册上下文 单元测试", () => {
     expect(form.getViewSchemas()).toMatchObject([
       { name: "orderType" },
       {
-        componentType: "group",
         label: "加急订单配置",
         children: [{ name: "expressLevel" }, { name: "expressFee" }],
       },
@@ -553,14 +539,12 @@ describe("字段规则注册上下文 单元测试", () => {
           componentType: "selector",
         },
         {
-          componentType: "dependency",
           to: ["orderType"],
           renderer: (values: any) => {
             if (values.orderType === "standard") {
               return [
                 {
                   label: "标准订单配置",
-                  componentType: "group",
                   children: [
                     {
                       name: "quantity",
@@ -579,7 +563,6 @@ describe("字段规则注册上下文 单元测试", () => {
             return [
               {
                 label: "加急订单配置",
-                componentType: "group",
                 children: [
                   {
                     name: "expressLevel",
@@ -588,7 +571,6 @@ describe("字段规则注册上下文 单元测试", () => {
                     initialValue: "priority",
                   },
                   {
-                    componentType: "dependency",
                     to: ["expressLevel"],
                     renderer: (expressValues: any) => {
                       if (expressValues.expressLevel !== "priority") {
@@ -620,7 +602,6 @@ describe("字段规则注册上下文 单元测试", () => {
     expect(form.getViewSchemas()).toMatchObject([
       { name: "orderType" },
       {
-        componentType: "group",
         label: "加急订单配置",
         children: [{ name: "expressLevel" }, { name: "expressFee" }],
       },
@@ -639,7 +620,6 @@ describe("字段规则注册上下文 单元测试", () => {
           componentType: "selector",
         },
         {
-          componentType: "dependency",
           to: ["orderType"],
           renderer: (values: any) => {
             if (values.orderType !== "standard") return []
@@ -647,7 +627,6 @@ describe("字段规则注册上下文 单元测试", () => {
             return [
               {
                 label: "标准订单配置",
-                componentType: "group",
                 children: [
                   {
                     name: "quantity",
@@ -681,7 +660,6 @@ describe("字段规则注册上下文 单元测试", () => {
     expect(form.getViewSchemas()).toMatchObject([
       { name: "orderType" },
       {
-        componentType: "group",
         label: "标准订单配置",
         children: [{ name: "quantity" }],
       },
@@ -696,7 +674,6 @@ describe("字段规则注册上下文 单元测试", () => {
       initialValues: { user: { name: "Alice" } },
       schemas: [
         {
-          componentType: "group",
           label: "User Group",
           children: [
             {
@@ -842,9 +819,7 @@ describe("RulesRegistry 快捷方法 属性测试", () => {
           // 路径 D: 注册另一个渲染器并查询
           const renderer2 = { __type: rendererType + "_2" }
           form.registerRenderer(rendererType + "_via_internals", renderer2)
-          expect(
-            form.getRenderer(rendererType + "_via_internals")
-          ).toBe(renderer2)
+          expect(form.getRenderer(rendererType + "_via_internals")).toBe(renderer2)
 
           form.destroy()
         }
@@ -955,9 +930,7 @@ describe("动态 schemas", () => {
   it("setSchemas 后更新 ViewSchemas 并保留已有字段值", () => {
     const form = createForm({
       initialValues: { name: "Alice" } as any,
-      schemas: [
-        { name: "name", label: "姓名", componentType: "input" },
-      ],
+      schemas: [{ name: "name", label: "姓名", componentType: "input" }],
     })
 
     form.setFieldValue("name", "Bob")
@@ -982,10 +955,7 @@ describe("动态 schemas", () => {
       schemas: [
         {
           label: "用户信息",
-          componentType: "group",
-          children: [
-            { name: "name", label: "姓名", componentType: "input" },
-          ],
+          children: [{ name: "name", label: "姓名", componentType: "input" }],
         },
       ],
       lifecycleHooks: {
@@ -1006,9 +976,7 @@ describe("动态 schemas", () => {
 
   it("updateSchemas 支持基于当前 schemas 派生下一版", () => {
     const form = createForm({
-      schemas: [
-        { name: "name", label: "姓名", componentType: "input" },
-      ],
+      schemas: [{ name: "name", label: "姓名", componentType: "input" }],
     })
 
     form.updateSchemas((schemas) => [
@@ -1057,9 +1025,7 @@ describe("动态 schemas", () => {
 
   it("updateFieldSchema 应同步更新 renderer componentProps 中的静态状态", () => {
     const form = createForm({
-      schemas: [
-        { name: "name", label: "姓名", componentType: "input" },
-      ],
+      schemas: [{ name: "name", label: "姓名", componentType: "input" }],
     })
 
     form.updateFieldSchema("name", {
@@ -1079,18 +1045,14 @@ describe("动态 schemas", () => {
 
   it("setSchemas 仅修改 group 属性时通知 ViewSchemas 订阅", async () => {
     const form = createForm({
-      schemas: [
-        { componentType: "group", label: "旧分组", children: [] },
-      ] as any,
+      schemas: [{ label: "旧分组", children: [] }] as any,
     })
     const calls: unknown[] = []
     const unsubscribe = form.subscribeViewSchemas((schemas) => {
       calls.push(schemas)
     })
 
-    form.setSchemas([
-      { componentType: "group", label: "新分组", children: [] },
-    ] as any)
+    form.setSchemas([{ label: "新分组", children: [] }] as any)
 
     await new Promise((resolve) => setTimeout(resolve, 25))
 

@@ -1,7 +1,7 @@
 /**
  * FormGroup - 分组字段组件
  *
- * 用于渲染 componentType 为 "group" 的分组字段配置。
+ * 用于渲染包含 children 的 Group ViewSchema。
  * 支持可折叠的分组容器，内部渲染子 columns。
  *
  * @module components/FormGroup

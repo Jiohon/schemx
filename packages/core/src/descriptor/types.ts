@@ -168,7 +168,7 @@ export interface GroupDescriptor<
 /**
  * 依赖描述符，描述由 dependency schema 生成的动态子树。
  *
- * 外部 `componentType: "dependency"` schema 会被编译为该描述符。
+ * 外部具有 `to` 和 `renderer` 的 Dependency Schema 会被编译为该描述符。
  * 当 trigger 字段变化时，render 函数被调用，返回新的 schema，再由 commit 边界前编译。
  *
  * @typeParam TValues - 表单值类型。

@@ -66,17 +66,23 @@ export function normalizeError(err: unknown): Error {
  * @typeParam TValues - 表单值类型
  * @param options - 字典配置选项
  * @param fieldName - 当前字段名，用于 resetOnDepsChange 时清空字段值
- * @returns 响应式选项列表、loading/error 状态及控制方法
+ * @returns `{ list, loading, error, loadDict, refresh, mutate }`：响应式选项、
+ * 加载与错误状态，以及加载、刷新和本地更新方法
  *
  * @example
  * ```ts
  * // 基础用法
- * const { list } = useDictionary({
+ * const { list, loading, error, loadDict, refresh, mutate } = useDictionary({
  *   api: async () => {
  *     const res = await fetch('/api/options')
  *     return res.json()
  *   },
  * })
+ *
+ * await loadDict() // 主动加载
+ * await refresh()  // 使用当前配置重新加载
+ * mutate([{ label: "手动选项", value: "manual" }])
+ * console.log(list.value, loading.value, error.value)
  *
  * // 依赖联动（带泛型）
  * const { list } = useDictionary<MyFormValues>({

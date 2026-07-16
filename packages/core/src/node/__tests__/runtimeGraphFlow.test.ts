@@ -44,7 +44,6 @@ describe("runtime node flow", () => {
     commitSchemas(root, [
       {
         key: "slot",
-        componentType: "group",
         label: "slot",
         children: [createRawFieldSchema("child", "child")],
       },
@@ -64,11 +63,9 @@ describe("runtime node flow", () => {
 
     commitSchemas(root, [
       {
-        componentType: "group",
         label: "parent",
         children: [
           {
-            componentType: "group",
             label: "child",
             children: [createRawFieldSchema("field", "field")],
           },

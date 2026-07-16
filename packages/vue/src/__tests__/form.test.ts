@@ -44,6 +44,33 @@ const CountRenderer = defineComponent({
 })
 
 describe("SchemxForm 动态 schemas", () => {
+  it("group 和 dependency 可以作为普通 Renderer key", async () => {
+    const rendererRegistry = createRendererRegistry()
+    rendererRegistry.register("group", markRaw(InputRenderer))
+    rendererRegistry.register("dependency", markRaw(InputRenderer))
+
+    const wrapper = mount(SchemxForm, {
+      props: {
+        rendererRegistry,
+        schemas: [
+          { name: "groupField", label: "Group 字段", componentType: "group" },
+          {
+            name: "dependencyField",
+            label: "Dependency 字段",
+            componentType: "dependency",
+          },
+        ],
+      },
+    })
+
+    await nextTick()
+
+    expect(wrapper.findAll('[data-testid="input-renderer"]')).toHaveLength(2)
+    expect(wrapper.find(".schemx-group").exists()).toBe(false)
+
+    wrapper.unmount()
+  })
+
   it("字段变化时以最新表单快照同步 modelValue", async () => {
     const wrapper = mount(SchemxForm, {
       props: {
@@ -110,7 +137,6 @@ describe("SchemxForm 动态 schemas", () => {
             componentType: "selector",
           },
           {
-            componentType: "dependency",
             to: ["orderType"],
             renderer: (values: any) => {
               dependencyCalls += 1
@@ -119,7 +145,6 @@ describe("SchemxForm 动态 schemas", () => {
                 return [
                   {
                     label: "标准订单配置",
-                    componentType: "group",
                     children: [
                       {
                         name: "quantity",
@@ -138,7 +163,6 @@ describe("SchemxForm 动态 schemas", () => {
               return [
                 {
                   label: "加急订单配置",
-                  componentType: "group",
                   children: [
                     {
                       name: "expressLevel",
@@ -147,7 +171,6 @@ describe("SchemxForm 动态 schemas", () => {
                       initialValue: "priority",
                     },
                     {
-                      componentType: "dependency",
                       to: ["expressLevel"],
                       renderer: (expressValues: any) => {
                         if (expressValues.expressLevel !== "priority") {
@@ -181,7 +204,6 @@ describe("SchemxForm 动态 schemas", () => {
     expect((wrapper.vm as any).getViewSchemas()).toMatchObject([
       { name: "orderType" },
       {
-        componentType: "group",
         label: "标准订单配置",
         children: [{ name: "quantity" }],
       },
@@ -268,13 +290,11 @@ describe("SchemxForm 动态 schemas", () => {
         rendererRegistry,
         schemas: [
           {
-            componentType: "group",
             label: "分组一",
             children: [{ name: "city", label: "城市", componentType: "input" }],
           },
           { name: "name", label: "姓名", componentType: "input" },
           {
-            componentType: "group",
             label: "分组二",
             children: [{ name: "street", label: "街道", componentType: "input" }],
           },
@@ -323,7 +343,6 @@ describe("SchemxForm 动态 schemas", () => {
         rendererRegistry,
         schemas: [
           {
-            componentType: "group",
             label: "前置分组",
             children: [{ name: "city", label: "城市", componentType: "input" }],
           },
@@ -335,7 +354,6 @@ describe("SchemxForm 动态 schemas", () => {
           },
           { name: "name", label: "姓名", componentType: "input" },
           {
-            componentType: "group",
             label: "中间分组",
             children: [{ name: "street", label: "街道", componentType: "input" }],
           },
@@ -347,7 +365,6 @@ describe("SchemxForm 动态 schemas", () => {
             visible: false,
           },
           {
-            componentType: "group",
             label: "后置分组",
             children: [{ name: "postcode", label: "邮编", componentType: "input" }],
           },

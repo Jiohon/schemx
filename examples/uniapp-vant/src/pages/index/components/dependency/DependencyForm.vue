@@ -2,7 +2,7 @@
   <div class="example-container">
     <h2>字段联动示例</h2>
     <p class="description">
-      演示 componentType: "dependency" 实现复杂字段联动：
+      演示 Dependency Schema 实现复杂字段联动：
       根据字段值动态生成不同的表单结构，多个 dependency 组合使用
     </p>
 
@@ -109,7 +109,7 @@
   /**
    * 表单 Schema 配置
    *
-   * 通过 componentType: "dependency" 覆盖几类复杂场景：
+   * 通过 Dependency Schema 覆盖几类复杂场景：
    * - 多层嵌套 dependency：orderType -> deliveryMode/customCategory -> 子字段
    * - 异步 dependency 竞态：expressLevel 快速切换时旧结果应被丢弃
    * - 动态 group children：dependency renderer 返回 group + children
@@ -134,7 +134,6 @@
 
     /** 主 dependency：根据 orderType 动态生成不同订单结构 */
     {
-      componentType: "dependency",
       to: ["orderType"],
       renderer: async (values) => {
         console.log("values.orderType", values.orderType)
@@ -145,7 +144,6 @@
           return [
             {
               label: "标准订单配置",
-              componentType: "group",
               children: [
                 {
                   name: "quantity",
@@ -175,7 +173,6 @@
                   },
                 },
                 {
-                  componentType: "dependency",
                   to: ["deliveryMode"],
                   renderer: (deliveryValues) => {
                     if (deliveryValues.deliveryMode === "pickup") {
@@ -236,7 +233,6 @@
                   },
                 },
                 {
-                  componentType: "dependency",
                   to: ["quantity"],
                   renderer: (quantityValues) => {
                     if ((quantityValues.quantity || 0) < 100) return []
@@ -268,7 +264,6 @@
           return [
             {
               label: "加急订单配置",
-              componentType: "group",
               children: [
                 {
                   name: "expressLevel",
@@ -286,7 +281,6 @@
                   rules: "required",
                 },
                 {
-                  componentType: "dependency",
                   to: ["expressLevel"],
                   renderer: async (expressValues) => {
                     const level = expressValues.expressLevel
@@ -370,7 +364,6 @@
         return [
           {
             label: "定制订单配置",
-            componentType: "group",
             children: [
               {
                 name: "customCategory",
@@ -388,7 +381,6 @@
                 rules: "required",
               },
               {
-                componentType: "dependency",
                 to: ["customCategory"],
                 renderer: (customValues) => {
                   if (customValues.customCategory === "event") {
@@ -434,7 +426,6 @@
                         },
                       },
                       {
-                        componentType: "dependency",
                         to: ["approvalLevel"],
                         renderer: (approvalValues) => {
                           if (approvalValues.approvalLevel !== "legal") return []
@@ -503,7 +494,6 @@
 
     /** 全局 dependency：根据 additionalServices 动态生成多个可卸载子树 */
     {
-      componentType: "dependency",
       to: ["additionalServices"],
       renderer: (values) => {
         const services = values.additionalServices || []
@@ -513,7 +503,6 @@
         if (services.includes("invoice")) {
           dynamicServices.push({
             label: "发票信息",
-            componentType: "group",
             children: [
               {
                 name: "invoiceAttachment",
@@ -543,7 +532,6 @@
         if (services.includes("gift_wrap")) {
           dynamicServices.push({
             label: "礼品包装",
-            componentType: "group",
             children: [
               {
                 name: "giftWrapStyle",
@@ -560,7 +548,6 @@
                 rules: "required",
               },
               {
-                componentType: "dependency",
                 to: ["giftWrapStyle"],
                 renderer: (giftValues) => {
                   if (giftValues.giftWrapStyle !== "festival") return []
@@ -590,7 +577,6 @@
         if (services.includes("warranty")) {
           dynamicServices.push({
             label: "延保服务",
-            componentType: "group",
             children: [
               {
                 name: "warrantyYears",

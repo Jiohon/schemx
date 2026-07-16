@@ -19,7 +19,6 @@ describe("dependency flow", () => {
     commitSchemas(root, [
       {
         key: "dep",
-        componentType: "dependency",
         to: ["mode"],
         renderer: vi.fn().mockResolvedValue([]),
       },
@@ -40,7 +39,6 @@ describe("dependency flow", () => {
     commitSchemas(root, [
       {
         key: "dep",
-        componentType: "dependency",
         to: ["kind"],
         renderer: vi.fn().mockResolvedValue([]),
       },
@@ -69,7 +67,6 @@ describe("dependency flow", () => {
     commitSchemas(root, [
       {
         key: "dep",
-        componentType: "dependency",
         to: ["mode"],
         renderer,
       },
@@ -91,7 +88,6 @@ describe("dependency flow", () => {
     commitSchemas(root, [
       {
         key: "dep",
-        componentType: "dependency",
         to: ["mode"],
         renderer,
       },
@@ -104,7 +100,6 @@ describe("dependency flow", () => {
     commitSchemas(root, [
       {
         key: "dep",
-        componentType: "dependency",
         to: ["kind"],
         renderer,
       },
@@ -123,7 +118,6 @@ describe("dependency flow", () => {
     commitSchemas(root, [
       {
         key: "dep",
-        componentType: "dependency",
         to: ["mode"],
         renderer: vi.fn().mockResolvedValue([]),
       },
@@ -161,7 +155,6 @@ describe("dependency flow", () => {
     commitSchemas(root, [
       {
         key: "dep",
-        componentType: "dependency",
         to: ["mode"],
         renderer: firstRenderer,
       },
@@ -171,7 +164,6 @@ describe("dependency flow", () => {
     commitSchemas(root, [
       {
         key: "dep",
-        componentType: "dependency",
         to: ["mode"],
         renderer: secondRenderer,
       },

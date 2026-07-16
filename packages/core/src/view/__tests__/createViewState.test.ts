@@ -206,7 +206,6 @@ function createGroupDescriptor(): GroupDescriptor {
     type: "group",
     key: "group:0",
     staticSchema: {
-      componentType: "group",
       label: "分组",
     },
     staticState: {

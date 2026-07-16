@@ -53,9 +53,17 @@ import type {
 /**
  * 监听所有字段变化
  *
- * @param callback - 全局变化回调
+ * @param callback - 全局变化回调；payload 为 `{ changedPaths, changedValues, prevValues }`
  * @param options - 监听选项
  * @returns 取消监听函数
+ *
+ * @example
+ * ```ts
+ * const dispose = useWatch((values, payload) => {
+ *   const { changedPaths, changedValues, prevValues } = payload
+ *   console.log(changedPaths, changedValues, prevValues, values)
+ * })
+ * ```
  */
 export function useWatch<T extends Values>(
   callback: WatchAllCallback<T>,
@@ -65,9 +73,16 @@ export function useWatch<T extends Values>(
  * 监听单个字段变化
  *
  * @param name - 字段路径
- * @param callback - 单字段变化回调
+ * @param callback - 单字段变化回调；payload 为 `{ value, prevValue }`
  * @param options - 监听选项
  * @returns 取消监听函数
+ *
+ * @example
+ * ```ts
+ * useWatch("email", (_values, payload) => {
+ *   console.log(payload.prevValue, payload.value)
+ * })
+ * ```
  */
 export function useWatch<T extends Values>(
   name: NamePath<T>,
@@ -78,9 +93,16 @@ export function useWatch<T extends Values>(
  * 监听多个字段变化
  *
  * @param names - 字段路径数组
- * @param callback - 多字段变化回调
+ * @param callback - 多字段变化回调；payload 为 `{ changedPaths, changedValues, prevValues }`
  * @param options - 监听选项
  * @returns 取消监听函数
+ *
+ * @example
+ * ```ts
+ * useWatch(["firstName", "lastName"], (_values, payload) => {
+ *   console.log(payload.changedPaths, payload.changedValues, payload.prevValues)
+ * })
+ * ```
  */
 export function useWatch<T extends Values>(
   names: NamePath<T>[],
@@ -116,9 +138,17 @@ export function useWatch<T extends Values>(
  * 自动绑定 formContext 并在组件卸载时取消监听。
  *
  * @param name - 要监听的字段路径
- * @param callback - 字段变化回调
+ * @param callback - 字段变化回调；payload 为 `{ value, prevValue }`
  * @param options - 可选配置
  * @returns 取消监听函数
+ *
+ * @example
+ * ```ts
+ * useWatchField("email", (_values, payload) => {
+ *   const { value, prevValue } = payload
+ *   console.log(prevValue, value)
+ * })
+ * ```
  */
 export function useWatchField<T extends Values = Values>(
   name: NamePath<T>,
@@ -135,9 +165,17 @@ export function useWatchField<T extends Values = Values>(
  * 自动绑定 formContext 并在组件卸载时取消监听。
  *
  * @param names - 要监听的字段路径数组
- * @param callback - 字段变化回调
+ * @param callback - 字段变化回调；payload 为 `{ changedPaths, changedValues, prevValues }`
  * @param options - 可选配置
  * @returns 取消监听函数
+ *
+ * @example
+ * ```ts
+ * useWatchFields(["firstName", "lastName"], (_values, payload) => {
+ *   const { changedPaths, changedValues, prevValues } = payload
+ *   console.log(changedPaths, changedValues, prevValues)
+ * })
+ * ```
  */
 export function useWatchFields<T extends Values>(
   names: NamePath<T>[],
@@ -153,9 +191,17 @@ export function useWatchFields<T extends Values>(
  * 等价于 `useWatch(callback, options)`，语义更明确。
  * 自动绑定 formContext 并在组件卸载时取消监听。
  *
- * @param callback - 全局变化回调
+ * @param callback - 全局变化回调；payload 为 `{ changedPaths, changedValues, prevValues }`
  * @param options - 可选配置
  * @returns 取消监听函数
+ *
+ * @example
+ * ```ts
+ * useWatchAll((_values, payload) => {
+ *   const { changedPaths, changedValues, prevValues } = payload
+ *   console.log(changedPaths, changedValues, prevValues)
+ * })
+ * ```
  */
 export function useWatchAll<T extends Values = Values>(
   callback: WatchAllCallback<T>,

@@ -187,7 +187,7 @@ const form = createForm({
 type Dynamic<T, V extends Values = Values> = T | ((values: V) => T | Promise<T>)
 ```
 
-它表示静态值，或接收当前表单值并返回同步/异步结果的函数。当前普通字段的内置属性并未直接声明为 `Dynamic`；字段联动应使用 `dependencies`，动态子树应使用 `componentType: "dependency"`。业务方扩展 `SchemxFieldDefinition` 时也可以复用此类型。
+它表示静态值，或接收当前表单值并返回同步/异步结果的函数。当前普通字段的内置属性并未直接声明为 `Dynamic`；字段联动应使用 `dependencies`，动态子树应使用带 `to` 和 `renderer` 的 Dependency Schema。业务方扩展 `SchemxFieldDefinition` 时也可以复用此类型。
 
 ### Group Schema
 
@@ -197,7 +197,6 @@ Group 对应 `SchemxGroupField<TValues>`，用于组织嵌套字段。
 | ------------------- | -------------------------------------- | ---- | ------------------------------------------------------------------------------------- |
 | `key`               | `string`                               | 否   | 稳定身份；未设置时由 Core 为 Descriptor 和 ViewSchema 生成，不修改传入的 Raw Schema。 |
 | `label`             | `string`                               | 是   | 分组标签。                                                                            |
-| `componentType`     | `"group"`                              | 是   | 固定值。                                                                              |
 | `children`          | `SchemxField<TValues>[]`               | 是   | 子字段、子分组或子 Dependency 列表。                                                  |
 | `visible`           | `boolean`                              | 否   | 是否显示整棵子树；隐藏时后代停止校验并清空错误，但保留字段值。                        |
 | `readonly`          | `boolean`                              | 否   | 是否强制后代字段只读。                                                                |
@@ -217,7 +216,6 @@ import { createForm } from "@schemx/core"
 const form = createForm({
   schemas: [
     {
-      componentType: "group",
       label: "基础信息",
       dependencies: {
         triggerFields: ["editable"],
@@ -236,16 +234,15 @@ const form = createForm({
 
 Dependency 对应 `SchemxDependencyField<TValues, TNames>`，根据依赖字段生成一段动态子树。
 
-| 字段            | 类型                                                                                   | 必填 | 说明                                                                     |
-| --------------- | -------------------------------------------------------------------------------------- | ---- | ------------------------------------------------------------------------ |
-| `key`           | `string`                                                                               | 否   | 稳定身份；未设置时由 Core 生成，不修改传入的 Raw Schema。                |
-| `componentType` | `"dependency"`                                                                         | 是   | 固定值。                                                                 |
-| `to`            | `TNames`                                                                               | 是   | 触发重新执行结构 `renderer` 的字段路径列表。                             |
-| `renderer`      | `(values, form, context) => SchemxField<TValues>[] \| Promise<SchemxField<TValues>[]>` | 是   | 同步或异步生成子 Schema。                                                |
-| `visible`       | `boolean`                                                                              | 否   | 是否呈现动态子树；隐藏时 `renderer` 仍继续响应 `to`。                    |
-| `readonly`      | `boolean`                                                                              | 否   | 是否强制动态子树中的字段只读。                                           |
-| `disabled`      | `boolean`                                                                              | 否   | 是否强制动态子树中的字段禁用。                                           |
-| `dependencies`  | `SchemxContainerDependencies<TValues>`                                                 | 否   | 独立于 `to` 的状态依赖，用于动态覆盖 `visible`、`readonly`、`disabled`。 |
+| 字段           | 类型                                                                                   | 必填 | 说明                                                                     |
+| -------------- | -------------------------------------------------------------------------------------- | ---- | ------------------------------------------------------------------------ |
+| `key`          | `string`                                                                               | 否   | 稳定身份；未设置时由 Core 生成，不修改传入的 Raw Schema。                |
+| `to`           | `TNames`                                                                               | 是   | 触发重新执行结构 `renderer` 的字段路径列表。                             |
+| `renderer`     | `(values, form, context) => SchemxField<TValues>[] \| Promise<SchemxField<TValues>[]>` | 是   | 同步或异步生成子 Schema。                                                |
+| `visible`      | `boolean`                                                                              | 否   | 是否呈现动态子树；隐藏时 `renderer` 仍继续响应 `to`。                    |
+| `readonly`     | `boolean`                                                                              | 否   | 是否强制动态子树中的字段只读。                                           |
+| `disabled`     | `boolean`                                                                              | 否   | 是否强制动态子树中的字段禁用。                                           |
+| `dependencies` | `SchemxContainerDependencies<TValues>`                                                 | 否   | 独立于 `to` 的状态依赖，用于动态覆盖 `visible`、`readonly`、`disabled`。 |
 
 泛型参数 `TNames` 的约束是 `TNames extends readonly NamePath<TValues>[]`，因此 `to` 必须是只读或可变的字段路径数组。
 
@@ -298,7 +295,6 @@ const form = createForm<SurveyValues>({
   schemas: [
     { name: "mode", label: "模式", componentType: "select" },
     {
-      componentType: "dependency",
       to: ["mode"],
       renderer(values, formApi) {
         if (values.mode !== "advanced") return []
@@ -321,7 +317,6 @@ import { createForm } from "@schemx/core"
 const form = createForm({
   schemas: [
     {
-      componentType: "dependency",
       to: ["category"],
       async renderer(values, _form, { abortSignal }) {
         const response = await fetch(`/api/forms/${values.category}`, {

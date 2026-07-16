@@ -110,7 +110,6 @@ const schemas: SchemxField[] = [
   {
     key: "shipping",
     label: "配送信息",
-    componentType: "group",
     collapsible: true,
     destroyOnCollapse: false,
     dependencies: {

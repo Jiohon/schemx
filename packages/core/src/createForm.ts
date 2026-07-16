@@ -158,10 +158,16 @@ type Callbacks<
  *   rendererRegistry: createRendererRegistry(),
  *
  *   // 回调函数
- *   onValuesChange: (changed, latest) => {},
+ *   onValuesChange: (changedValues, latestValues) => {
+ *     console.log(changedValues, latestValues)
+ *   },
  *   onFinish: (values) => {},
- *   onFinishFailed: (error) => {},
- *   onFieldsChange: (changed, all) => {}
+ *   onFinishFailed: ({ errors, values }) => {
+ *     console.log(errors, values)
+ *   },
+ *   onFieldsChange: (changedFields, allFields) => {
+ *     console.log(changedFields, allFields)
+ *   }
  * }
  *
  * const form = createForm(options)

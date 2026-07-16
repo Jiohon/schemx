@@ -20,9 +20,15 @@
  * import { createWatch, createWatchField, createWatchFields, createWatchAll } from '@schemx/core'
  *
  * // 统一入口 — 根据参数类型自动分发
- * createWatch(form, 'username', (snapshot, payload) => { ... })
- * createWatch(form, ['firstName', 'lastName'], (snapshot, payload) => { ... })
- * createWatch(form, (snapshot, payload) => { ... })
+ * createWatch(form, 'username', (_snapshot, payload) => {
+ *   // payload: { value, prevValue }
+ * })
+ * createWatch(form, ['firstName', 'lastName'], (_snapshot, payload) => {
+ *   // payload: { changedPaths, changedValues, prevValues }
+ * })
+ * createWatch(form, (_snapshot, payload) => {
+ *   // payload: { changedPaths, changedValues, prevValues }
+ * })
  *
  * // 监听单个字段
  * const dispose = createWatchField(form, 'username', (snapshot, payload) => {
@@ -31,12 +37,14 @@
  *
  * // 监听多个字段
  * const dispose = createWatchFields(form, ['firstName', 'lastName'], (snapshot, payload) => {
- *   console.log('changed:', payload.changedValues)
+ *   const { changedPaths, changedValues, prevValues } = payload
+ *   console.log(changedPaths, changedValues, prevValues)
  * }, {})
  *
  * // 监听所有字段
  * const dispose = createWatchAll(form, (snapshot, payload) => {
- *   console.log('changed paths:', payload.changedPaths)
+ *   const { changedPaths, changedValues, prevValues } = payload
+ *   console.log(changedPaths, changedValues, prevValues)
  * }, {})
  *
  * // 取消监听
@@ -97,7 +105,8 @@ type BaseSubscribeCallback<TValues, P> = (latestSnapshot: TValues, payload: P) =
 /**
  * 单字段订阅回调类型。
  *
- * 第一个参数是最新表单快照，payload 包含目标字段的新旧值。
+ * 第一个参数是最新表单快照；payload 为 `{ value, prevValue }`，分别表示
+ * 目标字段的新值和旧值。
  */
 export type WatchFieldCallback<
   TValues extends Values,
@@ -107,7 +116,8 @@ export type WatchFieldCallback<
 /**
  * 多字段订阅回调类型。
  *
- * payload 只包含被监听字段集合内发生变化的路径和值。
+ * payload 为 `{ changedPaths, changedValues, prevValues }`：分别表示发生变化的
+ * 路径、被监听字段集合内的新值，以及对应的旧值。
  */
 export type WatchFieldsCallback<TValues extends Values> = BaseSubscribeCallback<
   TValues,
@@ -117,7 +127,8 @@ export type WatchFieldsCallback<TValues extends Values> = BaseSubscribeCallback<
 /**
  * 全局订阅回调类型。
  *
- * payload 包含任意字段变化后计算出的 changedPaths、changedValues 和 prevValues。
+ * payload 为 `{ changedPaths, changedValues, prevValues }`：分别表示发生变化的
+ * 路径、变更后的部分表单值，以及变更前的部分表单值。
  */
 export type WatchAllCallback<TValues extends Values> = BaseSubscribeCallback<
   TValues,
@@ -161,14 +172,15 @@ export type CreateWatchReturn = () => void
  *
  * @param form - 表单实例
  * @param name - 要监听的字段路径
- * @param callback - 字段变化时的回调函数，接收 (latestSnapshot, payload)
+ * @param callback - 字段变化时的回调函数；payload 为 `{ value, prevValue }`
  * @param options - 监听选项
  * @returns 取消监听函数
  *
  * @example
  * ```ts
- * const dispose = createWatchField(form, 'email', (snapshot, payload) => {
- *   console.log(`${payload.path}: ${payload.prevValue} -> ${payload.value}`)
+ * const dispose = createWatchField(form, 'email', (_snapshot, payload) => {
+ *   const { value, prevValue } = payload
+ *   console.log(`${prevValue} -> ${value}`)
  * }, { immediate: true, inequality: true })
  * dispose()
  * ```
@@ -219,15 +231,15 @@ export const createWatchField = <
  *
  * @param form - 表单实例
  * @param names - 要监听的字段路径数组
- * @param callback - 字段变化时的回调函数，接收 (latestSnapshot, payload)
+ * @param callback - 字段变化时的回调函数；payload 为 `{ changedPaths, changedValues, prevValues }`
  * @param options - 监听选项
  * @returns 取消监听函数
  *
  * @example
  * ```ts
- * const dispose = createWatchFields(form, ['firstName', 'lastName'], (snapshot, payload) => {
- *   console.log('changed:', payload.changedValues)
- *   console.log('prev:', payload.prevValues)
+ * const dispose = createWatchFields(form, ['firstName', 'lastName'], (_snapshot, payload) => {
+ *   const { changedPaths, changedValues, prevValues } = payload
+ *   console.log(changedPaths, changedValues, prevValues)
  * }, { inequality: true })
  * dispose()
  * ```
@@ -284,15 +296,15 @@ export const createWatchFields = <
  * 当任何字段变化时 effect 自动重新执行并触发回调。
  *
  * @param form - 表单实例
- * @param callback - 字段变化时的回调函数，接收 (latestSnapshot, payload)
+ * @param callback - 字段变化时的回调函数；payload 为 `{ changedPaths, changedValues, prevValues }`
  * @param options - 监听选项
  * @returns 取消监听函数
  *
  * @example
  * ```ts
- * const dispose = createWatchAll(form, (snapshot, payload) => {
- *   console.log('changed paths:', payload.changedPaths)
- *   console.log('changed values:', payload.changedValues)
+ * const dispose = createWatchAll(form, (_snapshot, payload) => {
+ *   const { changedPaths, changedValues, prevValues } = payload
+ *   console.log(changedPaths, changedValues, prevValues)
  * }, { immediate: true })
  * dispose()
  * ```
@@ -347,9 +359,18 @@ export const createWatchAll = <
  * 框架适配层可直接调用此函数，无需自行判断参数类型。
  *
  * @param form - 表单实例
- * @param callback - 全局变化回调
+ * @param callback - 全局变化回调；payload 为 `{ changedPaths, changedValues, prevValues }`
  * @param options - 监听选项
  * @returns 取消监听函数
+ *
+ * @example
+ * ```ts
+ * const dispose = createWatch(form, (values, payload) => {
+ *   const { changedPaths, changedValues, prevValues } = payload
+ *   console.log(changedPaths, changedValues, prevValues, values)
+ * })
+ * dispose()
+ * ```
  */
 export function createWatch<TValues extends Values = Values>(
   form: SchemxInstance<TValues>,
@@ -359,9 +380,16 @@ export function createWatch<TValues extends Values = Values>(
 /**
  * @param form - 表单实例
  * @param name - 字段路径
- * @param callback - 单字段变化回调
+ * @param callback - 单字段变化回调；payload 为 `{ value, prevValue }`
  * @param options - 监听选项
  * @returns 取消监听函数
+ *
+ * @example
+ * ```ts
+ * createWatch(form, "email", (_values, payload) => {
+ *   console.log(payload.prevValue, payload.value)
+ * })
+ * ```
  */
 export function createWatch<
   TValues extends Values = Values,
@@ -375,9 +403,16 @@ export function createWatch<
 /**
  * @param form - 表单实例
  * @param names - 字段路径数组
- * @param callback - 多字段变化回调
+ * @param callback - 多字段变化回调；payload 为 `{ changedPaths, changedValues, prevValues }`
  * @param options - 监听选项
  * @returns 取消监听函数
+ *
+ * @example
+ * ```ts
+ * createWatch(form, ["firstName", "lastName"], (_values, payload) => {
+ *   console.log(payload.changedPaths, payload.changedValues, payload.prevValues)
+ * })
+ * ```
  */
 export function createWatch<
   TValues extends Values = Values,

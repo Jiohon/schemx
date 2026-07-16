@@ -79,7 +79,6 @@
     {
       key: "delivery-details",
       label: "配送详情（Group 容器状态）",
-      componentType: "group",
       collapsible: true,
       destroyOnCollapse: false,
       dependencies: {
@@ -218,6 +217,11 @@
   const handleSubmit = (values: DynamicFormValues) => {
     console.log("提交数据:", values)
     alert("提交成功！数据已打印到控制台")
+
+    console.log(
+      " > ~ handleSubmit ~ formRef.value?.getViewSchemas():",
+      formRef.value?.getViewSchemas()
+    )
   }
 
   /**

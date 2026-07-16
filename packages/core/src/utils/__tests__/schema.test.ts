@@ -1,8 +1,7 @@
 /**
  * schema 列配置工具单元测试
  *
- * 覆盖 isBaseResolvedSchema、isGroupResolvedSchema、isDependencyResolvedSchema 类型守卫
- * 和 findSchema 递归查找。
+ * 覆盖 Raw/Resolved Schema 结构分类和 findSchema 递归查找。
  *
  * @module utils/__tests__/schema
  */
@@ -10,70 +9,73 @@ import { describe, expect, it } from "vitest"
 
 import {
   findSchema,
+  getSchemaKind,
+  isBaseSchema,
   isBaseResolvedSchema,
-  isDependencyResolvedSchema,
+  isDependencySchema,
+  isGroupSchema,
   isGroupResolvedSchema,
 } from "../schema"
 
-import type { SchemxField } from "../../types"
+import type { SchemxField, SchemxResolvedField } from "../../types"
 
 const baseField: SchemxField = {
   name: "username",
-  componentType: "text" as any,
-} as any
+  label: "用户名",
+  componentType: "text",
+}
 
 const groupField: SchemxField = {
-  componentType: "group",
   label: "基本信息",
   children: [baseField],
-} as any
+}
 
 const dependencyField: SchemxField = {
-  componentType: "dependency",
-  dependencies: ["username"],
-  children: () => [],
-} as any
+  to: ["username"],
+  renderer: () => [],
+}
 
-// 验证 isBaseResolvedSchema 类型守卫：基础字段返回 true，group/dependency 返回 false
-describe("isBaseResolvedSchema", () => {
-  it("基础字段配置返回 true", () => {
-    expect(isBaseResolvedSchema(baseField)).toBe(true)
+describe("getSchemaKind", () => {
+  it("按结构识别普通字段、Group 和 Dependency", () => {
+    expect(getSchemaKind(baseField)).toBe("field")
+    expect(getSchemaKind(groupField)).toBe("group")
+    expect(getSchemaKind(dependencyField)).toBe("dependency")
   })
 
-  it("group 类型返回 false", () => {
-    expect(isBaseResolvedSchema(groupField)).toBe(false)
+  it("识别旧容器语法和多结构歧义", () => {
+    expect(getSchemaKind({ ...groupField, componentType: "group" })).toBe("legacy-group")
+    expect(getSchemaKind({ ...dependencyField, componentType: "dependency" })).toBe(
+      "legacy-dependency"
+    )
+    expect(getSchemaKind({ ...baseField, children: [] })).toBe("ambiguous")
   })
 
-  it("dependency 类型返回 false", () => {
-    expect(isBaseResolvedSchema(dependencyField)).toBe(false)
-  })
-})
-
-// 验证 isGroupResolvedSchema 类型守卫：group 返回 true，其他类型返回 false
-describe("isGroupResolvedSchema", () => {
-  it("group 类型返回 true", () => {
-    expect(isGroupResolvedSchema(groupField)).toBe(true)
-  })
-
-  it("非 group 类型返回 false", () => {
-    expect(isGroupResolvedSchema(baseField)).toBe(false)
-    expect(isGroupResolvedSchema(dependencyField)).toBe(false)
+  it("无法识别无结构标记的值", () => {
+    expect(getSchemaKind({ label: "未知" })).toBe("unknown")
+    expect(getSchemaKind(null)).toBe("unknown")
   })
 })
 
-// 验证 isDependencyResolvedSchema 类型守卫：dependency 返回 true，其他类型返回 false
-describe("isDependencyResolvedSchema", () => {
-  it("dependency 类型返回 true", () => {
-    expect(isDependencyResolvedSchema(dependencyField)).toBe(true)
-  })
-
-  it("非 dependency 类型返回 false", () => {
-    expect(isDependencyResolvedSchema(baseField)).toBe(false)
-    expect(isDependencyResolvedSchema(groupField)).toBe(false)
+describe("Raw Schema 类型守卫", () => {
+  it("分别收窄普通字段、Group 和 Dependency", () => {
+    expect(isBaseSchema(baseField)).toBe(true)
+    expect(isGroupSchema(groupField)).toBe(true)
+    expect(isDependencySchema(dependencyField)).toBe(true)
   })
 })
 
-// 验证 findSchema 在平铺和 group 嵌套 schemas 中按名称递归查找
+describe("Resolved Schema 类型守卫", () => {
+  const resolvedBase = baseField as SchemxResolvedField
+  const resolvedGroup = groupField as SchemxResolvedField
+
+  it("通过 children 区分 Group 与普通字段", () => {
+    expect(isBaseResolvedSchema(resolvedBase)).toBe(true)
+    expect(isBaseResolvedSchema(resolvedGroup)).toBe(false)
+    expect(isGroupResolvedSchema(resolvedGroup)).toBe(true)
+    expect(isGroupResolvedSchema(resolvedBase)).toBe(false)
+  })
+})
+
 describe("findSchema", () => {
   it("平铺 schemas 中按名称查找", () => {
     const schemas: SchemxField[] = [baseField]

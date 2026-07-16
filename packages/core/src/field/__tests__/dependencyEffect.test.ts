@@ -30,7 +30,6 @@ describe("dependency effect", () => {
     commitSchemas(root, [
       {
         key: "dep",
-        componentType: "dependency",
         to: ["mode"],
         renderer,
       },
@@ -53,7 +52,6 @@ describe("dependency effect", () => {
       return [
         {
           label: "加急订单配置",
-          componentType: "group",
           children: [
             {
               name: "expressLevel",
@@ -72,7 +70,6 @@ describe("dependency effect", () => {
     commitSchemas(root, [
       {
         key: "dep",
-        componentType: "dependency",
         to: ["orderType"],
         renderer,
       },
@@ -108,7 +105,6 @@ describe("dependency effect", () => {
     commitSchemas(root, [
       {
         key: "dep",
-        componentType: "dependency",
         to: ["mode"],
         renderer,
       },
@@ -143,7 +139,6 @@ describe("dependency effect", () => {
     commitSchemas(root, [
       {
         key: "dep",
-        componentType: "dependency",
         to: ["mode"],
         renderer,
       },
@@ -174,7 +169,6 @@ describe("dependency effect", () => {
     commitSchemas(root, [
       {
         key: "dep",
-        componentType: "dependency",
         to: ["mode"],
         renderer,
       },
@@ -206,7 +200,6 @@ describe("dependency effect", () => {
     commitSchemas(root, [
       {
         key: "dep",
-        componentType: "dependency",
         to: ["mode"],
         renderer,
       },
@@ -243,7 +236,6 @@ describe("dependency effect", () => {
     commitSchemas(root, [
       {
         key: "dep",
-        componentType: "dependency",
         to: ["mode"],
         renderer,
       },

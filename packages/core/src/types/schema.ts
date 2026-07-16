@@ -183,6 +183,15 @@ export interface SchemxBase<
   componentType: TKey
 
   /**
+   * 容器结构保留字段。
+   *
+   * 普通字段不能在顶层声明这些属性；Renderer 配置应放入 `componentProps`。
+   */
+  children?: never
+  to?: never
+  renderer?: never
+
+  /**
    * 结构化依赖配置对象
    *
    * 声明 {@link SchemxDependencies.triggerFields | triggerFields} 和各属性的条件函数，
@@ -362,7 +371,7 @@ export interface SchemxGroupFieldDefinition {}
 /**
  * 分组字段配置
  *
- * 将多个字段组织为可折叠的分组，componentType 固定为 `"group"`。
+ * 将多个字段组织为可折叠的分组，通过 `children` 与普通字段区分。
  *
  * @typeParam  TValues - 表单值类型
  */
@@ -380,10 +389,6 @@ export interface SchemxGroupField<
    * 分组标签
    */
   label: string
-  /**
-   * 组件类型（固定为 group）
-   */
-  componentType: "group"
   /**
    * 分组内的列配置
    */
@@ -419,7 +424,7 @@ export interface SchemxGroupField<
 /**
  * 动态子树依赖字段配置
  *
- * 根据其他字段的值动态生成一段子 schema，componentType 固定为 `"dependency"`。
+ * 根据其他字段的值动态生成一段子 schema，通过 `to` 和 `renderer` 与其他 Schema 区分。
  * 该配置会被编译为 DependencyEffectState。
  *
  * @typeParam  TValues - 表单值类型
@@ -435,10 +440,6 @@ export interface SchemxDependencyField<
    * Raw Schema 不包含该字段，也不会被原地修改。
    */
   key?: string
-  /**
-   * 组件类型（固定为 dependency）
-   */
-  componentType: "dependency"
   /**
    * 依赖的字段路径
    */

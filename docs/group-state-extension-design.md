@@ -5,7 +5,7 @@
 - 状态：已实现
 - 落地日期：2026-07-15
 - 适用范围：`@schemx/core`、`@schemx/vue`
-- 目标类型：`componentType: "group"`、`componentType: "dependency"`
+- 目标类型：通过 `children` 声明的 Group、通过 `to` 和 `renderer` 声明的 Dependency
 
 ## 背景（改造前）
 
@@ -132,7 +132,6 @@ export interface SchemxGroupField<
 > extends SchemxGroupFieldDefinition {
   key?: string
   label: string
-  componentType: "group"
   children: SchemxField<TValues>[]
 
   visible?: boolean
@@ -169,7 +168,6 @@ export interface SchemxDependencyField<
   TNames extends readonly NamePath<TValues>[] = readonly NamePath<TValues>[],
 > {
   key?: string
-  componentType: "dependency"
 
   to: TNames
   renderer: (
@@ -201,7 +199,6 @@ export interface SchemxDependencyField<
 ```ts
 {
   key: "enterprise-fields",
-  componentType: "dependency",
   to: ["accountType"],
   dependencies: {
     triggerFields: ["status", "permission"],
@@ -249,7 +246,6 @@ effectiveDisabled = parentDisabled || ownDisabled
 ```ts
 {
   key: "profile",
-  componentType: "group",
   label: "个人资料",
   readonly: true,
   children: [
@@ -577,6 +573,144 @@ group:${parentKey}/${index}
 
 未采用 Schema 深克隆或深冻结。Schema 中可能包含组件 Props、函数和第三方对象，深处理成本高且语义不稳定；位置感知缓存配合不可变更新约定，能以更小复杂度保证正确性。也未把 RuntimeNode 的 `parent` 改为构造期必填，因为节点创建与挂载是两个明确阶段，在挂载边界校验更符合现有架构。
 
+## Breaking Change：移除容器 `componentType`
+
+### 提案状态
+
+- 状态：已实施
+- 变更级别：Breaking Change
+- 目标：让 `componentType` 只表示普通字段的 Renderer key，解除 `"group"` 和 `"dependency"` 的保留值限制
+
+### 评估结论
+
+Group 和 Dependency 已删除 `componentType`，并改用自身结构字段识别类型。该方案收敛了 `componentType` 的职责，也允许业务注册名为 `"group"` 或 `"dependency"` 的普通 Renderer。
+
+这是一次不兼容旧容器写法的 Breaking Change。TypeScript 会在编译期拒绝旧写法；JavaScript 或绕过类型检查的旧配置会在 Schema 编译边界抛出带迁移提示的 `CompileError`。
+
+### 目标类型
+
+```ts
+export interface SchemxGroupField<TValues extends Values = Values> {
+  key?: string
+  label: string
+  children: SchemxField<TValues>[]
+  visible?: boolean
+  readonly?: boolean
+  disabled?: boolean
+  dependencies?: SchemxContainerDependencies<TValues>
+  collapsible?: boolean
+  defaultCollapsed?: boolean
+  collapsed?: boolean
+  onCollapsedChange?: (collapsed: boolean) => void
+  destroyOnCollapse?: boolean
+}
+
+export interface SchemxDependencyField<
+  TValues extends Values = Values,
+  TNames extends readonly NamePath<TValues>[] = readonly NamePath<TValues>[],
+> {
+  key?: string
+  to: TNames
+  renderer: DependencyRenderer<TValues>
+  visible?: boolean
+  readonly?: boolean
+  disabled?: boolean
+  dependencies?: SchemxContainerDependencies<TValues>
+}
+```
+
+普通字段继续保留 `componentType`：
+
+```ts
+const field: SchemxField = {
+  name: "summary",
+  label: "摘要",
+  componentType: "group",
+}
+```
+
+上例中的 `"group"` 是业务 Renderer key，不再具有容器含义。
+
+### 结构判别规则
+
+| Schema 类型 | 必需结构                         | 判别方式                                |
+| ----------- | -------------------------------- | --------------------------------------- |
+| Group       | `label`、`children`              | 存在数组类型的 `children`               |
+| Dependency  | `to`、`renderer`                 | `to` 为字段路径数组且 `renderer` 为函数 |
+| 普通字段    | `name`、`label`、`componentType` | 不匹配容器结构，并具有普通字段必需属性  |
+
+结构判别不能只依赖属性优先级。一个对象如果同时匹配多种结构，例如同时包含 `children`、`to` 和 `renderer`，规范化阶段应直接报告歧义配置，不应按判断顺序静默选择类型。
+
+`children`、`to` 和 `renderer` 将成为 Raw Schema 顶层结构保留字段。普通字段的业务配置应放入 `componentProps`；通过声明合并扩展普通字段时，也不应增加这些同名顶层属性。
+
+### 收益与代价
+
+| 方面              | 收益                                                  | 代价或风险                                                |
+| ----------------- | ----------------------------------------------------- | --------------------------------------------------------- |
+| API 语义          | `componentType` 只负责选择普通字段 Renderer           | Group 和 Dependency 不再拥有统一的字面量判别字段          |
+| Renderer Registry | 可以注册 `"group"`、`"dependency"`                    | 旧代码可能依赖这两个值属于保留名称                        |
+| 类型系统          | Group、Dependency 使用自身必需结构完成收窄            | 自定义 Schema 扩展必须避开结构保留字段                    |
+| Core 编译         | Descriptor 仍使用内部 `type` 判别，运行时架构无需改变 | Raw Schema guard、normalize 和 key 生成需要统一迁移       |
+| Vue 适配          | View Group 可以继续通过 `children` 判断               | 使用方若按 `componentType === "group"` 收窄，需要修改代码 |
+| 兼容性            | 新 API 更清晰，没有保留 Renderer key                  | 现有 Group、Dependency 配置均需迁移，属于破坏性变更       |
+
+### 不采用可选字段过渡
+
+本次没有采用可选字段过渡：
+
+```ts
+componentType?: "group"
+```
+
+如果运行时继续把 `componentType: "group"` 或 `componentType: "dependency"` 解释为容器，普通字段就无法安全使用同名 Renderer。可选字段只能减少新配置的书写量，不能解除保留值限制，还会让类型判别同时存在字面量和结构两套规则。
+
+本次只提供迁移文档，不新增一次性 codemod；仓库内 Schema 已统一迁移为结构写法。
+
+### 迁移示例
+
+```diff
+ {
+-  componentType: "group",
+   key: "profile",
+   label: "资料",
+   children: []
+ }
+
+ {
+-  componentType: "dependency",
+   key: "dynamic-profile",
+   to: ["profileType"],
+   renderer
+ }
+```
+
+业务侧还需要把以下判断迁移为结构守卫：
+
+```diff
+-if (schema.componentType === "group") {
++if ("children" in schema) {
+   renderGroup(schema)
+ }
+```
+
+### 实施范围
+
+1. 修改 `SchemxGroupField`、`SchemxDependencyField` 和 Resolved/View Schema 类型，移除容器 `componentType`。
+2. 将 `isGroupSchema()`、`isDependencySchema()`、Resolved Schema guard 改为结构判别，并增加歧义 Schema 校验。
+3. 更新 `normalizeSchemas()`、`createDescriptor()` 和 `createDescriptorKey()`；Descriptor 内部继续使用 `type: "field" | "group" | "dependency"`。
+4. 检查 Vue、Vant 和业务适配器中的类型收窄逻辑，统一通过 `children` 判断 View Group。
+5. 更新全部测试、README、设计文档和示例，并提供迁移说明。
+6. 增加普通字段使用 `componentType: "group"`、`componentType: "dependency"` 的回归测试，确认 Registry 不再保留这两个 key。
+
+### 验收标准
+
+- [x] Group 和 Dependency Raw Schema 不再声明或输出 `componentType`。
+- [x] 普通字段可以安全注册并渲染 `"group"`、`"dependency"` Renderer。
+- [x] 同时匹配多种结构的 Schema 会在规范化阶段明确报错。
+- [x] Descriptor、RuntimeNode 和 ViewSchema 的类型判别保持稳定。
+- [x] Dependency 透明展开、Group 状态继承和校验行为不受影响。
+- [x] 发布说明包含完整迁移示例和破坏性变更提示。
+
 ## 实施范围
 
 ### `@schemx/core`
@@ -661,17 +795,18 @@ group:${parentKey}/${index}
 
 ## 决策记录
 
-| 决策项                             | 推荐方案     | 说明                             |
-| ---------------------------------- | ------------ | -------------------------------- |
-| `destroyOnCollapse` 当前版本默认值 | `true`       | 保持现有条件渲染行为兼容。       |
-| `destroyOnCollapse` 长期默认值     | `false`      | 优先保留 Renderer 局部状态。     |
-| `disabled` 是否禁止折叠            | 是           | 与禁用容器的交互预期一致。       |
-| `readonly` 是否禁止折叠            | 否           | 折叠属于浏览行为，不修改表单值。 |
-| 隐藏是否清除字段值                 | 否           | 与普通字段当前语义保持一致。     |
-| 折叠是否注销校验                   | 否           | 折叠只影响展示，不代表字段无效。 |
-| dependencies 是否支持 `collapsed`  | 第二阶段评估 | 避免第一阶段扩大动态属性范围。   |
-| Dependency 隐藏是否暂停 renderer   | 否           | 保持动态子树结构为最新状态。     |
-| 是否默认复用 `to` 作为状态触发字段 | 否           | 结构依赖和状态依赖保持显式分离。 |
+| 决策项                             | 推荐方案     | 说明                                                      |
+| ---------------------------------- | ------------ | --------------------------------------------------------- |
+| `destroyOnCollapse` 当前版本默认值 | `true`       | 保持现有条件渲染行为兼容。                                |
+| `destroyOnCollapse` 长期默认值     | `false`      | 优先保留 Renderer 局部状态。                              |
+| `disabled` 是否禁止折叠            | 是           | 与禁用容器的交互预期一致。                                |
+| `readonly` 是否禁止折叠            | 否           | 折叠属于浏览行为，不修改表单值。                          |
+| 隐藏是否清除字段值                 | 否           | 与普通字段当前语义保持一致。                              |
+| 折叠是否注销校验                   | 否           | 折叠只影响展示，不代表字段无效。                          |
+| dependencies 是否支持 `collapsed`  | 第二阶段评估 | 避免第一阶段扩大动态属性范围。                            |
+| Dependency 隐藏是否暂停 renderer   | 否           | 保持动态子树结构为最新状态。                              |
+| 是否默认复用 `to` 作为状态触发字段 | 否           | 结构依赖和状态依赖保持显式分离。                          |
+| 是否移除容器 `componentType`       | 已移除       | 改用结构判别，释放同名 Renderer key；旧容器语法不再兼容。 |
 
 ## 最终建议
 

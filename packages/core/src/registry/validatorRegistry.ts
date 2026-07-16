@@ -84,8 +84,7 @@ export type ValidatorsFactory<TValues extends Values = Values> = (
  * 支持直接的 StandardSchemaV1 实例或工厂函数。
  */
 export type ValidatorsEntry<TValues extends Values = Values> =
-  | StandardSchemaV1
-  | ValidatorsFactory<TValues>
+  StandardSchemaV1 | ValidatorsFactory<TValues>
 
 /**
  * Validators 注册选项。
@@ -363,6 +362,12 @@ export type ValidatorsRegistryType<TValues extends Values = Values> = InstanceTy
  * @remarks
  * 用于 useForm 内部创建表单级别的注册中心实例，
  * 既能继承全局自定义规则，又能支持表单级别的规则覆盖。
+ *
+ * @example
+ * ```ts
+ * const registry = createValidatorsRegistry()
+ * registry.register("phone", phoneSchema)
+ * ```
  */
 export function createValidatorsRegistry<
   TValues extends Values = Values,

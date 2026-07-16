@@ -91,7 +91,6 @@
   const schemas = computed((): SchemxField<BasicFormValues>[] => [
     {
       label: "基本信息",
-      componentType: "group",
       children: [
         {
           name: "username",
