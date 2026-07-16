@@ -332,7 +332,7 @@ const ready = await form.waitForDependencies(5_000)
 if (!ready) console.warn("依赖解析超时")
 ```
 
-`waitForDependencies(timeout?)` 等待当前已调度的字段依赖和 Dependency renderer 完成，默认超时为 `10_000 ms`；全部完成返回 `true`，超时返回 `false`。`submit()` 会先用相同机制等待依赖；等待超时会直接结束，不执行校验和提交回调。
+`waitForDependencies(timeout?)` 等待当前已调度的字段依赖和 Dependency renderer 完成，默认超时为 `10_000 ms`；全部完成返回 `true`，超时返回 `false`。`submit()` 会先用相同机制等待依赖；等待超时时返回 `{ ok: false }`，其中错误字段为 `$form`，且不执行校验和提交回调。
 
 ### `SchemxDependencies`
 
@@ -525,11 +525,11 @@ const form = createForm<ProfileValues>({
 
 ### 提交与重置
 
-| 成员          | 签名                              | 说明                                                                                             |
-| ------------- | --------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `submit`      | `() => Promise<void>`             | 先等待依赖，再校验；成功调用 `onFinish`，失败调用 `onFinishFailed`。并发调用复用同一个 Promise。 |
-| `resetFields` | `<TName>(names: TName[]) => void` | 把指定字段恢复为当前初始值，并清除这些字段的 touched 与 pending；不会统一清除校验错误。          |
-| `reset`       | `() => void`                      | 把全表恢复为当前初始值，并清除全部校验错误。                                                     |
+| 成员          | 签名                                     | 说明                                                                                                             |
+| ------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `submit`      | `() => Promise<ValidateResult<TValues>>` | 先等待依赖，再校验；成功调用 `onFinish`，失败调用 `onFinishFailed`，并返回校验结果。并发调用复用同一个 Promise。 |
+| `resetFields` | `<TName>(names: TName[]) => void`        | 把指定字段恢复为当前初始值，并清除这些字段的 touched 与 pending；不会统一清除校验错误。                          |
+| `reset`       | `() => void`                             | 把全表恢复为当前初始值，并清除全部校验错误。                                                                     |
 
 ### 响应式订阅
 

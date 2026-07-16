@@ -591,12 +591,22 @@ class CreateForm<
   /**
    * 提交表单
    */
-  private submit = withLock(async (): Promise<void> => {
+  private submit = withLock(async (): Promise<ValidateResult<TValues>> => {
     // 等待依赖解析完成
     const depsReady = await this.waitForIdle()
     if (!depsReady) {
-      // 超时则拒绝提交
-      return
+      return {
+        ok: false,
+        error: {
+          errors: [
+            {
+              field: "$form",
+              message: ["表单依赖解析超时，请稍后重试"],
+            },
+          ],
+          values: this.store.getFieldsSnapshot(),
+        },
+      }
     }
 
     const result = await this.validate()
@@ -605,6 +615,8 @@ class CreateForm<
     } else {
       this.callbacks.onFinishFailed?.(result.error)
     }
+
+    return result
   })
 
   /**

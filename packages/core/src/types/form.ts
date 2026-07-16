@@ -500,17 +500,21 @@ export interface SchemxInstance<TValues extends Values = Values> {
   /**
    * 提交表单
    *
-   * 先校验所有字段，通过后调用 onFinish，失败调用 onFinishFailed。
+   * 先等待依赖并校验所有字段，通过后调用 onFinish，失败调用 onFinishFailed。
    * 内置防重复提交锁，提交进行中重复调用返回同一个 Promise。
    *
-   * @returns 提交流程完成后 resolve 的 Promise。
+   * @returns 校验结果。依赖等待超时时返回 field 为 `$form` 的失败结果，
+   * 不调用提交回调；onFinish 抛错或拒绝时，Promise 会直接拒绝。
    *
    * @example
    * ```typescript
-   * await form.submit()
+   * const result = await form.submit()
+   * if (!result.ok) {
+   *   console.log(result.error.errors)
+   * }
    * ```
    */
-  submit: () => Promise<void>
+  submit: () => Promise<ValidateResult<TValues>>
 
   /**
    * 创建 reactive effect 监听字段或错误变化。

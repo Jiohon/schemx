@@ -37,6 +37,55 @@ describe("字段初始值", () => {
   })
 })
 
+describe("表单提交", () => {
+  it("应返回成功校验结果并调用 onFinish", async () => {
+    const onFinish = vi.fn()
+    const form = createForm({
+      initialValues: { name: "Alice" },
+      schemas: [
+        {
+          name: "name",
+          label: "姓名",
+          componentType: "input",
+          rules: "required",
+        },
+      ],
+      onFinish,
+    })
+
+    const result = await form.submit()
+
+    expect(result).toEqual({ ok: true, values: { name: "Alice" } })
+    expect(onFinish).toHaveBeenCalledWith({ name: "Alice" })
+    form.destroy()
+  })
+
+  it("应返回失败校验结果并调用 onFinishFailed", async () => {
+    const onFinishFailed = vi.fn()
+    const form = createForm({
+      initialValues: { name: "" },
+      schemas: [
+        {
+          name: "name",
+          label: "姓名",
+          componentType: "input",
+          rules: "required",
+        },
+      ],
+      onFinishFailed,
+    })
+
+    const result = await form.submit()
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.error.errors[0]?.field).toBe("name")
+      expect(onFinishFailed).toHaveBeenCalledWith(result.error)
+    }
+    form.destroy()
+  })
+})
+
 // 属性测试：验证 createForm 创建的表单实例 onValuesChange 回调的正确性
 describe("CreateFormInstance 属性测试", () => {
   // Feature: pure-signal-core-refactor, Property 10: onValuesChange 回调正确性
