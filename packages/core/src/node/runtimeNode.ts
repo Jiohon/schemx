@@ -101,6 +101,8 @@ export function createGroupRuntimeNode<TValues extends Values = Values>(
     disposed: createSignal(false),
     descriptor: null,
     viewState: null,
+    containerState: null,
+    containerEffectDispose: null,
     childNodes: createSignal<readonly DescribedRuntimeNode<TValues>[]>([]),
   }
 }
@@ -130,6 +132,8 @@ export function createDependencyRuntimeNode<TValues extends Values = Values>(
     viewState: null,
     effectState: null,
     dependencyDispose: null,
+    containerState: null,
+    containerEffectDispose: null,
     childNodes: createSignal<readonly DescribedRuntimeNode<TValues>[]>([]),
   }
 }

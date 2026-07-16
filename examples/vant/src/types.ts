@@ -34,6 +34,7 @@ export interface BasicFormValues {
  * 动态表单值类型
  */
 export interface DynamicFormValues {
+  showDeliveryDetails?: boolean
   deliveryMethod?: "express" | "selfPickup" | "other"
   province?: string
   city?: string
@@ -47,6 +48,8 @@ export interface DynamicFormValues {
  * 字段联动表单值类型
  */
 export interface DependencyFormValues {
+  showOrderConfiguration?: boolean
+  orderAccess?: "edit" | "review" | "locked"
   orderType?: "standard" | "express" | "custom"
   quantity?: number
   expectedDate?: string

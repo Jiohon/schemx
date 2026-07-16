@@ -7,6 +7,12 @@
  * @module core/field/dependencyNodeResources
  */
 
+import {
+  mountContainerNodeResources,
+  unmountContainerNodeResources,
+  updateContainerNodeResources,
+} from "../container"
+import { areNamePathListsEqual } from "../utils/path"
 import { createRuntimeViewState } from "../view/createViewState"
 
 import { createDependencyEffect } from "./dependencyEffect"
@@ -14,7 +20,7 @@ import { createDependencyEffect } from "./dependencyEffect"
 import type { DependencyDescriptor } from "../descriptor"
 import type { DependencyRuntimeNode } from "../node"
 import type { SchemxContext } from "../schemxContext"
-import type { NamePath, Values } from "../types"
+import type { Values } from "../types"
 
 /**
  * 挂载 dependency 运行时节点的资源。
@@ -33,6 +39,7 @@ export function mountDependencyNodeResources<TValues extends Values>(
 ): void {
   const resources = context.nodeResources
 
+  mountContainerNodeResources(node, descriptor, context)
   createRuntimeViewState(node, descriptor, resources)
   resources.dependencyIndex.register(node)
   createDependencyEffect({
@@ -63,11 +70,16 @@ export function updateDependencyNodeResources<TValues extends Values>(
 ): void {
   const resources = context.nodeResources
 
+  updateContainerNodeResources(node, previousDescriptor, nextDescriptor, context)
   createRuntimeViewState(node, nextDescriptor, resources)
 
   if (
     previousDescriptor &&
-    hasSameTriggerFields(previousDescriptor.triggerFields, nextDescriptor.triggerFields) &&
+    areNamePathListsEqual(
+      previousDescriptor.triggerFields,
+      nextDescriptor.triggerFields
+    ) &&
+    previousDescriptor.rendererIdentity === nextDescriptor.rendererIdentity &&
     node.effectState
   ) {
     return
@@ -103,55 +115,5 @@ export function unmountDependencyNodeResources<TValues extends Values>(
   node.dependencyDispose?.dispose()
   node.dependencyDispose = null
   node.effectState = null
-}
-
-/**
- * 判断前后两轮 descriptor 的 trigger 字段列表是否相同。
- *
- * 如果相同则无需重建 dependency effect，可复用现有 effect 实例。
- *
- * @typeParam TValues - 表单值类型
- * @param previous - 上一轮 trigger 字段列表
- * @param next - 当前 trigger 字段列表
- * @returns 列表长度和顺序一致时返回 true
- */
-function hasSameTriggerFields<TValues extends Values>(
-  previous: readonly NamePath<TValues>[],
-  next: readonly NamePath<TValues>[]
-): boolean {
-  if (previous.length !== next.length) {
-    return false
-  }
-
-  return previous.every((field, index) => isSameNamePath(field, next[index]))
-}
-
-/**
- * 比较两个 NamePath 是否相等。
- *
- * 支持 string 和 string[] 两种形式的 NamePath。
- *
- * @typeParam TValues - 表单值类型
- * @param previous - 上一个 NamePath
- * @param next - 下一个 NamePath
- * @returns 两个 NamePath 相等时返回 true
- */
-function isSameNamePath<TValues extends Values>(
-  previous: NamePath<TValues>,
-  next: NamePath<TValues> | undefined
-): boolean {
-  if (next === undefined) {
-    return false
-  }
-
-  if (Array.isArray(previous) || Array.isArray(next)) {
-    return (
-      Array.isArray(previous) &&
-      Array.isArray(next) &&
-      previous.length === next.length &&
-      previous.every((part, index) => part === next[index])
-    )
-  }
-
-  return previous === next
+  unmountContainerNodeResources(node)
 }

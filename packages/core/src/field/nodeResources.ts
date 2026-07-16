@@ -7,8 +7,9 @@
  * @module core/field/nodeResources
  */
 
-import { createRuntimeViewState, updateRuntimeViewState } from "../view/createViewState"
+import { createInheritedContainerState } from "../container/runtimeState"
 import { setByPath } from "../utils"
+import { createRuntimeViewState, updateRuntimeViewState } from "../view/createViewState"
 
 import { createDependenciesEffect } from "./dependenciesEffect"
 import { createFieldRuntimeState, setFieldStaticSchema } from "./runtimeState"
@@ -41,6 +42,7 @@ export function mountFieldNodeResources<TValues extends Values>(
     nodeId: node.id,
     key: node.key,
     descriptor,
+    inheritedState: createInheritedContainerState(node),
   })
 
   applyFieldInitialValue(descriptor, context)
@@ -177,7 +179,11 @@ function applyFieldInitialValue<TValues extends Values>(
   const initialValue = descriptor.staticSchema.initialValue as never
   const initialValues = {} as Partial<TValues>
 
-  setByPath<TValues, NamePath<TValues>, never>(initialValues, descriptor.name, initialValue)
+  setByPath<TValues, NamePath<TValues>, never>(
+    initialValues,
+    descriptor.name,
+    initialValue
+  )
   context.instance.setInitialValues(initialValues)
   context.instance.setFieldValue(descriptor.name, initialValue)
 }

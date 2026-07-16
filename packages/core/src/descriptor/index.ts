@@ -12,6 +12,8 @@ export { isDependencyDescriptor, isFieldDescriptor, isGroupDescriptor } from "./
 
 export type {
   BaseDescriptor,
+  ContainerDynamicPropsDescriptor,
+  ContainerStaticState,
   CreateDependencyDescriptorOptions,
   CreateDescriptorOptions,
   CreateFieldDescriptorOptions,

@@ -120,6 +120,10 @@ function indexNodesByKey<TValues extends Values>(
   const result = new Map<string, DescribedRuntimeNode<TValues>>()
 
   for (const node of nodes) {
+    if (result.has(node.key)) {
+      throw new Error(`[schemx] Duplicate runtime node key "${node.key}".`)
+    }
+
     result.set(node.key, node)
   }
 
@@ -138,6 +142,10 @@ function indexDescriptorsByKey<TValues extends Values>(
   const result = new Map<string, FormDescriptor<TValues>>()
 
   for (const descriptor of descriptors) {
+    if (result.has(descriptor.key)) {
+      throw new Error(`[schemx] Duplicate descriptor key "${descriptor.key}".`)
+    }
+
     result.set(descriptor.key, descriptor)
   }
 

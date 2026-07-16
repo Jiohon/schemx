@@ -31,9 +31,9 @@ describe("dependency flow", () => {
       throw new Error("expected dependency node")
     }
 
-    expect(context.nodeResources.dependencyIndex.getByTriggerField("mode" as any)).toEqual([
-      dependency,
-    ])
+    expect(
+      context.nodeResources.dependencyIndex.getByTriggerField("mode" as any)
+    ).toEqual([dependency])
     expect(dependency.effectState).toBeDefined()
     expect(dependency.dependencyDispose).toBeDefined()
 
@@ -47,26 +47,31 @@ describe("dependency flow", () => {
     ])
     await flushRuntimeGraph(scheduler)
 
-    expect(context.nodeResources.dependencyIndex.getByTriggerField("mode" as any)).toEqual([])
-    expect(context.nodeResources.dependencyIndex.getByTriggerField("kind" as any)).toEqual([
-      dependency,
-    ])
+    expect(
+      context.nodeResources.dependencyIndex.getByTriggerField("mode" as any)
+    ).toEqual([])
+    expect(
+      context.nodeResources.dependencyIndex.getByTriggerField("kind" as any)
+    ).toEqual([dependency])
 
     commitSchemas(root, [])
     await flushRuntimeGraph(scheduler)
 
-    expect(context.nodeResources.dependencyIndex.getByTriggerField("kind" as any)).toEqual([])
+    expect(
+      context.nodeResources.dependencyIndex.getByTriggerField("kind" as any)
+    ).toEqual([])
   })
 
   it("trigger 不变时保留 dependency effect，trigger 变化时重建", async () => {
     const { commitSchemas, root, scheduler } = createRuntimeGraphHarness()
+    const renderer = vi.fn().mockResolvedValue([])
 
     commitSchemas(root, [
       {
         key: "dep",
         componentType: "dependency",
         to: ["mode"],
-        renderer: vi.fn().mockResolvedValue([]),
+        renderer,
       },
     ])
     await flushRuntimeGraph(scheduler)
@@ -88,7 +93,7 @@ describe("dependency flow", () => {
         key: "dep",
         componentType: "dependency",
         to: ["mode"],
-        renderer: vi.fn().mockResolvedValue([]),
+        renderer,
       },
     ])
     await flushRuntimeGraph(scheduler)
@@ -101,7 +106,7 @@ describe("dependency flow", () => {
         key: "dep",
         componentType: "dependency",
         to: ["kind"],
-        renderer: vi.fn().mockResolvedValue([]),
+        renderer,
       },
     ])
     await flushRuntimeGraph(scheduler)

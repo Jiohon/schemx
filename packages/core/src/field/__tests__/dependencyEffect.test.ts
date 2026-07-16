@@ -121,7 +121,7 @@ describe("dependency effect", () => {
     }
 
     const firstChild = dependency.childNodes.value[0]
-    const firstDescriptor = firstChild ? firstChild.descriptor ?? undefined : undefined
+    const firstDescriptor = firstChild ? (firstChild.descriptor ?? undefined) : undefined
 
     formApi.setValue("mode" as any, "b")
     await flushRuntimeGraph(scheduler)
@@ -129,9 +129,36 @@ describe("dependency effect", () => {
     expect(dependency.childNodes.value[0]).toBe(firstChild)
     expect(
       dependency.childNodes.value[0]
-        ? dependency.childNodes.value[0].descriptor ?? undefined
+        ? (dependency.childNodes.value[0].descriptor ?? undefined)
         : undefined
     ).toBe(firstDescriptor)
+  })
+
+  it("外部 compiler 失效后 renderer 不应继续递增缓存版本", async () => {
+    const childSchema = createRawFieldSchema("child", "child")
+    const renderer = vi.fn(() => [childSchema])
+    const { commitSchemas, context, formApi, root, scheduler } =
+      createRuntimeGraphHarness({}, { mode: "a" })
+
+    commitSchemas(root, [
+      {
+        key: "dep",
+        componentType: "dependency",
+        to: ["mode"],
+        renderer,
+      },
+    ])
+    await flushRuntimeGraph(scheduler)
+
+    context.compile.invalidate()
+    const expectedVersion = context.compile.getVersion()
+
+    formApi.setValue("mode" as any, "b")
+    await flushRuntimeGraph(scheduler)
+    formApi.setValue("mode" as any, "c")
+    await flushRuntimeGraph(scheduler)
+
+    expect(context.compile.getVersion()).toBe(expectedVersion)
   })
 
   it("空 renderer 输出会提交为空子树", async () => {

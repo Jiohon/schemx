@@ -2,8 +2,8 @@
  * Schema compiler 实现。
  *
  * 将用户传入的 SchemxField schema 数组编译为 FormDescriptor 列表。
- * 通过 WeakMap 以 schema 对象引用为键缓存 descriptor，配合 version 机制
- * 在编译选项变化时失效缓存，使未变更的 schema 复用同一 descriptor 引用。
+ * 通过 WeakMap 以 schema 对象引用为键，并按父级与索引位置缓存 descriptor。
+ * version 机制在编译选项变化时失效缓存，使位置未变的 schema 复用 descriptor。
  *
  * @module core/compiler/createCompile
  */
@@ -87,7 +87,9 @@ export function createCompile<TValues extends Values = Values>(
       const schema = normalized[i]
 
       // 命中缓存且版本未过期时直接复用之前的 descriptor
-      const cached = compileCache.entries.get(schema)
+      const locationKey = createCompileLocationKey(parentKey, i)
+      const locationEntries = compileCache.entries.get(schema)
+      const cached = locationEntries?.get(locationKey)
 
       if (cached && cached.version === compileCache.version) {
         descriptors.push(cached.descriptor)
@@ -102,10 +104,13 @@ export function createCompile<TValues extends Values = Values>(
       )
 
       // 写入缓存，下次相同 schema 引用可跳过编译
-      compileCache.entries.set(schema, {
+      const nextLocationEntries = locationEntries ?? new Map()
+
+      nextLocationEntries.set(locationKey, {
         version: compileCache.version,
         descriptor,
       })
+      compileCache.entries.set(schema, nextLocationEntries)
 
       descriptors.push(descriptor)
     }
@@ -125,11 +130,6 @@ export function createCompile<TValues extends Values = Values>(
     } as SchemxContext<TValues>
   }
 
-  /** 获取当前缓存版本号。 */
-  function getCacheVersion() {
-    return compileCache.version
-  }
-
   /** 递增缓存版本号，使所有现有缓存条目失效。 */
   function invalidate(): void {
     compileCache.version++
@@ -142,9 +142,12 @@ export function createCompile<TValues extends Values = Values>(
 
   return {
     cache: compileCache,
-    getCacheVersion,
     toDescriptors,
     invalidate,
     getVersion,
   }
+}
+
+function createCompileLocationKey(parentKey: string, index: number): string {
+  return JSON.stringify([parentKey, index])
 }

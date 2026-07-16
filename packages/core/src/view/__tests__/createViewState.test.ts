@@ -8,6 +8,7 @@
  */
 import { describe, expect, it } from "vitest"
 
+import { createContainerRuntimeState } from "../../container"
 import { createFieldRuntimeState, setFieldDynamicOverrides } from "../../field"
 import { createRuntimeResources } from "../../node/resources"
 import {
@@ -17,9 +18,10 @@ import {
   createRootRuntimeNode,
 } from "../../node/runtimeNode"
 import { createScope } from "../../node/scope"
+import { createComputed } from "../../reactivity"
 import {
-  createRuntimeViewState,
   createRootRuntimeViewState,
+  createRuntimeViewState,
   deleteRuntimeViewState,
 } from "../createViewState"
 
@@ -104,6 +106,15 @@ describe("createViewState", () => {
       dispose: createScope(),
     })
     const descriptor = createGroupDescriptor()
+    node.containerState = createContainerRuntimeState({
+      nodeId: node.id,
+      staticState: descriptor.staticState,
+      inheritedState: createComputed(() => ({
+        visible: true,
+        readonly: false,
+        disabled: false,
+      })),
+    })
 
     const state = createRuntimeViewState(node, descriptor, resources)
 
@@ -132,7 +143,17 @@ describe("createViewState", () => {
     const fieldDescriptor = createFieldDescriptor()
 
     createRootRuntimeViewState(root, resources)
-    createRuntimeViewState(group, createGroupDescriptor(), resources)
+    const groupDescriptor = createGroupDescriptor()
+    group.containerState = createContainerRuntimeState({
+      nodeId: group.id,
+      staticState: groupDescriptor.staticState,
+      inheritedState: createComputed(() => ({
+        visible: true,
+        readonly: false,
+        disabled: false,
+      })),
+    })
+    createRuntimeViewState(group, groupDescriptor, resources)
     createRuntimeViewState(dependency, createDependencyDescriptor(), resources)
 
     field.fieldState = createFieldRuntimeState({
@@ -187,6 +208,11 @@ function createGroupDescriptor(): GroupDescriptor {
     staticSchema: {
       componentType: "group",
       label: "分组",
+    },
+    staticState: {
+      visible: true,
+      readonly: false,
+      disabled: false,
     },
     children: [],
   } as GroupDescriptor

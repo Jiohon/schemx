@@ -303,7 +303,7 @@ export default FormItem
 const isViewGroupSchema = <T extends Values>(
   schema: SchemxViewSchema<T>
 ): schema is SchemxViewGroupSchema<T> => {
-  return schema.componentType === "group"
+  return "children" in schema
 }
 
 const normalizeNameKey = (name: unknown): string => {

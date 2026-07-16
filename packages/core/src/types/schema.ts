@@ -9,7 +9,7 @@
 
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 
-import type { SchemxDependencies } from "./dependencies"
+import type { SchemxContainerDependencies, SchemxDependencies } from "./dependencies"
 import type {
   FieldValue,
   NamePath,
@@ -389,6 +389,18 @@ export interface SchemxGroupField<
    */
   children: SchemxField<TValues>[]
   /**
+   * 是否可见。
+   *
+   * 不可见时整个后代子树停止校验，但保留字段值。
+   */
+  visible?: boolean
+  /** 是否强制后代字段只读。 */
+  readonly?: boolean
+  /** 是否强制后代字段禁用。 */
+  disabled?: boolean
+  /** 根据表单值动态覆盖 Group 的容器状态。 */
+  dependencies?: SchemxContainerDependencies<TValues>
+  /**
    * 是否可折叠
    */
   collapsible?: boolean
@@ -396,6 +408,12 @@ export interface SchemxGroupField<
    * 默认是否折叠
    */
   defaultCollapsed?: boolean
+  /** 受控折叠状态。 */
+  collapsed?: boolean
+  /** 用户切换折叠状态后的回调。 */
+  onCollapsedChange?: (collapsed: boolean) => void
+  /** 折叠时是否卸载后代 Renderer，默认保持现有行为 `true`。 */
+  destroyOnCollapse?: boolean
 }
 
 /**
@@ -433,6 +451,14 @@ export interface SchemxDependencyField<
     form: SchemxFormApi<TValues>,
     context: SchemxDependencyRendererContext
   ) => SchemxField<TValues>[] | Promise<SchemxField<TValues>[]>
+  /** 是否呈现动态子树；隐藏时结构 renderer 仍继续响应 `to`。 */
+  visible?: boolean
+  /** 是否强制动态子树中的字段只读。 */
+  readonly?: boolean
+  /** 是否强制动态子树中的字段禁用。 */
+  disabled?: boolean
+  /** 根据表单值动态覆盖 Dependency 的容器状态。 */
+  dependencies?: SchemxContainerDependencies<TValues>
 }
 
 /**
@@ -461,7 +487,7 @@ export type SchemxResolvedBaseField<TValues extends Values = Values> = Omit<
  */
 export type SchemxResolvedGroupField<TValues extends Values = Values> = Omit<
   SchemxGroupField<TValues>,
-  "children"
+  "children" | "dependencies"
 > & {
   children: SchemxResolvedField<TValues>[]
 }

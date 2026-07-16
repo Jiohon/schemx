@@ -10,11 +10,26 @@
 import { describe, expect, it, vi } from "vitest"
 
 import { createRawFieldSchema, createRuntimeGraphHarness } from "./runtimeGraphTestUtils"
+import { createRuntimeLifecycle } from "../runtimeLifecycle"
+import { createFieldRuntimeNode } from "../runtimeNode"
 
 import type { FieldRuntimeNode } from "../types"
 
 // 节点生命周期：create/update/remove 事件触发时机、descriptor 同步、effectDispose 与 fieldIndex 维护
 describe("node lifecycle flow", () => {
+  it("没有 parent 的描述节点不能进入 mount", () => {
+    const { context } = createRuntimeGraphHarness()
+    const lifecycle = createRuntimeLifecycle(context)
+    const node = createFieldRuntimeNode({ id: 99, key: "detached" })
+    const [descriptor] = context.compile.toDescriptors([
+      createRawFieldSchema("detached", "detached"),
+    ])
+
+    expect(() => lifecycle.mount(node, descriptor)).toThrow(
+      '[schemx] Runtime node "detached" must have a parent before mount.'
+    )
+  })
+
   it("create/update/remove transition 每类生命周期事件只触发一次", () => {
     const hooks = {
       beforeMount: vi.fn(),
@@ -161,11 +176,17 @@ describe("node lifecycle flow", () => {
 })
 
 import { describe, expect, it } from "vitest"
-import { createFieldRuntimeState, resetFieldDynamicOverrides, setFieldDynamicOverrides } from "../../field/runtimeState"
+import {
+  createFieldRuntimeState,
+  resetFieldDynamicOverrides,
+  setFieldDynamicOverrides,
+} from "../../field/runtimeState"
 
 import type { SchemxResolvedBaseField } from "../../types"
 
-function createTestSchema(overrides: Partial<SchemxResolvedBaseField> = {}): SchemxResolvedBaseField {
+function createTestSchema(
+  overrides: Partial<SchemxResolvedBaseField> = {}
+): SchemxResolvedBaseField {
   return {
     componentType: "input",
     label: "测试字段",
@@ -208,10 +229,14 @@ describe("字段删除和 scope 释放 (US3)", () => {
     resetFieldDynamicOverrides(state, "dispose")
 
     // 即使尝试写入，diagnostics 仍标记为 dispose
-    setFieldDynamicOverrides(state, { visible: false }, {
-      source: "dependencies",
-      triggerFields: ["country" as any],
-    })
+    setFieldDynamicOverrides(
+      state,
+      { visible: false },
+      {
+        source: "dependencies",
+        triggerFields: ["country" as any],
+      }
+    )
 
     // 写入仍然生效（runtimeState 不自行阻止），但 diagnostics 反映最新状态
     expect(state.diagnostics.value.lastUpdatedBy).toBe("dependencies")
@@ -225,10 +250,14 @@ describe("字段删除和 scope 释放 (US3)", () => {
       descriptor: { name: "email" as any, staticSchema: schema },
     })
 
-    setFieldDynamicOverrides(state, { visible: false, disabled: true }, {
-      source: "dependencies",
-      triggerFields: ["country" as any],
-    })
+    setFieldDynamicOverrides(
+      state,
+      { visible: false, disabled: true },
+      {
+        source: "dependencies",
+        triggerFields: ["country" as any],
+      }
+    )
 
     resetFieldDynamicOverrides(state, "reset")
 

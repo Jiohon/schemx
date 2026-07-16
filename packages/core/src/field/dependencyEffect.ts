@@ -11,10 +11,7 @@ import { type DependencyDescriptor, isDependencyDescriptor } from "../descriptor
 import { createSignal, createSignalEffect } from "../reactivity"
 import { createAbortableTaskRunner } from "../scheduler/abortableTaskRunner"
 
-import type {
-  DependencyRuntimeNode,
-  RuntimeDispose,
-} from "../node"
+import type { DependencyRuntimeNode, RuntimeDispose } from "../node"
 import type { Signal } from "../reactivity"
 import type { Scheduler } from "../scheduler"
 import type { SchemxContext } from "../schemxContext"
@@ -109,8 +106,6 @@ export function createDependencyEffect<TValues extends Values = Values>(
 
   const resourceScope = options.scope ?? node.dispose.child()
 
-  let compileCacheVersion = compile.getCacheVersion()
-
   node.effectState?.dispose()
 
   const effectState: DependencyEffectState = {
@@ -144,12 +139,6 @@ export function createDependencyEffect<TValues extends Values = Values>(
       effectState.error.value = null
     },
     onSuccess: (childSchemas) => {
-      const nextCompileCacheVersion = compile.getCacheVersion()
-      if (nextCompileCacheVersion !== compileCacheVersion) {
-        compile.invalidate()
-        compileCacheVersion = nextCompileCacheVersion
-      }
-
       const descriptors = compile.toDescriptors(childSchemas, "")
 
       commitChildren(node, descriptors)

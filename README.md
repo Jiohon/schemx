@@ -70,6 +70,36 @@ raw schemas
 
 具体 API 和使用示例见各包 README。
 
+## 容器状态与动态子树
+
+`componentType: "group"` 和 `componentType: "dependency"` 都可以作为容器使用 `visible`、`readonly`、`disabled` 与 `dependencies`。容器状态会递归传递给所有后代字段：祖先隐藏时后代不可见，祖先只读或禁用时后代不能通过自身配置解除限制。
+
+```ts
+const schemas = [
+  { name: "editable", label: "允许编辑", componentType: "switch" },
+  {
+    key: "profile",
+    label: "资料",
+    componentType: "group",
+    collapsible: true,
+    destroyOnCollapse: false,
+    dependencies: {
+      triggerFields: ["editable"],
+      readonly: (values) => !values.editable,
+    },
+    children: [{ name: "name", label: "姓名", componentType: "input" }],
+  },
+]
+```
+
+Dependency 的 `to` 只负责重建动态子树；容器 `dependencies.triggerFields` 只负责更新呈现状态。两者可以监听同一字段，但需要分别声明。容器 dependencies 只支持 `visible`、`readonly`、`disabled`，不支持副作用型 `trigger`。
+
+可在 [Vant 示例项目](./examples/vant) 中直接操作 Group 和 Dependency 的容器状态，完整语义见 [容器状态设计文档](./docs/group-state-extension-design.md)。
+
+## 设计文档
+
+- [Group 与 Dependency 容器状态扩展方案](./docs/group-state-extension-design.md)：定义容器状态继承、动态依赖、折叠行为、运行时改造范围和验收标准。
+
 ## 本地开发
 
 ```bash

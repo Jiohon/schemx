@@ -28,6 +28,24 @@ import type { FieldValue, NamePath, Values } from "../types"
 type RuntimePath = string | number | readonly (string | number)[]
 
 /**
+ * 判断两组字段路径是否按顺序完全一致。
+ *
+ * @param previous - 上一组字段路径。
+ * @param next - 下一组字段路径。
+ * @returns 路径数量、顺序和每段内容都一致时返回 true。
+ */
+export function areNamePathListsEqual<TValues extends Values>(
+  previous: readonly NamePath<TValues>[],
+  next: readonly NamePath<TValues>[]
+): boolean {
+  if (previous.length !== next.length) {
+    return false
+  }
+
+  return previous.every((path, index) => isNamePathEqual(path, next[index]))
+}
+
+/**
  * 从对象中根据路径获取嵌套值
  *
  * @param obj - 要获取值的源对象
@@ -198,4 +216,24 @@ const normalizeRuntimePath = (path: NamePath): RuntimePath => {
   }
 
   return path as string | number
+}
+
+function isNamePathEqual<TValues extends Values>(
+  previous: NamePath<TValues>,
+  next: NamePath<TValues> | undefined
+): boolean {
+  if (next === undefined) {
+    return false
+  }
+
+  if (Array.isArray(previous) || Array.isArray(next)) {
+    return (
+      Array.isArray(previous) &&
+      Array.isArray(next) &&
+      previous.length === next.length &&
+      previous.every((part, index) => part === next[index])
+    )
+  }
+
+  return previous === next
 }

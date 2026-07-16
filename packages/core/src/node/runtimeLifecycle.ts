@@ -9,6 +9,11 @@
  */
 
 import {
+  mountContainerNodeResources,
+  unmountContainerNodeResources,
+  updateContainerNodeResources,
+} from "../container"
+import {
   mountDependencyNodeResources,
   mountFieldNodeResources,
   unmountDependencyNodeResources,
@@ -16,8 +21,11 @@ import {
   updateDependencyNodeResources,
   updateFieldNodeResources,
 } from "../field"
-import { createRuntimeViewState, deleteRuntimeViewState } from "../view/createViewState"
-
+import {
+  createRuntimeViewState,
+  deleteRuntimeViewState,
+  updateRuntimeViewState,
+} from "../view/createViewState"
 
 import type { FormDescriptor } from "../descriptor"
 import type { SchemxContext } from "../schemxContext"
@@ -110,6 +118,12 @@ export function createRuntimeLifecycle<TValues extends Values = Values>(
     node: DescribedRuntimeNode<TValues>,
     descriptor: FormDescriptor<TValues>
   ): void {
+    if (!node.parent) {
+      throw new Error(
+        `[schemx] Runtime node "${node.key}" must have a parent before mount.`
+      )
+    }
+
     node.descriptor = descriptor
     bus.emitBeforeMount(node)
 
@@ -158,7 +172,7 @@ export function createRuntimeLifecycle<TValues extends Values = Values>(
       return
     }
 
-    for (const child of (node.type === "field" ? [] : node.childNodes.value)) {
+    for (const child of node.type === "field" ? [] : node.childNodes.value) {
       unmountSubtree(child)
     }
 
@@ -233,7 +247,11 @@ export function createRuntimeLifecycle<TValues extends Values = Values>(
     }
 
     if (node.type === "group" && nextDescriptor.type === "group") {
-      mountGroupResources(node, nextDescriptor)
+      mountGroupResources(
+        node,
+        nextDescriptor,
+        previousDescriptor?.type === "group" ? previousDescriptor : undefined
+      )
 
       return
     }
@@ -251,12 +269,21 @@ export function createRuntimeLifecycle<TValues extends Values = Values>(
   /**
    * 挂载 group 节点的资源。
    *
-   * Group 节点的领域资源主要是运行时视图状态。
+   * Group 节点依次挂载容器状态、动态属性 effect 和运行时视图状态。
    */
   function mountGroupResources(
     node: Extract<RuntimeNode<TValues>, { type: "group" }>,
-    descriptor: Extract<FormDescriptor<TValues>, { type: "group" }>
+    descriptor: Extract<FormDescriptor<TValues>, { type: "group" }>,
+    previousDescriptor?: Extract<FormDescriptor<TValues>, { type: "group" }>
   ): void {
+    if (node.containerState) {
+      updateContainerNodeResources(node, previousDescriptor, descriptor, context)
+      updateRuntimeViewState(node, descriptor, resources)
+
+      return
+    }
+
+    mountContainerNodeResources(node, descriptor, context)
     createRuntimeViewState(node, descriptor, resources)
   }
 
@@ -267,12 +294,14 @@ export function createRuntimeLifecycle<TValues extends Values = Values>(
    * field 和 dependency 节点还需额外卸载其特定领域资源。
    */
   function unmountRuntimeResources(node: RuntimeNode<TValues>): void {
-    const descriptor = node.type === "root" ? undefined : node.descriptor ?? undefined
+    const descriptor = node.type === "root" ? undefined : (node.descriptor ?? undefined)
 
     deleteRuntimeViewState(node, resources)
 
     if (node.type === "field" && descriptor?.type === "field") {
       unmountFieldNodeResources(node, context)
+    } else if (node.type === "group") {
+      unmountContainerNodeResources(node)
     } else if (node.type === "dependency") {
       unmountDependencyNodeResources(node, context)
     }

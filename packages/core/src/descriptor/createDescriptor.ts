@@ -12,6 +12,8 @@ import { isDependencySchema, isGroupSchema, NormalizedTrigger } from "../utils"
 
 import type { SchemxContext } from "../schemxContext"
 import type {
+  ContainerDynamicPropsDescriptor,
+  ContainerStaticState,
   DependencyDescriptor,
   DependencyRenderer,
   FieldDescriptor,
@@ -22,6 +24,7 @@ import type {
 } from "./types"
 import type {
   NamePath,
+  SchemxContainerDependencies,
   SchemxDependencies,
   SchemxResolvedBaseField,
   SchemxRules,
@@ -67,12 +70,12 @@ export function createDescriptor<TValues extends Values = Values>(
       createDescriptor(schemaChild, index, key, context)
     )
 
-    return createGroupDescriptor(schema, key, children)
+    return createGroupDescriptor(schema, key, children, context)
   }
 
   if (isDependencySchema(schema)) {
     // 依赖：编译为含动态 renderer 的描述符
-    return createDependencyDescriptor(schema, key)
+    return createDependencyDescriptor(schema, key, context)
   }
 
   // 普通字段：编译为含静态 schema + 校验 + 动态属性的描述符
@@ -117,9 +120,18 @@ function createFieldDescriptor<TValues extends Values = Values>(
 function createGroupDescriptor<TValues extends Values = Values>(
   schema: SchemxGroupField<TValues>,
   key: string,
-  children: FormDescriptor<TValues>[]
+  children: FormDescriptor<TValues>[],
+  context: DescriptorContext<TValues>
 ): GroupDescriptor<TValues> {
-  const { children: _rawChildren, ...schemaWithoutChildren } = schema
+  const {
+    children: _rawChildren,
+    dependencies,
+    visible: _visible,
+    readonly: _readonly,
+    disabled: _disabled,
+    ...schemaWithoutChildren
+  } = schema
+  const staticState = buildNormalizedContainerState(schema, context)
 
   return {
     type: "group",
@@ -127,8 +139,11 @@ function createGroupDescriptor<TValues extends Values = Values>(
     staticSchema: {
       ...schemaWithoutChildren,
       key,
+      ...staticState,
       children: [],
     },
+    staticState,
+    dynamicProps: createContainerDynamicProps(dependencies),
     children,
   }
 }
@@ -142,7 +157,8 @@ function createGroupDescriptor<TValues extends Values = Values>(
  */
 function createDependencyDescriptor<TValues extends Values = Values>(
   schema: SchemxDependencyField<TValues>,
-  key: string
+  key: string,
+  context: DescriptorContext<TValues>
 ): DependencyDescriptor<TValues> {
   // 拷贝 trigger 字段列表快照，避免外部意外修改
   const trigger = [...schema.to]
@@ -161,6 +177,42 @@ function createDependencyDescriptor<TValues extends Values = Values>(
     key,
     triggerFields: trigger,
     renderer,
+    rendererIdentity: schema.renderer,
+    staticState: buildNormalizedContainerState(schema, context),
+    dynamicProps: createContainerDynamicProps(schema.dependencies),
+  }
+}
+
+/**
+ * 规范化容器的静态呈现状态。
+ */
+function buildNormalizedContainerState<TValues extends Values>(
+  schema: Pick<
+    SchemxGroupField<TValues> | SchemxDependencyField<TValues>,
+    "visible" | "readonly" | "disabled"
+  >,
+  context: DescriptorContext<TValues>
+): ContainerStaticState {
+  return {
+    visible: schema.visible ?? context.defaultProps.visible ?? defaultConfig.visible,
+    readonly: schema.readonly ?? context.defaultProps.readonly ?? defaultConfig.readonly,
+    disabled: schema.disabled ?? context.defaultProps.disabled ?? defaultConfig.disabled,
+  }
+}
+
+/**
+ * 创建容器动态属性描述。
+ */
+function createContainerDynamicProps<TValues extends Values>(
+  dependencies: SchemxContainerDependencies<TValues> | undefined
+): ContainerDynamicPropsDescriptor<TValues> | null {
+  if (!dependencies) {
+    return null
+  }
+
+  return {
+    triggerFields: [...dependencies.triggerFields],
+    dependencies,
   }
 }
 
@@ -230,9 +282,7 @@ function buildNormalizedFieldSchema<TValues extends Values>(
   const mergedDisabled = disabled ?? defaultProps.disabled ?? defaultConfig.disabled
   const mergedContentAlign =
     contentAlign ?? defaultProps.contentAlign ?? defaultConfig.contentAlign
-  const mergedAlign = mergedReadonly
-    ? "right"
-    : (cp?.align ?? mergedContentAlign)
+  const mergedAlign = mergedReadonly ? "right" : (cp?.align ?? mergedContentAlign)
 
   const mergedValidationTrigger =
     validationTrigger ?? defaultProps.validationTrigger ?? defaultConfig.validationTrigger
@@ -242,7 +292,8 @@ function buildNormalizedFieldSchema<TValues extends Values>(
   const rulesArray = (Array.isArray(rules) ? rules : [rules]).filter(Boolean)
   // 显式 required 优先，否则有 rules 时默认 true
   const mergedRequired =
-    required ?? (rulesArray.length > 0 ? true : (defaultProps.required ?? defaultConfig.required))
+    required ??
+    (rulesArray.length > 0 ? true : (defaultProps.required ?? defaultConfig.required))
 
   const mergedReadonlyPlaceholder = cp?.readonlyPlaceholder ?? readonlyPlaceholder
 
@@ -259,7 +310,8 @@ function buildNormalizedFieldSchema<TValues extends Values>(
 
     labelIcon: labelIcon ?? defaultProps.labelIcon ?? defaultConfig.labelIcon,
     labelAlign: labelAlign ?? defaultProps.labelAlign ?? defaultConfig.labelAlign,
-    labelPosition: labelPosition ?? defaultProps.labelPosition ?? defaultConfig.labelPosition,
+    labelPosition:
+      labelPosition ?? defaultProps.labelPosition ?? defaultConfig.labelPosition,
     labelWidth: labelWidth ?? defaultProps.labelWidth ?? defaultConfig.labelWidth,
     contentAlign: mergedContentAlign,
     colon: colon ?? defaultProps.colon ?? defaultConfig.colon,

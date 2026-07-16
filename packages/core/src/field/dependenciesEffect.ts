@@ -8,25 +8,15 @@
  * @module core/field/dependencies
  */
 
-import { createSignalEffect } from "../reactivity"
-import { createAbortableTaskRunner } from "../scheduler/abortableTaskRunner"
+import { createDynamicPropsEffect } from "../dynamicProps/effect"
 
 import { type FieldRuntimeState, setFieldDynamicOverrides } from "./runtimeState"
 
 import type { FieldDescriptor } from "../descriptor"
 import type { Scope } from "../node"
 import type { SchemxContext } from "../schemxContext"
-import type {
-  SchemxConditionFn,
-  SchemxDependencies,
-  SchemxFormApi,
-  SchemxResolvedBaseField,
-  Values,
-} from "../types"
+import type { SchemxResolvedBaseField, Values } from "../types"
 
-/**
- * 支持动态配置的字段呈现态键列表。
- */
 /**
  * 可通过 dependencies 动态配置的字段属性 key 列表。
  *
@@ -94,8 +84,6 @@ export function createDependenciesEffect<TValues extends Values = Values>(
 ): void {
   const { context, descriptor, runtimeState, scope } = options
 
-  const { formApi, scheduler } = context
-
   const dynamicProps = descriptor.dynamicProps
 
   const dependencies = dynamicProps?.dependencies
@@ -106,107 +94,17 @@ export function createDependenciesEffect<TValues extends Values = Values>(
     return
   }
 
-  const taskRunner = createAbortableTaskRunner<DependenciesResolvedProps<TValues>>({
+  createDynamicPropsEffect<TValues, DependenciesResolvedProps<TValues>>({
+    context,
+    dependencies,
+    triggerFields,
+    propKeys: FIELD_DEPENDENCIES_PROP_KEYS,
     scope,
-    scheduler,
-    run: () => resolveDependencies(dependencies, formApi),
     onSuccess: (resolvedProps) => {
       setFieldDynamicOverrides(runtimeState, resolvedProps, {
         source: "dependencies",
         triggerFields,
       })
     },
-    onError: (error) => {
-      console.error("[schemx] dependencies 执行错误:", error)
-    },
   })
-
-  const dispose = createSignalEffect(() => {
-    // 读取 trigger 字段值以建立响应式依赖；字段值变化时 effect 会重新执行。
-    void formApi.getValues([...triggerFields])
-
-    void taskRunner.run()
-  })
-
-  scope.add(() => {
-    dispose()
-  })
-}
-
-/**
- * 解析单个字段的 dependencies 配置。
- */
-async function resolveDependencies<TValues extends Values>(
-  dependencies: SchemxDependencies<TValues>,
-  formApi: SchemxFormApi<TValues>
-): Promise<DependenciesResolvedProps<TValues>> {
-  const values = formApi.getValues() as TValues
-
-  const [resolvedProps] = await Promise.all([
-    resolveDependenciesProps(dependencies, values, formApi),
-    runDependenciesTrigger(dependencies, values, formApi),
-  ])
-
-  return resolvedProps
-}
-
-/**
- * 执行 dependencies.trigger 副作用。
- */
-async function runDependenciesTrigger<TValues extends Values>(
-  dependencies: SchemxDependencies<TValues>,
-  values: TValues,
-  formApi: SchemxFormApi<TValues>
-): Promise<void> {
-  if (!dependencies.trigger) {
-    return
-  }
-
-  try {
-    await dependencies.trigger(values, formApi)
-  } catch (error) {
-    console.error("[schemx] trigger 执行错误:", error)
-  }
-}
-
-/**
- * 解析 dependencies 中显式配置的动态属性。
- */
-async function resolveDependenciesProps<TValues extends Values>(
-  dependencies: SchemxDependencies<TValues>,
-  values: TValues,
-  formApi: SchemxFormApi<TValues>
-): Promise<DependenciesResolvedProps<TValues>> {
-  const entries = await Promise.all(
-    FIELD_DEPENDENCIES_PROP_KEYS.filter((key) => dependencies[key] != null).map(
-      async (key) => {
-        const condition = dependencies[key] as SchemxConditionFn<TValues, unknown>
-        const value = await resolveCondition(formApi, condition, values, undefined)
-
-        return [key, value] as const
-      }
-    )
-  )
-
-  return Object.fromEntries(entries) as DependenciesResolvedProps<TValues>
-}
-
-/**
- * 执行单个动态属性条件函数。
- */
-async function resolveCondition<TValues extends Values, TValue>(
-  formApi: SchemxFormApi<TValues>,
-  condition: SchemxConditionFn<TValues, TValue>,
-  formValues: TValues,
-  defaultValue: TValue | undefined
-): Promise<TValue | undefined> {
-  try {
-    const result = await condition(formValues, formApi)
-
-    return result ?? defaultValue
-  } catch (error) {
-    console.error("[schemx] 解析动态属性时发生错误:", error)
-
-    return defaultValue
-  }
 }

@@ -9,11 +9,12 @@
   "devDependencies": {
     "@clack/prompts": "^1.6.0",
     "@eslint/js": "^8.57.1",
+    "@plugins/inject-style-css": "workspace:*",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
+    "@vue/language-core": "^3.1.5",
     "@vitejs/plugin-vue": "^5.0.0",
     "@vitejs/plugin-vue-jsx": "^4.0.0",
-    "@plugins/inject-style-css": "workspace:*",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^9.1.2",
     "eslint-import-resolver-typescript": "^4.4.4",
@@ -30,7 +31,7 @@
     "typescript": "^5.0.0",
     "typescript-eslint": "^7.18.0",
     "vite": "^5.0.0",
-    "vite-plugin-dts": "^3.0.0",
+    "vite-plugin-dts": "^5.0.3",
     "vitest": "^2.1.8"
   },
   "scripts": {

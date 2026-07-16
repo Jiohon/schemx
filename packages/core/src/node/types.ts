@@ -8,6 +8,7 @@
  * @module core/node/types
  */
 
+import type { ContainerRuntimeState } from "../container/runtimeState"
 import type { FormDescriptor } from "../descriptor"
 import type { DependencyEffectState } from "../field/dependencyEffect"
 import type { FieldRuntimeState } from "../field/runtimeState"
@@ -177,6 +178,10 @@ export interface GroupRuntimeNode<
 
   viewState: GroupViewState<TValues> | null
 
+  containerState: ContainerRuntimeState | null
+
+  containerEffectDispose: RuntimeDispose | null
+
   /**
    * 静态 schema children 编译后的 runtime 子节点。
    */
@@ -203,6 +208,10 @@ export interface DependencyRuntimeNode<
   effectState: DependencyEffectState | null
 
   dependencyDispose: RuntimeDispose | null
+
+  containerState: ContainerRuntimeState | null
+
+  containerEffectDispose: RuntimeDispose | null
 
   /**
    * dependency renderer 产出的动态 runtime 子节点。
@@ -320,9 +329,10 @@ export interface CreateDependencyRuntimeNodeOptions<TValues extends Values = Val
 }
 
 /** 非 root 节点的通用创建选项。 */
-export interface CreateRuntimeNodeOptions {
+export interface CreateRuntimeNodeOptions<TValues extends Values = Values> {
   type: Exclude<RuntimeNodeType, "root">
   key: string
+  parent?: ContainerRuntimeNode<TValues> | null
   dispose?: RuntimeDispose
 }
 
@@ -347,7 +357,7 @@ export interface RuntimeNodeManager<TValues extends Values = Values> {
     parent: ContainerRuntimeNode<TValues>
   ): DescribedRuntimeNode<TValues>
   /** 根据 type 创建对应节点，分配 ID 并注册到 nodes Map（尚未挂载到父节点）。 */
-  createNode(options: CreateRuntimeNodeOptions): DescribedRuntimeNode<TValues>
+  createNode(options: CreateRuntimeNodeOptions<TValues>): DescribedRuntimeNode<TValues>
   /** 根据节点 ID 查询节点，不存在时返回 undefined。 */
   getNode(nodeId: RuntimeNodeId): RuntimeNode<TValues> | undefined
   /** 深度优先遍历 root 及其全部后代节点，检测循环/重复引用。 */

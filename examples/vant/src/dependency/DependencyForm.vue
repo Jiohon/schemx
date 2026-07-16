@@ -2,15 +2,19 @@
   <div class="example-container">
     <h2>字段联动示例</h2>
     <p class="description">
-      演示 componentType: "dependency" 实现复杂字段联动：
-      根据字段值动态生成不同的表单结构，多个 dependency 组合使用
+      演示 componentType: "dependency" 的动态子树与容器状态：根据字段值生成不同结构，
+      并统一控制整棵子树的显示、只读和禁用状态。
     </p>
 
     <Schemx
       ref="formRef"
       v-model="formData"
       :schemas="schemas"
-      :initial-values="{ orderType: 'standard' }"
+      :initial-values="{
+        orderType: 'standard',
+        showOrderConfiguration: true,
+        orderAccess: 'edit',
+      }"
       @finish="handleSubmit"
       @finish-failed="handleSubmitFailed"
       @values-change="handleValuesChange"
@@ -33,6 +37,7 @@
 
 <script setup lang="ts">
   import { ref } from "vue"
+
   import { Button } from "vant"
 
   import Schemx from "@schemx/vant"
@@ -47,6 +52,8 @@
   /** 表单数据，通过 v-model 双向绑定实时展示动态结构变化 */
   const formData = ref<Record<string, any>>({
     orderType: "standard",
+    showOrderConfiguration: true,
+    orderAccess: "edit",
   })
 
   const sleep = (ms: number) =>
@@ -115,6 +122,7 @@
    * - 异步 dependency 竞态：expressLevel 快速切换时旧结果应被丢弃
    * - 动态 group children：dependency renderer 返回 group + children
    * - 卸载清理：发票必填字段卸载后不应继续阻塞 submit
+   * - 容器状态：统一控制动态子树的 visible、readonly、disabled
    */
   const schemas = <SchemxField<DependencyFormValues>[]>[
     /** 控制字段：订单类型（selector 选择 standard / express / custom 切换分支） */
@@ -133,10 +141,37 @@
       initialValue: "standard",
     },
 
+    {
+      name: "showOrderConfiguration",
+      label: "显示订单配置",
+      componentType: "switch",
+      initialValue: true,
+    },
+    {
+      name: "orderAccess",
+      label: "订单配置权限",
+      componentType: "radio",
+      initialValue: "edit",
+      componentProps: {
+        options: [
+          { label: "可编辑", value: "edit" },
+          { label: "仅查看", value: "review" },
+          { label: "已锁定", value: "locked" },
+        ],
+      },
+    },
+
     /** 主 dependency：根据 orderType 动态生成不同订单结构 */
     {
+      key: "order-configuration",
       componentType: "dependency",
       to: ["orderType"],
+      dependencies: {
+        triggerFields: ["showOrderConfiguration", "orderAccess"],
+        visible: (values) => values.showOrderConfiguration !== false,
+        readonly: (values) => values.orderAccess === "review",
+        disabled: (values) => values.orderAccess === "locked",
+      },
       renderer: async (values) => {
         console.log("values.orderType", values.orderType)
         const orderType = values.orderType

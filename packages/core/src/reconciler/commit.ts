@@ -19,10 +19,7 @@
 import type { DescribedRuntimeNode } from "../node"
 import type { ContainerRuntimeNode } from "../node"
 import type { Values } from "../types"
-import type {
-  CommitReconcilePlanOptions,
-  ReconcilePlan,
-} from "./types"
+import type { CommitReconcilePlanOptions, ReconcilePlan } from "./types"
 
 /**
  * 提交并执行协调计划。
@@ -46,6 +43,7 @@ export function commitReconcilePlan<TValues extends Values = Values>(
     const node = options.nodeManager.createNode({
       type: descriptor.type,
       key: descriptor.key,
+      parent,
       // 新节点从父节点继承 dispose 句柄，确保生命周期与父节点绑定
       dispose: parent.dispose.child(),
     })

@@ -86,17 +86,17 @@ console.log(Schemx === schemxForm) // true
 | `rendererRegistry`    | `RendererRegistryType`                           | 全局 `rendererRegistry`  | 当前表单使用的 Renderer Registry                                                                                            |
 | `defaultRendererType` | `string`                                         | `undefined`              | 类型上用于设置默认 Renderer；当前 Vue 创建路径总会传入 Registry，因此该 Prop 实际不会设置 Registry 的默认类型，见下文       |
 | `validatorRegistry`   | `ValidatorsRegistryType`                         | 全局 `validatorRegistry` | 当前表单使用的校验规则 Registry                                                                                             |
-| `required`            | `boolean`                                        | `undefined`              | 类型中存在，但当前不会成为字段默认值；字段按自身配置或校验规则推导                                                          |
-| `readonly`            | `boolean`                                        | `undefined`              | core 实际读取的表单级字段默认值之一；字段自身配置优先                                                                       |
-| `disabled`            | `boolean`                                        | `undefined`              | core 实际读取的表单级字段默认值之一；字段自身配置优先                                                                       |
-| `visible`             | `boolean`                                        | `undefined`              | 类型中存在，但当前不会成为字段默认值；字段未配置时由 core 固定解析为 `true`                                                 |
-| `labelIcon`           | `string`                                         | `undefined`              | 类型中存在，但当前不会成为字段默认值；Vue `FormItem` 目前也不渲染标签图标                                                   |
-| `labelAlign`          | `"left" \| "center" \| "right"`                  | `undefined`              | 类型中存在，但 core 会把未配置字段解析为 `"left"`，遮蔽 `FormItem` 的表单上下文回退                                         |
-| `labelPosition`       | `"left" \| "top" \| "right"`                     | `undefined`              | 类型中存在，但 core 会把未配置字段解析为 `"left"`，遮蔽表单上下文回退                                                       |
-| `labelWidth`          | `string`                                         | `undefined`              | 类型中存在，但 core 会把未配置字段解析为 `"auto"`，遮蔽表单上下文回退                                                       |
-| `contentAlign`        | `"left" \| "center" \| "right"`                  | `undefined`              | core 实际读取的表单级字段默认值之一；用于解析 Renderer 的 `align`，字段自身配置优先                                         |
-| `validationTrigger`   | `ValidationTrigger \| ValidationTrigger[]`       | `undefined`              | core 实际读取的表单级字段默认值之一；字段自身配置优先，均未配置时最终默认 `"blur"`                                          |
-| `colon`               | `boolean`                                        | `undefined`              | 类型中存在，但 core 会把未配置字段解析为 `true`，遮蔽表单上下文回退                                                         |
+| `required`            | `boolean`                                        | `undefined`              | 字段未显式配置且没有非空 `rules` 时作为默认值；存在规则时优先推导为 `true`                                                  |
+| `readonly`            | `boolean`                                        | `undefined`              | 表单级只读默认值；字段自身配置优先                                                                                          |
+| `disabled`            | `boolean`                                        | `undefined`              | 表单级禁用默认值；字段自身配置优先                                                                                          |
+| `visible`             | `boolean`                                        | `undefined`              | 表单级可见性默认值；字段自身配置优先，均未配置时为 `true`                                                                   |
+| `labelIcon`           | `string`                                         | `undefined`              | 表单级标签图标默认值；会进入字段 ViewSchema，具体是否渲染取决于适配组件                                                     |
+| `labelAlign`          | `"left" \| "center" \| "right"`                  | `undefined`              | 表单级标签对齐默认值；字段自身配置优先，均未配置时为 `"left"`                                                               |
+| `labelPosition`       | `"left" \| "top" \| "right"`                     | `undefined`              | 表单级标签位置默认值；字段自身配置优先，均未配置时为 `"left"`                                                               |
+| `labelWidth`          | `string`                                         | `undefined`              | 表单级标签宽度默认值；字段自身配置优先，均未配置时为 `"auto"`                                                               |
+| `contentAlign`        | `"left" \| "center" \| "right"`                  | `undefined`              | 表单级内容对齐默认值；用于解析 Renderer 的 `align`，字段自身配置优先                                                        |
+| `validationTrigger`   | `ValidationTrigger \| ValidationTrigger[]`       | `undefined`              | 表单级校验触发方式默认值；字段自身配置优先，均未配置时为 `"blur"`                                                           |
+| `colon`               | `boolean`                                        | `undefined`              | 表单级标签冒号默认值；字段自身配置优先，均未配置时为 `true`                                                                 |
 | `onFinish`            | `(values: Readonly<T>) => void \| Promise<void>` | `undefined`              | `submit()` 校验通过后的回调 Prop                                                                                            |
 | `onFinishFailed`      | `(error: ValidateError<T>) => void`              | `undefined`              | `submit()` 校验失败后的回调 Prop                                                                                            |
 | `onValuesChange`      | `(changedValues, latestSnapshot) => void`        | `undefined`              | 字段值变化后的回调 Prop                                                                                                     |
@@ -104,7 +104,7 @@ console.log(Schemx === schemxForm) // true
 | `class`               | `string`                                         | `""`                     | 添加到根 `.schemx` 元素的类名                                                                                               |
 | `style`               | `CSS.Properties`                                 | `{}`                     | 类型已声明，但当前根元素没有绑定该值；不要依赖它产生内联样式                                                                |
 
-当前只有 `readonly`、`disabled`、`contentAlign` 和 `validationTrigger` 真正参与 core 的表单级默认值合并，优先级为字段配置 → 表单 Prop → core 固定默认值。`required`、`visible`、`labelIcon`、`labelAlign`、`labelPosition`、`labelWidth` 和 `colon` 虽然存在于 `SchemxProps` 和 Vue Props 类型中，但 core 不从表单 `defaultProps` 读取它们；其中标签布局类字段还会被 core 写入字段 ViewSchema 的固定默认值，导致 `FormItem` 中同名表单上下文回退无法生效。传入 `form` 时，`initialValues`、Registry 和所有表单回调都由外部实例的创建者配置；组件不会用同名 Props 重建或包装外部实例。
+上述默认配置都会参与 core 的字段规范化，通常按字段配置 → 表单 Prop → core 固定默认值合并。`required` 是例外：字段未显式配置时，非空 `rules` 会先将其推导为 `true`，再回退到表单 Prop 和固定默认值。传入 `form` 时，`initialValues`、Registry 和所有表单回调都由外部实例的创建者配置；组件不会用同名 Props 重建或包装外部实例。
 
 当前 `useForm()` 总会把显式传入的 `rendererRegistry` 或 Vue 包的全局 `rendererRegistry` 传给 core。core 只有在没有 Registry 时才用 `defaultRendererType` 创建新 Registry，因此 `<Schemx :default-renderer-type="...">` 和 Vue `useForm({ defaultRendererType: ... })` 中的该值当前实际被忽略。需要默认回退类型时，请创建已经设置默认类型的独立 Registry，例如 `createRendererRegistry("input")`，再通过 `rendererRegistry` 传入；外部 `form` 则应在创建实例时完成配置。
 
@@ -251,32 +251,35 @@ const schemas: SchemxField<Values>[] = [
 
 普通字段的真实字段如下：
 
-| 字段                                                     | 必填 | 说明                                                                                                                                                   |
-| -------------------------------------------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `name`                                                   | 是   | 字段路径，支持字符串和路径数组                                                                                                                         |
-| `label`                                                  | 是   | 标签文本                                                                                                                                               |
-| `componentType`                                          | 是   | Registry 中的 Renderer key                                                                                                                             |
-| `dependencies`                                           | 否   | 基于其他字段动态覆盖展示属性的结构化依赖配置                                                                                                           |
-| `componentProps`                                         | 否   | 透传给 Renderer 的专属 Props；框架注入项会覆盖同名值                                                                                                   |
-| `placeholder`                                            | 否   | 占位提示                                                                                                                                               |
-| `required`、`readonly`、`disabled`、`visible`            | 否   | 字段展示和交互状态                                                                                                                                     |
-| `initialValue`                                           | 否   | 字段挂载时的初始值和 `reset()` 还原值                                                                                                                  |
-| `rules`                                                  | 否   | 单条或多条校验规则，支持 Standard Schema 与内置规则名                                                                                                  |
-| `labelIcon`、`labelAlign`、`labelPosition`、`labelWidth` | 否   | 标签展示配置                                                                                                                                           |
-| `contentAlign`、`colon`                                  | 否   | 内容对齐和冒号配置                                                                                                                                     |
-| `validationTrigger`                                      | 否   | `change`、`blur` 等校验触发时机                                                                                                                        |
-| `onChange`、`onBlur`                                     | 否   | 类型中存在的顶层回调；当前 Vue `FormItem` 不调用它们，Renderer 事件说明见后文                                                                          |
-| `class`、`style`                                         | 否   | Vue 源码通过声明合并增加，运行时分别应用到字段容器的 class 和内联 style；当前发布根声明未带入该 augmentation，普通消费者直接填写时可能无法通过类型检查 |
-| `key`                                                    | 否   | 框架字段；业务方通常不要设置                                                                                                                           |
+| 字段                                                     | 必填 | 说明                                                                                                     |
+| -------------------------------------------------------- | ---- | -------------------------------------------------------------------------------------------------------- |
+| `name`                                                   | 是   | 字段路径，支持字符串和路径数组                                                                           |
+| `label`                                                  | 是   | 标签文本                                                                                                 |
+| `componentType`                                          | 是   | Registry 中的 Renderer key                                                                               |
+| `dependencies`                                           | 否   | 基于其他字段动态覆盖展示属性的结构化依赖配置                                                             |
+| `componentProps`                                         | 否   | 透传给 Renderer 的专属 Props；框架注入项会覆盖同名值                                                     |
+| `placeholder`                                            | 否   | 占位提示                                                                                                 |
+| `required`、`readonly`、`disabled`、`visible`            | 否   | 字段展示和交互状态                                                                                       |
+| `initialValue`                                           | 否   | 字段挂载时的初始值和 `reset()` 还原值                                                                    |
+| `rules`                                                  | 否   | 单条或多条校验规则，支持 Standard Schema 与内置规则名                                                    |
+| `labelIcon`、`labelAlign`、`labelPosition`、`labelWidth` | 否   | 标签展示配置                                                                                             |
+| `contentAlign`、`colon`                                  | 否   | 内容对齐和冒号配置                                                                                       |
+| `validationTrigger`                                      | 否   | `change`、`blur` 等校验触发时机                                                                          |
+| `onChange`、`onBlur`                                     | 否   | 类型中存在的顶层回调；当前 Vue `FormItem` 不调用它们，Renderer 事件说明见后文                            |
+| `class`、`style`                                         | 否   | Vue 通过声明合并增加，运行时分别应用到字段容器的 class 和内联 style，发布根声明会自动带入该 augmentation |
+| `key`                                                    | 否   | 框架字段；业务方通常不要设置                                                                             |
 
 ### 分组
 
 ```ts
 const group: SchemxField<Values> = {
+  key: "basic-info",
   componentType: "group",
   label: "基本信息",
+  readonly: false,
   collapsible: true,
   defaultCollapsed: false,
+  destroyOnCollapse: false,
   children: [
     {
       name: "nickname",
@@ -287,7 +290,9 @@ const group: SchemxField<Values> = {
 }
 ```
 
-分组字段包含 `componentType: "group"`、`label`、`children`、可选的 `collapsible`、`defaultCollapsed` 和框架用 `key`。它不是普通字段，没有 `name`、`componentProps` 或字段值。
+分组字段支持 `visible`、`readonly`、`disabled` 和容器 `dependencies`。状态会递归传递给嵌套 Group、Dependency 和普通字段。它不是普通字段，没有 `name`、`componentProps` 或字段值。
+
+折叠支持受控 `collapsed`、非受控 `defaultCollapsed`、`onCollapsedChange` 和 `destroyOnCollapse`。`destroyOnCollapse=false` 时仅隐藏 Body 并保留后代 Renderer 实例；默认值 `true` 保持原有卸载行为。折叠只影响展示，不改变字段可见性或校验状态。
 
 ### 动态依赖子树
 
@@ -295,6 +300,10 @@ const group: SchemxField<Values> = {
 const dependency: SchemxField<Values> = {
   componentType: "dependency",
   to: ["nickname"],
+  dependencies: {
+    triggerFields: ["editable"],
+    readonly: (values) => !values.editable,
+  },
   renderer: async (values, form, { abortSignal }) => {
     if (!values.nickname || abortSignal.aborted) return []
 
@@ -309,7 +318,9 @@ const dependency: SchemxField<Values> = {
 }
 ```
 
-动态依赖节点包含 `componentType: "dependency"`、依赖路径数组 `to`、`renderer(values, form, context)` 和可选 `key`。`renderer` 可以同步或异步返回新的 `SchemxField<T>[]`；`context.abortSignal` 用于取消已经过期的异步依赖计算。该 `AbortSignal` 属于 core 的 dependency renderer，和后文 `useDictionary` 的请求行为不同。
+动态依赖节点还支持 `visible`、`readonly`、`disabled` 和容器 `dependencies`。`to` 与 `renderer` 负责动态子树结构，容器 `dependencies` 独立控制整棵子树的呈现状态。隐藏 Dependency 不会暂停 renderer，恢复可见后会展示最新子树。
+
+`renderer` 可以同步或异步返回新的 `SchemxField<T>[]`；`context.abortSignal` 用于取消已经过期的异步依赖计算。该 `AbortSignal` 属于 Core 的 Dependency renderer，和后文 `useDictionary` 的请求行为不同。
 
 ## Dictionary
 
@@ -331,19 +342,19 @@ interface SchemxDictionary<T extends Values = Values, R = any> {
 }
 ```
 
-| 字段                | 默认值              | 真实行为                                                                              |
-| ------------------- | ------------------- | ------------------------------------------------------------------------------------- |
-| `api`               | 必填                | 接收加载开始时的完整表单快照和实例；支持同步或异步返回                                |
-| `formatter`         | 直接使用 `api` 结果 | 在请求成功后转换结果；支持异步，返回值应为数组                                        |
-| `dependsOn`         | `undefined`         | 通过 `useWatchFields` 监听这些字段；变化时执行依赖回调、可选重置和重新加载            |
-| `shouldFetch`       | 总是加载            | 每次加载前判断；返回 `false` 时跳过 `api`、清空 `list` 并结束加载状态                 |
-| `immediate`         | `true`              | 组件 `onMounted` 时是否自动调用一次 `loadDict()`；不影响依赖变化或手动刷新            |
+| 字段                | 默认值              | 真实行为                                                                                           |
+| ------------------- | ------------------- | -------------------------------------------------------------------------------------------------- |
+| `api`               | 必填                | 接收加载开始时的完整表单快照和实例；支持同步或异步返回                                             |
+| `formatter`         | 直接使用 `api` 结果 | 在请求成功后转换结果；支持异步，返回值应为数组                                                     |
+| `dependsOn`         | `undefined`         | 通过 `useWatchFields` 监听这些字段；变化时执行依赖回调、可选重置和重新加载                         |
+| `shouldFetch`       | 总是加载            | 每次加载前判断；返回 `false` 时跳过 `api`、清空 `list` 并结束加载状态                              |
+| `immediate`         | `true`              | 组件 `onMounted` 时是否自动调用一次 `loadDict()`；不影响依赖变化或手动刷新                         |
 | `resetOnDepsChange` | `false`             | 依赖变化时，如果 `useDictionary` 收到目标字段路径，调用 `form.setFieldValue(fieldName, undefined)` |
-| `retryCount`        | `0`                 | 失败后的额外重试次数；总尝试次数为 `retryCount + 1`                                   |
-| `retryInterval`     | `1000`              | 两次尝试之间等待的毫秒数                                                              |
-| `onError`           | 无                  | 最终失败后接收规范化的 `Error` 和表单实例                                             |
-| `onSuccess`         | 无                  | `formatter` 完成、`list` 写入后接收最终数组和表单实例                                 |
-| `onDepsChange`      | 无                  | 依赖变化后、`shouldFetch` 判断前调用                                                  |
+| `retryCount`        | `0`                 | 失败后的额外重试次数；总尝试次数为 `retryCount + 1`                                                |
+| `retryInterval`     | `1000`              | 两次尝试之间等待的毫秒数                                                                           |
+| `onError`           | 无                  | 最终失败后接收规范化的 `Error` 和表单实例                                                          |
+| `onSuccess`         | 无                  | `formatter` 完成、`list` 写入后接收最终数组和表单实例                                              |
+| `onDepsChange`      | 无                  | 依赖变化后、`shouldFetch` 判断前调用                                                               |
 
 当前类型没有 `data`、`list` 或 `options` 形式的静态数组字段。同步 `api` 可以表达静态来源：
 
@@ -946,7 +957,9 @@ console.log(viewSchemas.value)
 | -------- | -------------------------- | --------------------------------------- |
 | `schema` | `SchemxViewGroupSchema<T>` | 包含已解析 `children` 的分组 ViewSchema |
 
-它会把收到的全部 Slots 原样传给子级 `FormItem`。`collapsible` 控制标题是否可点击和可通过 Enter / Space 切换；`defaultCollapsed` 只用于初始化内部折叠状态。`label` 为空时不渲染标题。Vue 源码的 `types/schemx.d.ts` 通过声明合并为分组 Schema 增加了 `class` 和 `style`，但当前发布根声明没有带入这份 augmentation，普通消费者不能把它们视为稳定的根类型契约。运行时读取 `class` 并添加到 `.schemx-group` 根元素；`style` 即使传入，`FormGroup` 也没有把它绑定到根元素。子级字段仍要求表单实例和展示配置上下文。
+它会把收到的全部 Slots 原样传给子级 `FormItem`。`collapsible` 控制标题是否可点击和通过 Enter / Space 切换；`disabled` 状态禁止折叠交互，`readonly` 状态仍允许浏览和折叠。组件支持受控与非受控折叠；从受控切换为非受控时会延续最后一次受控值。`destroyOnCollapse` 控制子级是否卸载，ARIA 关联 ID 优先使用 Core RuntimeNode ID，直接挂载组件时回退到 Vue 实例 ID，避免规范化后相同 key 发生冲突。
+
+`label` 为空时不渲染标题。Vue 源码的 `types/index.ts` 通过声明合并为分组 Schema 增加 `class` 和 `style`，发布声明入口会加载该增强；运行时将二者分别绑定到 `.schemx-group` 根元素。子级字段仍要求表单实例和展示配置上下文。
 
 `FormItem` 和 `FormGroup` 是构建自定义 Vue adapter 或重排 ViewSchemas 时的底层组件。一般业务表单优先使用 `<Schemx>`；只有在需要自定义整体布局、分区或容器时才直接组合这两个组件。
 
@@ -1012,11 +1025,11 @@ Vue 根入口自有 5 个公开类型：
 
 ## Core API
 
-`@schemx/vue` 通过 `export * from "@schemx/core"` 完整传递 Core 的 81 个命名导出（20 个运行时值 + 61 个类型）。它们仍是 Core API，不是 Vue 自有 Composition API。签名与语义见 [Core README](../core)，导出基线见 [Core 完整导出清单](../core#完整导出清单)。下节仍逐项列出名称，以便机械核对 Vue 根入口。
+`@schemx/vue` 通过 `export * from "@schemx/core"` 完整传递 Core 的 82 个命名导出（20 个运行时值 + 62 个类型）。它们仍是 Core API，不是 Vue 自有 Composition API。签名与语义见 [Core README](../core)，导出基线见 [Core 完整导出清单](../core#完整导出清单)。下节仍逐项列出名称，以便机械核对 Vue 根入口。
 
 ## 完整导出清单
 
-当前根入口共有 109 项导出：108 个命名导出和 `default`。命名导出由 42 个运行时值与 66 个类型组成；若工具把 `default` 归入值，则显示为 43 个值 + 66 个类型。按来源是 Vue 自有 22 个命名运行时值 + 5 个类型 + `default`，以及 Core 传递的 81 个命名导出。
+当前根入口共有 110 项导出：109 个命名导出和 `default`。命名导出由 42 个运行时值与 67 个类型组成；若工具把 `default` 归入值，则显示为 43 个值 + 67 个类型。按来源是 Vue 自有 22 个命名运行时值 + 5 个类型 + `default`，以及 Core 传递的 82 个命名导出。
 
 ### Vue 自有导出
 
@@ -1078,7 +1091,7 @@ Vue 根入口自有 5 个公开类型：
 | 路径          | `setByPath`                | 写入嵌套路径。             |
 | 路径          | `collectObjectPathsByLeaf` | 收集叶子路径。             |
 
-### Core 传递类型（61 个）
+### Core 传递类型（62 个）
 
 | 分类               | 导出                            | 用途                                |
 | ------------------ | ------------------------------- | ----------------------------------- |
@@ -1117,6 +1130,7 @@ Vue 根入口自有 5 个公开类型：
 | 扩展               | `SchemxFieldDefinition`         | 普通字段声明合并接口。              |
 | 扩展               | `SchemxGroupFieldDefinition`    | Group 声明合并接口。                |
 | 依赖               | `SchemxDependencies`            | 字段动态依赖配置。                  |
+| 依赖               | `SchemxContainerDependencies`   | Group/Dependency 容器动态状态配置。 |
 | 依赖               | `SchemxConditionFn`             | 动态属性条件函数。                  |
 | 依赖               | `SchemxDependenciesStaticProps` | 依赖函数静态返回值映射。            |
 | ViewSchema         | `SchemxViewDebugMeta`           | ViewSchema 诊断元数据。             |

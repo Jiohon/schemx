@@ -134,6 +134,25 @@ export interface SchemxDependencies<T extends Values = Values> {
 }
 
 /**
+ * 容器节点的结构化依赖配置。
+ *
+ * Group 和 Dependency 通过该配置动态控制整棵后代子树的呈现状态。
+ * 容器不支持字段专属的 componentProps、placeholder、required 或 rules。
+ *
+ * @typeParam T - 表单值类型。
+ */
+export interface SchemxContainerDependencies<T extends Values = Values> {
+  /** 触发容器状态重新计算的字段路径。 */
+  triggerFields: NamePath<T>[]
+  /** 动态计算容器及后代是否只读。 */
+  readonly?: SchemxConditionFn<T, boolean>
+  /** 动态计算容器及后代是否禁用。 */
+  disabled?: SchemxConditionFn<T, boolean>
+  /** 动态计算容器及后代是否可见。 */
+  visible?: SchemxConditionFn<T, boolean>
+}
+
+/**
  * 可解析的属性键（不含 triggerFields 和 trigger）
  *
  * 用于约束 defaults 对象的键值范围。

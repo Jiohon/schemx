@@ -9,21 +9,11 @@ const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "../..")
 const checks = [
   {
     file: "packages/core/dist/index.mjs",
-    required: [
-      "simple-async-context",
-      "es-toolkit",
-      "es-toolkit/compat",
-      "@preact/signals-core",
-    ],
+    required: ["es-toolkit", "es-toolkit/compat", "@preact/signals-core"],
   },
   {
     file: "packages/core/dist/index.cjs",
-    required: [
-      "simple-async-context",
-      "es-toolkit",
-      "es-toolkit/compat",
-      "@preact/signals-core",
-    ],
+    required: ["es-toolkit", "es-toolkit/compat", "@preact/signals-core"],
   },
   {
     file: "packages/vue/dist/index.mjs",

@@ -107,9 +107,17 @@ export interface SchemxSchemas<TValues extends Values = Values> {
   readonly value: readonly SchemxField<TValues>[]
   /** 无依赖追踪地读取当前 schema 列表。 */
   peek: () => readonly SchemxField<TValues>[]
-  /** 替换当前 schema 列表。 */
+  /**
+   * 替换当前 schema 列表。
+   *
+   * 已修改的配置必须使用新的 Schema 对象引用；原地修改已提交对象不会触发重新编译。
+   */
   set: (schemas: readonly SchemxField<TValues>[]) => void
-  /** 基于当前 schema 列表派生下一版。 */
+  /**
+   * 基于当前 schema 列表派生下一版。
+   *
+   * Updater 应为发生变化的条目返回新对象，并复用未变化条目的引用。
+   */
   update: (
     updater: (schemas: readonly SchemxField<TValues>[]) => readonly SchemxField<TValues>[]
   ) => void
@@ -123,8 +131,7 @@ export interface SchemxSchemas<TValues extends Values = Values> {
  * @typeParam TValues - 表单值类型。
  */
 export type SchemxSchemasInput<TValues extends Values = Values> =
-  | readonly SchemxField<TValues>[]
-  | SchemxSchemas<TValues>
+  readonly SchemxField<TValues>[] | SchemxSchemas<TValues>
 
 /**
  * 创建空 schema source。

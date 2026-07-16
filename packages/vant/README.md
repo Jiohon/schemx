@@ -100,6 +100,30 @@ import "vant/lib/index.css"
 
 `componentProps` 由 `componentType` 自动关联到对应 Renderer Props；Renderer 的值仍由字段 `name` 对应的表单值类型决定。
 
+## Group 与 Dependency 容器
+
+Vant 适配层直接消费 Core 解析后的容器状态，因此 Group 和 Dependency 均可统一控制后代 Vant Renderer 的可见、只读和禁用状态。折叠只属于 Group 的展示行为，不会改变字段值或校验语义。
+
+```ts
+const schemas: SchemxField[] = [
+  { name: "editable", label: "允许编辑", componentType: "switch", initialValue: true },
+  {
+    key: "shipping",
+    label: "配送信息",
+    componentType: "group",
+    collapsible: true,
+    destroyOnCollapse: false,
+    dependencies: {
+      triggerFields: ["editable"],
+      readonly: (values) => !values.editable,
+    },
+    children: [{ name: "address", label: "地址", componentType: "input" }],
+  },
+]
+```
+
+Dependency 使用 `to` 生成或更新动态子树，使用 `dependencies` 改变整棵子树状态；两条链路相互独立。容器 dependencies 只支持 `visible`、`readonly`、`disabled`，不支持字段 dependencies 的 `trigger`、`rules` 或 `componentProps`。可运行的操作示例见 [Vant 示例项目](../../examples/vant) 中的“动态表单”和“字段联动”。
+
 ## Renderer 总览
 
 下表顺序与根入口导出的 `DEFAULT_RENDERER_TYPES` 完全一致。Dictionary 的“完整支持”表示运行时存在 `WithRemoteOptions` 包装，且 `packages/vant/src/types/schemx.ts` 同时为 Schema `componentProps` 注入 `SchemxWithDictionary`。

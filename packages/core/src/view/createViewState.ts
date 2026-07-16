@@ -34,7 +34,6 @@ import type {
 import type { ComputedSignal } from "../reactivity/computed"
 import type { SchemxComponentProps, Values } from "../types"
 
-
 /**
  * 字段节点视图状态。
  */
@@ -170,18 +169,29 @@ export function createRuntimeViewState<TValues extends Values = Values>(
   }
 
   if (isGroupRuntimeNode(node) && isGroupDescriptor(descriptor)) {
-    // 分组 view 是 computed：从 descriptor 读取静态 schema，递归读取子节点 viewSchemas
+    const runtimeState = node.containerState
+
+    if (!runtimeState) {
+      throw new Error(`[schemx] containerState is required for group node "${node.key}"`)
+    }
+
+    // 分组 view 合并容器有效状态，并递归读取子节点 viewSchemas。
     const viewState: GroupViewState<TValues> = {
       view: createComputed(() => {
+        const effective = runtimeState.effectiveState.value
+
         return {
           ...descriptor.staticSchema,
           key: node.key,
+          visible: effective.visible,
+          readonly: effective.readonly,
+          disabled: effective.disabled,
           children: readChildrenViewSchemas(node.childNodes.value),
           debug: {
             runtimeNodeId: node.id,
             runtimeNodeType: "group",
-            hasRuntimeState: false,
-            hasDependencyEffect: false,
+            hasRuntimeState: true,
+            hasDependencyEffect: descriptor.dynamicProps != null,
           },
         } as SchemxViewGroupSchema<TValues>
       }),

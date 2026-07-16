@@ -40,7 +40,7 @@ export interface SchemxViewDebugMeta {
   readonly runtimeNodeId: number
   /** 运行时节点类型（field / group / dependency / root） */
   readonly runtimeNodeType: string
-  /** 该节点是否拥有字段运行时状态（仅 field 节点为 true） */
+  /** 该节点是否拥有字段或容器运行时状态 */
   readonly hasRuntimeState: boolean
   /** 该节点是否受 dependency 影响 */
   readonly hasDependencyEffect: boolean
@@ -92,5 +92,4 @@ export type SchemxViewGroupSchema<TValues extends Values = Values> = Distributiv
  * 渲染层只需遍历此类型数组即可完成表单渲染，无需关心 dependency schema 的处理。
  */
 export type SchemxViewSchema<TValues extends Values = Values> =
-  | SchemxViewFieldSchema<TValues>
-  | SchemxViewGroupSchema<TValues>
+  SchemxViewFieldSchema<TValues> | SchemxViewGroupSchema<TValues>

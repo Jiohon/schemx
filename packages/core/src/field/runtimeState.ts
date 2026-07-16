@@ -11,6 +11,7 @@
 import { createComputed } from "../reactivity/computed"
 import { createSignal } from "../reactivity/signal"
 
+import type { ContainerEffectiveState } from "../container/runtimeState"
 import type { ComputedSignal } from "../reactivity/computed"
 import type { Signal } from "../reactivity/signal"
 import type {
@@ -113,6 +114,8 @@ export interface CreateFieldRuntimeStateOptions<TValues extends Values = Values>
     readonly name: NamePath<TValues>
     readonly staticSchema: SchemxResolvedBaseField<TValues>
   }
+  /** 祖先 Group/Dependency 合并后的有效容器状态。 */
+  readonly inheritedState?: ComputedSignal<ContainerEffectiveState>
 }
 
 /**
@@ -126,6 +129,7 @@ export function createFieldRuntimeState<TValues extends Values>(
 ): FieldRuntimeState<TValues> {
   const { key, descriptor } = options
   const schema = descriptor.staticSchema
+  const inheritedState = options.inheritedState
 
   const staticSchema = createSignal<SchemxResolvedBaseField<TValues>>(schema, {
     name: `field:${String(descriptor.name)}:staticSchema`,
@@ -148,8 +152,11 @@ export function createFieldRuntimeState<TValues extends Values>(
   const effectiveSchema = createComputed<FieldEffectiveSchema<TValues>>(() => {
     const base = staticSchema.value
     const overrides = dynamicOverrides.value
-    const readonlyPlaceholder =
-      overrides.readonlyPlaceholder ?? base.readonlyPlaceholder
+    const readonlyPlaceholder = overrides.readonlyPlaceholder ?? base.readonlyPlaceholder
+    const inherited = inheritedState?.value ?? DEFAULT_CONTAINER_STATE
+    const ownVisible = overrides.visible ?? base.visible ?? true
+    const ownDisabled = overrides.disabled ?? base.disabled ?? false
+    const ownReadonly = overrides.readonly ?? base.readonly ?? false
 
     // 合并静态 schema 与动态覆盖：动态覆盖优先，未覆盖的 key 回退到静态值，静态值再回退到默认值
     return {
@@ -157,9 +164,9 @@ export function createFieldRuntimeState<TValues extends Values>(
       name: name.value,
       componentType: base.componentType,
       label: base.label || "",
-      visible: overrides.visible ?? base.visible ?? true,
-      disabled: overrides.disabled ?? base.disabled ?? false,
-      readonly: overrides.readonly ?? base.readonly ?? false,
+      visible: inherited.visible && ownVisible,
+      disabled: inherited.disabled || ownDisabled,
+      readonly: inherited.readonly || ownReadonly,
       required: overrides.required ?? base.required ?? false,
       placeholder: overrides.placeholder ?? base.placeholder ?? "",
       readonlyPlaceholder,
@@ -199,6 +206,12 @@ export function createFieldRuntimeState<TValues extends Values>(
     viewSchema,
     diagnostics,
   }
+}
+
+const DEFAULT_CONTAINER_STATE: ContainerEffectiveState = {
+  visible: true,
+  readonly: false,
+  disabled: false,
 }
 
 /**

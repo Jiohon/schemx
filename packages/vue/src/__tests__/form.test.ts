@@ -68,9 +68,7 @@ describe("SchemxForm 动态 schemas", () => {
     const wrapper = mount(SchemxForm, {
       props: {
         rendererRegistry,
-        schemas: [
-          { name: "name", label: "姓名", componentType: "input" },
-        ],
+        schemas: [{ name: "name", label: "姓名", componentType: "input" }],
       },
     })
 
@@ -261,7 +259,7 @@ describe("SchemxForm 动态 schemas", () => {
     wrapper.unmount()
   })
 
-  it("只按顶层可见非 group 字段标记首尾样式类", async () => {
+  it("以可见 Group 作为顶层字段区段边界", async () => {
     const rendererRegistry = createRendererRegistry()
     rendererRegistry.register("input", markRaw(InputRenderer))
 
@@ -297,10 +295,10 @@ describe("SchemxForm 动态 schemas", () => {
       true
     )
     expect(directItemWrappers[0].classList.contains("schemx-item-wrapper--last")).toBe(
-      false
+      true
     )
     expect(directItemWrappers[1].classList.contains("schemx-item-wrapper--first")).toBe(
-      false
+      true
     )
     expect(directItemWrappers[1].classList.contains("schemx-item-wrapper--last")).toBe(
       true
@@ -316,7 +314,7 @@ describe("SchemxForm 动态 schemas", () => {
     wrapper.unmount()
   })
 
-  it("查找首尾样式类时跳过当前项前后的 group 和不可见字段", async () => {
+  it("查找首尾样式类时跳过不可见项，但不跨越可见 Group", async () => {
     const rendererRegistry = createRendererRegistry()
     rendererRegistry.register("input", markRaw(InputRenderer))
 
@@ -329,7 +327,12 @@ describe("SchemxForm 动态 schemas", () => {
             label: "前置分组",
             children: [{ name: "city", label: "城市", componentType: "input" }],
           },
-          { name: "hiddenBefore", label: "隐藏前项", componentType: "input", visible: false },
+          {
+            name: "hiddenBefore",
+            label: "隐藏前项",
+            componentType: "input",
+            visible: false,
+          },
           { name: "name", label: "姓名", componentType: "input" },
           {
             componentType: "group",
@@ -337,7 +340,12 @@ describe("SchemxForm 动态 schemas", () => {
             children: [{ name: "street", label: "街道", componentType: "input" }],
           },
           { name: "age", label: "年龄", componentType: "input" },
-          { name: "hiddenAfter", label: "隐藏后项", componentType: "input", visible: false },
+          {
+            name: "hiddenAfter",
+            label: "隐藏后项",
+            componentType: "input",
+            visible: false,
+          },
           {
             componentType: "group",
             label: "后置分组",
@@ -359,10 +367,10 @@ describe("SchemxForm 动态 schemas", () => {
       true
     )
     expect(directItemWrappers[0].classList.contains("schemx-item-wrapper--last")).toBe(
-      false
+      true
     )
     expect(directItemWrappers[1].classList.contains("schemx-item-wrapper--first")).toBe(
-      false
+      true
     )
     expect(directItemWrappers[1].classList.contains("schemx-item-wrapper--last")).toBe(
       true

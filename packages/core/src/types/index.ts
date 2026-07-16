@@ -57,6 +57,7 @@ export type { DeepReadonly, Exact, CSSProperties } from "./utils"
 
 export type {
   SchemxConditionFn,
+  SchemxContainerDependencies,
   SchemxDependencies,
   SchemxDependenciesConditionKey,
   SchemxDependenciesStaticProps,

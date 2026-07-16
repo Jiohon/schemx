@@ -2,8 +2,8 @@
   <div class="example-container">
     <h2>动态表单示例</h2>
     <p class="description">
-      演示 dependencies 声明式字段联动：通过"配送方式"单选控制其他字段的
-      visible、disabled、readonly、required、componentProps 动态状态
+      演示字段与 Group 容器的 dependencies 联动：通过“显示配送详情”和“配送方式”控制
+      可见、只读、禁用、必填及 Renderer Props。
     </p>
 
     <Schemx
@@ -29,6 +29,7 @@
 
 <script setup lang="ts">
   import { ref } from "vue"
+
   import { Button } from "vant"
 
   import Schemx from "@schemx/vant"
@@ -45,15 +46,22 @@
   /**
    * 表单 Schema 配置
    *
-   * 通过 dependencies 声明字段依赖关系，展示五种动态属性联动：
-   * - visible 函数：快递配送时显示省市选择（picker）
+   * 通过 dependencies 声明字段和容器依赖关系：
+   * - Group 容器：统一控制配送详情子树的 visible、readonly、disabled
+   * - visible 函数：开关控制整组配送详情是否显示
    * - dict + dependsOn：省份变化时自动请求城市列表（picker）
-   * - disabled 函数：自提时禁用配送距离（slider）
-   * - readonly 函数：自提时购买数量只读（stepper）
+   * - readonly 函数：自提时整组配送详情只读
+   * - disabled 函数：选择其他配送方式时整组配送详情禁用
    * - required 函数：选择其他时备注必填（textarea）
    * - componentProps 函数：服务评分 count 随配送方式动态变化（rate）
    */
   const schemas: SchemxField<DynamicFormValues>[] = [
+    {
+      name: "showDeliveryDetails",
+      label: "显示配送详情",
+      componentType: "switch",
+      initialValue: true,
+    },
     {
       name: "deliveryMethod",
       label: "配送方式",
@@ -68,102 +76,83 @@
       },
     },
 
-    // visible 联动：仅快递配送时显示省市选择
     {
-      name: "province",
-      label: "省市选择",
-      componentType: "picker",
-      componentProps: {
-        options: [
-          { text: "广东省", value: "guangdong" },
-          { text: "浙江省", value: "zhejiang" },
-          { text: "北京市", value: "beijing" },
-          { text: "上海市", value: "shanghai" },
-          { text: "江苏省", value: "jiangsu" },
-        ],
-      },
+      key: "delivery-details",
+      label: "配送详情（Group 容器状态）",
+      componentType: "group",
+      collapsible: true,
+      destroyOnCollapse: false,
       dependencies: {
-        triggerFields: ["deliveryMethod"],
-        visible: (values) => {
-          return values.deliveryMethod === "express"
-        },
+        triggerFields: ["showDeliveryDetails", "deliveryMethod"],
+        visible: (values) => values.showDeliveryDetails !== false,
+        readonly: (values) => values.deliveryMethod === "selfPickup",
+        disabled: (values) => values.deliveryMethod === "other",
       },
-    },
-
-    // dict + dependsOn 联动：省份变化时自动请求城市列表
-    {
-      name: "city",
-      label: "城市选择",
-      componentType: "picker",
-      componentProps: {
-        dict: {
-          api: (values) => {
-            console.log(values)
-            const cityMap: Record<string, { text: string; value: string }[]> = {
-              guangdong: [
-                { text: "广州", value: "guangzhou" },
-                { text: "深圳", value: "shenzhen" },
-                { text: "东莞", value: "dongguan" },
-              ],
-              zhejiang: [
-                { text: "杭州", value: "hangzhou" },
-                { text: "宁波", value: "ningbo" },
-                { text: "温州", value: "wenzhou" },
-              ],
-              beijing: [{ text: "北京市", value: "beijing" }],
-              shanghai: [{ text: "上海市", value: "shanghai" }],
-              jiangsu: [
-                { text: "南京", value: "nanjing" },
-                { text: "苏州", value: "suzhou" },
-                { text: "无锡", value: "wuxi" },
-              ],
-            }
-
-            return cityMap[values.province as string] ?? []
+      children: [
+        {
+          name: "province",
+          label: "省市选择",
+          componentType: "picker",
+          componentProps: {
+            options: [
+              { text: "广东省", value: "guangdong" },
+              { text: "浙江省", value: "zhejiang" },
+              { text: "北京市", value: "beijing" },
+              { text: "上海市", value: "shanghai" },
+              { text: "江苏省", value: "jiangsu" },
+            ],
           },
-          dependsOn: ["province"],
-          shouldFetch: (values) => !!values.province,
-          resetOnDepsChange: true,
-          immediate: false,
         },
-      },
-      dependencies: {
-        triggerFields: ["deliveryMethod"],
-        visible: (values) => values.deliveryMethod === "express",
-      },
-    },
+        {
+          name: "city",
+          label: "城市选择",
+          componentType: "picker",
+          componentProps: {
+            dict: {
+              api: (values) => {
+                const cityMap: Record<string, { text: string; value: string }[]> = {
+                  guangdong: [
+                    { text: "广州", value: "guangzhou" },
+                    { text: "深圳", value: "shenzhen" },
+                    { text: "东莞", value: "dongguan" },
+                  ],
+                  zhejiang: [
+                    { text: "杭州", value: "hangzhou" },
+                    { text: "宁波", value: "ningbo" },
+                    { text: "温州", value: "wenzhou" },
+                  ],
+                  beijing: [{ text: "北京市", value: "beijing" }],
+                  shanghai: [{ text: "上海市", value: "shanghai" }],
+                  jiangsu: [
+                    { text: "南京", value: "nanjing" },
+                    { text: "苏州", value: "suzhou" },
+                    { text: "无锡", value: "wuxi" },
+                  ],
+                }
 
-    // disabled 联动：自提时禁用配送距离
-    {
-      name: "distance",
-      label: "配送距离",
-      componentType: "slider",
-      componentProps: {
-        min: 0,
-        max: 50,
-        step: 1,
-      },
-      dependencies: {
-        triggerFields: ["deliveryMethod"],
-        disabled: (values) => values.deliveryMethod === "selfPickup",
-      },
-    },
-
-    // readonly 联动：自提时购买数量只读
-    {
-      name: "quantity",
-      label: "购买数量",
-      componentType: "stepper",
-      initialValue: 1,
-      componentProps: {
-        min: 1,
-        max: 99,
-        integer: true,
-      },
-      dependencies: {
-        triggerFields: ["deliveryMethod"],
-        disabled: (values) => values.deliveryMethod === "selfPickup",
-      },
+                return cityMap[values.province as string] ?? []
+              },
+              dependsOn: ["province"],
+              shouldFetch: (values) => !!values.province,
+              resetOnDepsChange: true,
+              immediate: false,
+            },
+          },
+        },
+        {
+          name: "distance",
+          label: "配送距离",
+          componentType: "slider",
+          componentProps: { min: 0, max: 50, step: 1 },
+        },
+        {
+          name: "quantity",
+          label: "购买数量",
+          componentType: "stepper",
+          initialValue: 1,
+          componentProps: { min: 1, max: 99, integer: true },
+        },
+      ],
     },
 
     // required 联动：选择其他时备注必填
@@ -178,7 +167,7 @@
       },
       dependencies: {
         triggerFields: ["deliveryMethod"],
-        disabled: (values) => values.deliveryMethod === "other",
+        required: (values) => values.deliveryMethod === "other",
       },
     },
 

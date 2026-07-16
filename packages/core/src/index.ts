@@ -111,6 +111,7 @@ export type {
   SchemxField,
   SchemxFormItemProps,
   SchemxDependencies,
+  SchemxContainerDependencies,
   SchemxConditionFn,
   SchemxDependenciesStaticProps,
 } from "./types"

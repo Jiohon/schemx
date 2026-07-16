@@ -34,9 +34,8 @@ export interface CompileOptions<TValues extends Values> {
 /**
  * Schema 编译缓存。
  *
- * 以 schema 对象引用为键缓存对应 descriptor，让未变化的 schema 在多次编译间
- * 复用同一 descriptor 引用。配合 reconciler.updateNode 的引用相等短路，
- * 可以让 effectiveSchema computed、dependency renderer 等下游副作用跳过未变字段。
+ * 以 schema 对象引用和编译位置共同缓存 descriptor，让未变化的 schema 在相同位置
+ * 多次编译时复用 descriptor。编译位置参与缓存键，因为生成 key 依赖 parentKey 和 index。
  *
  * 缓存通过 `version` 失效：defaultProps 等编译选项变化时调用方 bump version，
  * 后续编译会跳过所有缓存条目。
@@ -44,10 +43,10 @@ export interface CompileOptions<TValues extends Values> {
 export interface CompileCache<TValues extends Values = Values> {
   /** 当前缓存版本号，递增后所有缓存条目失效。 */
   version: number
-  /** 以 schema 对象引用为键的 descriptor 缓存表。 */
+  /** 以 schema 对象引用和编译位置为键的 descriptor 缓存表。 */
   entries: WeakMap<
     SchemxField<TValues>,
-    { version: number; descriptor: FormDescriptor<TValues> }
+    Map<string, { version: number; descriptor: FormDescriptor<TValues> }>
   >
 }
 
@@ -60,8 +59,6 @@ export interface CompileCache<TValues extends Values = Values> {
 export interface Compile<TValues extends Values = Values> {
   /** 当前 compiler 实例持有的 descriptor 引用缓存。 */
   readonly cache: CompileCache<TValues>
-  /** 获取当前缓存版本号。 */
-  getCacheVersion(): number
   /**
    * 将 schema 列表编译为 descriptor 列表，并复用未失效的缓存条目。
    *

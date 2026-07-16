@@ -69,9 +69,7 @@ dist/
 build/
 out/
 docs/*
-!docs/
-!docs/runtime-refactor-execution-plan.md
-!docs/runtime-refactor-migration-guide.md
+!docs/group-state-extension-design.md
 unpackage/
 .packs
 

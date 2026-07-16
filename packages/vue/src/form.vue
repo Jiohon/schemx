@@ -9,17 +9,16 @@
 <script lang="ts" setup generic="T extends Values = Values">
   import { onUnmounted, watch, watchEffect } from "vue"
 
-  import { omit } from "es-toolkit"
-
   import { createWatch } from "@schemx/core"
+  import { omit } from "es-toolkit"
 
   import FormItem from "./components/FormItem"
   import {
     createFormConfigContext,
+    createFormContext,
     formConfigContextOmitKey,
     useForm,
     useViewSchemas,
-    createFormContext,
   } from "./hooks"
   import { getSectionPosition } from "./utils/helpers"
 
@@ -67,9 +66,10 @@
     ? props.form
     : useForm<T>({
         schemas: props.schemas,
-        initialValues: Object.keys(props.modelValue).length > 0
-          ? props.modelValue
-          : props.initialValues,
+        initialValues:
+          Object.keys(props.modelValue).length > 0
+            ? props.modelValue
+            : props.initialValues,
 
         rendererRegistry: props.rendererRegistry,
         defaultRendererType: props.defaultRendererType,

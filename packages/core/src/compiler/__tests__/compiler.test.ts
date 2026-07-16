@@ -461,6 +461,23 @@ describe("createCompile", () => {
     expect(second[0]).toBe(first[0])
   })
 
+  it("同一 schema 引用位于不同编译位置时不应复用 descriptor", () => {
+    const compile = createCompile()
+    const schema: SchemxField = {
+      componentType: "group",
+      label: "共享分组",
+      children: [],
+    }
+
+    const descriptors = compile.toDescriptors([schema, schema])
+
+    expect(descriptors[0]).not.toBe(descriptors[1])
+    expect(descriptors.map((descriptor) => descriptor.key)).toEqual([
+      "group:0",
+      "group:1",
+    ])
+  })
+
   it("invalidate 后应该让相同 schema 引用重新生成 descriptor", () => {
     const compile = createCompile()
     const schemas: SchemxField[] = [

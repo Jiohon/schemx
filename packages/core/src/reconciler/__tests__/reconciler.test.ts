@@ -10,11 +10,7 @@
 
 import { describe, expect, it, vi } from "vitest"
 
-import {
-  commitReconcilePlan,
-  createReconcilePlan,
-  createReconciler,
-} from "../index"
+import { commitReconcilePlan, createReconcilePlan, createReconciler } from "../index"
 
 import type { FormDescriptor } from "../../descriptor"
 import type {
@@ -35,7 +31,7 @@ describe("reconciler plan", () => {
     const removedDescriptor = createDescriptor("field", "age")
     reused.descriptor = previousDescriptor
     removed.descriptor = removedDescriptor
-        const plan = createReconcilePlan(
+    const plan = createReconcilePlan(
       [reused, removed],
       [createdDescriptor, nextDescriptor]
     )
@@ -70,6 +66,24 @@ describe("reconciler plan", () => {
     expect(plan.removes).toEqual([])
     expect(plan.nextChildrenOrder[0]).toEqual({ descriptor, node: reused })
   })
+
+  it("同级 descriptor key 重复时应拒绝生成协调计划", () => {
+    const first = createDescriptor("field", "duplicate")
+    const second = createDescriptor("group", "duplicate")
+
+    expect(() => createReconcilePlan([], [first, second])).toThrow(
+      '[schemx] Duplicate descriptor key "duplicate".'
+    )
+  })
+
+  it("当前 RuntimeNode key 重复时应拒绝生成协调计划", () => {
+    const first = createNode(1, "duplicate", "field")
+    const second = createNode(2, "duplicate", "group")
+
+    expect(() => createReconcilePlan([first, second], [])).toThrow(
+      '[schemx] Duplicate runtime node key "duplicate".'
+    )
+  })
 })
 
 // commitReconcilePlan 按 plan 调用 tree manager 和 lifecycle，并确保 mount 先于 replaceChildren
@@ -94,6 +108,7 @@ describe("reconciler commit", () => {
     const nodeManager = {
       createNode: vi.fn(() => {
         calls.push("create:email")
+
         return created
       }),
       replaceChildren: vi.fn(() => {
@@ -131,12 +146,10 @@ describe("reconciler commit", () => {
     expect(nodeManager.createNode).toHaveBeenCalledWith({
       type: "field",
       key: "email",
+      parent,
       dispose: childScope,
     })
-    expect(nodeManager.replaceChildren).toHaveBeenCalledWith(parent, [
-      created,
-      reused,
-    ])
+    expect(nodeManager.replaceChildren).toHaveBeenCalledWith(parent, [created, reused])
     expect(lifecycle.update).toHaveBeenCalledWith(
       reused,
       previousDescriptor,
@@ -168,6 +181,7 @@ describe("reconciler commit", () => {
     const nodeManager = {
       createNode: vi.fn(() => {
         calls.push("create")
+
         return created
       }),
       replaceChildren: vi.fn((node: ContainerRuntimeNode, children) => {
@@ -218,13 +232,14 @@ describe("createReconciler", () => {
         getValues: vi.fn(() => ({})),
       },
       compile: {
-        toDescriptors: vi.fn((schemas: any[]) => schemas.map((s: any, i: number) => ({
-          type: s.children ? "group" : "field",
-          key: `field:${s.name || "group"}:${i}`,
-          name: s.name,
-          children: s.children || [],
-        }))),
-        getCacheVersion: vi.fn(() => 0),
+        toDescriptors: vi.fn((schemas: any[]) =>
+          schemas.map((s: any, i: number) => ({
+            type: s.children ? "group" : "field",
+            key: `field:${s.name || "group"}:${i}`,
+            name: s.name,
+            children: s.children || [],
+          }))
+        ),
         invalidate: vi.fn(),
       },
       scheduler: {
@@ -318,6 +333,7 @@ function createDescriptor(
       type,
       key,
       staticSchema: {},
+      staticState: { visible: true, readonly: false, disabled: false },
       children,
     } as FormDescriptor
   }
@@ -328,6 +344,8 @@ function createDescriptor(
       key,
       triggerFields: [],
       renderer: () => [],
+      rendererIdentity: () => [],
+      staticState: { visible: true, readonly: false, disabled: false },
     } as FormDescriptor
   }
 

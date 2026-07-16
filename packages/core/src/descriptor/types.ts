@@ -10,6 +10,7 @@
 import type {
   NamePath,
   SchemxBaseField,
+  SchemxContainerDependencies,
   SchemxDependencies,
   SchemxDependencyField,
   SchemxField,
@@ -22,6 +23,29 @@ import type {
   ValidationTrigger,
   Values,
 } from "../types"
+
+/**
+ * 容器静态呈现状态。
+ */
+export interface ContainerStaticState {
+  readonly visible: boolean
+  readonly readonly: boolean
+  readonly disabled: boolean
+}
+
+/**
+ * 容器动态属性描述。
+ *
+ * Group 和 Dependency 共享该描述，由运行时容器 effect 解析为动态覆盖。
+ *
+ * @typeParam TValues - 表单值类型。
+ */
+export interface ContainerDynamicPropsDescriptor<TValues extends Values = Values> {
+  /** 触发容器状态重算的字段。 */
+  readonly triggerFields: readonly NamePath<TValues>[]
+  /** 原始容器 dependencies 配置。 */
+  readonly dependencies: SchemxContainerDependencies<TValues>
+}
 
 /**
  * 表单描述符，所有描述符类型的联合类型。
@@ -121,7 +145,7 @@ export interface FieldValidationDescriptor<_TValues extends Values = Values> {
 /**
  * 分组描述符，描述一组字段或嵌套分组。
  *
- * 分组是结构性容器，没有字段状态。用于布局和组织目的。
+ * 分组是带呈现状态的结构容器，用于布局、组织和约束后代字段。
  *
  * @typeParam TValues - 表单值类型。
  * @typeParam TName - 字段名路径类型。
@@ -133,6 +157,10 @@ export interface GroupDescriptor<
   readonly type: "group"
   /** 编译后、已补默认值的分组 schema。 */
   readonly staticSchema: SchemxResolvedGroupField<TValues>
+  /** 编译后的容器静态状态。 */
+  readonly staticState: ContainerStaticState
+  /** 容器动态属性描述。 */
+  readonly dynamicProps?: ContainerDynamicPropsDescriptor<TValues> | null
   /** 分组内的子描述符树。 */
   readonly children: readonly FormDescriptor<TValues, TName>[]
 }
@@ -155,6 +183,12 @@ export interface DependencyDescriptor<
   readonly triggerFields: readonly TName[]
   /** 根据当前表单状态动态生成子 schema 的渲染函数。 */
   readonly renderer: DependencyRenderer<TValues>
+  /** 用于判断结构 renderer 是否变化的原始函数引用。 */
+  readonly rendererIdentity: SchemxDependencyField<TValues>["renderer"]
+  /** 编译后的容器静态状态。 */
+  readonly staticState: ContainerStaticState
+  /** 容器动态属性描述。 */
+  readonly dynamicProps?: ContainerDynamicPropsDescriptor<TValues> | null
 }
 
 /**

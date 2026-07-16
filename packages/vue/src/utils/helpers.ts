@@ -1,17 +1,17 @@
 import { SchemxViewSchema } from "@schemx/core"
 
 /**
- * 判断当前项是否为顶层可见普通字段中的第一个或最后一个。
+ * 判断当前项是否为顶层可见普通字段所在区段的第一个或最后一个。
  *
- * `group` 和不可见字段不参与顶层卡片圆角判断。
+ * 可见 Group 是区段边界；不可见字段和不可见 Group 不参与计算。
  *
  * 使用示例：
  *
  * const list = [
- *   { key: 'group-1', type: 'group' },
+ *   { key: 'group-1', children: [] },
  *   { key: 'a' },
  *   { key: 'b' },
- *   { key: 'group-2', type: 'group' },
+ *   { key: 'group-2', children: [] },
  *   { key: 'c' },
  * ]
  *
@@ -42,37 +42,46 @@ export function getSectionPosition<T extends SchemxViewSchema>(
     }
   }
 
-  const prevItem = findPositionItem(list, currentIndex, -1)
-  const nextItem = findPositionItem(list, currentIndex, 1)
-
   return {
     found: true,
-    isFirst: !prevItem,
-    isLast: !nextItem,
+    isFirst: !hasPositionItemInSection(list, currentIndex, -1),
+    isLast: !hasPositionItemInSection(list, currentIndex, 1),
   }
 }
 
 /**
- * 判断当前项是否参与顶层首尾样式计算。
+ * 判断 schema 是否为 Group ViewSchema。
  */
-function isPositionItem<T extends SchemxViewSchema>(item?: T) {
-  return (
-    !!item &&
-    item.componentType !== "group" &&
-    (!("visible" in item) || item.visible !== false)
-  )
+function isViewGroupSchema<T extends SchemxViewSchema>(
+  item?: T
+): item is Extract<T, { children: readonly SchemxViewSchema[] }> {
+  return !!item && "children" in item
 }
 
-function findPositionItem<T extends SchemxViewSchema>(
+function isPositionItem<T extends SchemxViewSchema>(item?: T) {
+  return !!item && !isViewGroupSchema(item) && item.visible !== false
+}
+
+function hasPositionItemInSection<T extends SchemxViewSchema>(
   list: T[],
   startIndex: number,
   step: 1 | -1
-) {
+): boolean {
   for (let index = startIndex + step; index >= 0 && index < list.length; index += step) {
-    if (isPositionItem(list[index])) {
-      return list[index]
+    const item = list[index]
+
+    if (item.visible === false) {
+      continue
+    }
+
+    if (isViewGroupSchema(item)) {
+      return false
+    }
+
+    if (isPositionItem(item)) {
+      return true
     }
   }
 
-  return undefined
+  return false
 }

@@ -77,6 +77,7 @@ export function createRuntimeNodeManager<TValues extends Values = Values>(
     const node = createNode({
       type: descriptor.type,
       key: descriptor.key,
+      parent,
       dispose: parent.dispose.child(),
     })
 
@@ -95,7 +96,7 @@ export function createRuntimeNodeManager<TValues extends Values = Values>(
    * @returns 新创建的描述节点（尚未挂载到父节点）
    */
   function createNode(
-    createOptions: CreateRuntimeNodeOptions
+    createOptions: CreateRuntimeNodeOptions<TValues>
   ): DescribedRuntimeNode<TValues> {
     const nodeId = nextId++
     const dispose = createOptions.dispose ?? createScope()
@@ -103,6 +104,7 @@ export function createRuntimeNodeManager<TValues extends Values = Values>(
     const baseOptions = {
       id: nodeId,
       key: createOptions.key,
+      parent: createOptions.parent,
       dispose,
     }
 
