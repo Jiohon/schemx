@@ -32,8 +32,8 @@ export interface RadioOption extends Partial<
  * 定义单选框组件的所有可配置属性。
  */
 export interface RadioRendererProps
+  /* @vue-ignore */
   extends
-    /* @vue-ignore */
     Omit<SchemxBaseComponentProps, "onChange" | "onBlur" | "value" | "onUpdate:value">,
     /* @vue-ignore */
     Partial<Omit<RadioProps, "modelValue" | "onUpdate:modelValue" | "name">> {
@@ -56,8 +56,6 @@ export interface RadioRendererProps
   }
   /** 是否只读 */
   readonly?: boolean
-  /** 是否详情展示 */
-  view?: boolean
   /** 只读时的占位文本 */
   readonlyPlaceholder?: string
   /** 是否禁用 */

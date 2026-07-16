@@ -5,7 +5,7 @@
       :readonly-placeholder="props.readonlyPlaceholder"
       :readonly="props.readonly"
       :disabled="props.disabled"
-      :content-align="align"
+      :align="align"
       :value="fieldValue"
       @click="handleClick"
     />
@@ -157,7 +157,7 @@
       dateValue = dayjs(value)
     }
 
-    const formatStr = typeof props.format === "string" ? props.format : "YYYY-MM-DD"
+    const formatStr = typeof props.format === "function" ? props.format() : props.format
 
     return dateValue.format(formatStr)
   }
@@ -187,7 +187,8 @@
 
   /** 弹窗关闭（确认/取消/遮罩）统一出口，触发 blur 校验 */
   const handleClose = (): void => {
-    props.onBlur?.()
+    props.onBlur?.(modelValue.value)
+    props.onClose?.()
   }
 
   const handleClick = (): void => {

@@ -28,8 +28,8 @@ export type CascaderFieldNames = VantCascaderFieldNames
  * 定义级联选择组件的所有可配置属性。
  */
 export interface CascaderRendererProps
+  /* @vue-ignore */
   extends
-    /* @vue-ignore */
     Omit<SchemxBaseComponentProps, "onChange" | "onBlur" | "value" | "onUpdate:value">,
     /* @vue-ignore */
     Partial<Omit<CascaderProps, "modelValue" | "onUpdate:modelValue">> {
@@ -40,7 +40,7 @@ export interface CascaderRendererProps
   /** 值变化回调，选中项变化时触发 */
   onChange?: (value: CascaderValue) => void
   /** 失焦回调，弹窗关闭时触发（用于 blur 校验） */
-  onBlur?: () => void
+  onBlur?: (value: CascaderValue) => void
   /** 自定义 CSS 类名 */
   className?: string
   /** 是否显示所有层级 */

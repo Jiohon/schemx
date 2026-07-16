@@ -18,6 +18,26 @@ export const SCHEMX_FORM_CONFIG_KEY = Symbol("schemx:form-config") as InjectionK
 >
 
 /**
+ * formContextProps 类型排除值
+ */
+export const formConfigContextOmitKey = [
+  "form",
+  "modelValue",
+  "rendererRegistry",
+  "validatorRegistry",
+  "defaultRendererType",
+  "onFinish",
+  "onFinishFailed",
+  "onValuesChange",
+  "onFieldsChange",
+] as const
+
+/**
+ * formContextProps 类型排除值 - 类型
+ */
+export type FormConfigContextOmitKey = (typeof formConfigContextOmitKey)[number]
+
+/**
  * 表单级默认配置。
  *
  * 该类型描述由 SchemxForm 提供给字段组件的配置上下文，排除表单实例、
@@ -27,15 +47,7 @@ export const SCHEMX_FORM_CONFIG_KEY = Symbol("schemx:form-config") as InjectionK
  */
 export interface FormContextProps<TValues extends Values = Values> extends Omit<
   SchemxFormProps<TValues>,
-  | "form"
-  | "modelValue"
-  | "rendererRegistry"
-  | "defaultRendererTValuesype"
-  | "rulesRegistery"
-  | "onFinish"
-  | "onFinishFailed"
-  | "onValuesChange"
-  | "onFieldsChange"
+  FormConfigContextOmitKey
 > {}
 
 /**

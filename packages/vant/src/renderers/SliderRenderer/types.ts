@@ -41,6 +41,4 @@ export interface SliderRendererProps
   readonlyPlaceholder?: string
   /** 是否禁用 */
   disabled?: SliderProps["disabled"]
-  /** 是否显示按钮 */
-  button?: boolean
 }

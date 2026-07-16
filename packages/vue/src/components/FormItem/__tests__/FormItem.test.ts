@@ -14,9 +14,12 @@ import { createForm } from "@schemx/core"
 import { mount } from "@vue/test-utils"
 import { describe, expect, it, vi } from "vitest"
 
-import { FORM_CONTEXT_KEY } from "@/hooks/useContext"
-import type { FormContextProps } from "@/hooks/useContext"
-import { FORM_INSTANCE_KEY } from "@/hooks/useForm"
+import {
+  type FormContextProps,
+  SCHEMX_FORM_CONFIG_KEY,
+} from "@/hooks/provideFormConfigContext"
+import { SCHEMX_FORM_INSTANCE_KEY } from "@/hooks/provideFormContext"
+import { WithRemoteOptions } from "@/hocs/withRemoteOptions"
 
 import FormItem from "../index"
 
@@ -111,7 +114,93 @@ const ProbeRenderer = defineComponent({
   },
 })
 
+const DictionaryRenderer = defineComponent({
+  name: "DictionaryRenderer",
+  props: {
+    options: Array,
+    loading: Boolean,
+  },
+  setup() {
+    return () => h("div", { "data-testid": "dictionary-renderer" })
+  },
+})
+
+const DictionaryRendererWithRemoteOptions = WithRemoteOptions(DictionaryRenderer)
+
 describe("FormItem 集成测试", () => {
+  it("Dictionary HOC 脱离 FormItem 时仍可使用显式 fieldName", async () => {
+    const form: SchemxInstance = createForm({
+      initialValues: { province: "GD", city: "Guangzhou" },
+    })
+
+    const wrapper = mount(DictionaryRendererWithRemoteOptions, {
+      props: {
+        fieldName: "city",
+        dict: {
+          api: vi.fn().mockResolvedValue([]),
+          dependsOn: ["province"],
+          resetOnDepsChange: true,
+          immediate: false,
+        },
+      },
+      global: {
+        provide: {
+          [SCHEMX_FORM_INSTANCE_KEY]: form,
+        },
+      },
+    })
+
+    form.setFieldValue("province", "ZJ")
+    await nextTick()
+
+    expect(form.getFieldValue("city")).toBeUndefined()
+
+    wrapper.unmount()
+    form.destroy()
+  })
+
+  it("Dictionary Renderer 应在依赖字段变化时自动清空自身字段值", async () => {
+    const form: SchemxInstance = createForm({
+      initialValues: { province: "GD", city: "Guangzhou" },
+      schemas: [
+        {
+          name: "city",
+          label: "城市",
+          componentType: "dictionary" as any,
+          componentProps: {
+            dict: {
+              api: vi.fn().mockResolvedValue([]),
+              dependsOn: ["province"],
+              resetOnDepsChange: true,
+              immediate: false,
+            },
+          },
+        },
+      ],
+    })
+
+    form.registerRenderer("dictionary" as any, DictionaryRendererWithRemoteOptions)
+
+    const wrapper = mount(FormItem, {
+      props: { schema: form.getViewSchemas()[0] },
+      global: {
+        provide: {
+          [SCHEMX_FORM_INSTANCE_KEY]: form,
+          [SCHEMX_FORM_CONFIG_KEY]: createFormContext(),
+        },
+      },
+    })
+
+    await nextTick()
+    form.setFieldValue("province", "ZJ")
+    await nextTick()
+
+    expect(form.getFieldValue("city")).toBeUndefined()
+
+    wrapper.unmount()
+    form.destroy()
+  })
+
   it("ViewSchema 驱动 visible 随依赖字段变化", async () => {
     const schema: SchemxBaseField = {
       name: "city",
@@ -135,8 +224,8 @@ describe("FormItem 集成测试", () => {
       props: { schema: form.getViewSchemas()[0] },
       global: {
         provide: {
-          [FORM_INSTANCE_KEY]: form,
-          [FORM_CONTEXT_KEY]: createFormContext(),
+          [SCHEMX_FORM_INSTANCE_KEY]: form,
+          [SCHEMX_FORM_CONFIG_KEY]: createFormContext(),
         },
       },
     })
@@ -177,8 +266,8 @@ describe("FormItem 集成测试", () => {
       props: { schema },
       global: {
         provide: {
-          [FORM_INSTANCE_KEY]: form,
-          [FORM_CONTEXT_KEY]: createFormContext(),
+          [SCHEMX_FORM_INSTANCE_KEY]: form,
+          [SCHEMX_FORM_CONFIG_KEY]: createFormContext(),
         },
       },
     })
@@ -211,8 +300,8 @@ describe("FormItem 集成测试", () => {
       props: { schema: form.getViewSchemas()[0] },
       global: {
         provide: {
-          [FORM_INSTANCE_KEY]: form,
-          [FORM_CONTEXT_KEY]: createFormContext(),
+          [SCHEMX_FORM_INSTANCE_KEY]: form,
+          [SCHEMX_FORM_CONFIG_KEY]: createFormContext(),
         },
       },
     })
@@ -244,8 +333,8 @@ describe("FormItem 集成测试", () => {
       props: { schema: form.getViewSchemas()[0] },
       global: {
         provide: {
-          [FORM_INSTANCE_KEY]: form,
-          [FORM_CONTEXT_KEY]: createFormContext(),
+          [SCHEMX_FORM_INSTANCE_KEY]: form,
+          [SCHEMX_FORM_CONFIG_KEY]: createFormContext(),
         },
       },
     })
@@ -281,8 +370,8 @@ describe("FormItem 集成测试", () => {
       props: { schema: form.getViewSchemas()[0] },
       global: {
         provide: {
-          [FORM_INSTANCE_KEY]: form,
-          [FORM_CONTEXT_KEY]: createFormContext(),
+          [SCHEMX_FORM_INSTANCE_KEY]: form,
+          [SCHEMX_FORM_CONFIG_KEY]: createFormContext(),
         },
       },
     })
@@ -318,8 +407,8 @@ describe("FormItem 集成测试", () => {
       props: { schema: form.getViewSchemas()[0] },
       global: {
         provide: {
-          [FORM_INSTANCE_KEY]: form,
-          [FORM_CONTEXT_KEY]: createFormContext(),
+          [SCHEMX_FORM_INSTANCE_KEY]: form,
+          [SCHEMX_FORM_CONFIG_KEY]: createFormContext(),
         },
       },
     })
@@ -354,8 +443,8 @@ describe("FormItem 集成测试", () => {
       props: { schema: form.getViewSchemas()[0] },
       global: {
         provide: {
-          [FORM_INSTANCE_KEY]: form,
-          [FORM_CONTEXT_KEY]: createFormContext(),
+          [SCHEMX_FORM_INSTANCE_KEY]: form,
+          [SCHEMX_FORM_CONFIG_KEY]: createFormContext(),
         },
       },
     })
@@ -396,8 +485,8 @@ describe("FormItem 集成测试", () => {
       props: { schema: form.getViewSchemas()[0] },
       global: {
         provide: {
-          [FORM_INSTANCE_KEY]: form,
-          [FORM_CONTEXT_KEY]: createFormContext(),
+          [SCHEMX_FORM_INSTANCE_KEY]: form,
+          [SCHEMX_FORM_CONFIG_KEY]: createFormContext(),
         },
       },
     })
@@ -444,8 +533,8 @@ describe("FormItem 集成测试", () => {
       props: { schema: form.getViewSchemas()[0] },
       global: {
         provide: {
-          [FORM_INSTANCE_KEY]: form,
-          [FORM_CONTEXT_KEY]: createFormContext(),
+          [SCHEMX_FORM_INSTANCE_KEY]: form,
+          [SCHEMX_FORM_CONFIG_KEY]: createFormContext(),
         },
       },
     })

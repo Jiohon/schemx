@@ -25,8 +25,6 @@ export { useEffect } from "./useEffect"
 /** useDictionary - 字典选项加载 */
 export {
   useDictionary,
-  type SchemxDictionary,
-  type SchemxWithDictionary,
   type UseDictionaryReturn,
 } from "./useDictionary"
 
@@ -34,6 +32,8 @@ export {
 export {
   createFormConfigContext,
   useFormConfigContext,
+  formConfigContextOmitKey,
+  type FormConfigContextOmitKey,
   type FormContextProps,
 } from "./provideFormConfigContext"
 

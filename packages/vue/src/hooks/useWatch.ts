@@ -20,8 +20,8 @@
  * @example
  * ```ts
  * // 全局监听
- * useWatch((snapshot) => {
- *   console.log('form changed:', snapshot)
+ * useWatch((snapshot, payload) => {
+ *   console.log('form changed:', snapshot, payload)
  * })
  *
  * // 单字段监听

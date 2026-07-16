@@ -65,6 +65,22 @@ describe("Store", () => {
     })
   })
 
+  describe("getInitialValues", () => {
+    it("按路径读取时应深拷贝嵌套初始值", () => {
+      const store = createStore<NestedForm>({
+        initialValues: {
+          user: { name: "John", address: { city: "Beijing", zip: "100000" } },
+          tags: ["a"],
+        },
+      })
+
+      const values = store.getInitialValues(["user" as any]) as NestedForm
+      values.user.address.city = "Shanghai"
+
+      expect(store.getInitialValue("user.address.city" as any)).toBe("Beijing")
+    })
+  })
+
   // 验证 getFieldValue/setFieldValue 对基本字段和嵌套字段的读写、不存在的字段返回 undefined
   describe("getFieldValue / setFieldValue", () => {
     it("获取和设置基本字段", () => {

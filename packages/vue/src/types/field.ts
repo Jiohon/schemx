@@ -14,6 +14,8 @@ import type { FieldValue, NamePath, SchemxFieldInstance, Values } from "@schemx/
 export interface FieldInstance<
   TValues extends Values = Values,
 > extends SchemxFieldInstance<TValues> {
+  /** 当前字段路径 */
+  readonly name: NamePath<TValues>
   /** 当前字段值（Vue shallowRef，由 Signal effect 驱动） */
   value: Ref<FieldValue<TValues, NamePath<TValues>> | undefined>
   /** 是否已被用户修改（Vue computed） */

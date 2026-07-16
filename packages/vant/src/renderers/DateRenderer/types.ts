@@ -15,21 +15,21 @@ export type DateValue = string | string[] | Date
  * 定义日期选择组件的所有可配置属性。
  */
 export interface DateRendererProps
+  /* @vue-ignore */
   extends
-    /* @vue-ignore */
     Omit<SchemxBaseComponentProps, "onChange" | "onBlur" | "value" | "onUpdate:value">,
     /* @vue-ignore */
     Partial<Omit<DatePickerProps, "modelValue" | "onUpdate:modelValue">> {
   /** 当前值，支持字符串、字符串数组或 Date 对象 */
   value?: DateValue
   /** 确认回调，用户点击确定按钮时触发 */
-  onConfirm?: (value: string) => void
+  onConfirm?: (value: DateValue) => void
   /** 值变化回调，选中日期时触发 */
-  onChange?: (value: string) => void
+  onChange?: (value: DateValue) => void
   /** 失焦回调，弹窗关闭时触发（用于 blur 校验） */
-  onBlur?: () => void
+  onBlur?: (value: DateValue) => void
   /** 日期格式化字符串或格式化函数 */
-  format?: string | ((value: any) => string)
+  format?: (() => string) | string
   /** 自定义 CSS 类名 */
   className?: string
   /** 是否只读 */

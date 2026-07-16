@@ -81,6 +81,7 @@ function createFieldHook<TValues extends Values = Values>(
   const pending = computed(() => fieldPending.value)
 
   const result = {
+    name,
     value: fieldValue,
     error,
     dirty,

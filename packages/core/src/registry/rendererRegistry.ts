@@ -301,7 +301,7 @@ export class RendererRegistry<
   }
 
   /**
-   * 清除所有已注册的渲染器并重置默认类型为 'text'。
+   * 清除所有已注册的渲染器和默认类型。
    *
    * @example
    * ```typescript
@@ -311,6 +311,7 @@ export class RendererRegistry<
    */
   clear(): void {
     this.renderers.clear()
+    this.defaultType = undefined
   }
 
   /**

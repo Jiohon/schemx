@@ -99,6 +99,7 @@
           componentType: "text",
           required: true,
           disabled: usernameDisibled.value,
+          readonlyPlaceholder: "请输入学生学号",
           componentProps: {
             placeholder: "请输入用户名",
             clearable: true,

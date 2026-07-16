@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest"
 import NumberRenderer from "../index.vue"
 
 describe("NumberRenderer", () => {
-  it("非 view 状态引用底层 SchemxInput 组件", () => {
+  it("默认状态引用底层 SchemxInput 组件", () => {
     const wrapper = mount(NumberRenderer, {
       props: {
         value: 12,

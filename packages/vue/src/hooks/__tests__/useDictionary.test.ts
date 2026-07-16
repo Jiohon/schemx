@@ -15,9 +15,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { SchemxDictionary } from "@/types/dictionary"
 
-import { FORM_CONTEXT_KEY } from "../useContext"
+import { SCHEMX_FORM_INSTANCE_KEY } from "../provideFormContext"
 import { normalizeError, useDictionary, type UseDictionaryReturn } from "../useDictionary"
-import { SCHEMX_FORM_INSTANCE_KEY } from "../useForm"
 
 // ========== normalizeError 单元测试 ==========
 
@@ -72,7 +71,6 @@ function mountUseDictionary(options: SchemxDictionary) {
     global: {
       provide: {
         [SCHEMX_FORM_INSTANCE_KEY]: form,
-        [FORM_CONTEXT_KEY]: {},
       },
     },
   })
@@ -86,6 +84,22 @@ function mountUseDictionary(options: SchemxDictionary) {
 describe("useDictionary 集成测试", () => {
   beforeEach(() => {
     vi.restoreAllMocks()
+  })
+
+  it("依赖字段变化时将最新表单快照传给 onDepsChange", async () => {
+    const onDepsChange = vi.fn()
+    const { wrapper, form } = mountUseDictionary({
+      api: vi.fn().mockResolvedValue([]),
+      dependsOn: ["country"],
+      onDepsChange,
+    })
+
+    form.setFieldValue("country", "CN")
+    await nextTick()
+
+    expect(onDepsChange).toHaveBeenCalledWith({ country: "CN" }, expect.anything())
+
+    wrapper.unmount()
   })
 
   // --- Loading 状态 ---

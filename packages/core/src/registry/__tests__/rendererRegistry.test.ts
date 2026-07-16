@@ -151,6 +151,7 @@ describe("Registry", () => {
       reg.setDefault("number")
       reg.clear()
       expect(reg.size()).toBe(0)
+      expect(reg.getDefault()).toBeUndefined()
     })
   })
 

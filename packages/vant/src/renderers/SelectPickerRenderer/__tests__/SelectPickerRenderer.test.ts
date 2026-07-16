@@ -45,10 +45,15 @@ vi.mock("vant", () => {
 import SelectPickerRenderer from "../index.vue"
 
 describe("SelectPickerRenderer", () => {
-  it("默认使用多选模式并展示 Cell", () => {
-    const wrapper = mount(SelectPickerRenderer)
+  it("默认使用多选模式并将 contentAlign 下发给 Cell", () => {
+    const wrapper = mount(SelectPickerRenderer, {
+      props: { contentAlign: "center" },
+    })
 
-    expect(wrapper.findComponent({ name: "SchemxCell" }).exists()).toBe(true)
+    const cell = wrapper.findComponent({ name: "SchemxCell" })
+
+    expect(cell.exists()).toBe(true)
+    expect(cell.props("align")).toBe("center")
     expect(wrapper.findComponent({ name: "CheckboxGroup" }).exists()).toBe(false)
 
     wrapper.unmount()
@@ -123,23 +128,23 @@ describe("SelectPickerRenderer", () => {
     wrapper.unmount()
   })
 
-  it("view 状态展示选项文本且不渲染弹窗", async () => {
+  it("未知 view 属性不切换为只读展示", async () => {
     const wrapper = mount(SelectPickerRenderer, {
       props: {
         view: true,
         value: ["a"],
         options: [{ label: "选项 A", value: "a" }],
-      },
+      } as any,
     })
 
     const cell = wrapper.findComponent({ name: "SchemxCell" })
 
     expect(cell.get(".schemx-cell__value").text()).toBe("选项 A")
-    expect(wrapper.findComponent({ name: "Popup" }).exists()).toBe(false)
+    expect(wrapper.findComponent({ name: "Popup" }).props("show")).toBe(false)
 
     await cell.vm.$emit("click")
 
-    expect(wrapper.findComponent({ name: "Popup" }).exists()).toBe(false)
+    expect(wrapper.findComponent({ name: "Popup" }).exists()).toBe(true)
 
     wrapper.unmount()
   })

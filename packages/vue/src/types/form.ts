@@ -1,6 +1,5 @@
-import * as CSS from "csstype"
-
 import type { SchemxProps, Values } from "@schemx/core"
+import { StyleValue } from "vue"
 
 /**
  * schemx 组件 Props
@@ -16,5 +15,5 @@ export interface SchemxFormProps<T extends Values = Values> extends SchemxProps<
   /**
    * 自定义内联样式
    */
-  style?: CSS.Properties
+  style?: StyleValue
 }

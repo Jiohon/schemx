@@ -59,43 +59,45 @@ export function createDescriptor<TValues extends Values = Values>(
   parentKey: string | undefined,
   context: DescriptorContext<TValues>
 ): FormDescriptor<TValues> {
-  schema.key = createDescriptorKey(schema, index, parentKey)
-
+  const key = createDescriptorKey(schema, index, parentKey)
   // 根据 schema 类型分发到不同的 descriptor 构建函数
   if (isGroupSchema(schema)) {
     // 分组：递归处理所有子节点
     const children = schema.children.map((schemaChild, index) =>
-      createDescriptor(schemaChild, index, schema.key, context)
+      createDescriptor(schemaChild, index, key, context)
     )
 
-    return createGroupDescriptor(schema, children)
+    return createGroupDescriptor(schema, key, children)
   }
 
   if (isDependencySchema(schema)) {
     // 依赖：编译为含动态 renderer 的描述符
-    return createDependencyDescriptor(schema)
+    return createDependencyDescriptor(schema, key)
   }
 
   // 普通字段：编译为含静态 schema + 校验 + 动态属性的描述符
-  return createFieldDescriptor(schema, context)
+  return createFieldDescriptor(schema, key, context)
 }
 
 /**
  * 创建字段 descriptor。
  *
- * @param options - 字段 descriptor 创建选项。
+ * @param schema - 字段 schema。
+ * @param key - 已生成的 descriptor key。
+ * @param context - 当前表单实例默认配置与公开 API。
  * @returns 字段 descriptor。
  */
 function createFieldDescriptor<TValues extends Values = Values>(
   schema: SchemxBaseField<TValues>,
+  key: string,
   context: DescriptorContext<TValues>
 ): FieldDescriptor<TValues> {
   // 先合并默认值得到规范化 schema，再提取校验与动态属性
-  const normalizedSchema = buildNormalizedFieldSchema(schema, context)
+  const normalizedSchema = buildNormalizedFieldSchema(schema, key, context)
 
   return {
     type: "field",
-    key: schema.key!,
+    key,
     name: schema.name,
     componentType: schema.componentType,
     staticSchema: normalizedSchema,
@@ -107,21 +109,24 @@ function createFieldDescriptor<TValues extends Values = Values>(
 /**
  * 创建分组 descriptor。
  *
- * @param options - 分组 descriptor 创建选项。
+ * @param schema - 分组 schema。
+ * @param key - 已生成的 descriptor key。
+ * @param children - 子级 descriptors。
  * @returns 分组 descriptor。
  */
 function createGroupDescriptor<TValues extends Values = Values>(
   schema: SchemxGroupField<TValues>,
+  key: string,
   children: FormDescriptor<TValues>[]
 ): GroupDescriptor<TValues> {
   const { children: _rawChildren, ...schemaWithoutChildren } = schema
 
   return {
     type: "group",
-    key: schema.key!,
+    key,
     staticSchema: {
       ...schemaWithoutChildren,
-      key: schema.key!,
+      key,
       children: [],
     },
     children,
@@ -131,17 +136,16 @@ function createGroupDescriptor<TValues extends Values = Values>(
 /**
  * 创建 dependency descriptor。
  *
- * @param options - dependency descriptor 创建选项。
+ * @param schema - dependency schema。
+ * @param key - 已生成的 descriptor key。
  * @returns dependency descriptor。
  */
 function createDependencyDescriptor<TValues extends Values = Values>(
-  schema: SchemxDependencyField<TValues>
+  schema: SchemxDependencyField<TValues>,
+  key: string
 ): DependencyDescriptor<TValues> {
   // 拷贝 trigger 字段列表快照，避免外部意外修改
   const trigger = [...schema.to]
-
-  // 将 trigger 字段序列化为字符串，用于参与 key 生成以保证依赖重算时身份稳定
-  const triggerKey = trigger.map(serializeNamePath).join(",")
 
   // 包装 renderer：注入 formApi 和 abortSignal，运行时由 compiler 调用
   const renderer: DependencyRenderer<TValues> = (formApi, abortSignal) => {
@@ -154,7 +158,7 @@ function createDependencyDescriptor<TValues extends Values = Values>(
 
   return {
     type: "dependency",
-    key: schema.key!,
+    key,
     triggerFields: trigger,
     renderer,
   }
@@ -195,15 +199,23 @@ function getPlaceholder<TValues extends Values>(
  */
 function buildNormalizedFieldSchema<TValues extends Values>(
   schema: SchemxBaseField<TValues>,
+  key: string,
   context: DescriptorContext<TValues>
 ): SchemxResolvedBaseField<TValues> {
   const { defaultProps, instance } = context
 
   // 解构分离出需要单独合并的属性，其余（如 label、name）直接透传
   const {
+    contentAlign,
+    labelIcon,
+    labelAlign,
+    labelPosition,
+    labelWidth,
+    colon,
     componentProps: cp,
     visible,
     readonly,
+    readonlyPlaceholder,
     disabled,
     required,
     rules,
@@ -213,15 +225,14 @@ function buildNormalizedFieldSchema<TValues extends Values>(
   } = schema
 
   // 逐项合并优先级链：字段配置 ?? defaultProps ?? defaultConfig
-  const mergedVisible = visible ?? defaultConfig.visible
+  const mergedVisible = visible ?? defaultProps.visible ?? defaultConfig.visible
   const mergedReadonly = readonly ?? defaultProps.readonly ?? defaultConfig.readonly
   const mergedDisabled = disabled ?? defaultProps.disabled ?? defaultConfig.disabled
+  const mergedContentAlign =
+    contentAlign ?? defaultProps.contentAlign ?? defaultConfig.contentAlign
   const mergedAlign = mergedReadonly
     ? "right"
-    : (cp?.align ??
-      rest.contentAlign ??
-      defaultProps.contentAlign ??
-      defaultConfig.contentAlign)
+    : (cp?.align ?? mergedContentAlign)
 
   const mergedValidationTrigger =
     validationTrigger ?? defaultProps.validationTrigger ?? defaultConfig.validationTrigger
@@ -230,34 +241,31 @@ function buildNormalizedFieldSchema<TValues extends Values>(
   // rules 统一为数组并过滤空值，用于推导 required 默认值
   const rulesArray = (Array.isArray(rules) ? rules : [rules]).filter(Boolean)
   // 显式 required 优先，否则有 rules 时默认 true
-  const mergedRequired = required ?? (rulesArray.length > 0 || defaultConfig.required)
+  const mergedRequired =
+    required ?? (rulesArray.length > 0 ? true : (defaultProps.required ?? defaultConfig.required))
+
+  const mergedReadonlyPlaceholder = cp?.readonlyPlaceholder ?? readonlyPlaceholder
 
   const normalizedSchema: SchemxResolvedBaseField<TValues> = {
     ...(rest ?? {}),
-    key: rest.key,
-    name: rest.name,
-    label: rest.label,
-    componentType: rest.componentType,
+    key,
 
     visible: mergedVisible,
     readonly: mergedReadonly,
+    readonlyPlaceholder: mergedReadonlyPlaceholder,
     disabled: mergedDisabled,
     required: mergedRequired,
     placeholder: mergedPlaceholder,
 
-    labelIcon: rest.labelIcon || defaultConfig.labelIcon,
-    labelAlign: rest.labelAlign || defaultConfig.labelAlign,
-    labelPosition: rest.labelPosition || defaultConfig.labelPosition,
-    labelWidth: rest.labelWidth || defaultConfig.labelWidth,
-    colon: rest.colon ?? defaultConfig.colon,
+    labelIcon: labelIcon ?? defaultProps.labelIcon ?? defaultConfig.labelIcon,
+    labelAlign: labelAlign ?? defaultProps.labelAlign ?? defaultConfig.labelAlign,
+    labelPosition: labelPosition ?? defaultProps.labelPosition ?? defaultConfig.labelPosition,
+    labelWidth: labelWidth ?? defaultProps.labelWidth ?? defaultConfig.labelWidth,
+    contentAlign: mergedContentAlign,
+    colon: colon ?? defaultProps.colon ?? defaultConfig.colon,
 
     rules,
     validationTrigger: normalizeTrigger(mergedValidationTrigger),
-  }
-
-  // 使用 Object.hasOwn 判断：仅当 schema 显式设置了 initialValue 才保留
-  if (Object.hasOwn(schema, "initialValue")) {
-    normalizedSchema.initialValue = rest.initialValue
   }
 
   // 只读模式下覆盖对齐方式，保证展示一致性
@@ -267,10 +275,12 @@ function buildNormalizedFieldSchema<TValues extends Values>(
   }
 
   // 将所有合并后的 props 灌入 componentProps，渲染器直接取用
+
   normalizedSchema.componentProps = {
     ...cp,
     align: mergedAlign,
     readonly: mergedReadonly,
+    readonlyPlaceholder: mergedReadonlyPlaceholder,
     disabled: mergedDisabled,
     placeholder: mergedPlaceholder,
     formItemProps: normalizedSchema,

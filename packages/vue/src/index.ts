@@ -23,12 +23,12 @@ export * from "./hooks"
 /** 高阶组件 */
 export { WithRemoteOptions } from "./hocs"
 
-/** 字典选项类型 */
-export type { SchemxDictionary, SchemxWithDictionary } from "./types/dictionary"
-
 /** 组件 */
 export { default as FormItem } from "./components/FormItem"
 export { default as FormGroup } from "./components/FormGroup"
 
 /** schemx/core 导出 */
 export * from "@schemx/core"
+
+/** Types */
+export * from "./types"

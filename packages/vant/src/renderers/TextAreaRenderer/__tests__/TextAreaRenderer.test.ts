@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest"
 import TextAreaRenderer from "../index.vue"
 
 describe("TextAreaRenderer", () => {
-  it("非 view 状态引用底层 SchemxInput 组件", () => {
+  it("默认状态引用底层 SchemxInput 组件", () => {
     const wrapper = mount(TextAreaRenderer, {
       props: {
         value: "多行内容",

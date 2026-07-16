@@ -42,6 +42,7 @@ describe("PickerRenderer", () => {
       props: {
         readonly: true,
         value: "gz",
+        contentAlign: "center",
         options: [{ text: "广州", value: "gz" }],
       },
     })
@@ -49,6 +50,7 @@ describe("PickerRenderer", () => {
     const cell = wrapper.findComponent({ name: "SchemxCell" })
 
     expect(cell.exists()).toBe(true)
+    expect(cell.props("align")).toBe("center")
     expect(cell.get(".schemx-cell__value").text()).toBe("广州")
     expect(wrapper.findComponent({ name: "Popup" }).exists()).toBe(false)
 

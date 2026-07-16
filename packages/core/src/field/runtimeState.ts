@@ -27,6 +27,7 @@ import type { NamePath } from "../types/form"
 export type FieldDynamicOverrideKey =
   | "componentProps"
   | "placeholder"
+  | "readonlyPlaceholder"
   | "required"
   | "readonly"
   | "disabled"
@@ -73,6 +74,7 @@ export interface FieldEffectiveSchema<TValues extends Values = Values> {
   readonly: boolean
   required: boolean
   placeholder: string
+  readonlyPlaceholder?: string
   componentProps: SchemxComponentProps<TValues>
   rules: SchemxRules | SchemxRules[]
   validationTrigger: SchemxResolvedBaseField<TValues>["validationTrigger"]
@@ -146,6 +148,8 @@ export function createFieldRuntimeState<TValues extends Values>(
   const effectiveSchema = createComputed<FieldEffectiveSchema<TValues>>(() => {
     const base = staticSchema.value
     const overrides = dynamicOverrides.value
+    const readonlyPlaceholder =
+      overrides.readonlyPlaceholder ?? base.readonlyPlaceholder
 
     // 合并静态 schema 与动态覆盖：动态覆盖优先，未覆盖的 key 回退到静态值，静态值再回退到默认值
     return {
@@ -158,9 +162,12 @@ export function createFieldRuntimeState<TValues extends Values>(
       readonly: overrides.readonly ?? base.readonly ?? false,
       required: overrides.required ?? base.required ?? false,
       placeholder: overrides.placeholder ?? base.placeholder ?? "",
-      componentProps: (overrides.componentProps ??
-        base.componentProps ??
-        {}) as SchemxComponentProps<TValues>,
+      readonlyPlaceholder,
+      componentProps: {
+        ...(base.componentProps ?? {}),
+        ...(overrides.componentProps ?? {}),
+        readonlyPlaceholder,
+      } as SchemxComponentProps<TValues>,
       rules: overrides.rules ?? base.rules ?? [],
       validationTrigger: base.validationTrigger,
     }
@@ -178,6 +185,7 @@ export function createFieldRuntimeState<TValues extends Values>(
       required: effective.required,
       label: effective.label,
       placeholder: effective.placeholder,
+      readonlyPlaceholder: effective.readonlyPlaceholder,
       componentProps: effective.componentProps,
       rules: effective.rules,
     }

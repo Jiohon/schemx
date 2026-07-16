@@ -42,6 +42,7 @@ describe("CascaderRenderer", () => {
       props: {
         readonly: true,
         value: ["gd", "gz"],
+        contentAlign: "center",
         options: [
           {
             label: "广东",
@@ -55,6 +56,7 @@ describe("CascaderRenderer", () => {
     const cell = wrapper.findComponent({ name: "SchemxCell" })
 
     expect(cell.get(".schemx-cell__value").text()).toBe("广东 - 广州")
+    expect(cell.props("align")).toBe("center")
     expect(wrapper.findComponent({ name: "Popup" }).exists()).toBe(false)
 
     await cell.vm.$emit("click")

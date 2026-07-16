@@ -199,7 +199,7 @@ export const useDictionary = <
 
   // ========== 依赖字段监听 ==========
   if (options.dependsOn?.length) {
-    useWatchFields(options.dependsOn, (_payload, latestSnapshot) => {
+    useWatchFields(options.dependsOn, (latestSnapshot, _payload) => {
       // 1. 触发 onDepsChange 回调
       if (typeof options.onDepsChange === "function") {
         options.onDepsChange(latestSnapshot as TValues, instance)

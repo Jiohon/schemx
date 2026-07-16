@@ -6,6 +6,7 @@
       :readonly-placeholder="props.readonlyPlaceholder"
       :readonly="props.readonly"
       :disabled="props.disabled"
+      :align="props.contentAlign"
       @click="handleClick"
     />
 
@@ -103,13 +104,13 @@
       placeholder: _placeholder,
       readonly: _readonly,
       disabled: _disabled,
-      options: _options,
       formItemProps: _formItemProps,
       popupProps: _popupProps,
       title: _title,
       formInstance: _formInstance,
       ...rest
     } = rendererProps
+
     const {
       value: _attrsValue,
       onChange: _attrsOnChange,
@@ -124,7 +125,6 @@
       contentAlign: _attrsContentAlign,
       placeholder: _attrsPlaceholder,
       disabled: _attrsDisabled,
-      options: _attrsOptions,
       formItemProps: _attrsFormItemProps,
       popupProps: _attrsPopupProps,
       formInstance: _attrsFormInstance,
@@ -212,6 +212,6 @@
 
   const handleClose = (): void => {
     showCascader.value = false
-    props.onBlur?.()
+    props.onBlur?.((cascaderValue.value ?? []) as CascaderValue)
   }
 </script>
