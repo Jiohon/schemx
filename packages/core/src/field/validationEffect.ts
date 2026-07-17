@@ -58,12 +58,12 @@ export interface ValidationEffect {
   dispose(): void
 }
 
-interface ValidationRegistrationSnapshot {
+interface ValidationRegistrationSnapshot<TValues extends Values = Values> {
   visible: boolean
   readonly: boolean
   disabled: boolean
   label: string
-  rules: SchemxBaseField<Values>["rules"]
+  rules: SchemxBaseField<TValues>["rules"]
 }
 
 /**
@@ -88,7 +88,7 @@ export function createValidationEffect<TValues extends Values = Values>(
    *
    * 直接读取 effectiveSchema（Signal Graph 路径）。
    */
-  const readValidationProps = (): ValidationRegistrationSnapshot => {
+  const readValidationProps = (): ValidationRegistrationSnapshot<TValues> => {
     const effective = effectiveSchema.value
 
     return {
@@ -103,7 +103,7 @@ export function createValidationEffect<TValues extends Values = Values>(
   /**
    * 根据当前字段呈现态注册或注销校验规则。
    */
-  const applyRegistration = (snapshot: ValidationRegistrationSnapshot): void => {
+  const applyRegistration = (snapshot: ValidationRegistrationSnapshot<TValues>): void => {
     const { visible, readonly, disabled, label, rules } = snapshot
 
     if (!visible || readonly || disabled || !hasRules(rules)) {
@@ -125,7 +125,9 @@ export function createValidationEffect<TValues extends Values = Values>(
   /**
    * 将规则注册延后到 post 队列，避免与字段呈现态更新竞争。
    */
-  const scheduleRegistration = (snapshot: ValidationRegistrationSnapshot): void => {
+  const scheduleRegistration = (
+    snapshot: ValidationRegistrationSnapshot<TValues>
+  ): void => {
     const currentVersion = ++registrationVersion
 
     taskScheduler.schedule({
@@ -171,6 +173,8 @@ export function createValidationEffect<TValues extends Values = Values>(
 }
 
 /** 判断 rules 是否非空：数组时检查长度，非数组时做 truthy 判断。 */
-function hasRules(rules: SchemxBaseField<Values>["rules"]): boolean {
+function hasRules<TValues extends Values>(
+  rules: SchemxBaseField<TValues>["rules"]
+): boolean {
   return Array.isArray(rules) ? rules.length > 0 : Boolean(rules)
 }

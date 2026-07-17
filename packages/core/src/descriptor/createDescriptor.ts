@@ -291,13 +291,14 @@ function buildNormalizedFieldSchema<TValues extends Values>(
   // rules 统一为数组并过滤空值，用于推导 required 默认值
   const rulesArray = (Array.isArray(rules) ? rules : [rules]).filter(Boolean)
   // 显式 required 优先，否则有 rules 时默认 true
-  const mergedRequired =
+  const mergedRequired = Boolean(
     required ??
     (rulesArray.length > 0 ? true : (defaultProps.required ?? defaultConfig.required))
+  )
 
   const mergedReadonlyPlaceholder = cp?.readonlyPlaceholder ?? readonlyPlaceholder
 
-  const normalizedSchema: SchemxResolvedBaseField<TValues> = {
+  const normalizedSchema = {
     ...(rest ?? {}),
     key,
 
@@ -318,7 +319,7 @@ function buildNormalizedFieldSchema<TValues extends Values>(
 
     rules,
     validationTrigger: normalizeTrigger(mergedValidationTrigger),
-  }
+  } as SchemxResolvedBaseField<TValues>
 
   // 只读模式下覆盖对齐方式，保证展示一致性
   if (mergedReadonly) {

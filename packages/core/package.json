@@ -53,6 +53,7 @@
     "lint:fix": "eslint \"src/**/*.{ts,tsx,vue,js,jsx}\" --ignore-pattern \"**/__tests__/**\" --ignore-pattern \"**/*.test.*\" --ignore-pattern \"**/*.spec.*\" --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,vue,js,jsx,json,css,scss}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,vue,js,jsx,json,css,scss}\"",
+    "type-test": "tsc -p tsconfig.type-tests.json --noEmit",
     "type-check": "tsc -p tsconfig.json --noEmit",
     "check": "pnpm run lint && pnpm run format:check && pnpm run type-check",
     "prepublishOnly": "pnpm run build"

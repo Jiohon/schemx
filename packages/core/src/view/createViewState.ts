@@ -159,7 +159,7 @@ export function createRuntimeViewState<TValues extends Values = Values>(
             overriddenKeys: diagnostics.overriddenKeys,
             error: diagnostics.error?.message ?? null,
           },
-        } as SchemxViewFieldSchema<TValues>
+        } as unknown as SchemxViewFieldSchema<TValues>
       }),
     }
 

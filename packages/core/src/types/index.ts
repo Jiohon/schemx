@@ -17,6 +17,13 @@ export type {
 } from "./form"
 
 export type {
+  RequiredOptions,
+  RequiredRule,
+  DefinedFieldValue,
+  ValidationRuleDefinition,
+  ValidationRuleName,
+  FieldRule,
+  FieldRules,
   SchemxRuleDefinition,
   SchemxRuleDefinitionKey,
   SchemxRuleBuiltinKey,

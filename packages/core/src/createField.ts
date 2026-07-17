@@ -118,7 +118,10 @@ export interface SchemxFieldInstance<
    * @param rules - 校验规则或规则数组。
    * @param defaultMessage - 可选的默认错误信息。
    */
-  registerRules: (rules: SchemxRules | SchemxRules[], defaultMessage?: string) => void
+  registerRules: (
+    rules: SchemxRules | readonly SchemxRules[],
+    defaultMessage?: string
+  ) => void
 
   /**
    * 注销当前字段校验规则。
@@ -268,7 +271,7 @@ export function createField<
    * 为当前字段注册校验规则。
    */
   const registerRules = (
-    rules: SchemxRules | SchemxRules[],
+    rules: SchemxRules | readonly SchemxRules[],
     defaultMessage?: string
   ): void => {
     form.registerRules(name, rules, defaultMessage)

@@ -510,7 +510,7 @@ class CreateForm<
    */
   private register(
     path: NamePath<TValues>,
-    rules: SchemxRules | SchemxRules[],
+    rules: SchemxRules | readonly SchemxRules[],
     defaultMessage?: string
   ): void {
     const resolvedRules: StandardSchemaV1[] = []

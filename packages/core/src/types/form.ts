@@ -74,12 +74,7 @@ export type SchemxFieldSchemaPatch<TValues extends Values = Values> = Partial<
  * 支持两种命名风格：`onBlur` / `blur`，内部会归一化处理。
  */
 export type ValidationTrigger =
-  | "onBlur"
-  | "onChange"
-  | "onSubmit"
-  | "blur"
-  | "change"
-  | "submit"
+  "onBlur" | "onChange" | "onSubmit" | "blur" | "change" | "submit"
 
 /**
  * 表单级默认配置。
@@ -743,7 +738,7 @@ export interface SchemxInstance<TValues extends Values = Values> {
    */
   registerRules: <TName extends NamePath<TValues>>(
     name: TName,
-    rules: SchemxRules | SchemxRules[],
+    rules: SchemxRules | readonly SchemxRules[],
     defaultMessage?: string
   ) => void
 

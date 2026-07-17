@@ -82,6 +82,13 @@ export {
 } from "./utils"
 
 export type {
+  RequiredOptions,
+  RequiredRule,
+  DefinedFieldValue,
+  ValidationRuleDefinition,
+  ValidationRuleName,
+  FieldRule,
+  FieldRules,
   Values,
   Dynamic,
   NamePath,
@@ -115,3 +122,16 @@ export type {
   SchemxConditionFn,
   SchemxDependenciesStaticProps,
 } from "./types"
+
+export type {
+  ValidationRuleContext,
+  ValidationRuleIssue,
+  ValidationRuleResult,
+  ValidationRule,
+  FieldValidationError,
+  FormValidationError,
+  ValidationError,
+  ValidationSuccess,
+  ValidationFailure,
+  ValidationResult,
+} from "./validator/types"

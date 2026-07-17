@@ -17,7 +17,7 @@ import type { Signal } from "../reactivity/signal"
 import type {
   SchemxComponentProps,
   SchemxResolvedBaseField,
-  SchemxRules,
+  FieldRules,
   Values,
 } from "../types"
 import type { NamePath } from "../types/form"
@@ -77,7 +77,7 @@ export interface FieldEffectiveSchema<TValues extends Values = Values> {
   placeholder: string
   readonlyPlaceholder?: string
   componentProps: SchemxComponentProps<TValues>
-  rules: SchemxRules | SchemxRules[]
+  rules: FieldRules<TValues, NamePath<TValues>>
   validationTrigger: SchemxResolvedBaseField<TValues>["validationTrigger"]
 }
 

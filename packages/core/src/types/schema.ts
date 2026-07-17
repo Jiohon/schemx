@@ -19,7 +19,7 @@ import type {
   Values,
 } from "./form"
 import type { SchemxRendererDefinition } from "./renderer"
-import type { SchemxRules } from "./rule"
+import type { DefinedFieldValue, FieldRules, RequiredRule } from "./rule"
 
 /**
  * 从 SchemxRendererDefinition 中提取组件类型 key。
@@ -150,6 +150,7 @@ export interface SchemxFieldDefinition {}
  */
 export interface SchemxBase<
   TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
   TKey extends string = SchemxComponentTypeKey<TValues>,
 > extends SchemxFieldDefinition {
   /**
@@ -165,7 +166,7 @@ export interface SchemxBase<
    * 支持嵌套路径语法，如 `'user.name'`、`['user', 'address', 'city']`。
    * 用于在表单内部状态中定位字段值。
    */
-  name: NamePath<TValues>
+  name: TName
 
   /**
    * 字段标签文本
@@ -217,7 +218,7 @@ export interface SchemxBase<
    * 控制必填标记（红色星号）的显示。
    * 若未设置，会根据 `rules` 中的校验规则自动推断。
    */
-  required?: boolean
+  required?: RequiredRule<DefinedFieldValue<TValues, TName>>
 
   /**
    * 是否只读（静态默认值）
@@ -259,7 +260,7 @@ export interface SchemxBase<
    * 或内置快捷方式（如 `"required"`）。
    * 校验在 `submit` 或触发时机（`validationTrigger`）到达时执行。
    */
-  rules?: SchemxRules | SchemxRules[]
+  rules?: FieldRules<TValues, TName>
 
   /**
    * 标签图标
@@ -339,16 +340,21 @@ export type SchemxFormItemProps<TValues extends Values = Values> = Omit<
  *
  * @typeParam  TValues - 表单值类型
  */
-export type SchemxBaseField<TValues extends Values = Values> = [
+type SchemxBaseFieldByName<TValues extends Values, TName extends NamePath<TValues>> = [
   Extract<keyof SchemxRendererDefinition<TValues>, string>,
 ] extends [never]
-  ? SchemxBase<TValues, string>
+  ? SchemxBase<TValues, TName, string>
   : {
       [TKey in Extract<keyof SchemxRendererDefinition<TValues>, string>]: SchemxBase<
         TValues,
+        TName,
         TKey
       >
     }[Extract<keyof SchemxRendererDefinition<TValues>, string>]
+
+export type SchemxBaseField<TValues extends Values = Values> = {
+  [TName in NamePath<TValues>]: SchemxBaseFieldByName<TValues, TName>
+}[NamePath<TValues>]
 
 /**
  * 自定义 Group Schema 基础字段扩展接口
@@ -478,10 +484,12 @@ export type SchemxField<TValues extends Values = Values> =
  * 校验和动态依赖由 FieldDescriptor 顶层字段承载，避免静态默认值、
  * 校验规则和运行时动态派生规则混在同一个对象里。
  */
-export type SchemxResolvedBaseField<TValues extends Values = Values> = Omit<
-  SchemxBaseField<TValues>,
-  "dependencies"
->
+type SchemxResolvedBaseFieldItem<TField> = TField extends unknown
+  ? Omit<TField, "dependencies" | "required"> & { required?: boolean }
+  : never
+
+export type SchemxResolvedBaseField<TValues extends Values = Values> =
+  SchemxResolvedBaseFieldItem<SchemxBaseField<TValues>>
 
 /**
  * 编译后的分组静态 schema。
