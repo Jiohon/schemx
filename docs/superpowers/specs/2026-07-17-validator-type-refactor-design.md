@@ -268,10 +268,14 @@ export type ValidationRuleEntry<TValue> =
   | StandardSchemaV1<TValue, unknown>
   | ValidationRuleFactory<TValue>
 
-export type ValidationRuleMap = {
-  [K in keyof ValidationRuleDefinition]:
-    ValidationRuleEntry<ValidationRuleDefinition[K]>
-}
+type DeclaredValidationRuleName = Extract<keyof ValidationRuleDefinition, string>
+
+export type ValidationRuleMap = [DeclaredValidationRuleName] extends [never]
+  ? Record<string, ValidationRuleEntry<unknown>>
+  : {
+      [K in DeclaredValidationRuleName]:
+        ValidationRuleEntry<ValidationRuleDefinition[K]>
+    }
 ```
 
 Registry 的 `register()`、`registerAll()` 和 `get()` 必须同时约束规则名称及其声明的值类型。Registry 只负责命名规则，不再预注册任何 Schemx 内置必填规则。
@@ -298,7 +302,11 @@ export interface ValidationRuleIssue {
 
 export type ValidationRuleResult =
   | { valid: true }
-  | { valid: false; issues: readonly ValidationRuleIssue[] }
+  | {
+      valid: false
+      issues: readonly ValidationRuleIssue[]
+      bail?: boolean
+    }
 
 export interface ValidationRule<
   TValue = unknown,
@@ -327,9 +335,11 @@ export interface ValidationRule<
 单字段规则按以下顺序执行：
 
 1. 先执行 `required`。
-2. `required` 失败时记录必填错误，并停止该字段的后续规则。
+2. `required` 失败时返回 `bail: true`，记录必填错误并停止该字段的后续规则。
 3. `required` 通过或未配置时，按声明顺序执行其他规则。
 4. 收集其他规则返回的全部 issue。
+
+公共 `ValidationRule` 也可以通过失败结果的 `bail: true` 请求停止当前字段的剩余规则；未设置时默认继续聚合。`bail` 只影响当前字段，不影响其他字段。
 
 没有配置 `required` 时，空值仍会传给 Standard Schema。可选语义由 Schema 自己表达，例如使用 `z.string().email().optional()`，Schemx 不隐式跳过空值。
 
@@ -482,6 +492,8 @@ export interface Validator<TValues extends Values> {
   ): Promise<ValidationResult<TValues, TName>>
 
   validate(values: TValues): Promise<ValidationResult<TValues>>
+
+  destroy(): void
 }
 ```
 
@@ -495,7 +507,7 @@ setFieldError()  → setFieldErrors()
 reset(paths)     → clearFieldErrors() 或 clearErrors()
 ```
 
-`setFieldRules()` 使用替换语义，不再隐式追加。调用方传入的规则和错误数组在存储前复制，Getter 只返回只读数据，避免外部修改内部响应式状态。
+`setFieldRules()` 使用替换语义，不再隐式追加。调用方传入的规则和错误数组在存储前复制，Getter 只返回只读数据，避免外部修改内部响应式状态。`destroy()` 中止全部运行中的校验并清空规则、错误和运行状态；重复调用不产生额外副作用。
 
 Validator 内部只维护以下状态：
 
