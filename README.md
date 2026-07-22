@@ -23,7 +23,7 @@
 - **运行时 Schema Node**：把原始 Schema 编译为可增量更新的运行时结构。
 - **ViewSchemas 投影**：向 UI 层输出已经解析好的渲染数据。
 - **Renderer registry**：把 `componentType` 映射到具体 UI 组件。
-- **Validator registry**：复用字符串规则，并接入 Standard Schema 生态。
+- **Validation Rule Registry**：复用命名规则，并接入 Standard Schema 生态。
 
 ## 包说明
 
@@ -53,6 +53,33 @@ pnpm add @schemx/vant @schemx/vue @schemx/core vant vue
 - [`@schemx/core` 使用说明](./packages/core/README.md)
 - [`@schemx/vue` 使用说明](./packages/vue/README.md)
 - [`@schemx/vant` 使用说明](./packages/vant/README.md)
+
+Core 校验使用 `required` 字段、命名规则 Registry，以及以 `valid` 为判别字段的扁平结果：
+
+```ts
+import { createForm, createValidationRuleRegistry } from "@schemx/core"
+import { z } from "zod"
+
+const registry = createValidationRuleRegistry()
+registry.register("email", z.string().email("邮箱格式错误"))
+
+const form = createForm<{ email: string }>({
+  initialValues: { email: "" },
+  schemas: [
+    {
+      name: "email",
+      label: "邮箱",
+      componentType: "input",
+      required: { message: "请输入邮箱" },
+      rules: ["email"],
+    },
+  ],
+  validationRuleRegistry: registry,
+})
+
+const result = await form.validate()
+if (!result.valid) console.log(result.errors)
+```
 
 ## 架构边界
 

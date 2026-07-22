@@ -19,10 +19,10 @@ import type {
   SchemxRendererKey,
   SchemxResolvedBaseField,
   SchemxResolvedGroupField,
-  SchemxRules,
   ValidationTrigger,
   Values,
 } from "../types"
+import type { DefinedFieldValue, FieldRules, RequiredRule } from "../types/rule"
 
 /**
  * 容器静态呈现状态。
@@ -59,7 +59,7 @@ export type FormDescriptor<
   TValues extends Values = Values,
   TName extends NamePath<TValues> = NamePath<TValues>,
 > =
-  | FieldDescriptor<TValues>
+  | FieldDescriptor<TValues, TName>
   | GroupDescriptor<TValues, TName>
   | DependencyDescriptor<TValues, TName>
 
@@ -99,21 +99,23 @@ export interface DescriptorMeta<TValues extends Values = Values> {
  * - 校验：validation 描述字段校验资源
  *
  * @typeParam TValues - 表单值类型。
+ * @typeParam TName - 当前字段路径，用于保留动态依赖与校验规则的字段值类型。
  */
 export interface FieldDescriptor<
   TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
 > extends BaseDescriptor<TValues> {
   readonly type: "field"
   /** 字段在表单值对象中的名称路径。 */
-  readonly name: NamePath<TValues>
+  readonly name: TName
   /** 字段渲染器类型。 */
   readonly componentType: SchemxRendererKey
   /** 编译后、已补默认值的静态字段 schema。 */
   readonly staticSchema: SchemxResolvedBaseField<TValues>
   /** 字段动态属性描述；不存在时字段只使用静态 schema。 */
-  readonly dynamicProps?: FieldDynamicPropsDescriptor<TValues> | null
+  readonly dynamicProps?: FieldDynamicPropsDescriptor<TValues, TName> | null
   /** 字段校验描述；不存在时字段不挂载校验资源。 */
-  readonly validation?: FieldValidationDescriptor<TValues> | null
+  readonly validation?: FieldValidationDescriptor<TValues, TName> | null
 }
 
 /**
@@ -122,24 +124,38 @@ export interface FieldDescriptor<
  * 这里保持对当前 `SchemxDependencies` API 的引用，不在 descriptor 层
  * 另造一套 `MaybeDynamic` DSL。后续如果引入自动依赖追踪，可以在
  * DynamicProps 领域内部扩展，而不是污染 schema 编译产物。
+ *
+ * @typeParam TValues - 表单值类型。
+ * @typeParam TName - 当前字段路径，用于推导动态必填与规则的字段值类型。
  */
-export interface FieldDynamicPropsDescriptor<TValues extends Values = Values> {
+export interface FieldDynamicPropsDescriptor<
+  TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+> {
   /** 动态属性来源。 */
   readonly source: "dependencies"
   /** 触发动态属性重算的字段。 */
   readonly triggerFields: readonly NamePath<TValues>[]
   /** 原始 dependencies 配置，供 DynamicProps 运行态消费。 */
-  readonly dependencies: SchemxDependencies<TValues>
+  readonly dependencies: SchemxDependencies<TValues, TName>
 }
 
 /**
  * 字段校验描述。
+ *
+ * @typeParam TValues - 表单值类型。
+ * @typeParam TName - 当前字段路径，用于推导必填与规则的字段值类型。
  */
-export interface FieldValidationDescriptor<_TValues extends Values = Values> {
+export interface FieldValidationDescriptor<
+  TValues extends Values = Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+> {
   /** 校验触发方式。 */
   readonly trigger?: ValidationTrigger | readonly ValidationTrigger[]
+  /** 静态必填配置。 */
+  readonly required: RequiredRule<DefinedFieldValue<TValues, TName>> | undefined
   /** 静态校验规则。 */
-  readonly rules: SchemxRules | readonly SchemxRules[]
+  readonly rules: FieldRules<TValues, TName> | undefined
 }
 
 /**

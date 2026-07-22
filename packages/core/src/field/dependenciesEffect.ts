@@ -27,6 +27,7 @@ export const FIELD_DEPENDENCIES_PROP_KEYS = [
   "componentProps",
   "placeholder",
   "required",
+  "showRequiredMark",
   "readonly",
   "readonlyPlaceholder",
   "disabled",

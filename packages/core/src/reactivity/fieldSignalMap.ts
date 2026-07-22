@@ -12,6 +12,8 @@
  * @module core/reactivity/fieldSignalMap
  */
 
+import { createFieldKey } from "../utils/path"
+
 import { createSignal } from "./signal"
 
 import type { FieldSignal } from "./fieldSignal"
@@ -228,9 +230,5 @@ function disposeSignal(signal: FieldSignal<unknown>): void {
  * @returns 标准化后的字符串 key。
  */
 function defaultNormalizeFieldKey(key: unknown): string {
-  if (Array.isArray(key)) {
-    return key.map((part) => String(part)).join(".")
-  }
-
-  return String(key)
+  return createFieldKey(key as never)
 }

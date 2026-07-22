@@ -41,7 +41,7 @@
     onValuesChange: undefined,
     onFieldsChange: undefined,
     rendererRegistry: undefined,
-    validatorRegistry: undefined,
+    validationRuleRegistry: undefined,
     visible: true,
   })
 
@@ -73,7 +73,7 @@
 
         rendererRegistry: props.rendererRegistry,
         defaultRendererType: props.defaultRendererType,
-        validatorRegistry: props.validatorRegistry,
+        validationRuleRegistry: props.validationRuleRegistry,
 
         readonly: props.readonly,
         disabled: props.disabled,

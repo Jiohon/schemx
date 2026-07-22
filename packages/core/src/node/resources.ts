@@ -7,6 +7,8 @@
  * @module core/node/resources
  */
 
+import { createFieldKey } from "../utils/path"
+
 import type {
   DependencyRuntimeNode,
   FieldRuntimeNode,
@@ -62,7 +64,7 @@ export function deleteNodeResources<TValues extends Values>(
  * @returns 字段索引实例
  */
 function createRuntimeFieldIndex<TValues extends Values>(): RuntimeFieldIndex<TValues> {
-  const nodesByName = new Map<NamePath<TValues>, FieldRuntimeNode<TValues>>()
+  const nodesByName = new Map<string, FieldRuntimeNode<TValues>>()
 
   /**
    * 从索引中移除指定字段节点。
@@ -73,10 +75,10 @@ function createRuntimeFieldIndex<TValues extends Values>(): RuntimeFieldIndex<TV
     const descriptor = node.descriptor
 
     if (descriptor?.type === "field") {
-      const current = nodesByName.get(descriptor.name)
+      const current = nodesByName.get(createFieldKey(descriptor.name))
 
       if (current === node) {
-        nodesByName.delete(descriptor.name)
+        nodesByName.delete(createFieldKey(descriptor.name))
       }
     }
 
@@ -95,14 +97,14 @@ function createRuntimeFieldIndex<TValues extends Values>(): RuntimeFieldIndex<TV
         return
       }
 
-      nodesByName.set(descriptor.name, node)
+      nodesByName.set(createFieldKey(descriptor.name), node)
     },
     unregister,
     getByName(name) {
-      return nodesByName.get(name)
+      return nodesByName.get(createFieldKey(name))
     },
     getByPath(path) {
-      return nodesByName.get(path)
+      return nodesByName.get(createFieldKey(path))
     },
   }
 }
@@ -122,10 +124,7 @@ function createRuntimeDependencyIndex<TValues extends Values>(): RuntimeDependen
     DependencyRuntimeNode<TValues>,
     readonly NamePath<TValues>[]
   >()
-  const nodesByTriggerField = new Map<
-    NamePath<TValues>,
-    DependencyRuntimeNode<TValues>[]
-  >()
+  const nodesByTriggerField = new Map<string, DependencyRuntimeNode<TValues>[]>()
 
   /**
    * 从索引中移除指定 dependency 节点，并清理所有关联的反向索引。
@@ -134,7 +133,8 @@ function createRuntimeDependencyIndex<TValues extends Values>(): RuntimeDependen
     const triggerFields = triggerFieldsByNode.get(node) ?? []
 
     for (const triggerField of triggerFields) {
-      const nodes = nodesByTriggerField.get(triggerField)
+      const key = createFieldKey(triggerField)
+      const nodes = nodesByTriggerField.get(key)
 
       if (!nodes) {
         continue
@@ -143,9 +143,9 @@ function createRuntimeDependencyIndex<TValues extends Values>(): RuntimeDependen
       const nextNodes = nodes.filter((current) => current !== node)
 
       if (nextNodes.length > 0) {
-        nodesByTriggerField.set(triggerField, nextNodes)
+        nodesByTriggerField.set(key, nextNodes)
       } else {
-        nodesByTriggerField.delete(triggerField)
+        nodesByTriggerField.delete(key)
       }
     }
 
@@ -170,16 +170,17 @@ function createRuntimeDependencyIndex<TValues extends Values>(): RuntimeDependen
       triggerFieldsByNode.set(node, descriptor.triggerFields)
 
       for (const triggerField of descriptor.triggerFields) {
-        const nodes = nodesByTriggerField.get(triggerField) ?? []
+        const key = createFieldKey(triggerField)
+        const nodes = nodesByTriggerField.get(key) ?? []
 
         if (!nodes.includes(node)) {
-          nodesByTriggerField.set(triggerField, [...nodes, node])
+          nodesByTriggerField.set(key, [...nodes, node])
         }
       }
     },
     unregister,
     getByTriggerField(name) {
-      return nodesByTriggerField.get(name) ?? []
+      return nodesByTriggerField.get(createFieldKey(name)) ?? []
     },
     getTriggerFields(node) {
       return triggerFieldsByNode.get(node) ?? []

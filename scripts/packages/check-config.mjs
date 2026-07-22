@@ -26,6 +26,10 @@ function readText(path) {
 
 const packagePeerRules = [
   {
+    file: "packages/validator/package.json",
+    peers: ["@schemx/core"],
+  },
+  {
     file: "packages/vue/package.json",
     peers: ["@schemx/core"],
   },
@@ -35,8 +39,16 @@ const packagePeerRules = [
   },
 ]
 
+const optionalPeerRules = [
+  {
+    file: "packages/validator/package.json",
+    peers: ["zod", "async-validator"],
+  },
+]
+
 const vitePackageFiles = [
   "packages/core/package.json",
+  "packages/validator/package.json",
   "packages/vue/package.json",
   "packages/vant/package.json",
 ]
@@ -91,6 +103,25 @@ for (const rule of packagePeerRules) {
 
     if (!packageJson.devDependencies?.[peerName]) {
       failures.push(`${rule.file}: devDependencies 缺少本地开发依赖 ${peerName}`)
+    }
+  }
+}
+
+// 可选 adapter 依赖必须保持为可选 peer，同时提供本地测试所需的开发依赖。
+for (const rule of optionalPeerRules) {
+  const packageJson = readJson(rule.file)
+
+  for (const peerName of rule.peers) {
+    if (!packageJson.peerDependencies?.[peerName]) {
+      failures.push(`${rule.file}: peerDependencies 缺少 ${peerName}`)
+    }
+
+    if (!packageJson.peerDependenciesMeta?.[peerName]?.optional) {
+      failures.push(`${rule.file}: ${peerName} 必须标记为 optional peer`)
+    }
+
+    if (!packageJson.devDependencies?.[peerName]) {
+      failures.push(`${rule.file}: devDependencies 缺少 ${peerName}`)
     }
   }
 }

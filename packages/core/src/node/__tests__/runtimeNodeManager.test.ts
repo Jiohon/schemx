@@ -27,10 +27,7 @@ function createRuntimeContext<TValues extends Values = Values>(): SchemxContext<
     getFieldSnapshot: () => undefined,
     setInitialValues: () => undefined,
     setFieldValue: () => undefined,
-    registerRules: () => undefined,
-    unregisterRules: () => undefined,
-    setFieldError: () => undefined,
-    validateField: async () => ({ ok: true, values: {} }),
+    validateField: async () => ({ valid: true, values: {}, errors: [] }),
   }
   const formApi = {
     getValues: () => ({}),
@@ -45,6 +42,10 @@ function createRuntimeContext<TValues extends Values = Values>(): SchemxContext<
       formInstance: instance as any,
     }),
     scheduler,
+    validation: {
+      syncField: () => undefined,
+      removeField: () => undefined,
+    },
     lifecycleBus: createLifecycleBus(),
     nodeResources,
     commitChildren: () => undefined,
@@ -110,9 +111,9 @@ describe("RuntimeNodeManager", () => {
 
     expect(context.nodeResources.fieldIndex.getByName("user.name" as any)).toBe(field)
     expect(context.nodeResources.fieldIndex.getByPath("user.name" as any)).toBe(field)
-    expect(context.nodeResources.dependencyIndex.getByTriggerField("country" as any)).toEqual([
-      dependency,
-    ])
+    expect(
+      context.nodeResources.dependencyIndex.getByTriggerField("country" as any)
+    ).toEqual([dependency])
     expect(context.nodeResources.dependencyIndex.getTriggerFields(dependency)).toEqual([
       "country",
       "city",
@@ -122,7 +123,9 @@ describe("RuntimeNodeManager", () => {
     context.nodeResources.dependencyIndex.unregister(dependency)
 
     expect(context.nodeResources.fieldIndex.getByName("user.name" as any)).toBeUndefined()
-    expect(context.nodeResources.dependencyIndex.getByTriggerField("country" as any)).toEqual([])
+    expect(
+      context.nodeResources.dependencyIndex.getByTriggerField("country" as any)
+    ).toEqual([])
   })
 
   it("应该只暴露 runtime tree 结构操作", () => {

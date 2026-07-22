@@ -8,6 +8,43 @@ const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "../..")
 
 const checks = [
   {
+    file: "packages/validator/dist/index.mjs",
+    forbidden: ["@schemx/core", "zod", "async-validator"],
+  },
+  {
+    file: "packages/validator/dist/index.cjs",
+    forbidden: ["@schemx/core", "zod", "async-validator"],
+  },
+  {
+    file: "packages/validator/dist/zod.mjs",
+    // zod adapter 是结构性类型，运行时不 import zod（用户自行 import 造 schema）。
+    forbidden: ["async-validator"],
+  },
+  {
+    file: "packages/validator/dist/zod.cjs",
+    // zod adapter 是结构性类型，运行时不 import zod（用户自行 import 造 schema）。
+    forbidden: ["async-validator"],
+  },
+  {
+    file: "packages/validator/dist/async-validator.mjs",
+    requiredWhenImplemented: ["async-validator"],
+    forbidden: ["zod"],
+  },
+  {
+    file: "packages/validator/dist/async-validator.cjs",
+    requiredWhenImplemented: ["async-validator"],
+    forbidden: ["zod"],
+  },
+  {
+    file: "packages/validator/dist/preset.mjs",
+    // 预设尚未实现；其 peer 边界应随最终组合策略一同定义。
+    forbidden: [],
+  },
+  {
+    file: "packages/validator/dist/preset.cjs",
+    forbidden: [],
+  },
+  {
     file: "packages/core/dist/index.mjs",
     required: ["es-toolkit", "es-toolkit/compat", "@preact/signals-core"],
   },
@@ -39,6 +76,22 @@ const checks = [
 
 const declarationChecks = [
   {
+    file: "packages/validator/dist/zod.d.ts",
+    implementationFile: "packages/validator/dist/zod.mjs",
+    requiredWhenImplemented: ["@schemx/core"],
+    forbidden: ["../../core/src", "../../core/dist"],
+  },
+  {
+    file: "packages/validator/dist/async-validator.d.ts",
+    implementationFile: "packages/validator/dist/async-validator.mjs",
+    requiredWhenImplemented: ["@schemx/core"],
+    forbidden: ["../../core/src", "../../core/dist"],
+  },
+  {
+    file: "packages/validator/dist/preset.d.ts",
+    forbidden: ["../../core/src", "../../core/dist"],
+  },
+  {
     file: "packages/vant/dist/index.d.ts",
     forbidden: ["../../vue/src", "../../core/src"],
     required: ["@schemx/vue", "@schemx/core"],
@@ -58,6 +111,12 @@ function hasBareSpecifier(source, specifier, { allowSubpath = false } = {}) {
   return patterns.some((pattern) => pattern.test(source))
 }
 
+// 占位入口只调用受控的 unavailable helper，加载时不得解析 optional peer。
+// adapter 实现替换该调用后，才要求对应 optional peer 的 Vite external import 必须保留。
+function isUnavailablePlaceholder(source) {
+  return source.includes("validatorAdapterUnavailable(")
+}
+
 // 先收集全部违规项，再一次性报告，方便修复多个包边界问题。
 const failures = []
 
@@ -67,7 +126,11 @@ printSection("检查包产物边界")
 for (const check of checks) {
   const filePath = resolve(rootDir, check.file)
   const source = readFileSync(filePath, "utf8")
-  const missing = check.required.filter(
+  const required = [
+    ...(check.required ?? []),
+    ...(isUnavailablePlaceholder(source) ? [] : (check.requiredWhenImplemented ?? [])),
+  ]
+  const missing = required.filter(
     (specifier) => !hasBareSpecifier(source, specifier)
   )
   const leaked = (check.forbidden ?? []).filter((specifier) =>
@@ -87,7 +150,18 @@ for (const check of checks) {
 for (const check of declarationChecks) {
   const filePath = resolve(rootDir, check.file)
   const source = readFileSync(filePath, "utf8")
-  const missing = check.required.filter((specifier) => !source.includes(specifier))
+  const implementationSource = check.implementationFile
+    ? readFileSync(resolve(rootDir, check.implementationFile), "utf8")
+    : null
+  const required = [
+    ...(check.required ?? []),
+    ...(implementationSource && !isUnavailablePlaceholder(implementationSource)
+      ? (check.requiredWhenImplemented ?? [])
+      : []),
+  ]
+  const missing = required.filter(
+    (specifier) => !source.includes(specifier)
+  )
   const leaked = check.forbidden.filter((specifier) => source.includes(specifier))
 
   if (missing.length > 0) {

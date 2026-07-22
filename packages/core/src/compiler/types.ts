@@ -9,9 +9,10 @@
 import type { FormDescriptor } from "../descriptor/types"
 import type {
   NamePath,
-  SchemxDefaultProps,
+  ResolvedSchemxDefaultProps,
   SchemxField,
   SchemxInstance,
+  SchemxRendererKey,
   Values,
 } from "../types"
 
@@ -26,7 +27,18 @@ export interface CompileOptions<TValues extends Values> {
    *
    * 这些配置会作为 schema 编译和字段呈现态的默认值，字段自身配置优先级更高。
    */
-  defaultProps: SchemxDefaultProps
+  defaultProps: ResolvedSchemxDefaultProps
+  /**
+   * 缺失 `componentType` 的 field 使用的显式默认渲染器类型。
+   *
+   * 未配置时不会从 renderer registry 推断默认值。
+   *
+   * @example
+   * ```ts
+   * createCompile({ defaultRendererType: "input" })
+   * ```
+   */
+  defaultRendererType?: SchemxRendererKey
   /** 表单实例方法，用于在编译时提供表单操作能力。 */
   formInstance: SchemxInstance<TValues>
 }
@@ -95,16 +107,16 @@ class CompileErrorImpl extends Error {
    * @param message - 错误描述。
    * @param schema - 触发错误的 schema 对象，用于提取 name 和 key 附加到错误实例。
    */
-  constructor(message: string, schema?: any) {
+  constructor(message: string, schema?: unknown) {
     super(message)
     this.name = "CompileError"
 
-    if (schema && "name" in schema) {
+    if (schema && typeof schema === "object" && "name" in schema) {
       this.schemaName = schema.name as NamePath
     }
 
-    if (schema && "key" in schema && schema.key) {
-      this.schemaKey = schema.key
+    if (schema && typeof schema === "object" && "key" in schema && schema.key) {
+      this.schemaKey = schema.key as string
     }
   }
 }

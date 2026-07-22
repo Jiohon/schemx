@@ -24,7 +24,7 @@ export const formConfigContextOmitKey = [
   "form",
   "modelValue",
   "rendererRegistry",
-  "validatorRegistry",
+  "validationRuleRegistry",
   "defaultRendererType",
   "onFinish",
   "onFinishFailed",

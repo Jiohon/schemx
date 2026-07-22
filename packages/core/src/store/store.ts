@@ -241,15 +241,15 @@ class StoreImpl<TValues extends Values = Values> {
   /**
    * 获取单个字段值的快照。
    *
-   * 使用 signal.peek() 避免收集依赖，返回深拷贝的值。
+   * 使用 signal.peek() 避免收集依赖；字段值本身不会被额外深拷贝。
    *
    * @param path - 字段路径
    *
-   * @returns 该字段当前值的深拷贝
+   * @returns 该字段当前值
    *
    * @example
    * ```typescript
-   * const name = store.getFieldSnapshot('name') // => 'John'（深拷贝）
+   * const name = store.getFieldSnapshot('name') // => 'John'
    * ```
    */
   getFieldSnapshot<TName extends NamePath<TValues>>(
@@ -265,12 +265,12 @@ class StoreImpl<TValues extends Values = Values> {
   /**
    * 获取当前表单值的快照。
    *
-   * 使用 signal.peek() 避免收集依赖，返回深拷贝的普通对象。
+   * 使用 signal.peek() 避免收集依赖，返回新建的顶层值对象；字段值本身不会被额外深拷贝。
    * 传入 paths 时只返回指定字段的快照。
    *
    * @param paths - 可选的字段路径数组，不传则返回全部字段
    *
-   * @returns 当前表单值的原始对象（深拷贝）
+   * @returns 当前表单值组成的新对象
    *
    * @example
    * ```typescript

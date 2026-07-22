@@ -18,7 +18,9 @@ import {
 
 import type { SchemxResolvedBaseField } from "../../types"
 
-function createTestSchema(overrides: Partial<SchemxResolvedBaseField> = {}): SchemxResolvedBaseField {
+function createTestSchema(
+  overrides: Partial<SchemxResolvedBaseField> = {}
+): SchemxResolvedBaseField {
   return {
     componentType: "input",
     label: "测试字段",
@@ -146,15 +148,88 @@ describe("FieldRuntimeState", () => {
         },
       })
 
-      setFieldDynamicOverrides(state, { visible: false, disabled: true }, {
-        source: "dependencies",
-        triggerFields: ["country" as any],
-      })
+      setFieldDynamicOverrides(
+        state,
+        { visible: false, disabled: true },
+        {
+          source: "dependencies",
+          triggerFields: ["country" as any],
+        }
+      )
 
       const effective = state.effectiveSchema.value
 
       expect(effective.visible).toBe(false)
       expect(effective.disabled).toBe(true)
+    })
+
+    it("required=true 且未配置标记时应该默认显示必填标记", () => {
+      const state = createFieldRuntimeState({
+        nodeId: 1,
+        key: "field-1",
+        descriptor: {
+          name: "email" as any,
+          staticSchema: createTestSchema({ required: true }),
+        },
+      })
+
+      expect(state.effectiveSchema.value.showRequiredMark).toBe(true)
+      expect(state.viewSchema.value.showRequiredMark).toBe(true)
+    })
+
+    it("静态 showRequiredMark=false 应隐藏标记但保留 required", () => {
+      const state = createFieldRuntimeState({
+        nodeId: 1,
+        key: "field-1",
+        descriptor: {
+          name: "email" as any,
+          staticSchema: createTestSchema({ required: true, showRequiredMark: false }),
+        },
+      })
+
+      expect(state.effectiveSchema.value.showRequiredMark).toBe(false)
+      expect(state.effectiveSchema.value.required).toBe(true)
+    })
+
+    it("未配置 showRequiredMark 时应该跟随动态 required", () => {
+      const state = createFieldRuntimeState({
+        nodeId: 1,
+        key: "field-1",
+        descriptor: {
+          name: "email" as any,
+          staticSchema: createTestSchema({ required: false }),
+        },
+      })
+
+      expect(state.effectiveSchema.value.showRequiredMark).toBe(false)
+
+      setFieldDynamicOverrides(
+        state,
+        { required: { message: "请输入邮箱" } },
+        { source: "dependencies", triggerFields: ["country" as any] }
+      )
+
+      expect(state.effectiveSchema.value.showRequiredMark).toBe(true)
+    })
+
+    it("动态 showRequiredMark 应覆盖标记但不改变 required", () => {
+      const state = createFieldRuntimeState({
+        nodeId: 1,
+        key: "field-1",
+        descriptor: {
+          name: "email" as any,
+          staticSchema: createTestSchema({ required: true }),
+        },
+      })
+
+      setFieldDynamicOverrides(
+        state,
+        { showRequiredMark: false },
+        { source: "dependencies", triggerFields: ["country" as any] }
+      )
+
+      expect(state.effectiveSchema.value.showRequiredMark).toBe(false)
+      expect(state.effectiveSchema.value.required).toBe(true)
     })
 
     it("部分动态覆盖不应影响未覆盖的静态属性", () => {
@@ -168,10 +243,14 @@ describe("FieldRuntimeState", () => {
         },
       })
 
-      setFieldDynamicOverrides(state, { disabled: true }, {
-        source: "dependencies",
-        triggerFields: ["country" as any],
-      })
+      setFieldDynamicOverrides(
+        state,
+        { disabled: true },
+        {
+          source: "dependencies",
+          triggerFields: ["country" as any],
+        }
+      )
 
       const effective = state.effectiveSchema.value
 
@@ -232,10 +311,14 @@ describe("FieldRuntimeState", () => {
         },
       })
 
-      setFieldDynamicOverrides(state, { visible: false }, {
-        source: "dependencies",
-        triggerFields: ["country" as any],
-      })
+      setFieldDynamicOverrides(
+        state,
+        { visible: false },
+        {
+          source: "dependencies",
+          triggerFields: ["country" as any],
+        }
+      )
 
       const newSchema = createTestSchema({ visible: true, label: "新标签" })
       setFieldStaticSchema(state, {
@@ -282,10 +365,14 @@ describe("FieldRuntimeState", () => {
         },
       })
 
-      setFieldDynamicOverrides(state, { placeholder: "动态占位" }, {
-        source: "dependencies",
-        triggerFields: ["type" as any],
-      })
+      setFieldDynamicOverrides(
+        state,
+        { placeholder: "动态占位" },
+        {
+          source: "dependencies",
+          triggerFields: ["type" as any],
+        }
+      )
 
       expect(state.dynamicOverrides.value.placeholder).toBe("动态占位")
     })
@@ -300,10 +387,14 @@ describe("FieldRuntimeState", () => {
         },
       })
 
-      setFieldDynamicOverrides(state, { visible: false }, {
-        source: "dependencies",
-        triggerFields: ["country" as any, "city" as any],
-      })
+      setFieldDynamicOverrides(
+        state,
+        { visible: false },
+        {
+          source: "dependencies",
+          triggerFields: ["country" as any, "city" as any],
+        }
+      )
 
       const diag = state.diagnostics.value
       expect(diag.lastUpdatedBy).toBe("dependencies")
@@ -321,14 +412,22 @@ describe("FieldRuntimeState", () => {
         },
       })
 
-      setFieldDynamicOverrides(state, { visible: false }, {
-        source: "dependencies",
-        triggerFields: ["country" as any],
-      })
-      setFieldDynamicOverrides(state, {}, {
-        source: "dependencies",
-        triggerFields: [],
-      })
+      setFieldDynamicOverrides(
+        state,
+        { visible: false },
+        {
+          source: "dependencies",
+          triggerFields: ["country" as any],
+        }
+      )
+      setFieldDynamicOverrides(
+        state,
+        {},
+        {
+          source: "dependencies",
+          triggerFields: [],
+        }
+      )
 
       expect(state.dynamicOverrides.value).toEqual({})
     })
@@ -345,10 +444,14 @@ describe("FieldRuntimeState", () => {
         },
       })
 
-      setFieldDynamicOverrides(state, { visible: false }, {
-        source: "dependencies",
-        triggerFields: ["country" as any],
-      })
+      setFieldDynamicOverrides(
+        state,
+        { visible: false },
+        {
+          source: "dependencies",
+          triggerFields: ["country" as any],
+        }
+      )
       resetFieldDynamicOverrides(state, "reset")
 
       expect(state.dynamicOverrides.value).toEqual({})
@@ -364,10 +467,14 @@ describe("FieldRuntimeState", () => {
         },
       })
 
-      setFieldDynamicOverrides(state, { visible: false }, {
-        source: "dependencies",
-        triggerFields: ["country" as any],
-      })
+      setFieldDynamicOverrides(
+        state,
+        { visible: false },
+        {
+          source: "dependencies",
+          triggerFields: ["country" as any],
+        }
+      )
       resetFieldDynamicOverrides(state, "dispose")
 
       expect(state.diagnostics.value.lastUpdatedBy).toBe("dispose")
@@ -384,10 +491,14 @@ describe("FieldRuntimeState", () => {
         },
       })
 
-      setFieldDynamicOverrides(state, { visible: false }, {
-        source: "dependencies",
-        triggerFields: ["country" as any],
-      })
+      setFieldDynamicOverrides(
+        state,
+        { visible: false },
+        {
+          source: "dependencies",
+          triggerFields: ["country" as any],
+        }
+      )
       resetFieldDynamicOverrides(state)
 
       expect(state.staticSchema.value.label).toBe("原始标签")
@@ -398,15 +509,16 @@ describe("FieldRuntimeState", () => {
 // effectiveSchema 合并逻辑：静态 schema、动态覆盖与默认值的多层合并
 describe("effectiveSchema 合并逻辑 (US1)", () => {
   it("应该合并静态 schema、动态覆盖和默认值", () => {
+    const formatRule = { validate: () => ({ valid: true }) as const }
     const schema = createTestSchema({
       label: "邮箱",
       visible: true,
       disabled: false,
       readonly: false,
-      required: false,
+      required: true,
       placeholder: "请输入邮箱",
       componentProps: { type: "email" } as any,
-      rules: [{ required: true }] as any,
+      rules: [formatRule],
     })
     const state = createFieldRuntimeState({
       nodeId: 1,
@@ -423,27 +535,33 @@ describe("effectiveSchema 合并逻辑 (US1)", () => {
     expect(effective.visible).toBe(true)
     expect(effective.disabled).toBe(false)
     expect(effective.readonly).toBe(false)
-    expect(effective.required).toBe(false)
+    expect(effective.required).toBe(true)
     expect(effective.placeholder).toBe("请输入邮箱")
     expect(effective.componentProps).toEqual({ type: "email" })
-    expect(effective.rules).toEqual([{ required: true }])
+    expect(effective.rules).toEqual([formatRule])
     expect(effective.validationTrigger).toBe("onChange")
   })
 
   it("动态覆盖 rules 应覆盖静态 rules", () => {
-    const schema = createTestSchema({ rules: [{ required: true }] as any })
+    const staticRule = { validate: () => ({ valid: true }) as const }
+    const dynamicRule = { validate: () => ({ valid: false, issues: [] }) as const }
+    const schema = createTestSchema({ rules: [staticRule] })
     const state = createFieldRuntimeState({
       nodeId: 1,
       key: "field-1",
       descriptor: { name: "email" as any, staticSchema: schema },
     })
 
-    setFieldDynamicOverrides(state, { rules: [{ min: 3 }] as any }, {
-      source: "dependencies",
-      triggerFields: ["type" as any],
-    })
+    setFieldDynamicOverrides(
+      state,
+      { rules: [dynamicRule] },
+      {
+        source: "dependencies",
+        triggerFields: ["type" as any],
+      }
+    )
 
-    expect(state.effectiveSchema.value.rules).toEqual([{ min: 3 }])
+    expect(state.effectiveSchema.value.rules).toEqual([dynamicRule])
   })
 
   it("动态覆盖 componentProps 应覆盖静态 componentProps", () => {
@@ -454,10 +572,14 @@ describe("effectiveSchema 合并逻辑 (US1)", () => {
       descriptor: { name: "email" as any, staticSchema: schema },
     })
 
-    setFieldDynamicOverrides(state, { componentProps: { size: "large" } as any }, {
-      source: "dependencies",
-      triggerFields: ["type" as any],
-    })
+    setFieldDynamicOverrides(
+      state,
+      { componentProps: { size: "large" } as any },
+      {
+        source: "dependencies",
+        triggerFields: ["type" as any],
+      }
+    )
 
     expect(state.effectiveSchema.value.componentProps).toEqual({ size: "large" })
   })
@@ -470,10 +592,14 @@ describe("effectiveSchema 合并逻辑 (US1)", () => {
       descriptor: { name: "email" as any, staticSchema: schema },
     })
 
-    setFieldDynamicOverrides(state, { visible: false, label: "动态" as any }, {
-      source: "dependencies",
-      triggerFields: ["country" as any],
-    })
+    setFieldDynamicOverrides(
+      state,
+      { visible: false, label: "动态" as any },
+      {
+        source: "dependencies",
+        triggerFields: ["country" as any],
+      }
+    )
 
     const view = state.viewSchema.value
     expect(view.visible).toBe(false)

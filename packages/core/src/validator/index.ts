@@ -4,29 +4,29 @@
  * @module core/validator
  */
 
-export {
-  createValidator,
-  type Validator,
-  type ValidateResult,
-  type ValidateError,
-  type FieldError,
-} from "./validator"
+export { createValidator, type Validator, type CreateValidatorOptions } from "./validator"
+
+export { createRequiredValidationRule, createStandardSchemaValidationRule } from "./rules"
 
 export {
-  createRequiredRule,
-  createSelectRequiredRule,
-  createUploadRequiredRule,
-} from "./defaultRules"
+  createValidationController,
+  type CreateValidationControllerOptions,
+  type FieldValidationConfig,
+  type ValidationController,
+} from "./validationController"
 
 export type {
   ValidationRuleContext,
   ValidationRuleIssue,
   ValidationRuleResult,
   ValidationRule,
+  AdapterRule,
+  ValidationAdapter,
   FieldValidationError,
   FormValidationError,
   ValidationError,
   ValidationSuccess,
   ValidationFailure,
+  ValidationCancelled,
   ValidationResult,
 } from "./types"

@@ -1,5 +1,6 @@
-import type { SchemxProps, Values } from "@schemx/core"
 import { StyleValue } from "vue"
+
+import type { SchemxProps, Values } from "@schemx/core"
 
 /**
  * schemx 组件 Props

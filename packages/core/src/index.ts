@@ -1,27 +1,27 @@
 /**
  * core 模块统一导出
  *
- * 聚合 Validator、RendererRegistryType、ValidatorsRegistryType 等核心模块的公开 API。
+ * 聚合 Validator、ValidationRuleRegistry、RendererRegistry 等核心公开 API。
  *
  * @module core
  */
 
-export {
-  createValidator,
-  type Validator,
-  type ValidateResult,
-  type ValidateError,
-  type FieldError,
-} from "./validator"
+export { createValidator, type Validator, type CreateValidatorOptions } from "./validator"
 
 export {
   createRendererRegistry,
-  type RendererRegistryType,
+  RendererRegistry,
   type RegistryOptions,
   type RendererMap,
 } from "./registry"
 
 export { createForm, type CreateFormOptions } from "./createForm"
+
+export {
+  configureSchemx,
+  type SchemxConfig,
+  type SchemxValidationConfig,
+} from "./config/schemxConfig"
 
 export { type SchemxContext } from "./schemxContext"
 
@@ -62,12 +62,14 @@ export {
 } from "./createWatch"
 
 export {
-  createValidatorsRegistry,
-  type ValidatorsRegistryType,
-  type ValidatorsRegistryOptions,
-  type ValidatorsFactory,
-  type ValidatorsEntry,
-  type ValidatorsEntryMap,
+  createValidationRuleRegistry,
+  ValidationRuleRegistry,
+  type ValidationRuleFactoryContext,
+  type ValidationRuleFactory,
+  type ValidationRuleEntry,
+  type ValidationRuleMap,
+  type ValidationRuleRegistryChange,
+  type ValidationRuleRegistryListener,
 } from "./registry"
 
 export {
@@ -99,11 +101,8 @@ export type {
   StandardSchemaV1,
   SchemxInstance,
   SchemxProps,
+  SchemxDefaultProps,
   SchemxGlobalContext,
-  SchemxRuleDefinition,
-  SchemxRuleDefinitionKey,
-  SchemxRuleBuiltinKey,
-  SchemxRules,
   SchemxRendererKey,
   SchemxRendererDefinition,
   SchemxFieldDefinition,
@@ -128,10 +127,13 @@ export type {
   ValidationRuleIssue,
   ValidationRuleResult,
   ValidationRule,
+  AdapterRule,
+  ValidationAdapter,
   FieldValidationError,
   FormValidationError,
   ValidationError,
   ValidationSuccess,
   ValidationFailure,
+  ValidationCancelled,
   ValidationResult,
 } from "./validator/types"

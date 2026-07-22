@@ -12,8 +12,8 @@ import { Component, computed, defineComponent, h, PropType, SetupContext } from 
 
 import type { SchemxDictionary } from "@/types/dictionary"
 
-import { useDictionary } from "../hooks/useDictionary"
 import { useFieldContext } from "../hooks/provideFieldContext"
+import { useDictionary } from "../hooks/useDictionary"
 
 import type { NamePath } from "@schemx/core"
 

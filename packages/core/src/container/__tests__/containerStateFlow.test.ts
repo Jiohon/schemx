@@ -88,7 +88,7 @@ describe("容器状态运行时链路", () => {
             name: "name",
             label: "姓名",
             componentType: "input",
-            rules: "required",
+            required: true,
           },
         ],
       },
@@ -105,8 +105,7 @@ describe("容器状态运行时链路", () => {
 
     expect(group.containerState?.effectiveState.value.visible).toBe(false)
     expect(field.fieldState?.effectiveSchema.value.visible).toBe(false)
-    expect(context.instance.unregisterRules).toHaveBeenCalledWith("name")
-    expect(context.instance.setFieldError).toHaveBeenCalledWith("name", [])
+    expect(context.validation.removeField).toHaveBeenCalledWith("name")
   })
 
   it("Dependency 状态更新不应重建结构 effect 或 children", async () => {

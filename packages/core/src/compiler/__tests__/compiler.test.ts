@@ -13,6 +13,64 @@ import type { SchemxField } from "../../types/schema"
 
 // 验证 createCompile().toDescriptors 对基础字段、分组、dependency、规则、属性等的编译正确性
 describe("createCompile().toDescriptors", () => {
+  it("缺失 componentType 的 field 使用显式 defaultRendererType", () => {
+    const schema = { name: "email", label: "" } as unknown as SchemxField
+    const [descriptor] = createCompile({ defaultRendererType: "input" }).toDescriptors([
+      schema,
+    ])
+
+    expect(descriptor.staticSchema.componentType).toBe("input")
+    expect(schema).not.toHaveProperty("componentType")
+  })
+
+  it.each([undefined, "", null, 1])(
+    "缺失 componentType 时无效的 defaultRendererType 抛出 CompileError",
+    (defaultRendererType) => {
+      expect(() =>
+        createCompile({ defaultRendererType } as any).toDescriptors([
+          { name: "email", label: "" },
+        ] as any)
+      ).toThrow("componentType")
+    }
+  )
+
+  it("显式的空 componentType 不使用默认值", () => {
+    expect(() =>
+      createCompile({ defaultRendererType: "input" }).toDescriptors([
+        { name: "email", label: "", componentType: "" },
+      ] as any)
+    ).toThrow("componentType")
+  })
+
+  it.each([
+    [{ label: "", componentType: "input" }, "name"],
+    [{ name: "email", label: 1, componentType: "input" }, "label"],
+    [{ name: "email", label: "", componentType: null }, "componentType"],
+    [{ label: "", children: "invalid" }, "children"],
+    [{ children: [] }, "label"],
+    [{ to: ["mode", ""], renderer: () => [] }, "to"],
+    [{ to: ["mode"], renderer: null }, "renderer"],
+    [null, "schemas[0]"],
+    ["invalid", "schemas[0]"],
+  ])("无效 JavaScript schema 抛出带路径的 CompileError", (schema, fragment) => {
+    expect(() => createCompile().toDescriptors([schema] as any)).toThrow(CompileError)
+    expect(() => createCompile().toDescriptors([schema] as any)).toThrow(fragment)
+  })
+
+  it("无效的 schemas 容器抛出 CompileError", () => {
+    expect(() => createCompile().toDescriptors(null as any)).toThrow(CompileError)
+    expect(() => createCompile().toDescriptors(null as any)).toThrow("schemas")
+  })
+
+  it("空字符串 label 在 field 和 group 中合法", () => {
+    expect(
+      createCompile().toDescriptors([
+        { name: "email", label: "", componentType: "input" },
+        { label: "", children: [] },
+      ])
+    ).toHaveLength(2)
+  })
+
   it("应该允许 createDescriptor 通过显式参数读取表单默认配置", () => {
     const descriptor = createDescriptor(
       {
@@ -148,8 +206,9 @@ describe("createCompile().toDescriptors", () => {
     expect(descriptors.map((descriptor) => descriptor.type)).toEqual(["field", "field"])
   })
 
-  it("旧 Group 和 Dependency 语法应该抛出可迁移的 CompileError", () => {
+  it("旧 Group 和 Dependency 语法应被过滤并输出迁移警告", () => {
     const compile = createCompile()
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined)
     const legacyGroup = {
       key: "legacy-group",
       componentType: "group",
@@ -163,41 +222,72 @@ describe("createCompile().toDescriptors", () => {
       renderer: () => [],
     } as unknown as SchemxField
 
-    expect(() => compile.toDescriptors([legacyGroup])).toThrowError(CompileError)
-    expect(() => compile.toDescriptors([legacyGroup])).toThrow("请删除 componentType")
-    expect(() => compile.toDescriptors([legacyDependency])).toThrowError(CompileError)
-    expect(() => compile.toDescriptors([legacyDependency])).toThrow(
-      "请删除 componentType"
-    )
-
     try {
-      compile.toDescriptors([legacyGroup])
-    } catch (error) {
-      expect(error).toBeInstanceOf(CompileError)
-      expect((error as InstanceType<typeof CompileError>).schemaKey).toBe("legacy-group")
+      expect(compile.toDescriptors([legacyGroup, legacyDependency])).toEqual([])
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('Group Schema 不再接受 componentType: "group"')
+      )
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('Dependency Schema 不再接受 componentType: "dependency"')
+      )
+    } finally {
+      warn.mockRestore()
     }
   })
 
-  it("同时匹配多种结构的 schema 应该抛出 CompileError", () => {
-    const ambiguous = {
-      key: "ambiguous",
-      name: "ambiguous",
-      label: "歧义配置",
+  it("包含 children 时优先按 group 编译", () => {
+    const schema = {
+      key: "group-with-field-properties",
+      name: "group",
+      label: "分组",
       componentType: "input",
       children: [],
     } as unknown as SchemxField
 
-    expect(() => createCompile().toDescriptors([ambiguous])).toThrowError(CompileError)
-    expect(() => createCompile().toDescriptors([ambiguous])).toThrow("同时匹配")
+    const [descriptor] = createCompile().toDescriptors([schema])
+
+    expect(descriptor.type).toBe("group")
   })
 
-  it("应该处理 required 规则", () => {
+  it("同时包含 children 与 dependency 属性时仍优先按 group 编译", () => {
+    const [descriptor] = createCompile().toDescriptors([
+      { label: "分组", children: [], to: [], renderer: null } as any,
+    ])
+
+    expect(descriptor.type).toBe("group")
+  })
+
+  it.each([
+    [{ name: "email", label: "", componentType: "input", to: [] }, "schemas[0].to"],
+    [
+      { name: "email", label: "", componentType: "input", renderer: null },
+      "schemas[0].to",
+    ],
+  ])("存在 dependency 属性时按 dependency 必填字段校验", (schema, path) => {
+    expect(() => createCompile().toDescriptors([schema] as any)).toThrowError(
+      CompileError
+    )
+    expect(() => createCompile().toDescriptors([schema] as any)).toThrow(path)
+  })
+
+  it.each([
+    [{ to: ["mode"] }, "schemas[0].renderer"],
+    [{ renderer: () => [] }, "schemas[0].to"],
+  ])("残缺 dependency 按必填字段校验", (schema, path) => {
+    expect(() => createCompile().toDescriptors([schema] as any)).toThrowError(
+      CompileError
+    )
+    expect(() => createCompile().toDescriptors([schema] as any)).toThrow(path)
+  })
+
+  it("required 仅由显式 required 配置决定", () => {
     const schemas: SchemxField[] = [
       {
         name: "email",
         label: "邮箱",
         componentType: "input",
-        rules: "required",
+        required: true,
+        rules: "email",
       },
     ]
 
@@ -205,9 +295,28 @@ describe("createCompile().toDescriptors", () => {
 
     if (descriptors[0].type === "field") {
       expect(descriptors[0].staticSchema.required).toBe(true)
-      expect(descriptors[0].staticSchema.rules).toEqual("required")
-      expect(descriptors[0].validation?.rules).toEqual("required")
+      expect(descriptors[0].staticSchema.rules).toEqual("email")
+      expect(descriptors[0].validation).toMatchObject({
+        required: true,
+        rules: "email",
+      })
     }
+  })
+
+  it("普通规则不会把字段推导为必填", () => {
+    const [descriptor] = createCompile().toDescriptors([
+      {
+        name: "email",
+        label: "邮箱",
+        componentType: "input",
+        rules: "email",
+      },
+    ])
+
+    expect(descriptor).toMatchObject({
+      type: "field",
+      staticSchema: { required: false },
+    })
   })
 
   it("应该处理 visible/readonly/disabled 属性", () => {
@@ -413,18 +522,15 @@ describe("createCompile().toDescriptors", () => {
     expect(descriptors[1].type).toBe("group")
   })
 
-  it("应该在 name 为空时过滤该字段", () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+  it("应该在 name 为空时抛出 CompileError", () => {
     const schemas: SchemxField[] = [
       { name: "" as any, label: "Bad", componentType: "input" },
     ]
 
-    expect(createCompile().toDescriptors(schemas)).toEqual([])
-    warnSpy.mockRestore()
+    expect(() => createCompile().toDescriptors(schemas)).toThrow("name")
   })
 
-  it("应该在 dependency 无 trigger 时过滤该节点", () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+  it("应该在 dependency 无 trigger 时抛出 CompileError", () => {
     const schemas: SchemxField[] = [
       {
         to: [],
@@ -432,9 +538,7 @@ describe("createCompile().toDescriptors", () => {
       },
     ]
 
-    expect(createCompile().toDescriptors(schemas)).toEqual([])
-    expect(warnSpy).toHaveBeenCalled()
-    warnSpy.mockRestore()
+    expect(() => createCompile().toDescriptors(schemas)).toThrow("to")
   })
 
   it("应该使用全局 readonly/disabled 默认值", () => {

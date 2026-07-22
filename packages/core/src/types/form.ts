@@ -10,17 +10,21 @@
 
 import { DeepNamePath, PathValue } from "./namePathType"
 import { SchemxRendererKey } from "./renderer"
-import { SchemxRules } from "./rule"
+import { FieldRules } from "./rule"
 
 import type { DefaultConfigKey } from "../defaultConfig"
 import type {
-  RendererRegistryType,
-  ValidatorsEntry,
-  ValidatorsRegistryOptions,
-  ValidatorsRegistryType,
+  RegistryOptions,
+  RendererRegistry,
+  ValidationRuleEntry,
+  ValidationRuleRegistry,
 } from "../registry"
 import type { StorePending } from "../store"
-import type { ValidateError, ValidateResult } from "../validator"
+import type {
+  CreateValidatorOptions,
+  ValidationFailure,
+  ValidationResult,
+} from "../validator"
 import type { SchemxViewSchema } from "../view"
 import type { SchemxBaseField, SchemxField } from "./schema"
 
@@ -81,12 +85,15 @@ export type ValidationTrigger =
  *
  * 这些配置会作为 schema 编译和字段呈现态的默认值，字段自身配置优先级更高。
  */
-/**
- * 表单级默认配置。
- *
- * 这些配置会作为 schema 编译和字段呈现态的默认值，字段自身配置优先级更高。
- */
 export type SchemxDefaultProps = Pick<SchemxBaseField, DefaultConfigKey>
+
+/**
+ * 已完成内置默认值解析的表单级配置。
+ *
+ * 仅供 Core 内部编译链路使用；与 {@link SchemxDefaultProps} 不同，所有默认配置键
+ * 都已存在，但值本身仍可为 `undefined`（例如 `showRequiredMark` 的动态回退语义）。
+ */
+export type ResolvedSchemxDefaultProps = Required<SchemxDefaultProps>
 
 /**
  * schemx 组件 Props
@@ -94,7 +101,7 @@ export type SchemxDefaultProps = Pick<SchemxBaseField, DefaultConfigKey>
  * @typeParam T - 表单值类型
  */
 export interface SchemxProps<T extends Values = Values> {
-  /** 是否展示必填的 * 号 */
+  /** 字段未显式设置时是否启用默认必填校验。 */
   required?: boolean
   /** 是否只读 */
   readonly?: boolean
@@ -127,22 +134,50 @@ export interface SchemxProps<T extends Values = Values> {
   form?: SchemxInstance<T>
 
   /** 渲染器注册实例 */
-  rendererRegistry?: RendererRegistryType
-  /** 默认渲染器类型，当字段未指定 renderer 时使用 */
+  rendererRegistry?: RendererRegistry
+  /** 默认渲染器类型，当字段未指定 `componentType` 时使用。 */
   defaultRendererType?: SchemxRendererKey
   /** 规则注册实例 */
-  validatorRegistry?: ValidatorsRegistryType
+  validationRuleRegistry?: ValidationRuleRegistry
 
-  /** 表单提交校验通过后的回调 */
+  /**
+   * 将规则执行异常转换为字段错误消息。
+   *
+   * @param error - 规则执行时抛出的原始异常。
+   * @param context - 发生异常的字段校验上下文。
+   * @returns 写入字段错误状态的消息。
+   */
+  onRuleError?: CreateValidatorOptions<T>["onRuleError"]
+
+  /**
+   * 表单提交校验通过后执行；返回 Promise 时，submit 会等待其完成。
+   *
+   * @param values - 本次校验通过的只读表单值。
+   * @returns 可选的异步完成信号。
+   */
   onFinish?: (values: Readonly<T>) => void | Promise<void>
-  /** 表单提交校验失败后的回调 */
-  onFinishFailed?: (error: ValidateError<T>) => void
-  /** 字段值更新时触发的回调 */
+  /**
+   * 表单提交校验失败后的回调。
+   *
+   * @param failure - 包含表单值与全部校验错误的失败结果。
+   */
+  onFinishFailed?: (failure: ValidationFailure<T>) => void
+  /**
+   * 字段值更新时触发的回调。
+   *
+   * @param changedValues - 本次变化的字段值片段。
+   * @param latestSnapshot - 变化后的完整表单值视图。
+   */
   onValuesChange?: (
     changedValues: Readonly<Partial<T>>,
     latestSnapshot: Readonly<T> | T
   ) => void
-  /** 字段更新时触发的回调 */
+  /**
+   * 字段路径更新时触发的回调。
+   *
+   * @param changedFields - 本次发生变化的字段路径。
+   * @param allFields - 当前所有已知字段路径。
+   */
   onFieldsChange?: (changedFields: NamePath<T>[], allFields: NamePath<T>[]) => void
 }
 
@@ -158,10 +193,10 @@ export interface SchemxInstance<TValues extends Values = Values> {
   /**
    * 获取单个字段的当前值
    *
-   * 返回响应式只读引用，在 computed/watch 中使用时自动追踪变化。
+   * 读取响应式值；在 computed/watch 中调用时会自动追踪变化。
    *
    * @param name - 字段路径
-   * @returns 字段当前值（只读）
+   * @returns 字段当前值
    *
    * @example
    * ```typescript
@@ -176,10 +211,11 @@ export interface SchemxInstance<TValues extends Values = Values> {
   /**
    * 获取多个字段值
    *
-   * 不传参数返回所有值（Readonly 只读引用），传入路径数组返回指定字段的值。
+   * 不传参数返回全部当前值，传入路径数组返回指定字段的值；返回对象是读取结果，
+   * 不是写入表单状态的入口。
    *
    * @param names - 可选，要获取的字段路径数组
-   * @returns 全量只读值或指定字段的值
+   * @returns 全量当前值或指定字段的值
    *
    * @example
    * ```typescript
@@ -229,10 +265,10 @@ export interface SchemxInstance<TValues extends Values = Values> {
   /**
    * 获取单个字段值的快照
    *
-   * 返回深拷贝的值，不收集依赖，适用于需要脱离响应式的场景。
+   * 返回不收集依赖的当前值，适用于需要脱离响应式追踪的场景。
    *
    * @param name - 字段路径
-   * @returns 该字段当前值的深拷贝
+   * @returns 该字段当前值
    *
    * @example
    * ```typescript
@@ -246,10 +282,9 @@ export interface SchemxInstance<TValues extends Values = Values> {
   /**
    * 获取当前表单值的快照
    *
-   * 返回解除 reactive 代理后的原始对象，适用于序列化、提交等场景。
+   * 返回不收集依赖的独立值快照，适用于序列化、提交等场景。
    *
-   * @returns 当前表单值的原始对象
-   * @see https://vuejs.org/api/reactivity-advanced.html#toraw
+   * @returns 当前表单值组成的新对象
    *
    * @example
    * ```typescript
@@ -397,7 +432,7 @@ export interface SchemxInstance<TValues extends Values = Values> {
    *
    * 返回当前所有 pending 状态为 true 的字段路径，无操作中字段时返回空数组。
    *
-   * @returns 操作中的字段信息数组，每项包含 field（路径）
+   * @returns 操作中的字段信息数组，每项包含 field（路径）和 message（提示信息）
    *
    * @example
    * ```typescript
@@ -434,21 +469,21 @@ export interface SchemxInstance<TValues extends Values = Values> {
   /**
    * 校验指定字段
    *
-   * @param names - 字段路径或路径数组
+   * @param name - 要校验的字段路径
    * @returns 校验结果，成功返回 values，失败返回 errors
    *
    * @example
    * ```typescript
-   * const result = await form.validateField('email', formValues)
+   * const result = await form.validateField('email')
    *
-   * if (!result.ok) {
-   *   console.log(result.error.errors)
+   * if (!result.valid) {
+   *   console.log(result.errors)
    * }
    * ```
    */
   validateField<TName extends NamePath<TValues>>(
     names: TName
-  ): Promise<ValidateResult<TValues>>
+  ): Promise<ValidationResult<TValues, TName>>
 
   /**
    * 校验所有已注册字段
@@ -458,26 +493,26 @@ export interface SchemxInstance<TValues extends Values = Values> {
    * @example
    * ```typescript
    * const result = await form.validate()
-   * if (result.ok) {
+   * if (result.valid) {
    *   submitToServer(result.values)
    * }
    * ```
    */
-  validate: () => Promise<ValidateResult<TValues>>
+  validate: () => Promise<ValidationResult<TValues>>
 
   /**
-   * 获取单个字段的错误信息
+   * 获取单个字段的错误信息快照。
    *
    * @param name - 字段路径
-   * @returns 错误信息数组，无错误时返回 undefined
+   * @returns 只读错误信息数组，无错误时返回稳定的空数组。
    *
    * @example
    * ```typescript
-   * const errors = form.getFieldError('email')
-   * // => ['邮箱格式错误'] 或 undefined
+   * const errors = form.getFieldErrors('email')
+   * // => ['邮箱格式错误'] 或 []
    * ```
    */
-  getFieldError<TName extends NamePath<TValues>>(name: TName): string[] | undefined
+  getFieldErrors<TName extends NamePath<TValues>>(name: TName): readonly string[]
 
   /**
    * 手动设置字段的错误信息
@@ -487,10 +522,20 @@ export interface SchemxInstance<TValues extends Values = Values> {
    *
    * @example
    * ```typescript
-   * form.setFieldError('username', ['用户名已存在'])
+   * form.setFieldErrors('username', ['用户名已存在'])
    * ```
    */
-  setFieldError<TName extends NamePath<TValues>>(name: TName, errors: string[]): void
+  setFieldErrors<TName extends NamePath<TValues>>(
+    name: TName,
+    errors: readonly string[]
+  ): void
+
+  /**
+   * 清除指定字段的全部错误消息。
+   *
+   * @param name - 要清除错误的字段路径。
+   */
+  clearFieldErrors<TName extends NamePath<TValues>>(name: TName): void
 
   /**
    * 提交表单
@@ -498,23 +543,23 @@ export interface SchemxInstance<TValues extends Values = Values> {
    * 先等待依赖并校验所有字段，通过后调用 onFinish，失败调用 onFinishFailed。
    * 内置防重复提交锁，提交进行中重复调用返回同一个 Promise。
    *
-   * @returns 校验结果。依赖等待超时时返回 field 为 `$form` 的失败结果，
+   * @returns 校验结果。依赖等待超时时返回表单级失败结果，
    * 不调用提交回调；onFinish 抛错或拒绝时，Promise 会直接拒绝。
    *
    * @example
    * ```typescript
    * const result = await form.submit()
-   * if (!result.ok) {
-   *   console.log(result.error.errors)
+   * if (!result.valid) {
+   *   console.log(result.errors)
    * }
    * ```
    */
-  submit: () => Promise<ValidateResult<TValues>>
+  submit: () => Promise<ValidationResult<TValues>>
 
   /**
    * 创建 reactive effect 监听字段或错误变化。
    *
-   * 回调内调用 getFieldValue/getFieldError 时自动追踪依赖，
+   * 回调内调用 getFieldValue/getFieldErrors 时自动追踪依赖，
    * 当依赖的 reactive value 变化时 effect 自动重新执行。
    *
    * @param fn - effect 回调函数
@@ -624,8 +669,8 @@ export interface SchemxInstance<TValues extends Values = Values> {
   /**
    * 获取指定类型的渲染器组件
    *
-   * 根据类型标识从内部的 RendererRegistryType 中查找对应的渲染器组件。
-   * 未找到时回退到默认类型，均不存在则返回 undefined。
+   * 根据类型标识从内部的 RendererRegistry 中查找对应的渲染器组件。
+   * 未找到时回退到回退类型，均不存在则返回 undefined。
    *
    * @param type - 渲染器类型标识
    * @returns 对应的渲染器组件，未找到时返回 undefined
@@ -674,37 +719,37 @@ export interface SchemxInstance<TValues extends Values = Values> {
   /**
    * 获取指定名称的校验规则条目
    *
-   * 从内部 ValidatorsRegistryType 查找，支持父级链式查找。
-   * 返回原始注册条目（StandardSchemaV1 实例或工厂函数），不做解析。
+   * 返回原始注册条目（原生规则、Standard Schema 或工厂函数），不执行工厂。
    *
    * @param name - 规则名称
-   * @returns 对应的 ValidatorsEntry，未找到时返回 undefined
+   * @returns 对应的规则条目，未找到时返回 undefined。
    *
    * @example
    * ```typescript
-   * const entry = form.getValidator('phone')
+   * const entry = form.getRule('phone')
    * ```
    */
-  getValidator: (name: string) => ValidatorsEntry<TValues> | undefined
+  getRule: (name: string) => ValidationRuleEntry | undefined
 
   /**
    * 注册校验规则
    *
-   * 将校验规则注册到内部的 ValidatorsRegistryType，
-   * 后续可通过 getValidator / hasValidator 查询。
+   * 将校验规则注册到当前表单的 ValidationRuleRegistry，
+   * 后续可通过 getRule / hasRule 查询。
    *
    * @param name - 规则名称
    * @param rule - StandardSchemaV1 实例或工厂函数
+   * @param options - 控制覆盖注册等行为的注册选项。
    *
    * @example
    * ```typescript
-   * form.registerValidator('phone', phoneRule)
+   * form.registerRule('phone', phoneRule)
    * ```
    */
-  registerValidator: (
+  registerRule: (
     name: string,
-    rule: ValidatorsEntry<TValues>,
-    options?: ValidatorsRegistryOptions
+    rule: ValidationRuleEntry,
+    options?: RegistryOptions
   ) => void
 
   /**
@@ -717,33 +762,30 @@ export interface SchemxInstance<TValues extends Values = Values> {
    *
    * @example
    * ```typescript
-   * form.hasValidator('phone') // => true
+   * form.hasRule('phone') // => true
    * ```
    */
-  hasValidator: (name: string) => boolean
+  hasRule: (name: string) => boolean
 
   /**
-   * 注册字段校验规则
+   * 替换字段的全部校验规则。
    *
    * @param name - 字段路径
-   * @param rules - SchemxRules 校验规则
-   * @param defaultMessage - 可选，空值时的默认错误提示
+   * @param rules - 字段校验规则或规则数组。
    *
    * @example
    * ```typescript
    * import { z } from 'zod'
-   * form.registerRules('email', z.string().email('邮箱格式错误'))
-   * form.registerRules('name', nameSchema, '请输入姓名')
+   * form.setFieldRules('email', z.string().email('邮箱格式错误'))
    * ```
    */
-  registerRules: <TName extends NamePath<TValues>>(
+  setFieldRules: <TName extends NamePath<TValues>>(
     name: TName,
-    rules: SchemxRules | readonly SchemxRules[],
-    defaultMessage?: string
+    rules: FieldRules<TValues, TName>
   ) => void
 
   /**
-   * 注销字段校验规则
+   * 移除字段校验规则。
    *
    * 同时清除该字段的错误信息。
    *
@@ -751,10 +793,10 @@ export interface SchemxInstance<TValues extends Values = Values> {
    *
    * @example
    * ```typescript
-   * form.unregisterRules('email')
+   * form.removeFieldRules('email')
    * ```
    */
-  unregisterRules: <TName extends NamePath<TValues>>(name: TName) => void
+  removeFieldRules: <TName extends NamePath<TValues>>(name: TName) => void
 
   /**
    * 销毁表单实例
@@ -897,14 +939,14 @@ export interface SchemxFormApi<TValues extends Values = Values> {
    */
   validateField<TName extends NamePath<TValues>>(
     name: TName
-  ): Promise<ValidateResult<TValues>>
+  ): Promise<ValidationResult<TValues, TName>>
 
   /**
    * 校验所有字段。
    *
    * @returns 校验结果
    */
-  validate(): Promise<ValidateResult<TValues>>
+  validate(): Promise<ValidationResult<TValues>>
 
   /**
    * 设置字段是否有错误。
@@ -912,13 +954,20 @@ export interface SchemxFormApi<TValues extends Values = Values> {
    * @param name - 字段路径
    * @param errors - 错误信息数组
    */
-  setError<TName extends NamePath<TValues>>(name: TName, errors: string[]): void
+  setErrors<TName extends NamePath<TValues>>(name: TName, errors: readonly string[]): void
 
   /**
    * 获取字段错误列表。
    *
    * @param name - 字段路径
-   * @returns 错误消息数组
+   * @returns 错误消息的只读快照。
    */
-  getError<TName extends NamePath<TValues>>(name: TName): string[] | undefined
+  getErrors<TName extends NamePath<TValues>>(name: TName): readonly string[]
+
+  /**
+   * 清除字段错误列表。
+   *
+   * @param name - 字段路径。
+   */
+  clearErrors<TName extends NamePath<TValues>>(name: TName): void
 }

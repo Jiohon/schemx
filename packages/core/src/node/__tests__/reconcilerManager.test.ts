@@ -59,10 +59,11 @@ function createGraphRuntime(listener: LifecycleListener<RuntimeNode> = {}) {
     getFieldSnapshot: vi.fn(() => undefined),
     setInitialValues: vi.fn(),
     setFieldValue: vi.fn(),
-    registerRules: vi.fn(),
-    unregisterRules: vi.fn(),
-    setFieldError: vi.fn(),
-    validateField: vi.fn().mockResolvedValue({ ok: true, values: {} }),
+    validateField: vi.fn().mockResolvedValue({ valid: true, values: {}, errors: [] }),
+  }
+  const validation = {
+    syncField: vi.fn(),
+    removeField: vi.fn(),
   }
 
   const context = {
@@ -74,6 +75,7 @@ function createGraphRuntime(listener: LifecycleListener<RuntimeNode> = {}) {
       formInstance: instance as any,
     }),
     scheduler,
+    validation,
     lifecycleBus,
     nodeResources: createRuntimeResources(),
   } as unknown as SchemxContext
@@ -116,6 +118,7 @@ describe("RuntimeReconciler + DefaultRuntimeNodeManager", () => {
             children: [
               {
                 name: "field",
+                label: "",
                 componentType: "text",
               },
             ],

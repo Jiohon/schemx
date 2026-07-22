@@ -21,11 +21,18 @@
  * ```
  */
 
-import { get, set } from "es-toolkit/compat"
+import { get, set, toPath } from "es-toolkit/compat"
 
 import type { FieldValue, NamePath, Values } from "../types"
 
 type RuntimePath = string | number | readonly (string | number)[]
+
+/**
+ * 可用于 Map、Scheduler 等身份比较场景的稳定字段路径 key。
+ *
+ * 该类型只在编译期区分普通字符串；运行时值是以 JSON 编码的路径段数组。
+ */
+export type FieldKey = string & { readonly __fieldKey: unique symbol }
 
 /**
  * 判断两组字段路径是否按顺序完全一致。
@@ -191,14 +198,37 @@ export function collectObjectPathsByLeaf<
 export function normalizeNamePath<
   TValues extends Values = Values,
   TName extends NamePath<TValues> = NamePath<TValues>,
->(path: TName[]): string {
-  if (Array.isArray(path)) {
-    return path.map((part) => String(part)).join(".")
-  }
+>(path: TName): string {
+  return toNamePathSegments(path).join(".")
+}
 
-  return String(path)
-    .replace(/\[(.*?)\]/g, ".$1")
-    .replace(/^\./, "")
+/**
+ * 将任意 NamePath 解析为用于身份比较的字符串路径段。
+ *
+ * 字符串路径使用与 `getByPath` 相同的 compat parser；数组路径保留调用方给出的
+ * 段边界，因此 `["user.name"]` 不会与 `"user.name"` 错误合并。
+ *
+ * @param path - 要解析的字段路径。
+ * @returns 只读的规范化路径段数组。
+ */
+export function toNamePathSegments<TValues extends Values = Values>(
+  path: NamePath<TValues>
+): readonly string[] {
+  const segments = Array.isArray(path) ? path : toPath(String(path))
+
+  return segments.map((part) => String(part))
+}
+
+/**
+ * 创建碰撞安全的字段身份 key。
+ *
+ * @param path - 要标识的字段路径。
+ * @returns 可安全用于 Map key、Set key 和 Scheduler task id 的稳定 key。
+ */
+export function createFieldKey<TValues extends Values = Values>(
+  path: NamePath<TValues>
+): FieldKey {
+  return JSON.stringify(toNamePathSegments(path)) as FieldKey
 }
 
 /**
@@ -226,14 +256,5 @@ function isNamePathEqual<TValues extends Values>(
     return false
   }
 
-  if (Array.isArray(previous) || Array.isArray(next)) {
-    return (
-      Array.isArray(previous) &&
-      Array.isArray(next) &&
-      previous.length === next.length &&
-      previous.every((part, index) => part === next[index])
-    )
-  }
-
-  return previous === next
+  return createFieldKey(previous) === createFieldKey(next)
 }

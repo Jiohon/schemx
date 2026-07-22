@@ -45,7 +45,7 @@ export function createFieldContext<TValues extends Values = Values>(
  * @example
  * ```ts
  * const field = useFieldContext()
- * field.error.value // string[] | undefined
+ * field.errors.value // readonly string[]
  * field.getValue() // 当前字段值
  * ```
  */

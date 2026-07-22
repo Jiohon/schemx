@@ -8,6 +8,7 @@
  */
 
 import { createSignal, createSignalEffect } from "../reactivity"
+import { createFieldKey } from "../utils"
 
 import type { Scope } from "../node"
 import type { Signal } from "../reactivity"
@@ -24,21 +25,30 @@ import type { SchemxBaseField, Values } from "../types"
 export interface CreateValidationEffectOptions<TValues extends Values = Values> {
   /**
    * 当前 form 实例运行时上下文。
+   *
+   * 包含 ValidationController、调度器及字段生命周期所需的共享资源。
    */
   context: SchemxContext<TValues>
 
   /**
    * 字段名路径。
+   *
+   * 该路径同时用于注册规则和安排 post 队列任务。
    */
   name: SchemxBaseField<TValues>["name"]
 
   /**
    * 字段有效状态 computed（Signal Graph 阶段）。
+   *
+   * 它的变化会重新计算字段是否应注册校验规则。
    */
   effectiveSchema: ComputedSignal<FieldEffectiveSchema<TValues>>
 
   /**
    * 关联的 scope。
+   *
+   * ValidationEffect 会取得该 Scope 的销毁权：调用 `effect.dispose()` 会销毁传入的整个 Scope。
+   * 请传入仅由该 effect 所有的专用 Scope；Scope 销毁时会同步注销该字段的规则与错误。
    */
   scope: Scope
 }
@@ -53,7 +63,10 @@ export interface ValidationEffect {
   registered: Signal<boolean>
 
   /**
-   * 释放资源。
+   * 销毁创建该 effect 时传入的整个 Scope，并注销字段校验规则。
+   *
+   * 该方法不是只释放 effect 自身；不要将 `effect.dispose` 注册为同一 Scope 的清理回调，
+   * 也不要传入仍需要继续使用的表单或字段 Scope。
    */
   dispose(): void
 }
@@ -63,6 +76,7 @@ interface ValidationRegistrationSnapshot<TValues extends Values = Values> {
   readonly: boolean
   disabled: boolean
   label: string
+  required: SchemxBaseField<TValues>["required"]
   rules: SchemxBaseField<TValues>["rules"]
 }
 
@@ -72,6 +86,15 @@ interface ValidationRegistrationSnapshot<TValues extends Values = Values> {
  * @typeParam TValues - 表单值类型
  * @param options - 配置选项
  * @returns 新创建的 ValidationEffect
+ *
+ * @example
+ * ```ts
+ * const effectScope = createScope()
+ * const effect = createValidationEffect({ context, name, effectiveSchema, scope: effectScope })
+ *
+ * // 由专用 Scope 的拥有者在字段卸载时调用。
+ * effect.dispose()
+ * ```
  */
 export function createValidationEffect<TValues extends Values = Values>(
   options: CreateValidationEffectOptions<TValues>
@@ -96,6 +119,7 @@ export function createValidationEffect<TValues extends Values = Values>(
       readonly: effective.readonly,
       disabled: effective.disabled,
       label: effective.label,
+      required: effective.required,
       rules: effective.rules,
     }
   }
@@ -104,22 +128,17 @@ export function createValidationEffect<TValues extends Values = Values>(
    * 根据当前字段呈现态注册或注销校验规则。
    */
   const applyRegistration = (snapshot: ValidationRegistrationSnapshot<TValues>): void => {
-    const { visible, readonly, disabled, label, rules } = snapshot
+    const { visible, readonly, disabled, label, required, rules } = snapshot
 
-    if (!visible || readonly || disabled || !hasRules(rules)) {
-      context.instance.unregisterRules(name)
-      context.instance.setFieldError(name, [])
+    if (!visible || readonly || disabled || (!required && !hasRules(rules))) {
+      context.validation.removeField(name)
 
       registered.value = false
 
       return
     }
 
-    const normalizedRules = rules ?? []
-
-    context.instance.registerRules(name, normalizedRules, `${label}为必填项`)
-
-    registered.value = true
+    registered.value = context.validation.syncField({ name, label, required, rules }) !== false
   }
 
   /**
@@ -131,7 +150,7 @@ export function createValidationEffect<TValues extends Values = Values>(
     const currentVersion = ++registrationVersion
 
     taskScheduler.schedule({
-      id: `validation:${String(name)}`,
+      id: `validation:${createFieldKey(name as never)}`,
       priority: "post",
       scope,
       run: () => {
@@ -147,8 +166,7 @@ export function createValidationEffect<TValues extends Values = Values>(
   // 作用域释放时同步注销校验规则并清空错误
   scope.add(() => {
     registrationVersion += 1
-    context.instance.unregisterRules(name)
-    context.instance.setFieldError(name, [])
+    context.validation.removeField(name)
 
     registered.value = false
   })

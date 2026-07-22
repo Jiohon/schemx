@@ -59,7 +59,7 @@
     "es-toolkit": "catalog:"
   },
   "scripts": {
-    "build": "vite build",
+    "build": "pnpm run type-check && vite build",
     "build:analyze": "vite build",
     "test": "vitest run --passWithNoTests",
     "lint": "eslint \"src/**/*.{ts,tsx,vue,js,jsx}\"",

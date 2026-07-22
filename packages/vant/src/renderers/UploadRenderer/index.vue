@@ -43,8 +43,8 @@
   import { useFieldContext } from "@schemx/vue"
   import classNames from "classnames"
 
-  import { getFileName } from "@/utils"
   import SchemxCell from "@/components/Cell/index.vue"
+  import { getFileName } from "@/utils"
 
   import type { UploadFile, UploadRendererProps, UploadValue } from "./types"
 

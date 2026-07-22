@@ -8,6 +8,7 @@
  */
 
 import type { NamePath, SchemxFormApi, Values } from "./form"
+import type { DefinedFieldValue, FieldRules, RequiredRule } from "./rule"
 import type { SchemxBase } from "./schema"
 
 /**
@@ -17,6 +18,9 @@ import type { SchemxBase } from "./schema"
  *
  * @typeParam T - 表单值类型
  * @typeParam R - 返回值类型
+ * @param values - 条件执行时的当前表单值快照。
+ * @param form - 可读取或更新当前表单的公开 API。
+ * @returns 属性计算结果或异步结果。
  */
 export type SchemxConditionFn<T extends Values = Values, R = unknown> = (
   values: T,
@@ -30,23 +34,29 @@ export type SchemxConditionFn<T extends Values = Values, R = unknown> = (
  * 执行所有已配置的条件函数并更新对应属性值。
  *
  * @typeParam T - 表单值类型
- * @typeParam K - 渲染器组件类型键，用于收窄 componentProps 的类型
+ * @typeParam TName - 当前字段路径，用于推导必填判断与校验规则的字段值类型。
  *
  * @example
  * ```ts
- * const deps: SchemxDependencies<MyForm> = {
+ * const deps: SchemxDependencies<MyForm, "city"> = {
  *   triggerFields: ['province', 'country'],
  *   visible: (values) => !!values.province,
  *   disabled: (values) => values.country === 'overseas',
  *   placeholder: (values) => `请选择${values.province}的城市`,
+ *   required: (values) => ({
+ *     message: `${values.province}的城市不能为空`,
+ *     isEmpty: (city) => !city?.trim(),
+ *   }),
  *   trigger: (values) => {
  *     // 副作用逻辑
  *   },
- *   rules: () => ["required"],
  * }
  * ```
  */
-export interface SchemxDependencies<T extends Values = Values> {
+export interface SchemxDependencies<
+  T extends Values = Values,
+  TName extends NamePath<T> = NamePath<T>,
+> {
   /**
    * 触发所有条件函数重新执行的字段路径数组
    *
@@ -62,7 +72,10 @@ export interface SchemxDependencies<T extends Values = Values> {
    * 根据 `componentType` 自动收窄为对应组件的 Props 类型。
    * 未配置时使用 {@link SchemxBase.componentProps} 的静态默认值。
    */
-  componentProps?: SchemxConditionFn<T, NonNullable<SchemxBase<T>["componentProps"]>>
+  componentProps?: SchemxConditionFn<
+    T,
+    NonNullable<SchemxBase<T, TName>["componentProps"]>
+  >
 
   /**
    * 占位提示文本
@@ -70,15 +83,24 @@ export interface SchemxDependencies<T extends Values = Values> {
    * 条件函数返回 `string` 类型，用于动态计算输入框的占位文本。
    * 未配置时使用 {@link SchemxBase.placeholder} 的静态默认值。
    */
-  placeholder?: SchemxConditionFn<T, NonNullable<SchemxBase<T>["placeholder"]>>
+  placeholder?: SchemxConditionFn<T, NonNullable<SchemxBase<T, TName>["placeholder"]>>
 
   /**
    * 是否必填
    *
-   * 条件函数返回 `boolean` 类型，控制必填标记（红色星号）的显示。
+   * 条件函数返回字段对应的 {@link RequiredRule}，控制必填校验；必填视觉标记由
+   * `showRequiredMark` 独立控制。对象形式的 `isEmpty` 参数按当前字段路径推导。
    * 未配置时使用 {@link SchemxBase.required} 的静态默认值。
    */
-  required?: SchemxConditionFn<T, NonNullable<SchemxBase["required"]>>
+  required?: SchemxConditionFn<T, RequiredRule<DefinedFieldValue<T, TName>>>
+
+  /**
+   * 是否显示必填视觉标记。
+   *
+   * 条件函数返回 `boolean`，只覆盖渲染层的必填标记，不改变动态或静态
+   * `required` 校验。未配置静态标记时，标记默认跟随当前有效 `required`。
+   */
+  showRequiredMark?: SchemxConditionFn<T, boolean>
 
   /**
    * 是否只读
@@ -86,7 +108,7 @@ export interface SchemxDependencies<T extends Values = Values> {
    * 条件函数返回 `boolean` 类型，只读状态下字段可见但不可编辑。
    * 未配置时使用 {@link SchemxBase.readonly} 的静态默认值。
    */
-  readonly?: SchemxConditionFn<T, NonNullable<SchemxBase<T>["readonly"]>>
+  readonly?: SchemxConditionFn<T, NonNullable<SchemxBase<T, TName>["readonly"]>>
 
   /**
    * 占位提示文本 - 只读状态
@@ -96,7 +118,7 @@ export interface SchemxDependencies<T extends Values = Values> {
    */
   readonlyPlaceholder?: SchemxConditionFn<
     T,
-    NonNullable<SchemxBase<T>["readonlyPlaceholder"]>
+    NonNullable<SchemxBase<T, TName>["readonlyPlaceholder"]>
   >
 
   /**
@@ -105,7 +127,7 @@ export interface SchemxDependencies<T extends Values = Values> {
    * 条件函数返回 `boolean` 类型，禁用状态下字段不可交互。
    * 未配置时使用 {@link SchemxBase.disabled} 的静态默认值。
    */
-  disabled?: SchemxConditionFn<T, NonNullable<SchemxBase<T>["disabled"]>>
+  disabled?: SchemxConditionFn<T, NonNullable<SchemxBase<T, TName>["disabled"]>>
 
   /**
    * 是否可见
@@ -114,15 +136,15 @@ export interface SchemxDependencies<T extends Values = Values> {
    * 同时会清除校验规则和错误信息。
    * 未配置时使用 {@link SchemxBase.visible} 的静态默认值。
    */
-  visible?: SchemxConditionFn<T, NonNullable<SchemxBase<T>["visible"]>>
+  visible?: SchemxConditionFn<T, NonNullable<SchemxBase<T, TName>["visible"]>>
 
   /**
    * 校验规则
    *
-   * 条件函数返回 `SchemxRules | SchemxRules[]` 类型，用于动态计算字段的校验规则。
+   * 条件函数返回字段 `rules` 类型，用于动态计算字段的校验规则。
    * 未配置时使用 {@link SchemxBase.rules} 的静态默认值。
    */
-  rules?: SchemxConditionFn<T, SchemxBase<T>["rules"]>
+  rules?: SchemxConditionFn<T, FieldRules<T, TName> | undefined>
 
   /**
    * 副作用触发器
@@ -169,7 +191,7 @@ export type SchemxDependenciesConditionKey = Exclude<
  * 将每个 `SchemxConditionFn<T, R>` 映射为 `R`。
  *
  * @typeParam T - 表单值类型
- * @typeParam K - 渲染器组件类型键
+ * @typeParam TName - 当前字段路径，用于推导字段专属的动态属性类型。
  *
  * @example
  * ```ts
@@ -177,7 +199,7 @@ export type SchemxDependenciesConditionKey = Exclude<
  * // {
  * //   componentProps: SchemxComponentProps<T, K>
  * //   placeholder: string
- * //   required: boolean
+ * //   required: RequiredRule<string>
  * //   readonly: boolean
  * //   disabled: boolean
  * //   visible: boolean
@@ -185,8 +207,11 @@ export type SchemxDependenciesConditionKey = Exclude<
  * type Defaults = SchemxDependenciesStaticProps<MyForm>
  * ```
  */
-export type SchemxDependenciesStaticProps<T extends Values = Values> = {
-  [P in SchemxDependenciesConditionKey]-?: SchemxDependencies<T>[P] extends
+export type SchemxDependenciesStaticProps<
+  T extends Values = Values,
+  TName extends NamePath<T> = NamePath<T>,
+> = {
+  [P in SchemxDependenciesConditionKey]-?: SchemxDependencies<T, TName>[P] extends
     SchemxConditionFn<T, infer R> | undefined
     ? R
     : never

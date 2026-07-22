@@ -184,21 +184,12 @@ export interface SchemxBase<
   componentType: TKey
 
   /**
-   * 容器结构保留字段。
-   *
-   * 普通字段不能在顶层声明这些属性；Renderer 配置应放入 `componentProps`。
-   */
-  children?: never
-  to?: never
-  renderer?: never
-
-  /**
    * 结构化依赖配置对象
    *
    * 声明 {@link SchemxDependencies.triggerFields | triggerFields} 和各属性的条件函数，
    * 当任一触发字段变化时执行已配置的条件函数，覆盖对应的静态默认值。
    */
-  dependencies?: SchemxDependencies<TValues>
+  dependencies?: SchemxDependencies<TValues, TName>
 
   /**
    * 传递给渲染组件的属性（静态默认值）
@@ -213,17 +204,25 @@ export interface SchemxBase<
   placeholder?: string
 
   /**
-   * 是否展示必填的 * 号（静态默认值）
+   * 是否启用必填校验（静态默认值）
    *
-   * 控制必填标记（红色星号）的显示。
-   * 若未设置，会根据 `rules` 中的校验规则自动推断。
+   * 视觉标记由 `showRequiredMark` 独立控制；未显式设置时，标记默认跟随有效的
+   * `required` 值。
    */
   required?: RequiredRule<DefinedFieldValue<TValues, TName>>
 
   /**
+   * 是否显示必填视觉标记。
+   *
+   * 该属性只控制渲染层的必填标记，不启用、禁用或改变 `required` 校验。
+   * 未配置时，最终值跟随当前有效 `required`；静态或动态显式值优先。
+   */
+  showRequiredMark?: boolean
+
+  /**
    * 是否只读（静态默认值）
    *
-   * 未设置时继承 FormContext 的全局 `readonly` 配置。
+   * 未设置时继承当前 Form 的 `defaultProps.readonly` 配置。
    */
   readonly?: boolean
 
@@ -235,7 +234,7 @@ export interface SchemxBase<
   /**
    * 是否禁用（静态默认值）
    *
-   * 未设置时继承 FormContext 的全局 `disabled` 配置。
+   * 未设置时继承当前 Form 的 `defaultProps.disabled` 配置。
    */
   disabled?: boolean
 
@@ -256,9 +255,15 @@ export interface SchemxBase<
   /**
    * 校验规则
    *
-   * 支持 StandardSchemaV1 实例（如 Zod、Valibot 等实现了 Standard Schema 接口的验证库）
-   * 或内置快捷方式（如 `"required"`）。
+   * 支持 Standard Schema 实例（如 Zod、Valibot 等实现了 Standard Schema 接口的验证库）、
+   * 已注册的命名规则或原生校验规则。
    * 校验在 `submit` 或触发时机（`validationTrigger`）到达时执行。
+   * 必填校验请使用 `required` 配置。
+   *
+   * @example
+   * ```ts
+   * rules: ["email", emailSchema]
+   * ```
    */
   rules?: FieldRules<TValues, TName>
 
@@ -272,21 +277,21 @@ export interface SchemxBase<
   /**
    * 标签对齐方式
    *
-   * 未设置时继承 FormContext 的全局 `labelAlign` 配置。
+   * 未设置时继承当前 Form 的 `defaultProps.labelAlign` 配置。
    */
   labelAlign?: "left" | "center" | "right"
 
   /**
    * 标签位置
    *
-   * 未设置时继承 FormContext 的全局 `labelPosition` 配置。
+   * 未设置时继承当前 Form 的 `defaultProps.labelPosition` 配置。
    */
   labelPosition?: "left" | "top" | "right"
 
   /**
    * 标签宽度
    *
-   * 未设置时继承 FormContext 的全局 `labelWidth` 配置。
+   * 未设置时继承当前 Form 的 `defaultProps.labelWidth` 配置。
    */
   labelWidth?: string
 
@@ -298,7 +303,7 @@ export interface SchemxBase<
   /**
    * 是否在标签后显示冒号
    *
-   * 未设置时继承 FormContext 的全局 `colon` 配置。
+   * 未设置时继承当前 Form 的 `defaultProps.colon` 配置。
    */
   colon?: boolean
 
@@ -306,7 +311,7 @@ export interface SchemxBase<
    * 校验触发时机
    *
    * 支持单个或多个触发时机组合，如 `'change'`、`'blur'`、`['change', 'blur']`。
-   * 未设置时继承 FormContext 的全局 `validationTrigger` 配置。
+   * 未设置时继承当前 Form 的 `defaultProps.validationTrigger` 配置。
    */
   validationTrigger?: ValidationTrigger | ValidationTrigger[]
 
@@ -319,6 +324,15 @@ export interface SchemxBase<
    * 失焦触发
    */
   onBlur?: (form: SchemxInstance<TValues>) => void
+
+  /**
+   * 容器结构保留字段。
+   *
+   * 普通字段不能在顶层声明这些属性；Renderer 配置应放入 `componentProps`。
+   */
+  children?: never
+  to?: never
+  renderer?: never
 }
 
 /**
@@ -485,7 +499,7 @@ export type SchemxField<TValues extends Values = Values> =
  * 校验规则和运行时动态派生规则混在同一个对象里。
  */
 type SchemxResolvedBaseFieldItem<TField> = TField extends unknown
-  ? Omit<TField, "dependencies" | "required"> & { required?: boolean }
+  ? Omit<TField, "dependencies">
   : never
 
 export type SchemxResolvedBaseField<TValues extends Values = Values> =

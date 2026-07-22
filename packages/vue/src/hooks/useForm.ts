@@ -12,7 +12,7 @@ import { onScopeDispose } from "vue"
 import { createForm } from "@schemx/core"
 
 import { rendererRegistry as globalRendererRegistry } from "../utils/rendererProvider"
-import { validatorRegistry as globalRulesRegistry } from "../utils/rulesProvider"
+import { validationRuleRegistry as globalValidationRuleRegistry } from "../utils/rulesProvider"
 
 import type { CreateFormOptions, NamePath, SchemxInstance, Values } from "@schemx/core"
 
@@ -20,7 +20,7 @@ import type { CreateFormOptions, NamePath, SchemxInstance, Values } from "@schem
  * useForm 配置选项。
  *
  * 当前与 core 层 CreateFormOptions 保持一致，并在 Vue 层自动补充默认的
- * rendererRegistry 和 validatorRegistry。保留独立类型用于后续扩展
+ * rendererRegistry 和 validationRuleRegistry。保留独立类型用于后续扩展
  * Vue 专属配置，而不污染 core 层接口。
  *
  * @typeParam TValues - 表单值类型
@@ -78,7 +78,8 @@ export function useForm<TValues extends Values = Values>(
   const mergedOptions: CreateFormOptions<TValues> = {
     ...options,
     rendererRegistry: options.rendererRegistry ?? globalRendererRegistry,
-    validatorRegistry: options.validatorRegistry ?? globalRulesRegistry,
+    validationRuleRegistry:
+      options.validationRuleRegistry ?? globalValidationRuleRegistry,
   }
 
   // 表单实例是当前 scope 内的一次性资源，不需要使用 computed 包装。

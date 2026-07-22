@@ -9,7 +9,7 @@
  * - 读取缺失 key 时会订阅结构版本；后续 set 同 key 会触发 effect 重跑。
  * - 删除/清空 key 时会通知旧 value 的订阅者。
  *
- * @module core/reactivity/reactiveMap
+ * @module core/reactivity/signalMap
  */
 
 import { batchUpdates } from "./batch"
@@ -17,12 +17,6 @@ import { createSignal } from "./signal"
 
 import type { Signal } from "./signal"
 
-/**
- * 按 key 细粒度追踪更新的响应式 Map。
- *
- * @typeParam K - key 类型
- * @typeParam V - value 类型
- */
 /**
  * 按 key 细粒度追踪更新的响应式 Map 内部实现。
  *

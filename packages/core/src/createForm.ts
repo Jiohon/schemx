@@ -22,7 +22,7 @@
  *
  * // 校验并提交
  * const result = await form.validate()
- * if (result.ok) {
+ * if (result.valid) {
  *   console.log('提交数据:', result.values)
  * }
  * ```
@@ -43,14 +43,14 @@
  *     console.log('提交:', values)
  *   },
  *   onFinishFailed: (error) => {
- *     console.log('校验失败:', error.errors)
+ *     console.log('校验失败:', error)
  *   }
  * })
  *
  * // 使用 effect 监听值变化
  * const dispose = form.effect(() => {
  *   console.log('当前值:', form.getFieldsValue())
- *   console.log('错误:', form.getFieldError('email'))
+ *   console.log('错误:', form.getFieldErrors('email'))
  * })
  *
  * // 提交表单
@@ -65,13 +65,14 @@
 import { pick } from "es-toolkit"
 
 import { createCompile } from "./compiler"
+import { resolveFormConfig } from "./config/schemxConfig"
 import {
   createSchemas,
   isSchemxSchemas,
   type SchemxSchemas,
   type SchemxSchemasInput,
 } from "./createSchemas"
-import { defaultConfigKey } from "./defaultConfig"
+import { defaultConfigKey, resolveDefaultConfig } from "./defaultConfig"
 import {
   createLifecycleBus,
   type LifecycleBus,
@@ -90,21 +91,23 @@ import { batchUpdates, createSignalEffect } from "./reactivity"
 import { createReconciler, type Reconciler } from "./reconciler"
 import {
   createRendererRegistry,
-  createValidatorsRegistry,
-  type RendererRegistryType,
-  type ValidatorsRegistryType,
+  createValidationRuleRegistry,
+  type RendererRegistry,
+  type ValidationRuleRegistry,
 } from "./registry"
 import { createScheduler, type Scheduler } from "./scheduler"
 import { type SchemxContext } from "./schemxContext"
 import { createStore, type Store } from "./store"
 import { collectObjectPathsByLeaf, diff, withLock } from "./utils"
 import {
-  createRequiredRule,
-  createSelectRequiredRule,
-  createUploadRequiredRule,
+  createValidationController,
   createValidator,
-  type ValidateError,
-  type ValidateResult,
+  type CreateValidatorOptions,
+  type FieldValidationConfig,
+  type ValidationAdapter,
+  type ValidationController,
+  type ValidationFailure,
+  type ValidationResult,
   type Validator,
 } from "./validator"
 import { type SchemxViewSchema, subscribeViewSchemas } from "./view"
@@ -121,10 +124,9 @@ import type {
   SchemxFormApi,
   SchemxInstance,
   SchemxRendererKey,
-  SchemxRules,
-  StandardSchemaV1,
   Values,
 } from "./types"
+import type { FieldRules } from "./types/rule"
 
 type Callbacks<
   TValues extends Values = Values,
@@ -205,26 +207,49 @@ export interface CreateFormOptions<
   /**
    * 当前 form 实例使用的渲染器注册表。
    */
-  rendererRegistry?: RendererRegistryType
+  rendererRegistry?: RendererRegistry
   /**
-   * 字段未指定可用渲染器时使用的默认 renderer type。
+   * 字段未指定 `componentType` 时使用的默认渲染器类型。
    */
   defaultRendererType?: SchemxRendererKey
   /**
    * 当前 form 实例使用的规则注册表。
    */
-  validatorRegistry?: ValidatorsRegistryType
+  validationRuleRegistry?: ValidationRuleRegistry
+  /**
+   * 当前 Form 额外注册或覆盖的校验 adapter。
+   *
+   * Standard Schema 与原生校验规则由内置 adapter 始终支持，无需在此注册。
+   */
+  adapters?: readonly ValidationAdapter[]
 
   /**
-   * submit 校验通过后的回调。
+   * 将规则执行异常转换为字段错误消息。
+   *
+   * @param error - 规则执行时抛出的原始异常。
+   * @param context - 发生异常的字段校验上下文。
+   * @returns 写入字段错误状态的消息。
+   */
+  onRuleError?: CreateValidatorOptions<TValues>["onRuleError"]
+
+  /**
+   * submit 校验通过后执行；返回 Promise 时，submit 会等待其完成。
+   *
+   * @param values - 本次校验通过的只读表单值。
+   * @returns 可选的异步完成信号。
    */
   onFinish?: (values: Readonly<TValues>) => void | Promise<void>
   /**
    * submit 校验失败后的回调。
+   *
+   * @param failure - 包含表单值与全部校验错误的失败结果。
    */
-  onFinishFailed?: (error: ValidateError<TValues>) => void
+  onFinishFailed?: (failure: ValidationFailure<TValues>) => void
   /**
    * 字段值变化后的回调，接收本次变化片段和最新快照。
+   *
+   * @param changedValues - 本次变化的字段值片段。
+   * @param latestSnapshot - 变化后的完整表单值视图。
    */
   onValuesChange?: (
     changedValues: Readonly<Partial<TValues>>,
@@ -232,6 +257,9 @@ export interface CreateFormOptions<
   ) => void
   /**
    * 字段路径变化后的回调，接收本次变化路径和所有已知字段路径。
+   *
+   * @param changedFields - 本次发生变化的字段路径。
+   * @param allFields - 当前所有已知字段路径。
    */
   onFieldsChange?: (changedFields: TName[], allFields: TName[]) => void
   /**
@@ -254,13 +282,16 @@ class CreateForm<
   private store: Store<TValues>
 
   /** 渲染器注册表，解析 schema.componentType 到具体渲染实现 */
-  readonly rendererRegistry: RendererRegistryType
+  readonly rendererRegistry: RendererRegistry
 
   /** 校验规则注册表，解析字符串规则名称到 StandardSchema 或规则工厂 */
-  readonly validatorRegistry: ValidatorsRegistryType<TValues>
+  readonly validationRuleRegistry: ValidationRuleRegistry
 
   /** 字段校验器，维护规则、错误状态和校验执行流程 */
   readonly validator: Validator<TValues>
+
+  /** 字段规则归一化与注册控制器。 */
+  readonly validationController: ValidationController<TValues>
 
   /** Runtime node 的透明根节点，承载所有编译后的表单描述符节点 */
   readonly root: RootRuntimeNode<TValues>
@@ -305,7 +336,9 @@ class CreateForm<
       modelValue,
       rendererRegistry,
       defaultRendererType,
-      validatorRegistry,
+      validationRuleRegistry,
+      adapters: formAdapters,
+      onRuleError,
       ...restOptions
     } = options
 
@@ -317,25 +350,39 @@ class CreateForm<
       onFieldsChange: options.onFieldsChange,
     }
 
-    // 注册表允许外部注入；未注入时创建表单实例私有注册表，避免跨实例污染。
+    // 一次性解析内置、全局与 Form 实例配置，后续装配不再重复表达优先级。
+    const resolvedConfig = resolveFormConfig({
+      defaultProps: pick(restOptions, defaultConfigKey),
+      defaultRendererType,
+      rendererRegistry,
+      validationRuleRegistry,
+    })
+
+    // 注册表允许外部注入；未注入时回退全局共享注册表，再缺省时创建表单实例私有注册表，
+    // 避免跨实例污染。全局共享注册表为 opt-in：configureSchemx 设置后副作用跨实例传播。
     this.rendererRegistry =
-      rendererRegistry ?? createRendererRegistry(defaultRendererType)
+      resolvedConfig.rendererRegistry ??
+      createRendererRegistry(resolvedConfig.defaultRendererType)
 
-    this.validatorRegistry = (validatorRegistry ??
-      createValidatorsRegistry<TValues>()) as ValidatorsRegistryType<TValues>
+    this.validationRuleRegistry =
+      resolvedConfig.validationRuleRegistry ?? createValidationRuleRegistry()
 
-    this.validator = createValidator<TValues, TName>()
+    const adapters = mergeValidationAdapters(
+      resolvedConfig.validation.adapters,
+      formAdapters
+    )
+
+    this.validator = createValidator<TValues>({ onRuleError })
+
+    this.validationController = createValidationController({
+      validator: this.validator,
+      registry: this.validationRuleRegistry,
+      adapters,
+    })
 
     // modelValue 优先覆盖 initialValues，用于受控场景的初始快照对齐。
     this.store = createStore<TValues>({
       initialValues: { ...initialValues, ...(modelValue ?? {}) },
-    })
-
-    // 内置必填类规则默认注册到当前表单，用户仍可通过规则注册表覆盖。
-    this.validatorRegistry.registerAll({
-      required: createRequiredRule,
-      selectRequired: createSelectRequiredRule,
-      uploadRequired: createUploadRequiredRule,
     })
 
     // RuntimeNode 之外的 descriptor、state、view 和 effect 资源表
@@ -351,10 +398,11 @@ class CreateForm<
     // applySchemas 走 compiler fallback 时读取的是 compileOptions.defaultProps，
     // updateDefaultProps 直接 mutate context.defaultProps，若两者是不同对象，
     // 变更将无法被编译器感知，reconcile 后字段值不变、effect 也不会重算。
-    const defaultProps = pick(restOptions, defaultConfigKey)
+    const defaultProps = resolvedConfig.defaultProps
 
     this.compile = createCompile({
       defaultProps,
+      defaultRendererType: resolvedConfig.defaultRendererType,
       formInstance: this.getFormInstance(),
     })
 
@@ -365,6 +413,7 @@ class CreateForm<
       formApi: this.getFormApi(),
       compile: this.compile,
       scheduler: this.scheduler,
+      validation: this.validationController,
       lifecycleBus: this.lifecycleBus,
       nodeResources: this.nodeResources,
       commitChildren: this.commitChildren,
@@ -448,14 +497,15 @@ class CreateForm<
       getPendingFields: this.store.getPendingFields.bind(this.store),
       validateField: this.validateField.bind(this),
       validate: this.validate.bind(this),
-      getFieldError: this.validator.getFieldError.bind(this.validator),
-      setFieldError: this.validator.setFieldError.bind(this.validator),
+      getFieldErrors: this.validator.getFieldErrors.bind(this.validator),
+      setFieldErrors: this.validator.setFieldErrors.bind(this.validator),
+      clearFieldErrors: this.validator.clearFieldErrors.bind(this.validator),
       resetFields: this.store.resetFields.bind(this.store),
       reset: this.reset.bind(this),
       submit: this.submit.bind(this),
 
-      registerRules: this.register.bind(this),
-      unregisterRules: this.validator.unregister.bind(this.validator),
+      setFieldRules: this.setFieldRules.bind(this),
+      removeFieldRules: this.removeFieldRules.bind(this),
 
       effect: this.effect.bind(this),
       batch: this.batch.bind(this),
@@ -468,13 +518,17 @@ class CreateForm<
       subscribeViewSchemas: this.subscribeViewSchemas.bind(this),
       waitForDependencies: this.waitForIdle.bind(this),
 
-      getRenderer: this.rendererRegistry.getRenderer.bind(this.rendererRegistry),
+      getRenderer: this.rendererRegistry.resolve.bind(this.rendererRegistry),
       registerRenderer: this.rendererRegistry.register.bind(this.rendererRegistry),
-      hasRenderer: this.rendererRegistry.hasRenderer.bind(this.rendererRegistry),
+      hasRenderer: this.rendererRegistry.has.bind(this.rendererRegistry),
 
-      getValidator: this.validatorRegistry.get.bind(this.validatorRegistry),
-      registerValidator: this.validatorRegistry.register.bind(this.validatorRegistry),
-      hasValidator: this.validatorRegistry.has.bind(this.validatorRegistry),
+      getRule: this.validationRuleRegistry.get.bind(
+        this.validationRuleRegistry
+      ) as SchemxInstance<TValues>["getRule"],
+      registerRule: this.validationRuleRegistry.register.bind(
+        this.validationRuleRegistry
+      ) as SchemxInstance<TValues>["registerRule"],
+      hasRule: this.validationRuleRegistry.has.bind(this.validationRuleRegistry),
 
       destroy: this.destroy.bind(this),
     }
@@ -496,8 +550,9 @@ class CreateForm<
       isPending: this.store.isFieldPending.bind(this.store),
       setTouched: this.store.setFieldTouched.bind(this.store),
       isTouched: this.store.isFieldTouched.bind(this.store),
-      getError: this.validator.getFieldError.bind(this.validator),
-      setError: this.validator.setFieldError.bind(this.validator),
+      getErrors: this.validator.getFieldErrors.bind(this.validator),
+      setErrors: this.validator.setFieldErrors.bind(this.validator),
+      clearErrors: this.validator.clearFieldErrors.bind(this.validator),
       resetFields: this.store.resetFields.bind(this.store),
       reset: this.reset.bind(this),
       validateField: this.validateField.bind(this),
@@ -508,37 +563,54 @@ class CreateForm<
   /**
    * 注册字段校验规则
    */
-  private register(
-    path: NamePath<TValues>,
-    rules: SchemxRules | readonly SchemxRules[],
-    defaultMessage?: string
+  private setFieldRules<TName extends NamePath<TValues>>(
+    path: TName,
+    rules: FieldRules<TValues, TName>
   ): void {
-    const resolvedRules: StandardSchemaV1[] = []
-
     const node = this.nodeResources.fieldIndex.getByName(path)
-    const descriptor = node ? (node.descriptor ?? undefined) : undefined
-    const schema = descriptor?.type === "field" ? descriptor.staticSchema : undefined
-
-    this.validator.unregister(path)
-
-    const schemaWithRules = {
-      ...schema,
+    const effective = node?.fieldState?.effectiveSchema.value
+    const config: FieldValidationConfig<TValues, TName> = {
+      name: path,
+      label: effective?.label ?? "",
+      required: (effective?.required ?? false) as FieldValidationConfig<
+        TValues,
+        TName
+      >["required"],
       rules,
-    } as SchemxBaseField<TValues>
-
-    resolvedRules.push(
-      ...this.validatorRegistry.resolveValidatorsBySchema(schemaWithRules)
-    )
-
-    if (resolvedRules.length > 0) {
-      this.validator.register(path, resolvedRules, defaultMessage)
     }
+
+    this.validationController.syncField(config)
+    // 覆盖尚未执行的字段 effect 任务，避免初始化规则在下一微任务回写旧 schema。
+    this.scheduler.schedule({
+      id: `validation:${String(path)}`,
+      priority: "post",
+      scope: this.scope,
+      run: () => {
+        this.validationController.syncField(config)
+      },
+    })
+  }
+
+  /**
+   * 移除字段校验规则。
+   */
+  private removeFieldRules<TName extends NamePath<TValues>>(path: TName): void {
+    this.validationController.removeField(path)
+    this.scheduler.schedule({
+      id: `validation:${String(path)}`,
+      priority: "post",
+      scope: this.scope,
+      run: () => this.validationController.removeField(path),
+    })
   }
 
   /**
    * 校验指定字段
    */
-  private async validateField(name: NamePath<TValues>): Promise<ValidateResult<TValues>> {
+  private async validateField<TName extends NamePath<TValues>>(
+    name: TName
+  ): Promise<ValidationResult<TValues, TName>> {
+    await this.waitForIdle()
     const result = await this.validator.validateField(name, this.store.getFieldsValue())
 
     return result
@@ -549,7 +621,21 @@ class CreateForm<
    *
    * 校验前检查是否有字段处于操作中状态，有则直接返回失败结果。
    */
-  private validate = withLock(async (): Promise<ValidateResult<TValues>> => {
+  private validate = withLock(async (): Promise<ValidationResult<TValues>> => {
+    const depsReady = await this.waitForIdle()
+    if (!depsReady) {
+      return {
+        valid: false,
+        values: this.store.getFieldsSnapshot(),
+        errors: [
+          {
+            scope: "form",
+            issues: [{ message: "表单依赖解析超时，请稍后重试", code: "dependency_timeout" }],
+          },
+        ],
+      }
+    }
+
     const pendingFields = this.store.getPendingFields()
 
     if (pendingFields.length > 0) {
@@ -558,20 +644,22 @@ class CreateForm<
       console.warn(`[schemx] ${defaultMessage}`)
 
       return {
-        ok: false,
-        error: {
-          errors: pendingFields.map(({ field, message }) => {
-            const _message = message.length ? message : ["字段正在处理中，请稍后重试"]
+        valid: false,
+        values: this.store.getFieldsSnapshot(),
+        errors: pendingFields.map(({ field, message }) => {
+          const messages = message.length ? message : ["字段正在处理中，请稍后重试"]
 
-            this.validator.setFieldError(field as NamePath<TValues>, _message)
+          this.validator.setFieldErrors(field as NamePath<TValues>, messages)
 
-            return {
-              field: field as string,
-              message: _message,
-            }
-          }),
-          values: this.store.getFieldsSnapshot(),
-        },
+          return {
+            scope: "field" as const,
+            name: field as NamePath<TValues>,
+            issues: messages.map((message) => ({ message, code: "pending" })) as [
+              { message: string; code: string },
+              ...{ message: string; code: string }[],
+            ],
+          }
+        }),
       }
     }
 
@@ -585,35 +673,33 @@ class CreateForm<
    */
   private reset(): void {
     this.store.reset()
-    this.validator.reset()
+    this.validator.clearErrors()
   }
 
   /**
    * 提交表单
    */
-  private submit = withLock(async (): Promise<ValidateResult<TValues>> => {
+  private submit = withLock(async (): Promise<ValidationResult<TValues>> => {
     // 等待依赖解析完成
     const depsReady = await this.waitForIdle()
     if (!depsReady) {
       return {
-        ok: false,
-        error: {
-          errors: [
-            {
-              field: "$form",
-              message: ["表单依赖解析超时，请稍后重试"],
-            },
-          ],
-          values: this.store.getFieldsSnapshot(),
-        },
+        valid: false,
+        values: this.store.getFieldsSnapshot(),
+        errors: [
+          {
+            scope: "form",
+            issues: [{ message: "表单依赖解析超时，请稍后重试", code: "dependency_timeout" }],
+          },
+        ],
       }
     }
 
     const result = await this.validate()
-    if (result.ok) {
+    if (result.valid) {
       await this.callbacks.onFinish?.(result.values)
-    } else {
-      this.callbacks.onFinishFailed?.(result.error)
+    } else if (!result.cancelled) {
+      this.callbacks.onFinishFailed?.(result)
     }
 
     return result
@@ -622,7 +708,7 @@ class CreateForm<
   /**
    * 创建 reactive effect。
    *
-   * 回调内调用 getFieldValue / getFieldError 时自动追踪依赖，
+   * 回调内调用 getFieldValue / getFieldErrors 时自动追踪依赖，
    * 跨越 store 和 validator 的 reactive maps。
    * dispose 函数由 createForm 层面统一管理，destroy 时清理。
    */
@@ -729,7 +815,10 @@ class CreateForm<
       return
     }
 
-    Object.assign(this.context.defaultProps, pick(partial, defaultConfigKey))
+    Object.assign(
+      this.context.defaultProps,
+      resolveDefaultConfig(this.context.defaultProps, pick(partial, defaultConfigKey))
+    )
 
     // defaultProps 影响所有字段的 normalizedSchema，bump version 让缓存条目失效。
     this.compile.invalidate()
@@ -778,6 +867,8 @@ class CreateForm<
     this.scope.dispose()
     this.reconciler.removeNode(this.root)
     this.scheduler.dispose()
+    this.validationController.destroy()
+    this.validator.destroy()
     this.store.destroy()
   }
 
@@ -843,6 +934,44 @@ export function createForm<TValues extends Values>(
   options: CreateFormOptions<TValues> = {}
 ): SchemxInstance<TValues> {
   return new CreateForm<TValues>(options).getFormInstance()
+}
+
+function mergeValidationAdapters(
+  globalAdapters: readonly ValidationAdapter[],
+  formAdapters: readonly ValidationAdapter[] | undefined
+): readonly ValidationAdapter[] {
+  const ids = new Set<string>()
+  for (const adapter of globalAdapters) {
+    const adapterId = getValidationAdapterId(adapter)
+    if (ids.has(adapterId)) throw new Error(`重复的校验 adapter id "${adapterId}"`)
+    ids.add(adapterId)
+  }
+
+  const merged = [...globalAdapters]
+  for (const adapter of formAdapters ?? []) {
+    const adapterId = getValidationAdapterId(adapter)
+    const index = merged.findIndex((item) => getValidationAdapterId(item) === adapterId)
+    if (index === -1) merged.push(adapter)
+    else merged[index] = adapter
+  }
+
+  const formIds = new Set<string>()
+  for (const adapter of formAdapters ?? []) {
+    const adapterId = getValidationAdapterId(adapter)
+    if (formIds.has(adapterId)) throw new Error(`重复的校验 adapter id "${adapterId}"`)
+    formIds.add(adapterId)
+  }
+
+  return Object.freeze(merged)
+}
+
+function getValidationAdapterId(adapter: ValidationAdapter): string {
+  const adapterId = (adapter as { id?: unknown } | null)?.id
+  if (typeof adapterId !== "string" || !adapterId.trim()) {
+    throw new Error("校验 adapter id 必须为非空字符串")
+  }
+
+  return adapterId
 }
 
 export default createForm

@@ -9,6 +9,13 @@ describe("@schemx/vant 根入口", () => {
       isEmptyDisplayValue: expect.any(Function),
       isRendererInteractive: expect.any(Function),
       resolveRendererMode: expect.any(Function),
+      validationRuleRegistry: expect.any(Object),
+      createValidationRuleRegistry: expect.any(Function),
+      ValidationRuleRegistry: expect.any(Function),
+      RendererRegistry: expect.any(Function),
     })
+
+    expect(["validator", "Registry"].join("") in vantPackage).toBe(false)
+    expect(["create", "Validators", "Registry"].join("") in vantPackage).toBe(false)
   })
 })

@@ -13,7 +13,13 @@ import type {
   RuntimeNodeResourceContext,
 } from "./node"
 import type { Scheduler } from "./scheduler"
-import type { SchemxDefaultProps, SchemxFormApi, SchemxInstance, Values } from "./types"
+import type {
+  ResolvedSchemxDefaultProps,
+  SchemxFormApi,
+  SchemxInstance,
+  Values,
+} from "./types"
+import type { ValidationController } from "./validator"
 
 /**
  * `createForm()` 内部运行时上下文。
@@ -26,7 +32,7 @@ export interface SchemxContext<TValues extends Values = Values> {
   /**
    * schema 编译默认选项，供 root 与 dependency 子树复用。
    */
-  defaultProps: SchemxDefaultProps
+  defaultProps: ResolvedSchemxDefaultProps
   /**
    * 表单实例公开 API。
    */
@@ -43,6 +49,8 @@ export interface SchemxContext<TValues extends Values = Values> {
    * 运行时异步调度器。
    */
   readonly scheduler: Scheduler
+  /** 当前表单实例的字段校验控制器。 */
+  readonly validation: ValidationController<TValues>
   /**
    * runtime node 生命周期事件总线。
    */

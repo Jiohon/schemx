@@ -17,72 +17,43 @@ import type {
   Values,
 } from "../types"
 
-/** Schema 的结构分类结果。 */
-export type SchemaKind =
-  | "field"
-  | "group"
-  | "dependency"
-  | "legacy-group"
-  | "legacy-dependency"
-  | "ambiguous"
-  | "unknown"
+/** Schema 的结构类型。 */
+export type SchemaKind = "field" | "group" | "dependency"
 
 /**
- * 根据 Raw Schema 的顶层结构识别类型。
+ * 按结构属性识别 Schema 类型。
  *
- * 该函数只分类，不校验各类型的完整必填项。旧容器语法和多结构歧义会返回
- * 独立结果，由编译边界生成可操作的错误信息。
+ * `children` 的优先级最高，其次是 `to` 或 `renderer`；没有容器结构属性时
+ * 视为普通字段。该函数只负责分类，字段完整性由编译阶段校验。
  *
  * @param schema - 待识别的未知 Schema。
- * @returns Schema 的结构分类结果。
+ * @returns Schema 的结构类型。
+ *
+ * @example
+ * ```ts
+ * getSchemaKind({ name: "email", label: "邮箱" }) // => "field"
+ * getSchemaKind({ label: "资料", children: [] }) // => "group"
+ * getSchemaKind({ children: [], to: ["type"] }) // => "group"
+ * ```
  */
-export function getSchemaKind(schema: unknown): SchemaKind {
-  if (!isSchemaRecord(schema)) {
-    return "unknown"
-  }
-
-  const hasFieldMarker =
-    Object.hasOwn(schema, "name") || Object.hasOwn(schema, "componentType")
-  const hasGroupMarker = Object.hasOwn(schema, "children")
-  const hasDependencyMarker =
-    Object.hasOwn(schema, "to") || Object.hasOwn(schema, "renderer")
-  const componentType = schema.componentType
-
-  if (componentType === "group" && hasGroupMarker && !hasDependencyMarker) {
-    return "legacy-group"
-  }
-
-  if (componentType === "dependency" && hasDependencyMarker && !hasGroupMarker) {
-    return "legacy-dependency"
-  }
-
-  const markerCount = [hasFieldMarker, hasGroupMarker, hasDependencyMarker].filter(
-    Boolean
-  ).length
-
-  if (markerCount > 1) {
-    return "ambiguous"
-  }
-
-  if (hasGroupMarker) {
+export function getSchemaKind<T extends Values = Values>(
+  schema: SchemxField | SchemxField<T>
+): SchemaKind {
+  if (Object.hasOwn(schema, "children")) {
     return "group"
   }
 
-  if (hasDependencyMarker) {
+  if (Object.hasOwn(schema, "to") || Object.hasOwn(schema, "renderer")) {
     return "dependency"
   }
 
-  if (hasFieldMarker) {
-    return "field"
-  }
-
-  return "unknown"
+  return "field"
 }
 
 /**
  * 类型守卫：判断是否为基础字段配置
  *
- * 普通字段具有 `name` 或 `componentType`，且不包含容器结构字段。
+ * 不包含 `children`、`to` 或 `renderer` 的 Schema 按普通字段处理。
  *
  * @param schema - 列配置
  * @returns 是否为基础字段
@@ -273,8 +244,4 @@ export function isGroupResolvedSchema<T extends Values = Values>(
   schema: SchemxResolvedField<T>
 ): schema is SchemxResolvedGroupField<T> {
   return "children" in schema
-}
-
-function isSchemaRecord(schema: unknown): schema is Record<string, unknown> {
-  return typeof schema === "object" && schema !== null
 }

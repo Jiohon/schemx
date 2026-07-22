@@ -71,6 +71,7 @@ export function createRawFieldSchema<TValues extends Values = Values>(
   return {
     key,
     name: name as any,
+    label: "",
     componentType: "text",
   } as SchemxField<TValues>
 }
@@ -139,8 +140,8 @@ export function createRuntimeGraphHarness<TValues extends Values = Values>(
     setError: vi.fn(),
     resetFields: vi.fn(),
     reset: vi.fn(),
-    validateField: vi.fn().mockResolvedValue({ ok: true, values }),
-    validate: vi.fn().mockResolvedValue({ ok: true, values }),
+    validateField: vi.fn().mockResolvedValue({ valid: true, values, errors: [] }),
+    validate: vi.fn().mockResolvedValue({ valid: true, values, errors: [] }),
   } as unknown as SchemxFormApi<TValues>
 
   const instance = {
@@ -150,10 +151,11 @@ export function createRuntimeGraphHarness<TValues extends Values = Values>(
       Object.assign(values, nextValues)
     }),
     setFieldValue: writeValue,
-    registerRules: vi.fn(),
-    unregisterRules: vi.fn(),
-    setFieldError: vi.fn(),
-    validateField: vi.fn().mockResolvedValue({ ok: true, values }),
+    validateField: vi.fn().mockResolvedValue({ valid: true, values, errors: [] }),
+  }
+  const validation = {
+    syncField: vi.fn(),
+    removeField: vi.fn(),
   }
 
   const compile = createCompile<TValues>({
@@ -167,6 +169,7 @@ export function createRuntimeGraphHarness<TValues extends Values = Values>(
     formApi,
     compile,
     scheduler,
+    validation,
     lifecycleBus,
     nodeResources: createRuntimeResources<TValues>(),
   } as unknown as SchemxContext<TValues>

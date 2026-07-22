@@ -15,9 +15,9 @@ import type { ContainerEffectiveState } from "../container/runtimeState"
 import type { ComputedSignal } from "../reactivity/computed"
 import type { Signal } from "../reactivity/signal"
 import type {
+  FieldRules,
   SchemxComponentProps,
   SchemxResolvedBaseField,
-  FieldRules,
   Values,
 } from "../types"
 import type { NamePath } from "../types/form"
@@ -30,6 +30,7 @@ export type FieldDynamicOverrideKey =
   | "placeholder"
   | "readonlyPlaceholder"
   | "required"
+  | "showRequiredMark"
   | "readonly"
   | "disabled"
   | "visible"
@@ -73,7 +74,8 @@ export interface FieldEffectiveSchema<TValues extends Values = Values> {
   visible: boolean
   disabled: boolean
   readonly: boolean
-  required: boolean
+  required: SchemxResolvedBaseField<TValues>["required"]
+  showRequiredMark: boolean
   placeholder: string
   readonlyPlaceholder?: string
   componentProps: SchemxComponentProps<TValues>
@@ -157,6 +159,9 @@ export function createFieldRuntimeState<TValues extends Values>(
     const ownVisible = overrides.visible ?? base.visible ?? true
     const ownDisabled = overrides.disabled ?? base.disabled ?? false
     const ownReadonly = overrides.readonly ?? base.readonly ?? false
+    const required = overrides.required ?? base.required ?? false
+    const showRequiredMark =
+      overrides.showRequiredMark ?? base.showRequiredMark ?? Boolean(required)
 
     // 合并静态 schema 与动态覆盖：动态覆盖优先，未覆盖的 key 回退到静态值，静态值再回退到默认值
     return {
@@ -167,7 +172,8 @@ export function createFieldRuntimeState<TValues extends Values>(
       visible: inherited.visible && ownVisible,
       disabled: inherited.disabled || ownDisabled,
       readonly: inherited.readonly || ownReadonly,
-      required: overrides.required ?? base.required ?? false,
+      required,
+      showRequiredMark,
       placeholder: overrides.placeholder ?? base.placeholder ?? "",
       readonlyPlaceholder,
       componentProps: {
@@ -190,6 +196,7 @@ export function createFieldRuntimeState<TValues extends Values>(
       disabled: effective.disabled,
       readonly: effective.readonly,
       required: effective.required,
+      showRequiredMark: effective.showRequiredMark,
       label: effective.label,
       placeholder: effective.placeholder,
       readonlyPlaceholder: effective.readonlyPlaceholder,

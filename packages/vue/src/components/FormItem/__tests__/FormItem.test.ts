@@ -8,18 +8,19 @@
  * @module components/FormItem/__tests__/FormItem
  */
 
+/* eslint-disable vue/one-component-per-file, vue/require-default-prop */
 import { defineComponent, h, nextTick } from "vue"
 
 import { createForm } from "@schemx/core"
 import { mount } from "@vue/test-utils"
 import { describe, expect, it, vi } from "vitest"
 
+import { WithRemoteOptions } from "@/hocs/withRemoteOptions"
 import {
   type FormContextProps,
   SCHEMX_FORM_CONFIG_KEY,
 } from "@/hooks/provideFormConfigContext"
 import { SCHEMX_FORM_INSTANCE_KEY } from "@/hooks/provideFormContext"
-import { WithRemoteOptions } from "@/hocs/withRemoteOptions"
 
 import FormItem from "../index"
 
@@ -391,7 +392,7 @@ describe("FormItem 集成测试", () => {
       name: "title",
       label: "标题",
       componentType: "probe" as any,
-      rules: "required",
+      required: true,
       validationTrigger: "onChange",
     }
 
@@ -427,7 +428,7 @@ describe("FormItem 集成测试", () => {
       name: "title",
       label: "标题",
       componentType: "probe" as any,
-      rules: "required",
+      required: true,
       validationTrigger: "onBlur",
     }
 
@@ -470,7 +471,6 @@ describe("FormItem 集成测试", () => {
       componentType: "probe" as any,
       readonly: true,
       required: true,
-      rules: "required",
     }
 
     const form: SchemxInstance = createForm({
@@ -510,6 +510,165 @@ describe("FormItem 集成测试", () => {
     form.destroy()
   })
 
+  it("required=true 默认显示必填星号，showRequiredMark=false 只隐藏星号且仍按 change/blur 校验", async () => {
+    const schema: SchemxBaseField = {
+      name: "title",
+      label: "标题",
+      componentType: "probe" as any,
+      required: true,
+      showRequiredMark: false,
+      validationTrigger: ["onChange", "onBlur"],
+    }
+
+    const form: SchemxInstance = createForm({
+      initialValues: { title: "旧标题" },
+      schemas: [schema as any],
+    })
+
+    form.registerRenderer("probe" as any, ProbeRenderer)
+    const validateSpy = vi.spyOn(form, "validateField")
+
+    const wrapper = mount(FormItem, {
+      props: { schema: form.getViewSchemas()[0] },
+      global: {
+        provide: {
+          [SCHEMX_FORM_INSTANCE_KEY]: form,
+          [SCHEMX_FORM_CONFIG_KEY]: createFormContext(),
+        },
+      },
+    })
+
+    await nextTick()
+
+    expect(wrapper.find(".schemx-item__required").exists()).toBe(false)
+
+    const input = wrapper.get('[data-testid="probe-renderer"]')
+    await input.setValue("")
+    await input.trigger("blur")
+
+    expect(validateSpy).toHaveBeenCalledTimes(2)
+    expect(validateSpy).toHaveBeenCalledWith("title")
+
+    wrapper.unmount()
+    form.destroy()
+  })
+
+  it("required=false 且 showRequiredMark=true 时显示星号，但不会触发 required 校验", async () => {
+    const schema: SchemxBaseField = {
+      name: "title",
+      label: "标题",
+      componentType: "probe" as any,
+      required: false,
+      showRequiredMark: true,
+      validationTrigger: ["onChange", "onBlur"],
+    }
+
+    const form: SchemxInstance = createForm({
+      initialValues: { title: "旧标题" },
+      schemas: [schema as any],
+    })
+
+    form.registerRenderer("probe" as any, ProbeRenderer)
+    const validateSpy = vi.spyOn(form, "validateField")
+
+    const wrapper = mount(FormItem, {
+      props: { schema: form.getViewSchemas()[0] },
+      global: {
+        provide: {
+          [SCHEMX_FORM_INSTANCE_KEY]: form,
+          [SCHEMX_FORM_CONFIG_KEY]: createFormContext(),
+        },
+      },
+    })
+
+    await nextTick()
+
+    expect(wrapper.find(".schemx-item__required").exists()).toBe(true)
+
+    const input = wrapper.get('[data-testid="probe-renderer"]')
+    await input.setValue("")
+    await input.trigger("blur")
+
+    expect(validateSpy).not.toHaveBeenCalled()
+
+    wrapper.unmount()
+    form.destroy()
+  })
+
+  it.each(["disabled", "readonly"])(
+    "%s 时即使 showRequiredMark=true 也不显示必填星号",
+    async (state) => {
+      const form: SchemxInstance = createForm({
+        schemas: [
+          {
+            name: "title",
+            label: "标题",
+            componentType: "input" as any,
+            required: false,
+            showRequiredMark: true,
+            [state]: true,
+          } as any,
+        ],
+      })
+
+      form.registerRenderer("input", InputRenderer)
+
+      const wrapper = mount(FormItem, {
+        props: { schema: form.getViewSchemas()[0] },
+        global: {
+          provide: {
+            [SCHEMX_FORM_INSTANCE_KEY]: form,
+            [SCHEMX_FORM_CONFIG_KEY]: createFormContext(),
+          },
+        },
+      })
+
+      await nextTick()
+
+      expect(wrapper.find(".schemx-item__required").exists()).toBe(false)
+
+      wrapper.unmount()
+      form.destroy()
+    }
+  )
+
+  it.each([
+    ["普通 rules", { rules: { validate: () => ({ valid: true as const }) } }, false],
+    ["required=true", { required: true }, true],
+    ["RequiredOptions", { required: { message: "请输入标题" } }, true],
+    ["disabled required", { required: true, disabled: true }, false],
+  ])("%s 的必填标记符合 required 语义", async (_name, schemaOptions, expected) => {
+    const form: SchemxInstance = createForm({
+      schemas: [
+        {
+          name: "title",
+          label: "标题",
+          componentType: "probe" as any,
+          ...schemaOptions,
+        },
+      ],
+    })
+
+    form.registerRenderer("probe" as any, ProbeRenderer)
+
+    const wrapper = mount(FormItem, {
+      props: { schema: form.getViewSchemas()[0] },
+      global: {
+        provide: {
+          [SCHEMX_FORM_INSTANCE_KEY]: form,
+          [SCHEMX_FORM_CONFIG_KEY]: createFormContext(),
+        },
+      },
+    })
+
+    await nextTick()
+
+    expect(wrapper.find(".schemx-item__required").exists()).toBe(expected)
+
+    wrapper.unmount()
+    form.destroy()
+  })
+
   it("dependencies 更新 disabled 后应同步下发给 renderer 与 formItemProps", async () => {
     const schema: SchemxBaseField = {
       name: "quantity",
@@ -541,9 +700,9 @@ describe("FormItem 集成测试", () => {
 
     await nextTick()
 
-    expect(wrapper.get('[data-testid="probe-renderer"]').attributes("data-disabled")).toBe(
-      "false"
-    )
+    expect(
+      wrapper.get('[data-testid="probe-renderer"]').attributes("data-disabled")
+    ).toBe("false")
 
     form.setFieldValue("deliveryMethod", "selfPickup")
     await form.waitForDependencies()

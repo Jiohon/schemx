@@ -1,10 +1,12 @@
+/* eslint-disable vue/one-component-per-file, vue/require-default-prop */
 import { defineComponent, h, markRaw, nextTick } from "vue"
 
-import { createRendererRegistry } from "@schemx/core"
+import { createRendererRegistry, createValidationRuleRegistry } from "@schemx/core"
 import { mount } from "@vue/test-utils"
 import { describe, expect, it } from "vitest"
 
 import SchemxForm from "../form.vue"
+import { validationRuleRegistry } from "../utils/rulesProvider"
 
 const InputRenderer = defineComponent({
   name: "InputRenderer",
@@ -44,6 +46,94 @@ const CountRenderer = defineComponent({
 })
 
 describe("SchemxForm 动态 schemas", () => {
+  it("默认使用 Vue 全局 ValidationRuleRegistry", async () => {
+    const ruleName = "vue-global-rule-test"
+    validationRuleRegistry.register(ruleName, {
+      validate: () => ({
+        valid: false,
+        issues: [{ message: "全局规则失败" }],
+      }),
+    })
+
+    try {
+      const rendererRegistry = createRendererRegistry()
+      rendererRegistry.register("input", markRaw(InputRenderer))
+
+      const wrapper = mount(SchemxForm, {
+        props: {
+          rendererRegistry,
+          schemas: [
+            {
+              name: "name",
+              label: "姓名",
+              componentType: "input",
+              rules: ruleName,
+            },
+          ],
+        },
+      })
+
+      const result = await (wrapper.vm as any).validate()
+
+      expect(result.valid).toBe(false)
+      expect(result.errors).toEqual([
+        {
+          scope: "field",
+          name: "name",
+          issues: [{ message: "全局规则失败" }],
+        },
+      ])
+
+      wrapper.unmount()
+    } finally {
+      validationRuleRegistry.unregister(ruleName)
+    }
+  })
+
+  it("局部 ValidationRuleRegistry 优先于 Vue 全局实例", async () => {
+    const ruleName = "vue-local-rule-test"
+    validationRuleRegistry.register(ruleName, {
+      validate: () => ({ valid: true }),
+    })
+
+    const localRegistry = createValidationRuleRegistry()
+    localRegistry.register(ruleName, {
+      validate: () => ({
+        valid: false,
+        issues: [{ message: "局部规则失败" }],
+      }),
+    })
+
+    try {
+      const rendererRegistry = createRendererRegistry()
+      rendererRegistry.register("input", markRaw(InputRenderer))
+
+      const wrapper = mount(SchemxForm, {
+        props: {
+          rendererRegistry,
+          validationRuleRegistry: localRegistry,
+          schemas: [
+            {
+              name: "name",
+              label: "姓名",
+              componentType: "input",
+              rules: ruleName,
+            },
+          ],
+        },
+      })
+
+      const result = await (wrapper.vm as any).validate()
+
+      expect(result.valid).toBe(false)
+      expect(result.errors[0]?.issues).toEqual([{ message: "局部规则失败" }])
+
+      wrapper.unmount()
+    } finally {
+      validationRuleRegistry.unregister(ruleName)
+    }
+  })
+
   it("group 和 dependency 可以作为普通 Renderer key", async () => {
     const rendererRegistry = createRendererRegistry()
     rendererRegistry.register("group", markRaw(InputRenderer))

@@ -1,20 +1,9 @@
-/**
- * Validator 单元测试
- *
- * 覆盖 Validator 的所有公开 API：
- * register、unregister、getFieldError、setFieldError、
- * reset、validateField、validate。
- *
- * @module core/validator/__tests__/validator
- */
-
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
 import { createValidator } from "../validator"
-import { createRequiredRule } from "../defaultRules"
 
-import type { StandardSchemaV1 } from "../../types/standardSchema"
+import type { ValidationRule, ValidationRuleResult } from "../types"
 
 interface TestForm {
   name: string
@@ -22,323 +11,331 @@ interface TestForm {
   email: string
 }
 
-/**
- * 创建一个简单的最小长度校验 schema
- *
- * @param min - 最小长度
- * @param msg - 错误信息
- */
-const createMinLengthSchema = (min: number, msg: string): StandardSchemaV1 => ({
-  "~standard": {
-    version: 1,
-    vendor: "test",
-    validate(value: unknown) {
-      if (typeof value === "string" && value.length >= min) {
-        return { value }
-      }
-
-      return { issues: [{ message: msg }] }
-    },
-  },
-})
-
-/**
- * 创建一个异步校验 schema
- *
- * @param delay - 延迟毫秒数
- * @param shouldPass - 是否通过
- * @param msg - 错误信息
- */
-const createAsyncSchema = (
-  delay: number,
-  shouldPass: boolean,
-  msg: string
-): StandardSchemaV1 => ({
-  "~standard": {
-    version: 1,
-    vendor: "test",
-    async validate(value: unknown) {
-      await new Promise((r) => setTimeout(r, delay))
-      if (shouldPass) return { value }
-
-      return { issues: [{ message: msg }] }
-    },
-  },
-})
-
 const baseValues: TestForm = { name: "John", age: 25, email: "j@t.com" }
 
-// 单元测试：验证 Validator 的 register/unregister、getFieldError/setFieldError、validateField、validate 等完整 API
+const passingRule = (): ValidationRule<string, TestForm, "name"> => ({
+  validate: () => ({ valid: true }),
+})
+
+const failingRule = (message: string): ValidationRule<string, TestForm, "name"> => ({
+  validate: () => ({ valid: false, issues: [{ message }] }),
+})
+
+const throwingRule = (error: Error): ValidationRule<string, TestForm, "name"> => ({
+  validate: () => {
+    throw error
+  },
+})
+
+const deferred = <T>() => {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((nextResolve) => {
+    resolve = nextResolve
+  })
+
+  return { promise, resolve }
+}
+
+const sequencedRule = (
+  first: Promise<ValidationRuleResult>,
+  second: Promise<ValidationRuleResult>
+): ValidationRule<string, TestForm, "name"> => {
+  let count = 0
+
+  return {
+    validate: () => (count++ === 0 ? first : second),
+  }
+}
+
+const captureSignalRule = (
+  signals: AbortSignal[]
+): ValidationRule<string, TestForm, "name"> => ({
+  validate: (_value, context) => {
+    signals.push(context.signal)
+
+    return new Promise<ValidationRuleResult>(() => undefined)
+  },
+})
+
 describe("Validator", () => {
-  // 验证 register/unregister 的规则注册、注销、注销时清除错误、defaultMessage 空值拦截
-  describe("register / unregister", () => {
-    it("注册规则后可校验", async () => {
-      const v = createValidator<TestForm>()
-      v.register("name", createMinLengthSchema(2, "至少2个字符"))
+  it("setFieldRules 使用替换语义", async () => {
+    const validator = createValidator<TestForm>()
+    validator.setFieldRules("name", [failingRule("旧错误")])
+    validator.setFieldRules("name", [passingRule()])
 
-      const result = await v.validateField("name", { ...baseValues, name: "A" })
-      expect(result.ok).toBe(false)
-    })
-
-    it("注销规则后校验通过", async () => {
-      const v = createValidator<TestForm>()
-      v.register("name", createMinLengthSchema(2, "至少2个字符"))
-      v.unregister("name")
-
-      const result = await v.validateField("name", baseValues)
-      expect(result.ok).toBe(true)
-    })
-
-    it("注销规则同时清除该字段错误", async () => {
-      const v = createValidator<TestForm>()
-      v.register("name", createMinLengthSchema(2, "至少2个字符"))
-      await v.validateField("name", { ...baseValues, name: "A" })
-      expect(v.getFieldError("name")).toBeDefined()
-
-      v.unregister("name")
-      expect(v.getFieldError("name")).toBeUndefined()
-    })
-
-    it("注销字段时也会清除手动设置的残留错误", () => {
-      const v = createValidator<TestForm>()
-      v.setFieldError("name", ["旧错误"])
-
-      v.unregister("name")
-
-      expect(v.getFieldError("name")).toBeUndefined()
-    })
-
-    it("register 带 defaultMessage 空值拦截", async () => {
-      const v = createValidator<TestForm>()
-      v.register("name", createMinLengthSchema(2, "至少2个字符"), "姓名不能为空")
-
-      const result = await v.validateField("name", {
-        ...baseValues,
-        name: undefined as any,
-      })
-      expect(result.ok).toBe(false)
-      if (!result.ok) {
-        expect(result.error.errors[0].message).toContain("姓名不能为空")
-      }
+    await expect(validator.validateField("name", baseValues)).resolves.toEqual({
+      valid: true,
+      values: baseValues,
+      errors: [],
     })
   })
 
-  // 验证 getFieldError/setFieldError/resetErrors 的错误读写与清空
-  describe("getFieldError / setFieldError / resetErrors", () => {
-    it("无错误时返回 undefined", () => {
-      const v = createValidator<TestForm>()
-      expect(v.getFieldError("name")).toBeUndefined()
-    })
+  it("等价字符串与数组路径共享同一字段身份", async () => {
+    const validator = createValidator<{ profile: { email: string } }>()
+    validator.setFieldRules("profile.email", [
+      { validate: () => ({ valid: false, issues: [{ message: "邮箱错误" }] }) },
+    ])
 
-    it("手动设置错误", () => {
-      const v = createValidator<TestForm>()
-      v.setFieldError("name", ["错误1", "错误2"])
-      expect(v.getFieldError("name")).toEqual(["错误1", "错误2"])
+    await expect(
+      validator.validateField(["profile", "email"], { profile: { email: "invalid" } })
+    ).resolves.toMatchObject({
+      valid: false,
+      errors: [{ name: ["profile", "email"], issues: [{ message: "邮箱错误" }] }],
     })
+    expect(validator.getFieldErrors("profile.email")).toEqual(["邮箱错误"])
+  })
 
-    it("reset 清空所有错误", () => {
-      const v = createValidator<TestForm>()
-      v.register("name", createMinLengthSchema(1, "err"))
-      v.register("email", createMinLengthSchema(1, "err"))
-      v.setFieldError("name", ["错误1"])
-      v.setFieldError("email", ["错误2"])
-      v.reset()
-      expect(v.getFieldError("name")).toEqual([])
-      expect(v.getFieldError("email")).toEqual([])
+  it("getFieldErrors 无错误时稳定返回只读空数组", () => {
+    const validator = createValidator<TestForm>()
+
+    expect(validator.getFieldErrors("name")).toEqual([])
+    expect(validator.getFieldErrors("name")).toBe(validator.getFieldErrors("name"))
+    expect(Object.isFrozen(validator.getFieldErrors("name"))).toBe(true)
+  })
+
+  it("规则与 external 错误均复制调用方输入，并隔离返回消息", async () => {
+    const validator = createValidator<TestForm>()
+    const rules: ValidationRule<string, TestForm, "name">[] = [failingRule("原始规则")]
+    const messages = ["原始消息"]
+    validator.setFieldRules("name", rules)
+    validator.setFieldErrors("name", messages)
+
+    rules.splice(0, 1, passingRule())
+    messages[0] = "被调用方改写"
+    const returnedMessages = validator.getFieldErrors("name") as string[]
+    returnedMessages[0] = "被消费者改写"
+
+    await expect(validator.validateField("name", baseValues)).resolves.toMatchObject({
+      valid: false,
+      errors: [
+        {
+          issues: [
+            { message: "原始规则" },
+            { message: "原始消息", code: "external" },
+          ],
+        },
+      ],
+    })
+    expect(validator.getFieldErrors("name")).toEqual(["原始规则", "原始消息"])
+  })
+
+  it("规则异常通过 onRuleError 转换", async () => {
+    const validator = createValidator<TestForm>({
+      onRuleError: (error) => `执行异常: ${(error as Error).message}`,
+    })
+    validator.setFieldRules("name", [throwingRule(new Error("boom"))])
+
+    const result = await validator.validateField("name", baseValues)
+    expect(result).toMatchObject({
+      valid: false,
+      errors: [
+        {
+          scope: "field",
+          name: "name",
+          issues: [{ message: "执行异常: boom", code: "rule_execution" }],
+        },
+      ],
     })
   })
 
-  // 验证 validateField 对无规则字段、校验通过/失败、路径数组、异步校验、null 值 defaultMessage 的处理
-  describe("validateField", () => {
-    it("无规则字段校验通过", async () => {
-      const v = createValidator<TestForm>()
-      const result = await v.validateField("name", baseValues)
-      expect(result.ok).toBe(true)
-    })
+  it("规则异常未配置 onRuleError 时使用默认提示", async () => {
+    const validator = createValidator<TestForm>()
+    validator.setFieldRules("name", [throwingRule(new Error("boom"))])
 
-    it("校验通过时清除该字段错误", async () => {
-      const v = createValidator<TestForm>()
-      v.register("name", createMinLengthSchema(2, "至少2个字符"))
-
-      // 先让校验失败
-      await v.validateField("name", { ...baseValues, name: "A" })
-      expect(v.getFieldError("name")).toBeDefined()
-
-      // 再让校验通过
-      await v.validateField("name", { ...baseValues, name: "John" })
-      expect(v.getFieldError("name")).toBeUndefined()
-    })
-
-    it("校验失败时记录错误", async () => {
-      const v = createValidator<TestForm>()
-      v.register("name", createMinLengthSchema(2, "至少2个字符"))
-
-      const result = await v.validateField("name", { ...baseValues, name: "A" })
-      expect(result.ok).toBe(false)
-      if (!result.ok) {
-        expect(result.error.errors).toHaveLength(1)
-        expect(result.error.errors[0].field).toBe("name")
-        expect(result.error.errors[0].message).toContain("至少2个字符")
-      }
-    })
-
-    it("支持路径数组批量校验", async () => {
-      const v = createValidator<TestForm>()
-      v.register("name", createMinLengthSchema(2, "姓名至少2个字符"))
-      v.register("email", createRequiredRule({ label: "邮箱" } as any))
-
-      const result = await v.validateField(["name", "email"], {
-        ...baseValues,
-        name: "A",
-        email: "",
-      })
-
-      expect(result.ok).toBe(false)
-      if (!result.ok) {
-        expect(result.error.errors).toHaveLength(2)
-      }
-    })
-
-    it("支持异步校验规则", async () => {
-      const v = createValidator<TestForm>()
-      v.register("name", createAsyncSchema(10, false, "异步校验失败"))
-
-      const result = await v.validateField("name", baseValues)
-      expect(result.ok).toBe(false)
-      if (!result.ok) {
-        expect(result.error.errors[0].message).toContain("异步校验失败")
-      }
-    })
-
-    it("null 值触发 defaultMessage", async () => {
-      const v = createValidator<TestForm>()
-      v.register("name", createMinLengthSchema(1, "至少1个字符"), "必填")
-
-      const result = await v.validateField("name", {
-        ...baseValues,
-        name: null as any,
-      })
-      expect(result.ok).toBe(false)
-      if (!result.ok) {
-        expect(result.error.errors[0].message).toContain("必填")
-      }
+    await expect(validator.validateField("name", baseValues)).resolves.toMatchObject({
+      valid: false,
+      errors: [
+        {
+          scope: "field",
+          name: "name",
+          issues: [{ message: "校验执行失败", code: "rule_execution" }],
+        },
+      ],
     })
   })
 
-  // 验证 validate 全量校验：所有字段通过返回 ok、部分失败返回所有错误、校验前清空旧错误
-  describe("validate（全量校验）", () => {
-    it("所有字段通过时返回 ok", async () => {
-      const v = createValidator<TestForm>()
-      v.register("name", createMinLengthSchema(1, "至少1个字符"))
-      v.register("email", createRequiredRule({ label: "邮箱" } as any))
+  it("旧异步结果不能覆盖新状态", async () => {
+    const first = deferred<ValidationRuleResult>()
+    const second = deferred<ValidationRuleResult>()
+    const validator = createValidator<TestForm>()
+    validator.setFieldRules("name", [sequencedRule(first.promise, second.promise)])
 
-      const result = await v.validate(baseValues)
-      expect(result.ok).toBe(true)
+    const oldRun = validator.validateField("name", { ...baseValues, name: "old" })
+    const newRun = validator.validateField("name", { ...baseValues, name: "new" })
+
+    second.resolve({ valid: true })
+    await newRun
+    first.resolve({ valid: false, issues: [{ message: "旧错误" }] })
+    await oldRun
+
+    expect(validator.getFieldErrors("name")).toEqual([])
+  })
+
+  it("替换规则会取消旧运行，并拒绝旧规则回写", async () => {
+    const pending = deferred<ValidationRuleResult>()
+    const validator = createValidator<TestForm>()
+    validator.setFieldRules("name", [{ validate: () => pending.promise }])
+
+    const oldRun = validator.validateField("name", baseValues)
+    await Promise.resolve()
+    validator.setFieldRules("name", [failingRule("新规则错误")])
+    pending.resolve({ valid: false, issues: [{ message: "旧规则错误" }] })
+
+    await expect(oldRun).resolves.toMatchObject({ cancelled: true, errors: [] })
+    await expect(validator.validateField("name", baseValues)).resolves.toMatchObject({
+      errors: [{ issues: [{ message: "新规则错误" }] }],
     })
+    expect(validator.getFieldErrors("name")).toEqual(["新规则错误"])
+  })
 
-    it("部分字段失败时返回所有错误", async () => {
-      const v = createValidator<TestForm>()
-      v.register("name", createMinLengthSchema(10, "姓名至少10个字符"))
-      v.register("email", createRequiredRule({ label: "邮箱" } as any))
+  it("external 错误会阻止全表校验通过，即使字段没有规则", async () => {
+    const validator = createValidator<TestForm>()
+    validator.setFieldErrors("email", ["服务端已占用"])
 
-      const result = await v.validate({ ...baseValues, name: "A", email: "" })
-      expect(result.ok).toBe(false)
-      if (!result.ok) {
-        expect(result.error.errors).toHaveLength(2)
-      }
-    })
-
-    it("validate 前清空旧错误", async () => {
-      const v = createValidator<TestForm>()
-      v.setFieldError("name", ["手动设置的错误"])
-      v.register("email", createRequiredRule({ label: "邮箱" } as any))
-
-      const result = await v.validate({ ...baseValues, email: "valid@t.com" })
-      expect(result.ok).toBe(true)
-      expect(v.getFieldError("name")).toBeUndefined()
-      expect(v.getFieldError("email")).toBeUndefined()
+    await expect(validator.validate(baseValues)).resolves.toEqual({
+      valid: false,
+      values: baseValues,
+      errors: [
+        {
+          scope: "field",
+          name: "email",
+          issues: [{ message: "服务端已占用", code: "external" }],
+        },
+      ],
     })
   })
 
-  // 验证 createValidator 工厂创建 Validator 实例
-  describe("createValidator 工厂函数", () => {
-    it("创建 Validator 实例", () => {
-      const v = createValidator<TestForm>()
-      expect(v).toBeDefined()
+  it("非法空 issue 失败结果转换为规则执行错误", async () => {
+    const validator = createValidator<TestForm>()
+    validator.setFieldRules("name", [
+      { validate: () => ({ valid: false, issues: [] }) as never },
+    ])
+
+    await expect(validator.validateField("name", baseValues)).resolves.toMatchObject({
+      errors: [{ issues: [{ code: "rule_execution" }] }],
+    })
+  })
+
+  it("destroy 中止运行并清空全部状态", async () => {
+    const validator = createValidator<TestForm>()
+    const signals: AbortSignal[] = []
+    validator.setFieldRules("name", [captureSignalRule(signals)])
+    void validator.validateField("name", baseValues)
+
+    await Promise.resolve()
+    validator.destroy()
+    validator.destroy()
+
+    expect(signals[0].aborted).toBe(true)
+    expect(validator.getFieldErrors("name")).toEqual([])
+  })
+
+  it("规则因 abort 拒绝时不产生可见错误", async () => {
+    const validator = createValidator<TestForm>()
+    validator.setFieldRules("name", [
+      {
+        validate: (_value, context) =>
+          new Promise<ValidationRuleResult>((_resolve, reject) => {
+            context.signal.addEventListener("abort", () => reject(new Error("aborted")), {
+              once: true,
+            })
+          }),
+      },
+    ])
+
+    const validation = validator.validateField("name", baseValues)
+    await Promise.resolve()
+    validator.destroy()
+
+    await expect(validation).resolves.toEqual({
+      valid: false,
+      cancelled: true,
+      values: baseValues,
+      errors: [],
+    })
+    expect(validator.getFieldErrors("name")).toEqual([])
+  })
+
+  it("destroy 后旧运行完成也不会回写错误", async () => {
+    const result = deferred<ValidationRuleResult>()
+    const validator = createValidator<TestForm>()
+    validator.setFieldRules("name", [{ validate: () => result.promise }])
+
+    const validation = validator.validateField("name", baseValues)
+    await Promise.resolve()
+    validator.destroy()
+    result.resolve({ valid: false, issues: [{ message: "过期错误" }] })
+
+    await expect(validation).resolves.toEqual({
+      valid: false,
+      cancelled: true,
+      values: baseValues,
+      errors: [],
+    })
+    expect(validator.getFieldErrors("name")).toEqual([])
+  })
+
+  it("失败规则聚合信息，bail 停止后续规则", async () => {
+    const validator = createValidator<TestForm>()
+    validator.setFieldRules("name", [
+      failingRule("第一个错误"),
+      {
+        validate: () => ({
+          valid: false,
+          issues: [{ message: "必填错误" }],
+          bail: true,
+        }),
+      },
+      failingRule("不应出现"),
+    ])
+
+    await expect(validator.validateField("name", baseValues)).resolves.toEqual({
+      valid: false,
+      values: baseValues,
+      errors: [
+        {
+          scope: "field",
+          name: "name",
+          issues: [{ message: "第一个错误" }, { message: "必填错误" }],
+        },
+      ],
+    })
+  })
+
+  it("validate 顺序校验全部已配置字段", async () => {
+    const validator = createValidator<TestForm>()
+    validator.setFieldRules("name", [failingRule("姓名错误")])
+    validator.setFieldRules("email", [
+      { validate: () => ({ valid: false, issues: [{ message: "邮箱错误" }] }) },
+    ])
+
+    await expect(validator.validate(baseValues)).resolves.toEqual({
+      valid: false,
+      values: baseValues,
+      errors: [
+        { scope: "field", name: "name", issues: [{ message: "姓名错误" }] },
+        { scope: "field", name: "email", issues: [{ message: "邮箱错误" }] },
+      ],
     })
   })
 })
 
-// 属性测试：验证 Validator 错误 signal 的 setFieldError/getFieldError 往返一致性与 reset 清空
 describe("Validator 错误 signal 属性测试", () => {
-  // Feature: signal-map-abstraction, Property 11: Validator 错误 signal 往返一致性
-  // **Validates: Requirements 3.4, 3.5, 3.6, 4.1, 4.3, 4.4**
-  it("Property 11: setFieldError 后 getFieldError 返回相等值，reset 后返回空数组或 undefined", () => {
+  it("Property 11: setFieldErrors 后 getFieldErrors 返回相等值，clearErrors 后返回空数组", () => {
     fc.assert(
       fc.property(
         fc.string({ minLength: 1 }),
         fc.array(fc.string({ minLength: 1 }), { minLength: 1, maxLength: 5 }),
         (path, errors) => {
-          const v = createValidator<Record<string, any>>()
+          const validator = createValidator<Record<string, unknown>>()
+          validator.setFieldErrors(path, errors)
+          expect(validator.getFieldErrors(path)).toEqual(errors)
 
-          // setFieldError 后 getFieldError 应返回相等值
-          v.setFieldError(path, errors)
-          expect(v.getFieldError(path)).toEqual(errors)
-
-          // reset 后，未注册 rules 的字段错误被清除
-          v.reset()
-          expect(v.getFieldError(path)).toBeUndefined()
+          validator.clearErrors()
+          expect(validator.getFieldErrors(path)).toEqual([])
         }
       ),
       { numRuns: 100 }
     )
-  })
-})
-
-// Feature: pure-signal-core-refactor, Property 9: Validator 错误往返一致性与 effect 追踪
-// 注意：Validator 已重构为使用 ReactiveMap 管理错误。
-// 本属性测试聚焦于 setFieldError/getFieldError 往返一致性、reset 清空。
-// **Validates: Requirements 6.2, 6.3, 6.4**
-// 属性测试：验证多路径下 setFieldError/getFieldError 往返一致性与 reset 清空所有错误
-describe("Validator 错误往返一致性（P9）", () => {
-  it("Property 9: 对于任意路径和错误数组，setFieldError 后 getFieldError 返回相同值，reset 清空所有错误", () => {
-    fc.assert(
-      fc.property(
-        fc.string({ minLength: 1 }),
-        fc.string({ minLength: 1 }),
-        fc.array(fc.string({ minLength: 1 }), { minLength: 1, maxLength: 5 }),
-        fc.array(fc.string({ minLength: 1 }), { minLength: 1, maxLength: 5 }),
-        (pathA, pathB, errorsA, errorsB) => {
-          const v = createValidator<Record<string, any>>()
-
-          // 设置字段 A 的错误
-          v.setFieldError(pathA, errorsA)
-          expect(v.getFieldError(pathA)).toEqual(errorsA)
-
-          // 设置字段 B 的错误，不影响字段 A（当路径不同时）
-          v.setFieldError(pathB, errorsB)
-          expect(v.getFieldError(pathB)).toEqual(errorsB)
-
-          // 如果路径不同，字段 A 的错误应保持不变
-          if (pathA !== pathB) {
-            expect(v.getFieldError(pathA)).toEqual(errorsA)
-          }
-
-          // reset 清空所有字段的错误（未注册 rules 的字段被删除）
-          v.reset()
-          expect(v.getFieldError(pathA)).toBeUndefined()
-          expect(v.getFieldError(pathB)).toBeUndefined()
-        }
-      ),
-      { numRuns: 100 }
-    )
-  })
-})
-
-// 验证 getFieldError 在无错误时返回 undefined
-describe("Validator getFieldError 无错误", () => {
-  it("getFieldError 无错误时返回 undefined", () => {
-    const v = createValidator<TestForm>()
-    expect(v.getFieldError("name")).toBeUndefined()
   })
 })

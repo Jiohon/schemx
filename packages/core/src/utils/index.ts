@@ -15,7 +15,15 @@ export {
 
 export { normalizeSchemas } from "./normalize"
 
-export { getByPath, setByPath, collectObjectPathsByLeaf, normalizeNamePath } from "./path"
+export {
+  getByPath,
+  setByPath,
+  collectObjectPathsByLeaf,
+  normalizeNamePath,
+  toNamePathSegments,
+  createFieldKey,
+  type FieldKey,
+} from "./path"
 
 export { withLock, waitAll } from "./async"
 

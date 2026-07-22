@@ -57,4 +57,69 @@ describe("createField", () => {
 
     void assertTypeOnly
   })
+
+  it("暴露复数错误和替换规则 API", async () => {
+    const form = createForm<TypedForm>({
+      initialValues: {
+        name: "",
+        age: 20,
+        user: { city: "Beijing" },
+      },
+      schemas: [{ name: "name", label: "姓名", componentType: "input" }],
+    })
+    const field = createField(form, "name")
+
+    field.setErrors(["错误"])
+    expect(field.getErrors()).toEqual(["错误"])
+    field.clearErrors()
+    expect(field.getErrors()).toEqual([])
+
+    field.setRules({
+      validate: () => ({
+        valid: false,
+        issues: [{ message: "规则错误" }],
+      }),
+    })
+    expect(await field.validate()).toEqual({
+      valid: false,
+      values: { name: "", age: 20, user: { city: "Beijing" } },
+      errors: [{ scope: "field", name: "name", issues: [{ message: "规则错误" }] }],
+    })
+
+    field.removeRules()
+    expect(await field.validate()).toEqual({
+      valid: true,
+      values: { name: "", age: 20, user: { city: "Beijing" } },
+      errors: [],
+    })
+    form.destroy()
+  })
+
+  it("初始化后立即 removeRules 应取消待执行的 schema 规则注册", async () => {
+    const form = createForm<TypedForm>({
+      initialValues: {
+        name: "",
+        age: 20,
+        user: { city: "Beijing" },
+      },
+      schemas: [
+        {
+          name: "name",
+          label: "姓名",
+          componentType: "input",
+          required: true,
+        },
+      ],
+    })
+    const field = createField(form, "name")
+
+    field.removeRules()
+
+    await expect(field.validate()).resolves.toEqual({
+      valid: true,
+      values: { name: "", age: 20, user: { city: "Beijing" } },
+      errors: [],
+    })
+    form.destroy()
+  })
 })

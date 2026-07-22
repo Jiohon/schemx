@@ -52,6 +52,8 @@ function createDependenciesDescriptor(
       dependencies: {
         triggerFields: ["country"],
         visible: (values) => values.country === "CN",
+        required: (values) => values.country === "CN",
+        showRequiredMark: (values) => values.country === "US",
       },
     },
   } as FieldDescriptor<{ country?: string }>
@@ -324,14 +326,25 @@ describe("createDependenciesEffect 写入 runtimeState (US2)", () => {
 
     await scheduler.whenIdle()
 
-    expect(runtimeState.dynamicOverrides.value).toEqual({ visible: false })
+    expect(runtimeState.dynamicOverrides.value).toEqual({
+      visible: false,
+      required: false,
+      showRequiredMark: true,
+    })
     expect(runtimeState.effectiveSchema.value.visible).toBe(false)
+    expect(runtimeState.effectiveSchema.value.required).toBe(false)
 
     values.value = { country: "CN" }
     await scheduler.whenIdle()
 
-    expect(runtimeState.dynamicOverrides.value).toEqual({ visible: true })
+    expect(runtimeState.dynamicOverrides.value).toEqual({
+      visible: true,
+      required: true,
+      showRequiredMark: false,
+    })
     expect(runtimeState.effectiveSchema.value.visible).toBe(true)
+    expect(runtimeState.effectiveSchema.value.required).toBe(true)
+    expect(runtimeState.effectiveSchema.value.showRequiredMark).toBe(false)
   })
 
   it("旧 dependencies 异步结果晚于新结果完成时不应覆盖最新 dynamicOverrides", async () => {
@@ -388,8 +401,13 @@ describe("createDependenciesEffect 写入 runtimeState (US2)", () => {
     slowVisible.resolve(false)
     await scheduler.whenIdle()
 
-    expect(runtimeState.dynamicOverrides.value).toEqual({ visible: true })
+    expect(runtimeState.dynamicOverrides.value).toEqual({
+      visible: true,
+      required: true,
+      showRequiredMark: false,
+    })
     expect(runtimeState.effectiveSchema.value.visible).toBe(true)
+    expect(runtimeState.effectiveSchema.value.required).toBe(true)
   })
 })
 

@@ -42,17 +42,20 @@ describe("getSchemaKind", () => {
     expect(getSchemaKind(dependencyField)).toBe("dependency")
   })
 
-  it("识别旧容器语法和多结构歧义", () => {
-    expect(getSchemaKind({ ...groupField, componentType: "group" })).toBe("legacy-group")
-    expect(getSchemaKind({ ...dependencyField, componentType: "dependency" })).toBe(
-      "legacy-dependency"
+  it("children 优先于其他结构属性识别为 Group", () => {
+    expect(getSchemaKind({ ...baseField, children: [] })).toBe("group")
+    expect(getSchemaKind({ ...dependencyField, label: "依赖分组", children: [] })).toBe(
+      "group"
     )
-    expect(getSchemaKind({ ...baseField, children: [] })).toBe("ambiguous")
   })
 
-  it("无法识别无结构标记的值", () => {
-    expect(getSchemaKind({ label: "未知" })).toBe("unknown")
-    expect(getSchemaKind(null)).toBe("unknown")
+  it("无容器结构属性时识别为普通字段", () => {
+    expect(getSchemaKind({ label: "未知" })).toBe("field")
+  })
+
+  it("to 或 renderer 任一存在时识别为 Dependency", () => {
+    expect(getSchemaKind({ to: ["username"] })).toBe("dependency")
+    expect(getSchemaKind({ renderer: () => [] })).toBe("dependency")
   })
 })
 

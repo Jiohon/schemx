@@ -8,6 +8,7 @@
  * @module core/compiler/createCompile
  */
 
+import { isResolvedDefaultConfig, resolveDefaultConfig } from "../defaultConfig"
 import { createDescriptor } from "../descriptor"
 import { normalizeSchemas } from "../utils"
 
@@ -15,7 +16,7 @@ import { type Compile, type CompileCache, type CompileOptions } from "./types"
 
 import type { FormDescriptor } from "../descriptor"
 import type { SchemxContext } from "../schemxContext"
-import type { SchemxInstance, Values } from "../types"
+import type { SchemxDefaultProps, SchemxInstance, Values } from "../types"
 import type { SchemxField } from "../types/schema"
 
 /**
@@ -40,10 +41,18 @@ function createCompileCache<TValues extends Values = Values>(): CompileCache<TVa
  * @returns schema compiler 门面，提供 toDescriptors、invalidate 等方法。
  */
 export function createCompile<TValues extends Values = Values>(
-  options: Partial<CompileOptions<TValues>> = {}
+  options: Partial<Omit<CompileOptions<TValues>, "defaultProps">> & {
+    defaultProps?: SchemxDefaultProps
+  } = {}
 ): Compile<TValues> {
+  const defaultProps = options.defaultProps ?? {}
   const compileOptions: CompileOptions<TValues> = {
-    defaultProps: options.defaultProps ?? {},
+    // createForm 传入的是与 context 共享的已解析对象，必须保留其引用；独立调用
+    // createCompile 时才在此补齐内置默认值。
+    defaultProps: isResolvedDefaultConfig(defaultProps)
+      ? defaultProps
+      : resolveDefaultConfig(defaultProps),
+    defaultRendererType: options.defaultRendererType,
     formInstance: options.formInstance ?? ({} as SchemxInstance<TValues>),
   }
   const compileCache = createCompileCache<TValues>()
@@ -81,7 +90,10 @@ export function createCompile<TValues extends Values = Values>(
   ): FormDescriptor<TValues>[] {
     const descriptors: FormDescriptor<TValues>[] = []
 
-    const normalized = normalizeSchemas([...schemas])
+    const normalized = normalizeSchemas<TValues>(
+      schemas,
+      compileOptions.defaultRendererType
+    )
 
     for (let i = 0; i < normalized.length; i++) {
       const schema = normalized[i]

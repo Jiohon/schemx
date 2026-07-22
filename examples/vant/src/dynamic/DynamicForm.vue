@@ -131,10 +131,15 @@
 
                 return cityMap[values.province as string] ?? []
               },
+              formatter: (data) => {
+                console.log(" > ~ data:", data)
+
+                return data
+              },
               dependsOn: ["province"],
-              shouldFetch: (values) => !!values.province,
+              // shouldFetch: (values) => !!values.province,
               resetOnDepsChange: true,
-              immediate: false,
+              immediate: true,
             },
           },
         },

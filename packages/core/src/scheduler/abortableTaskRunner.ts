@@ -23,7 +23,7 @@ export interface AbortableTaskRunner<TValue = void> {
    * 如果上次任务尚未完成，会自动中止上次任务再启动新任务。
    * 只有最近一次 run() 的结果才会触发回调。
    *
-   * @returns 任务返回值，被中止或 scope 已销毁时返回 undefined
+   * @returns 任务结果；scope 已销毁或任务以错误结束且未启用 `throwOnError` 时返回 `undefined`。
    */
   run(): Promise<TValue | undefined>
 
@@ -162,8 +162,8 @@ export function createAbortableTaskRunner<TValue = void>(
   /**
    * 执行本次任务并根据是否过期决定是否触发回调。
    *
-   * 任务完成后先判断是否过期：如果已过期则不触发 onSuccess/onError/onSettled，
-   * 只返回原始值（用于最终 run() 的 Promise 结果）；否则触发相应回调。
+   * 任务完成后先判断是否过期：如果已过期则不触发 onSuccess/onError/onSettled；
+   * 成功的过期任务仍返回其原始值，失败的过期任务按 `throwOnError` 决定是否抛出。
    */
   const runCurrentTask = async (
     currentVersion: number,

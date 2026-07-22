@@ -6,6 +6,8 @@
  * @module core/field/registry
  */
 
+import { createFieldKey } from "../utils/path"
+
 import type { FieldRuntimeNode } from "../node"
 import type { NamePath, Values } from "../types/form"
 
@@ -45,7 +47,7 @@ class RuntimeFieldRegistry<
    * @param entry - 字段索引条目，包含 name 和 node。
    */
   register(entry: FieldRegistryEntry<TValues>): void {
-    const key = entry.name
+    const key = createFieldKey(entry.name)
     this.fields.set(key, {
       name: entry.name,
       node: entry.node,
@@ -62,7 +64,7 @@ class RuntimeFieldRegistry<
    * @param node - 可选。做 node 一致性校验，防止误释放。
    */
   unregister(name: TName, node?: FieldRuntimeNode<TValues>): void {
-    const key = name
+    const key = createFieldKey(name)
     const current = this.fields.get(key)
 
     if (node && current?.node !== node) {
@@ -79,7 +81,7 @@ class RuntimeFieldRegistry<
    * @returns 字段索引条目，未找到时返回 undefined。
    */
   get(name: TName): FieldRegistryEntry<TValues> | undefined {
-    const key = name
+    const key = createFieldKey(name)
 
     return this.fields.get(key)
   }

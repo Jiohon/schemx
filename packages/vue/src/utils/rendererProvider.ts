@@ -10,7 +10,7 @@
 
 import {
   createRendererRegistry,
-  type RendererRegistryType,
+  type RendererRegistry,
   type SchemxRendererKey,
 } from "@schemx/core"
 
@@ -27,5 +27,5 @@ import {
  * // props 传入的 rendererRegistry 优先级更高
  * ```
  */
-export const rendererRegistry: RendererRegistryType<SchemxRendererKey> =
+export const rendererRegistry: RendererRegistry<SchemxRendererKey> =
   createRendererRegistry<SchemxRendererKey>("input")

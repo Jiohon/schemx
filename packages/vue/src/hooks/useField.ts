@@ -60,17 +60,17 @@ function createFieldHook<TValues extends Values = Values>(
   const field = createField<TValues>(form, name)
 
   const fieldValue = shallowRef(field.getValue())
-  const fieldError = shallowRef(field.getError())
+  const fieldErrors = shallowRef(field.getErrors())
   const fieldPending = shallowRef(field.isPending())
 
   const dispose = field.effect(() => {
     fieldValue.value = field.getValue()
-    fieldError.value = field.getError()
+    fieldErrors.value = field.getErrors()
 
     fieldPending.value = field.isPending()
   })
 
-  const error = computed(() => fieldError.value)
+  const errors = computed(() => fieldErrors.value)
 
   const dirty = computed(() => {
     void fieldValue.value
@@ -83,7 +83,7 @@ function createFieldHook<TValues extends Values = Values>(
   const result = {
     name,
     value: fieldValue,
-    error,
+    errors,
     dirty,
     pending,
     ...field,
@@ -110,7 +110,7 @@ function createFieldHook<TValues extends Values = Values>(
  * field.getValue()
  *
  * // 响应式错误
- * field.error.value   // string[] | undefined
+ * field.errors.value // readonly string[]
  *
  * // 响应式脏状态
  * field.dirty.value   // boolean

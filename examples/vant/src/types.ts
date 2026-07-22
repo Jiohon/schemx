@@ -28,6 +28,8 @@ export interface BasicFormValues {
   avatar?: any
   region?: string
   preferredCities?: string
+  frequentCampus?: string
+  affiliatedCampus?: string
 }
 
 /**

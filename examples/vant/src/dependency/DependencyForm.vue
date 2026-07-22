@@ -194,7 +194,6 @@
                   label: "预计日期",
                   componentType: "date",
                   required: true,
-                  rules: "required",
                 },
                 {
                   name: "deliveryMode",
@@ -227,7 +226,6 @@
                               { label: "未来科技城店", value: "future" },
                             ],
                           },
-                          rules: "required",
                         },
                         {
                           name: "pickupCode",
@@ -263,7 +261,6 @@
                         componentProps: {
                           options: cascaderOptions,
                         },
-                        rules: "required",
                       },
                     ]
                   },
@@ -314,7 +311,6 @@
                       { label: "专人跟进", value: "concierge" },
                     ],
                   },
-                  rules: "required",
                 },
                 {
                   to: ["expressLevel"],
@@ -338,14 +334,12 @@
                               { text: "22:00 前", value: "before_22" },
                             ],
                           },
-                          rules: "required",
                         },
                         {
                           name: "sameDayContact",
                           label: "紧急联系人",
                           componentType: "input",
                           required: true,
-                          rules: "required",
                         },
                       ]
                     }
@@ -414,7 +408,6 @@
                     { label: "企业采购", value: "enterprise" },
                   ],
                 },
-                rules: "required",
               },
               {
                 to: ["customCategory"],
@@ -427,7 +420,6 @@
                         componentType: "calendar",
                         required: true,
                         componentProps: { type: "range" },
-                        rules: "required",
                       },
                       {
                         name: "attendeeCount",
@@ -473,7 +465,6 @@
                               componentType: "upload",
                               required: true,
                               componentProps: { accept: ".pdf,.doc,.docx" },
-                              rules: "required",
                             },
                           ]
                         },
@@ -490,7 +481,6 @@
                       componentProps: {
                         options: cascaderOptions,
                       },
-                      rules: "required",
                     },
                     {
                       name: "giftMessage",
@@ -545,7 +535,6 @@
                 componentProps: {
                   accept: "image/*,.pdf",
                 },
-                rules: "required",
               },
               {
                 name: "invoiceAmount",
@@ -577,7 +566,6 @@
                     { label: "儿童趣味", value: "kids" },
                   ],
                 },
-                rules: "required",
               },
               {
                 to: ["giftWrapStyle"],
@@ -597,7 +585,6 @@
                           { text: "圣诞", value: "christmas" },
                         ],
                       },
-                      rules: "required",
                     },
                   ]
                 },
@@ -623,7 +610,6 @@
                 label: "售后联系人",
                 componentType: "input",
                 required: true,
-                rules: "required",
               },
             ],
           })

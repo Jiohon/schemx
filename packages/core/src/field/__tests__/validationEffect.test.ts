@@ -29,7 +29,7 @@ const createSchema = (
   visible: true,
   readonly: false,
   disabled: false,
-  rules: "required",
+  required: true,
   ...overrides,
 })
 
@@ -44,18 +44,21 @@ const createDescriptor = (schema = createSchema()): FieldDescriptor<TestValues> 
 const createFormConfigContext = () => {
   const scheduler = createScheduler()
   const instance = {
-    registerRules: vi.fn(),
-    unregisterRules: vi.fn(),
-    setFieldError: vi.fn(),
     validateField: vi.fn(),
+  }
+  const validation = {
+    syncField: vi.fn(),
+    removeField: vi.fn(),
   }
 
   return {
     context: {
       instance,
       scheduler,
+      validation,
     } as unknown as SchemxContext<TestValues>,
     instance,
+    validation,
     scheduler,
   }
 }
@@ -73,7 +76,7 @@ describe("createValidationEffect", () => {
         staticSchema: descriptor.staticSchema,
       },
     })
-    const { context, instance, scheduler } = createFormConfigContext()
+    const { context, validation: controller, scheduler } = createFormConfigContext()
 
     const validation = createValidationEffect({
       context,
@@ -87,11 +90,44 @@ describe("createValidationEffect", () => {
     expect(validation.registered.value).toBe(true)
     expect(validation).not.toHaveProperty("validating")
     expect(validation).not.toHaveProperty("validate")
-    expect(instance.registerRules).toHaveBeenCalledWith(
-      "field",
-      descriptor.staticSchema.rules,
-      "字段为必填项"
+    expect(controller.syncField).toHaveBeenCalledWith({
+      name: "field",
+      label: "字段",
+      required: true,
+      rules: [],
+    })
+  })
+
+  it("showRequiredMark=false 时仍应注册 required 校验", async () => {
+    const scope = createRuntimeScope()
+    const descriptor = createDescriptor(
+      createSchema({ required: true, showRequiredMark: false })
     )
+    const runtimeState = createFieldRuntimeState({
+      nodeId: 1,
+      key: descriptor.key,
+      descriptor: {
+        name: descriptor.staticSchema.name,
+        staticSchema: descriptor.staticSchema,
+      },
+    })
+    const { context, validation: controller, scheduler } = createFormConfigContext()
+
+    createValidationEffect({
+      context,
+      name: "field",
+      effectiveSchema: runtimeState.effectiveSchema,
+      scope,
+    })
+
+    await scheduler.flush()
+
+    expect(controller.syncField).toHaveBeenCalledWith({
+      name: "field",
+      label: "字段",
+      required: true,
+      rules: [],
+    })
   })
 })
 
@@ -108,7 +144,7 @@ describe("rule management", () => {
         staticSchema: descriptor.staticSchema,
       },
     })
-    const { context, instance, scheduler } = createFormConfigContext()
+    const { context, validation: controller, scheduler } = createFormConfigContext()
 
     createValidationEffect({
       context,
@@ -119,8 +155,7 @@ describe("rule management", () => {
 
     await scheduler.flush()
 
-    expect(instance.unregisterRules).toHaveBeenCalledWith("field")
-    expect(instance.setFieldError).toHaveBeenCalledWith("field", [])
+    expect(controller.removeField).toHaveBeenCalledWith("field")
   })
 
   it("应该在 readonly=true 时从 Validator 注销规则并清空错误", async () => {
@@ -134,7 +169,7 @@ describe("rule management", () => {
         staticSchema: descriptor.staticSchema,
       },
     })
-    const { context, instance, scheduler } = createFormConfigContext()
+    const { context, validation: controller, scheduler } = createFormConfigContext()
 
     createValidationEffect({
       context,
@@ -145,8 +180,7 @@ describe("rule management", () => {
 
     await scheduler.flush()
 
-    expect(instance.unregisterRules).toHaveBeenCalledWith("field")
-    expect(instance.setFieldError).toHaveBeenCalledWith("field", [])
+    expect(controller.removeField).toHaveBeenCalledWith("field")
   })
 
   it("应该在 disabled=true 时从 Validator 注销规则并清空错误", async () => {
@@ -160,7 +194,7 @@ describe("rule management", () => {
         staticSchema: descriptor.staticSchema,
       },
     })
-    const { context, instance, scheduler } = createFormConfigContext()
+    const { context, validation: controller, scheduler } = createFormConfigContext()
 
     createValidationEffect({
       context,
@@ -171,8 +205,7 @@ describe("rule management", () => {
 
     await scheduler.flush()
 
-    expect(instance.unregisterRules).toHaveBeenCalledWith("field")
-    expect(instance.setFieldError).toHaveBeenCalledWith("field", [])
+    expect(controller.removeField).toHaveBeenCalledWith("field")
   })
 
   it("字段呈现态在响应式 effect 中变化时不应同步写 Validator 造成循环", async () => {
@@ -187,7 +220,7 @@ describe("rule management", () => {
       },
     })
     const trigger = createSignal(0)
-    const { context, instance, scheduler } = createFormConfigContext()
+    const { context, validation: controller, scheduler } = createFormConfigContext()
 
     createValidationEffect({
       context,
@@ -217,7 +250,7 @@ describe("rule management", () => {
 
     await scheduler.flush()
 
-    expect(instance.unregisterRules).toHaveBeenCalledWith("field")
+    expect(controller.removeField).toHaveBeenCalledWith("field")
 
     dispose()
   })
@@ -246,18 +279,18 @@ function createTestSchemaForUS2(
 // validationEffect 从 effectiveSchema 读取 rules、visible/readonly/disabled 和 label 信息
 describe("validationEffect 读取 effectiveSchema (US2)", () => {
   it("effectiveSchema 应包含 rules 信息供 validation 读取", () => {
-    const schema = createTestSchemaForUS2({ rules: [{ required: true }] as any })
+    const schema = createTestSchemaForUS2({ required: true })
     const state = createFieldRuntimeState({
       nodeId: 1,
       key: "field-1",
       descriptor: { name: "email" as any, staticSchema: schema },
     })
 
-    expect(state.effectiveSchema.value.rules).toEqual([{ required: true }])
+    expect(state.effectiveSchema.value.required).toBe(true)
   })
 
   it("dynamicOverrides 更新 rules 后 effectiveSchema 应反映新 rules", () => {
-    const schema = createTestSchemaForUS2({ rules: [{ required: true }] as any })
+    const schema = createTestSchemaForUS2({ required: true })
     const state = createFieldRuntimeState({
       nodeId: 1,
       key: "field-1",

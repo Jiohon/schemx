@@ -8,15 +8,18 @@
  * @module components/FormItem
  */
 
+/* eslint-disable vue/one-component-per-file */
 import { computed, defineComponent, h, PropType, toRef } from "vue"
 import type { VNodeChild } from "vue"
 
 import classnames from "classnames"
 
+import type { TriggerConfig } from "@/utils"
+
 import {
   createFieldContext,
-  useFormConfigContext,
   useField,
+  useFormConfigContext,
   useFormContext,
   useStableRef,
 } from "../../hooks"
@@ -26,8 +29,6 @@ import {
   resolveSlot,
   shouldValidateOn,
 } from "../../utils"
-import type { TriggerConfig } from "@/utils"
-
 import FormGroup from "../FormGroup"
 
 import type {
@@ -109,7 +110,7 @@ const FieldFormItem = defineComponent({
 
       const hasRules = Array.isArray(rules) ? rules?.length > 0 : !!schema().rules
 
-      return isOperate && hasRules
+      return isOperate && (Boolean(schema().required) || hasRules)
     })
 
     /** 值变化处理，设置值后根据触发时机决定是否校验 */
@@ -153,12 +154,15 @@ const FieldFormItem = defineComponent({
     /**
      * 渲染 required 星号。
      *
-     * 当字段为必填且非详情展示/禁用/只读状态时，在 label 前显示红色星号标记。
+     * `showRequiredMark` 未设置时回退到 `required`；该展示开关不参与校验逻辑。
+     * 禁用或只读字段始终不显示星号。
      *
      * @returns 星号 VNode 或空片段
      */
     const renderRequired = (): VNodeChild => {
-      if (!schema().required || schema().disabled || schema().readonly) {
+      const showRequiredMark = schema().showRequiredMark ?? Boolean(schema().required)
+
+      if (!showRequiredMark || schema().disabled || schema().readonly) {
         return null
       }
 
@@ -246,15 +250,15 @@ const FieldFormItem = defineComponent({
       if (errorSlot) {
         return errorSlot({
           ...schema(),
-          errors: field.error.value,
+          errors: field.errors.value,
         })
       }
 
-      if (!Array.isArray(field.error.value) || field.error.value.length === 0) {
+      if (field.errors.value.length === 0) {
         return null
       }
 
-      return <div class="schemx-item__error">{field.error.value[0]}</div>
+      return <div class="schemx-item__error">{field.errors.value[0]}</div>
     }
 
     return (): VNodeChild => {

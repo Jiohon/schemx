@@ -64,6 +64,13 @@ export type SchemxViewFieldSchema<TValues extends Values = Values> = Distributiv
 > & {
   /** 运行时节点 key，形如 "field:name" */
   readonly key: string
+  /**
+   * 最终是否显示必填视觉标记。
+   *
+   * 该值已按动态配置、静态配置和有效 `required` 的顺序完成解析，
+   * 只供渲染层展示，不代表是否注册必填校验。
+   */
+  readonly showRequiredMark: boolean
   /** 调试元数据，开发环境用于追踪 schema 来源 */
   readonly debug?: Readonly<SchemxViewDebugMeta>
 }

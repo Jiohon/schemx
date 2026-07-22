@@ -10,6 +10,13 @@ describe("@schemx/vue 根入口", () => {
       createFormContext: expect.any(Function),
       useStableRef: expect.any(Function),
       useViewSchemas: expect.any(Function),
+      validationRuleRegistry: expect.any(Object),
+      createValidationRuleRegistry: expect.any(Function),
+      ValidationRuleRegistry: expect.any(Function),
+      RendererRegistry: expect.any(Function),
     })
+
+    expect(["validator", "Registry"].join("") in vuePackage).toBe(false)
+    expect(["create", "Validators", "Registry"].join("") in vuePackage).toBe(false)
   })
 })

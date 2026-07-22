@@ -14,6 +14,7 @@ export type {
   SchemxInstance,
   SchemxFormApi,
   SchemxDefaultProps,
+  ResolvedSchemxDefaultProps,
 } from "./form"
 
 export type {
@@ -24,10 +25,6 @@ export type {
   ValidationRuleName,
   FieldRule,
   FieldRules,
-  SchemxRuleDefinition,
-  SchemxRuleDefinitionKey,
-  SchemxRuleBuiltinKey,
-  SchemxRules,
 } from "./rule"
 
 export type { SchemxRendererKey, SchemxRendererDefinition } from "./renderer"

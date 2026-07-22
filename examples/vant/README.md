@@ -46,7 +46,7 @@ pnpm --filter vant-demo dev
       name: "username",
       label: "用户名",
       componentType: "input",
-      rules: "required",
+      required: true,
       placeholder: "请输入用户名",
     },
     {

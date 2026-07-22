@@ -222,10 +222,7 @@ describe("createReconciler", () => {
         getFieldValue: vi.fn(),
         setFieldValue: vi.fn(),
         setInitialValues: vi.fn(),
-        registerRules: vi.fn(),
-        unregisterRules: vi.fn(),
-        setFieldError: vi.fn(),
-        validateField: vi.fn().mockResolvedValue({ ok: true, values: {} }),
+        validateField: vi.fn().mockResolvedValue({ valid: true, values: {}, errors: [] }),
       },
       formApi: {
         getValue: vi.fn(),
@@ -245,6 +242,10 @@ describe("createReconciler", () => {
       scheduler: {
         schedule: vi.fn(),
         dispose: vi.fn(),
+      },
+      validation: {
+        syncField: vi.fn(),
+        removeField: vi.fn(),
       },
       lifecycleBus: {
         emitBeforeMount: vi.fn(),

@@ -46,6 +46,7 @@
 
   import Schemx from "@schemx/vant"
 
+  import { createCachedRequest } from "./createCachedRequest"
   import type { BasicFormValues } from "../types"
   import type { SchemxField, SchemxInstance } from "@schemx/vant"
 
@@ -80,6 +81,20 @@
     globalDisibled.value = !globalDisibled.value
     // do something
   }
+
+  const requestCampusOptions = () =>
+    new Promise<{ text: string; value: string }[]>((resolve) => {
+      console.log("[模拟接口] 正在请求校区选项")
+      setTimeout(() => {
+        resolve([
+          { text: "高新校区", value: "high-tech" },
+          { text: "临江校区", value: "riverside" },
+          { text: "大学城校区", value: "university-town" },
+        ])
+      }, 500)
+    })
+
+  const getCampusOptions = createCachedRequest(requestCampusOptions)
 
   /**
    * 表单 Schema 配置
@@ -126,6 +141,13 @@
             maskFormatter: (value) => value.replace(/^(\d{3})\d{4}(\d+)$/, "$1****$2"),
             formatter: (value) => value.replace(/^(\d{3})(\d{4})(\d+)$/, "$1 $2 $3"),
           },
+          required: true,
+          rules: [
+            // {
+            //   pattern: /^(?:(?:\+|00)86)?1[3-9]\d{9}$/,
+            //   message: "请输入正确的手机号码",
+            // },
+          ],
         },
         {
           name: "bio",
@@ -202,6 +224,28 @@
           { text: "深圳", value: "shenzhen" },
           { text: "杭州", value: "hangzhou" },
         ],
+      },
+    },
+    {
+      name: "frequentCampus",
+      label: "常用校区",
+      componentType: "picker",
+      componentProps: {
+        dict: {
+          api: getCampusOptions,
+          formatter: (data) => data,
+        },
+      },
+    },
+    {
+      name: "affiliatedCampus",
+      label: "所属校区",
+      componentType: "picker",
+      componentProps: {
+        dict: {
+          api: getCampusOptions,
+          formatter: (data) => data,
+        },
       },
     },
     {

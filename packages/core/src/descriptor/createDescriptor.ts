@@ -7,7 +7,6 @@
  * @module core/descriptor/createDescriptor
  */
 
-import { defaultConfig } from "../defaultConfig"
 import { isDependencySchema, isGroupSchema, NormalizedTrigger } from "../utils"
 
 import type { SchemxContext } from "../schemxContext"
@@ -27,10 +26,10 @@ import type {
   SchemxContainerDependencies,
   SchemxDependencies,
   SchemxResolvedBaseField,
-  SchemxRules,
   ValidationTrigger,
   Values,
 } from "../types"
+import type { FieldRules } from "../types/rule"
 import type {
   SchemxBaseField,
   SchemxDependencyField,
@@ -194,9 +193,9 @@ function buildNormalizedContainerState<TValues extends Values>(
   context: DescriptorContext<TValues>
 ): ContainerStaticState {
   return {
-    visible: schema.visible ?? context.defaultProps.visible ?? defaultConfig.visible,
-    readonly: schema.readonly ?? context.defaultProps.readonly ?? defaultConfig.readonly,
-    disabled: schema.disabled ?? context.defaultProps.disabled ?? defaultConfig.disabled,
+    visible: schema.visible ?? context.defaultProps.visible,
+    readonly: schema.readonly ?? context.defaultProps.readonly,
+    disabled: schema.disabled ?? context.defaultProps.disabled,
   }
 }
 
@@ -219,7 +218,7 @@ function createContainerDynamicProps<TValues extends Values>(
 /**
  * 根据 componentType 和 placeholder 配置生成字段占位提示文本。
  *
- * 仅当 schema 未显式指定 placeholder 时自动生成；输入型组件用"请输入"，
+ * 仅当 schema 与 `componentProps` 都未显式指定 placeholder 时自动生成；输入型组件用"请输入"，
  * 选择型组件用"请选择"，label 缺失时 fallback 到字段名。
  *
  * @param schema - 字段 schema。
@@ -242,7 +241,7 @@ function getPlaceholder<TValues extends Values>(
 /**
  * 合并默认值与 schema 配置，生成规范化字段 schema。
  *
- * 合并优先级（高→低）：字段自身配置 > 表单级 defaultProps > defaultConfig。
+ * 合并优先级（高→低）：字段自身配置 > 已解析的表单级 defaultProps。
  * 只读态会强制 contentAlign 为 right、labelPosition 为 left。
  *
  * @param schema - 原始字段 schema。
@@ -271,32 +270,28 @@ function buildNormalizedFieldSchema<TValues extends Values>(
     disabled,
     required,
     rules,
+    showRequiredMark,
     validationTrigger,
     dependencies: _dependencies,
     ...rest
   } = schema
 
-  // 逐项合并优先级链：字段配置 ?? defaultProps ?? defaultConfig
-  const mergedVisible = visible ?? defaultProps.visible ?? defaultConfig.visible
-  const mergedReadonly = readonly ?? defaultProps.readonly ?? defaultConfig.readonly
-  const mergedDisabled = disabled ?? defaultProps.disabled ?? defaultConfig.disabled
-  const mergedContentAlign =
-    contentAlign ?? defaultProps.contentAlign ?? defaultConfig.contentAlign
+  // defaultProps 已在 createForm 装配阶段合并内置、全局与 Form 实例配置。
+  const mergedVisible = visible ?? defaultProps.visible
+  const mergedReadonly = readonly ?? defaultProps.readonly
+  const mergedDisabled = disabled ?? defaultProps.disabled
+  const mergedContentAlign = contentAlign ?? defaultProps.contentAlign
   const mergedAlign = mergedReadonly ? "right" : (cp?.align ?? mergedContentAlign)
 
-  const mergedValidationTrigger =
-    validationTrigger ?? defaultProps.validationTrigger ?? defaultConfig.validationTrigger
+  const mergedValidationTrigger = validationTrigger ?? defaultProps.validationTrigger
 
   const mergedPlaceholder = getPlaceholder(schema)
-  // rules 统一为数组并过滤空值，用于推导 required 默认值
-  const rulesArray = (Array.isArray(rules) ? rules : [rules]).filter(Boolean)
-  // 显式 required 优先，否则有 rules 时默认 true
-  const mergedRequired = Boolean(
-    required ??
-    (rulesArray.length > 0 ? true : (defaultProps.required ?? defaultConfig.required))
-  )
+  const mergedRequired = required ?? defaultProps.required
 
   const mergedReadonlyPlaceholder = cp?.readonlyPlaceholder ?? readonlyPlaceholder
+
+  // showRequiredMark 未设置时为 undefined，运行时由 effectiveSchema 回退到 Boolean(required)。
+  const mergedShowRequiredMark = showRequiredMark ?? defaultProps.showRequiredMark
 
   const normalizedSchema = {
     ...(rest ?? {}),
@@ -308,14 +303,14 @@ function buildNormalizedFieldSchema<TValues extends Values>(
     disabled: mergedDisabled,
     required: mergedRequired,
     placeholder: mergedPlaceholder,
+    showRequiredMark: mergedShowRequiredMark,
 
-    labelIcon: labelIcon ?? defaultProps.labelIcon ?? defaultConfig.labelIcon,
-    labelAlign: labelAlign ?? defaultProps.labelAlign ?? defaultConfig.labelAlign,
-    labelPosition:
-      labelPosition ?? defaultProps.labelPosition ?? defaultConfig.labelPosition,
-    labelWidth: labelWidth ?? defaultProps.labelWidth ?? defaultConfig.labelWidth,
+    labelIcon: labelIcon ?? defaultProps.labelIcon,
+    labelAlign: labelAlign ?? defaultProps.labelAlign,
+    labelPosition: labelPosition ?? defaultProps.labelPosition,
+    labelWidth: labelWidth ?? defaultProps.labelWidth,
     contentAlign: mergedContentAlign,
-    colon: colon ?? defaultProps.colon ?? defaultConfig.colon,
+    colon: colon ?? defaultProps.colon,
 
     rules,
     validationTrigger: normalizeTrigger(mergedValidationTrigger),
@@ -352,9 +347,12 @@ function buildNormalizedFieldSchema<TValues extends Values>(
  * @param dependencies - 字段 dependencies 配置，缺省时返回 null。
  * @returns 动态属性描述，或 null 表示字段无动态属性。
  */
-function createFieldDynamicProps<TValues extends Values>(
-  dependencies: SchemxDependencies<TValues> | undefined
-): FieldDynamicPropsDescriptor<TValues> | null {
+function createFieldDynamicProps<
+  TValues extends Values,
+  TName extends NamePath<TValues> = NamePath<TValues>,
+>(
+  dependencies: SchemxDependencies<TValues, TName> | undefined
+): FieldDynamicPropsDescriptor<TValues, TName> | null {
   if (!dependencies) {
     return null
   }
@@ -369,8 +367,8 @@ function createFieldDynamicProps<TValues extends Values>(
 /**
  * 从规范化 schema 中提取校验描述。
  *
- * 仅提取 rules 与 trigger，不在此处做校验规则的运行时编译——rules 是纯声明式数据，
- * 由后续的 Validation 领域层按需消费。
+ * 提取 `required`、rules 与 trigger，不在此处做校验规则的运行时编译——这些配置是纯声明式
+ * 数据，由后续的 Validation 领域层按需消费。
  *
  * @param schema - 规范化字段 schema。
  * @returns 校验描述，或 null 表示字段无校验资源。
@@ -380,33 +378,34 @@ function createFieldValidation<TValues extends Values>(
 ): FieldValidationDescriptor<TValues> | null {
   const rules = normalizeValidationRules(schema.rules)
 
-  if (!rules) {
+  if (!schema.required && !rules) {
     return null
   }
 
   return {
     trigger: schema.validationTrigger,
+    required: schema.required,
     rules,
   }
 }
 
 /**
- * 规范化校验规则：过滤空值，空数组视为无规则。
+ * 规范化校验规则：空数组视为无规则，其他规则保持原声明。
  *
- * 规则本身不在此处做深层校验或转换，仅做 null/空数组到 null 的归一化。
+ * 规则本身不在此处做深层校验或转换，仅做 nullish/空数组到 `undefined` 的归一化。
  *
  * @param rules - 原始 rules 配置。
- * @returns 规范化后的 rules，或 null 表示无规则。
+ * @returns 规范化后的 rules，或 `undefined` 表示无规则。
  */
-function normalizeValidationRules(
-  rules: SchemxRules | readonly SchemxRules[] | undefined
-): SchemxRules | readonly SchemxRules[] | null {
+function normalizeValidationRules<TValues extends Values>(
+  rules: FieldRules<TValues, NamePath<TValues>> | undefined
+): FieldRules<TValues, NamePath<TValues>> | undefined {
   if (rules == null) {
-    return null
+    return undefined
   }
 
   if (Array.isArray(rules)) {
-    return rules.length > 0 ? rules : null
+    return rules.length > 0 ? rules : undefined
   }
 
   return rules
