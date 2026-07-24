@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 
-import { printSection } from "../lib/terminal.mjs"
+import { createTerminalSession } from "../lib/terminal-feedback/index.mjs"
 
 const rootDir = resolve(import.meta.dirname, "../..")
 
@@ -17,6 +17,7 @@ function readText(path) {
   } catch (error) {
     if (error?.code === "ENOENT") {
       failures.push(`${path}: 文件不存在`)
+
       return ""
     }
 
@@ -85,8 +86,10 @@ const standaloneForbiddenRules = [
 
 // 聚合所有约束违规项，避免修复一次后才看到下一项。
 const failures = []
+const session = createTerminalSession()
 
-printSection("检查包配置")
+session.begin({ title: "Schemx" })
+session.section({ title: "检查包配置" })
 
 // 内部包既要声明 peerDependency，也要保留本地开发依赖。
 for (const rule of packagePeerRules) {
@@ -157,11 +160,13 @@ for (const rule of standaloneForbiddenRules) {
 }
 
 if (failures.length > 0) {
-  console.error("包配置检查失败：")
+  session.notice({ level: "error", message: "包配置检查失败：" })
   for (const failure of failures) {
-    console.error(`- ${failure}`)
+    session.notice({ level: "error", message: `  ${failure}` })
   }
+
   process.exit(1)
 }
 
-console.log("包配置检查通过。")
+session.notice({ level: "success", message: "包配置检查通过" })
+session.finish()

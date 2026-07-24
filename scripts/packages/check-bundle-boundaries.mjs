@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { printSection } from "../lib/terminal.mjs"
+import { createTerminalSession } from "../lib/terminal-feedback/index.mjs"
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "../..")
 
@@ -119,8 +119,10 @@ function isUnavailablePlaceholder(source) {
 
 // 先收集全部违规项，再一次性报告，方便修复多个包边界问题。
 const failures = []
+const session = createTerminalSession()
 
-printSection("检查包产物边界")
+session.begin({ title: "Schemx" })
+session.section({ title: "检查包产物边界" })
 
 // 检查 JavaScript 产物是否保留预期的 external import。
 for (const check of checks) {
@@ -174,11 +176,13 @@ for (const check of declarationChecks) {
 }
 
 if (failures.length > 0) {
-  console.error("包产物未保留依赖式 external 边界：")
+  session.notice({ level: "error", message: "包产物未保留依赖式 external 边界：" })
   for (const failure of failures) {
-    console.error(`- ${failure}`)
+    session.notice({ level: "error", message: `  ${failure}` })
   }
+
   process.exit(1)
 }
 
-console.log("包产物边界检查通过。")
+session.notice({ level: "success", message: "包产物边界检查通过" })
+session.finish()

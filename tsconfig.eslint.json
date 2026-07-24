@@ -26,7 +26,8 @@
     "plugins/*/src/**/*.tsx",
     "examples/*/src/**/*.ts",
     "examples/*/src/**/*.tsx",
-    "examples/*/src/**/*.vue"
+    "examples/*/src/**/*.vue",
+    "scripts/**/*.mjs"
   ],
   "exclude": ["node_modules", "dist", "build", "**/*.d.ts"]
 }

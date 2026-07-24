@@ -14,7 +14,6 @@ if [[ -z "$pkg" ]]; then
   die "缺少要发布的包名。"
 fi
 
-info "发布 @schemx/$pkg"
 release_kv "registry" "$NPM_REGISTRY" 10
 if [[ -n "$tag" ]]; then
   release_kv "tag" "$tag" 10
@@ -28,8 +27,8 @@ MESSAGE
 
 # prerelease 显式写入 dist-tag；latest 则沿用 npm 默认标签。
 if [[ -n "$tag" ]]; then
-  pnpm --dir "$(package_path "$pkg")" publish --access public --registry "$NPM_REGISTRY" --tag "$tag" --no-git-checks
+  release_task "发布 @schemx/$pkg" pnpm --dir "$(package_path "$pkg")" publish --access public --registry "$NPM_REGISTRY" --tag "$tag" --no-git-checks
   exit 0
 fi
 
-pnpm --dir "$(package_path "$pkg")" publish --access public --registry "$NPM_REGISTRY"
+release_task "发布 @schemx/$pkg" pnpm --dir "$(package_path "$pkg")" publish --access public --registry "$NPM_REGISTRY"

@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import { writeFileSync } from "node:fs"
+
 import {
   cancelSelection,
   isPromptCancelled,
@@ -7,7 +9,9 @@ import {
   promptSelect,
   promptText,
 } from "./lib/prompts.mjs"
-import { writeFileSync } from "node:fs"
+import { createTerminalSession } from "./lib/terminal-feedback/index.mjs"
+
+const session = createTerminalSession()
 
 const args = process.argv.slice(2)
 const kindOptionIndex = args.indexOf("--kind")
@@ -67,7 +71,7 @@ const kindConfig = {
 
 // 所有参数与交互错误统一写入 stderr 并使用失败退出码。
 function fail(message) {
-  process.stderr.write(` 错误：${message}\n`)
+  session.notice({ level: "error", message })
   process.exit(1)
 }
 
@@ -77,6 +81,7 @@ function writeSelected(value) {
 
   if (resultFile) {
     writeFileSync(resultFile, result)
+
     return
   }
 
@@ -102,6 +107,7 @@ async function selectCustomVersion() {
     if (!isExactVersion(environmentVersion)) {
       fail("版本号必须是 x.y.z 格式。")
     }
+
     return environmentVersion
   }
 

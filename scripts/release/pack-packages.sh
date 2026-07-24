@@ -13,5 +13,5 @@ fi
 
 # dry-run 使用 pnpm 的实际发布文件计算逻辑。
 for pkg in "$@"; do
-  pnpm --filter "@schemx/$pkg" pack --dry-run
+  release_task "检查 @schemx/$pkg 发布内容" pnpm --filter "@schemx/$pkg" pack --dry-run
 done

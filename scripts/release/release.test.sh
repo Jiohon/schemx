@@ -262,7 +262,7 @@ export COMMAND_LOG
 
 # 在 mock PATH 下执行发布入口。
 run_release() {
-  bash "$ROOT_DIR/scripts/release/release.sh" "$@"
+  bash "$ROOT_DIR/scripts/release/release.sh" "$@" 2>&1
 }
 
 # 断言文本包含预期片段。
@@ -498,7 +498,8 @@ const source = readFileSync('$ROOT_DIR/scripts/packages/pack-local.mjs', 'utf8')
 
 assert.doesNotMatch(source, /function (formatSize|collectFiles|analyzeTarball|printTarballAnalysis)\\b/);
 assert.doesNotMatch(source, /\\b(mkdtempSync|readdirSync|rmSync|statSync|tmpdir|relative)\\b/);
-assert.match(source, /import \{ printSection \} from \"\.\.\/lib\/terminal\.mjs\"/);
+assert.match(source, /import \{ createTerminalSession \} from \"\.\.\/lib\/terminal-feedback\/index\.mjs\"/);
+assert.match(source, /session\.run\(/);
 "
 }
 
@@ -507,17 +508,18 @@ test_terminal_section_uses_shared_separator() {
   local output
 
   output="$(node --input-type=module -e "
-import { printSection } from '$ROOT_DIR/scripts/lib/terminal.mjs';
+import { createTerminalUi } from '$ROOT_DIR/scripts/lib/terminal-feedback/index.mjs';
 
 let output = '';
-printSection('构建 @schemx/core', {
+const ui = createTerminalUi({
   output: { write(value) { output += value; } },
+  input: { isTTY: false },
 });
+ui.section('构建 @schemx/core');
 process.stdout.write(output);
 ")"
 
-  assert_contains "$output" "------ 构建 @schemx/core ------"
-  assert_not_contains "$output" "═"
+  assert_contains "$output" "◇ 构建 @schemx/core"
 }
 
 # 验证发布测试入口也遵循统一的终端输出约定。
@@ -625,7 +627,7 @@ test_release_markers_accept_available_candidate() {
   local output
 
   : >"$COMMAND_LOG"
-  output="$(bash "$ROOT_DIR/scripts/release/check-release-markers-available.sh" "core=9.8.7")"
+  output="$(bash "$ROOT_DIR/scripts/release/check-release-markers-available.sh" "core=9.8.7" 2>&1)"
 
   assert_contains "$output" "@schemx/core@9.8.7 可创建"
   assert_log_contains "git tag -l @schemx/core@9.8.7"
@@ -1151,11 +1153,14 @@ test_release_output_uses_colors_when_forced() {
   unset FORCE_COLOR
   unset MOCK_BRANCH
 
-  assert_contains "$output" "${cyan}${bold}发布计划"
-  assert_contains "$output" "${cyan}${bold}发布 @schemx/core"
-  assert_contains "$output" "${green}✓ @schemx/core@"
+  assert_contains "$output" "${cyan}◇"
+  assert_contains "$output" "${bold}发布计划"
+  assert_contains "$output" "发布 @schemx/core"
+  assert_contains "$output" "${green}✓"
+  assert_contains "$output" "@schemx/core@"
   assert_contains "$output" "可发布"
-  assert_contains "$output" "${yellow}! 如果 npm 要求网页登录、二维码确认或 OTP"
+  assert_contains "$output" "${yellow}▲"
+  assert_contains "$output" "如果 npm 要求网页登录、二维码确认或 OTP"
 
   export MOCK_BRANCH="feature/demo"
   unset NO_COLOR
@@ -1172,7 +1177,8 @@ test_release_output_uses_colors_when_forced() {
     exit 1
   fi
 
-  assert_contains "$error_output" "${red}✖ 错误：正式发布只能在 main 分支执行。当前分支：feature/demo"
+  assert_contains "$error_output" "${red}✖"
+  assert_contains "$error_output" "正式发布只能在 main 分支执行。当前分支：feature/demo"
 }
 
 # 验证非 TTY 默认不输出 ANSI 转义字符。

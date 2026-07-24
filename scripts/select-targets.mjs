@@ -14,10 +14,12 @@
  */
 
 import { resolve } from "node:path"
-import { fileURLToPath, pathToFileURL } from "node:url"
+import { pathToFileURL } from "node:url"
+
+import { selectTargets } from "./lib/targets.mjs"
+import { createTerminalSession } from "./lib/terminal-feedback/index.mjs"
 
 export { discoverAllTargets, discoverTargets, selectTargets } from "./lib/targets.mjs"
-import { selectTargets } from "./lib/targets.mjs"
 
 /**
  * 判断当前文件是否作为命令行入口直接执行。
@@ -36,6 +38,7 @@ function isMainModule() {
 
 // 将目标选择库暴露为一行一个目录名的 CLI，便于 Shell 脚本消费。
 async function runCli() {
+  const session = createTerminalSession()
   const args = process.argv.slice(2)
   const scopesArg = args.find((arg) => !arg.startsWith("--"))
   const taskIndex = args.indexOf("--task")
@@ -44,10 +47,8 @@ async function runCli() {
   const title = titleIndex !== -1 ? args[titleIndex + 1] : undefined
 
   if (!scopesArg) {
-    process.stderr.write(
-      "用法：node select-targets.mjs <scopes> [--task <task>] [--title <title>]\n"
-    )
-    process.stderr.write("  scopes: packages,plugins,... （逗号分隔）\n")
+    session.notice({ level: "error", message: "用法：node select-targets.mjs <scopes> [--task <task>] [--title <title>]" })
+    session.notice({ level: "info", message: "scopes: packages,plugins,... （逗号分隔）" })
     process.exit(1)
   }
 

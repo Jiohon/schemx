@@ -28,13 +28,11 @@ done
 
 # 所有本地 tag 创建成功后，再统一推送 main 和 tag。
 for tag_name in "${release_tags[@]}"; do
-  info "创建 release tag：$tag_name"
-  git tag -a "$tag_name" -m "release: $tag_name"
+  release_task "创建 $tag_name" git tag -a "$tag_name" -m "release: $tag_name"
 done
 
-info "推送 main 与 release tag"
-git push origin main
+release_task "推送 main" git push origin main
 
 for tag_name in "${release_tags[@]}"; do
-  git push origin "$tag_name"
+  release_task "推送 $tag_name" git push origin "$tag_name"
 done

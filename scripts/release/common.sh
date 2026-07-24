@@ -10,7 +10,14 @@ RELEASE_VERSION_ACTIONS=(current patch minor major custom)
 
 # 将 Shell 层的输出交给 Node UI，集中处理颜色和对齐。
 release_ui() {
-  node "$ROOT_DIR/scripts/release/ui.mjs" "$@"
+  node "$ROOT_DIR/scripts/terminal.mjs" "$@"
+}
+
+# 以公共 spinner 执行发布阶段命令；SCHEMX_VERBOSE=1 时实时透传日志。
+release_task() {
+  local label="$1"
+  shift
+  release_ui task "$label" -- "$@"
 }
 
 # 输出发布流程的阶段标题。

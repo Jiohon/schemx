@@ -28,7 +28,7 @@ for pkg in "$@"; do
   bash "$ROOT_DIR/scripts/release/generate-release-notes.sh" "$pkg" >"$notes_file"
 
   info "创建 GitHub Release：$title"
-  gh release create "$tag_name" --repo "$repo" --title "$title" --notes-file "$notes_file"
+  release_task "创建 GitHub Release：$title" gh release create "$tag_name" --repo "$repo" --title "$title" --notes-file "$notes_file"
 
   cleanup_notes_file
   trap - EXIT

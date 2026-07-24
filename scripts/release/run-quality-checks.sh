@@ -17,33 +17,25 @@ if [[ "$#" -gt 0 ]]; then
   done
 fi
 
-info "安装依赖一致性检查"
-pnpm install --frozen-lockfile
+release_task "安装依赖一致性检查" pnpm install --frozen-lockfile
 
-info "运行包配置检查"
-pnpm check:package-config
+release_task "运行包配置检查" pnpm check:package-config
 
 if [[ "${#target_filters[@]}" -gt 0 ]]; then
-  info "运行目标依赖链测试：$(target_summary "$@")"
-  pnpm "${target_filters[@]}" test
+  release_task "运行目标依赖链测试：$(target_summary "$@")" pnpm "${target_filters[@]}" test
 else
-  info "运行测试"
-  # 裸命令经 run-with-targets 在 TTY 会弹交互选择；release 需全量非交互，用 </dev/null 触发默认全部
-  pnpm test </dev/null
+  # release 直接调用 pnpm workspace 脚本，不经过交互式根目标选择器。
+  release_task "运行测试" pnpm test
 fi
 
 if [[ "${#target_filters[@]}" -gt 0 ]]; then
-  info "运行目标依赖链 lint：$(target_summary "$@")"
-  pnpm "${target_filters[@]}" lint
+  release_task "运行目标依赖链 lint：$(target_summary "$@")" pnpm "${target_filters[@]}" lint
 else
-  info "运行 lint"
-  pnpm lint </dev/null
+  release_task "运行 lint" pnpm lint
 fi
 
 if [[ "${#target_filters[@]}" -gt 0 ]]; then
-  info "构建目标依赖链发布产物：$(target_summary "$@")"
-  pnpm "${target_filters[@]}" build
+  release_task "构建目标依赖链发布产物：$(target_summary "$@")" pnpm "${target_filters[@]}" build
 else
-  info "构建发布产物"
-  pnpm build </dev/null
+  release_task "构建发布产物" pnpm build
 fi

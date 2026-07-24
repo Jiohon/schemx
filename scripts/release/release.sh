@@ -217,7 +217,7 @@ run_pack() {
   # 每个目标单独 pack，方便定位和安装。
   for pkg in "${targets[@]}"; do
     mkdir -p "$ROOT_DIR/.packs"
-    pnpm --filter "@schemx/$pkg" pack --pack-destination "$ROOT_DIR/.packs"
+    release_task "生成 @schemx/$pkg 本地 tarball" pnpm --filter "@schemx/$pkg" pack --pack-destination "$ROOT_DIR/.packs"
   done
 }
 
@@ -418,15 +418,15 @@ apply_latest_version_action() {
   for index in "${!targets[@]}"; do
     pkg="${targets[$index]}"
     candidate_version="${PLANNED_VERSIONS[$index]}"
-    npm --prefix "$(package_path "$pkg")" version "$candidate_version" --no-git-tag-version
+    release_task "更新 @schemx/$pkg 版本" npm --prefix "$(package_path "$pkg")" version "$candidate_version" --no-git-tag-version
   done
 
   info "同步 pnpm-lock.yaml"
-  pnpm install --lockfile-only
+  release_task "同步 pnpm-lock.yaml" pnpm install --lockfile-only
 
   info "提交版本变更"
-  git add "${files[@]}"
-  git commit -m "$(version_commit_message "${targets[@]}")"
+  release_task "暂存版本变更" git add "${files[@]}"
+  release_task "提交版本变更" git commit -m "$(version_commit_message "${targets[@]}")"
   trap - EXIT
   cleanup_latest_version_transaction
   assert_clean_git
@@ -545,6 +545,8 @@ run_publish() {
 main() {
   local command="${1:-}"
 
+  release_ui intro "Schemx Release"
+
   case "$command" in
     check)
       run_check
@@ -564,6 +566,8 @@ main() {
       die "未知命令：$command"
       ;;
   esac
+
+  release_ui outro "发布流程完成"
 }
 
 main "$@"

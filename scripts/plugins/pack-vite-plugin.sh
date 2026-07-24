@@ -12,7 +12,7 @@ case "$PLUGIN_KEY" in
   vite-plugin-workspace-source | vite-plugin-package-resolution-compat | vite-plugin-realpath-fallback)
     ;;
   *)
-    printf '未知 Vite 插件：%s\n' "$PLUGIN_KEY" >&2
+    node "$ROOT/scripts/terminal.mjs" error "未知 Vite 插件：$PLUGIN_KEY"
     exit 1
     ;;
 esac
@@ -57,21 +57,20 @@ trap restore_version EXIT
 mkdir -p "$PACKS_DIR"
 
 node "$ROOT/scripts/terminal.mjs" section "打包 $PLUGIN_NAME ($PACK_VERSION)"
-printf '输出目录：%s\n' "$PACKS_DIR"
+node "$ROOT/scripts/terminal.mjs" kv "输出目录" "$PACKS_DIR"
 
 write_version "$PACK_VERSION"
 
 cd "$PLUGIN_DIR"
-pnpm build
-CI=true pnpm pack --pack-destination "$PACKS_DIR"
+node "$ROOT/scripts/terminal.mjs" task "构建 $PLUGIN_NAME" -- pnpm build
+node "$ROOT/scripts/terminal.mjs" task "打包 $PLUGIN_NAME" -- env CI=true pnpm pack --pack-destination "$PACKS_DIR"
 
 TARBALL_PATH="$(find "$PACKS_DIR" -maxdepth 1 -type f -name "*-${PACK_VERSION}.tgz" -print -quit)"
 
 if [[ -z "$TARBALL_PATH" ]]; then
-  printf '未找到本次打包产物：%s\n' "$PACK_VERSION" >&2
+  node "$ROOT/scripts/terminal.mjs" error "未找到本次打包产物：$PACK_VERSION"
   exit 1
 fi
 
-node "$ROOT/scripts/terminal.mjs" section "打包完成"
-ls -lh "$TARBALL_PATH"
+node "$ROOT/scripts/terminal.mjs" success "打包完成：$TARBALL_PATH"
 printf '__SCHEMX_LOCAL_TARBALL__=%s\n' "$TARBALL_PATH"

@@ -1,11 +1,11 @@
 import { existsSync, readFileSync } from "node:fs"
 import { dirname, relative, resolve } from "node:path"
-import { spawnSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
 
-import { packLocalPackages } from "./pack-local.mjs"
-import { printSection } from "../lib/terminal.mjs"
 import { discoverTargets, selectTargets } from "../lib/targets.mjs"
+import { createTerminalSession } from "../lib/terminal-feedback/index.mjs"
+
+import { packLocalPackages } from "./pack-local.mjs"
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "../..")
 const examplesDir = resolve(rootDir, "examples")
@@ -13,15 +13,16 @@ const npmCacheDir = resolve(rootDir, "node_modules/.cache/npm")
 const packages = discoverTargets("packages").map((target) => target.dir)
 
 // 同步执行安装命令并将子进程输出直接交给调用终端。
-function run(command, args, cwd) {
-  const result = spawnSync(command, args, {
+async function run(session, command, args, cwd, label) {
+  const result = await session.run({
+    command,
+    args,
     cwd,
-    stdio: "inherit",
-    encoding: "utf8",
+    label,
   })
 
-  if (result.status !== 0) {
-    throw new Error(`${command} ${args.join(" ")} 执行失败`)
+  if (result.code !== 0) {
+    throw new Error(`${label} 失败（退出码：${result.code}）`)
   }
 }
 
@@ -37,11 +38,15 @@ function hasSchemxDependency(exampleDir) {
 
 // 选择示例、打包 workspace 包，再逐个安装相对路径 tarball。
 async function main() {
+  const session = createTerminalSession()
+  session.begin({ title: "Schemx" })
   const result = await selectTargets("examples", {
     title: "请选择要安装本地包的目标",
   })
 
   if (!result) {
+    session.finish({ status: "cancel" })
+
     return
   }
 
@@ -50,12 +55,18 @@ async function main() {
     .filter((dir) => existsSync(resolve(dir, "package.json")))
 
   if (exampleDirs.length === 0) {
-    console.log("没有选中的 example，无需安装。")
+    session.notice({ level: "warning", message: "没有选中的 example，无需安装。" })
+    session.finish({ message: "无需执行" })
+
     return
   }
 
   // 先完成全部打包，确保每个示例使用同一批带时间戳的产物。
-  const tarballs = packLocalPackages(packages)
+  session.section({
+    title: "安装本地包",
+    details: { 目标: result.targets.map((target) => target.name) },
+  })
+  const tarballs = await packLocalPackages(packages, { session })
 
   for (const exampleDir of exampleDirs) {
     if (!hasSchemxDependency(exampleDir)) {
@@ -63,8 +74,8 @@ async function main() {
     }
 
     const tarballArgs = packages.map((name) => relative(exampleDir, tarballs.get(name)))
-    printSection(`安装本地 @schemx tarball 到 ${relative(rootDir, exampleDir)}`)
-    run(
+    await run(
+      session,
       "npm",
       [
         "install",
@@ -76,9 +87,17 @@ async function main() {
         relative(exampleDir, npmCacheDir),
         ...tarballArgs,
       ],
-      exampleDir
+      exampleDir,
+      `安装本地包到 ${relative(rootDir, exampleDir)}`
     )
   }
+
+  session.finish()
 }
 
-await main()
+try {
+  await main()
+} catch (error) {
+  createTerminalSession().notice({ level: "error", message: error instanceof Error ? error.message : String(error) })
+  process.exitCode = 1
+}

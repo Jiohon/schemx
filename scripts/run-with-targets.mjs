@@ -12,24 +12,31 @@
  * 目标名不通过命令行参数传入（统一走交互选择）。额外位置参数会被忽略并提示。
  */
 
-import { spawnSync } from "node:child_process"
-
-import { printSection } from "./lib/terminal.mjs"
 import { resolveTaskScript, selectTargets } from "./lib/targets.mjs"
+import { createTerminalSession } from "./lib/terminal-feedback/index.mjs"
 
 const SCOPES = ["packages", "plugins", "examples"]
 
 const [task, ...rest] = process.argv.slice(2)
+const session = createTerminalSession()
 
 if (!task) {
-  process.stderr.write("用法：node run-with-targets.mjs <task>\n")
-  process.stderr.write("  task: 要在目标中执行的脚本名（如 lint/build/test/dev）\n")
+  session.notice({ level: "error", message: "用法：node run-with-targets.mjs <task>" })
+  session.notice({
+    level: "info",
+    message: "task: 要在目标中执行的脚本名（如 lint/build/test/dev）",
+  })
   process.exit(1)
 }
 
 if (rest.length > 0) {
-  process.stderr.write(`提示：已忽略额外参数 ${rest.join(" ")}。目标通过交互选择。\n`)
+  session.notice({
+    level: "warning",
+    message: `已忽略额外参数 ${rest.join(" ")}。目标通过交互选择。`,
+  })
 }
+
+session.begin({ title: `Schemx ${task}` })
 
 // 选择逻辑在 TTY 与 CI 间保持一致：交互选择或自动选择全部匹配目标。
 const result = await selectTargets(SCOPES, {
@@ -45,7 +52,8 @@ if (!result) {
 const { targets, source } = result
 
 if (targets.length === 0) {
-  process.stderr.write(`没有目标定义了 ${task} 脚本，无需执行。\n`)
+  session.notice({ level: "warning", message: `没有目标定义了 ${task} 脚本，无需执行。` })
+  session.finish({ message: "无需执行" })
   process.exit(0)
 }
 
@@ -62,32 +70,49 @@ const TASK_LABELS = {
   "type-check": "类型检查",
 }
 
-const label = source === "prompt" ? "交互选择" : "非交互默认全部"
-process.stderr.write(`[${label}] 共执行 ${targets.length} 个目标。\n`)
+const selectionMode = source === "prompt" ? "交互选择" : "非交互默认全部"
+session.section({
+  title: TASK_LABELS[task] ?? `执行 ${task}`,
+  details: {
+    模式: selectionMode,
+    目标: targets.map((target) => target.name),
+  },
+})
 
 // 串行执行，避免多个 dev 服务或构建日志相互干扰。
+let hasCompletedTarget = false
+
 for (const target of targets) {
   const targetScript = resolveTaskScript(target.scripts, task)
 
   if (!targetScript) {
-    process.stderr.write(`${target.name} 没有可执行的 ${task} 脚本。\n`)
+    session.notice({
+      level: "error",
+      message: `${target.name} 没有可执行的 ${task} 脚本。`,
+    })
     process.exit(1)
   }
 
-  printSection(`${TASK_LABELS[task] ?? `执行 ${task}`} ${target.name}`)
+  const label = `${TASK_LABELS[task] ?? `执行 ${task}`} ${target.name}`
+  if (hasCompletedTarget) session.gap()
 
-  // 白名单任务可能映射到 dev:h5 / build:h5；其余任务仍执行同名 script。
-  const child = spawnSync("pnpm", ["--filter", target.name, "run", targetScript], {
-    stdio: "inherit",
-    shell: process.platform === "win32",
+  const result = await session.run({
+    command: "pnpm",
+    args: ["--filter", target.name, "run", targetScript],
+    label,
   })
 
-  if (child.error) {
-    process.stderr.write(`pnpm 启动失败：${child.error.message}\n`)
-    process.exit(1)
+  if (result.code !== 0) {
+    process.exitCode = result.code
+    break
   }
 
-  if (child.status !== 0) {
-    process.exit(child.status ?? 1)
-  }
+  hasCompletedTarget = true
 }
+
+if (hasCompletedTarget) session.gap()
+
+session.finish({
+  status: process.exitCode ? "error" : "success",
+  message: process.exitCode ? "执行失败" : "全部完成",
+})

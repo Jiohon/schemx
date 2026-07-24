@@ -1,10 +1,9 @@
-import { spawnSync } from "node:child_process"
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
-import { printSection } from "../lib/terminal.mjs"
 import { discoverTargets, selectTargets } from "../lib/targets.mjs"
+import { createTerminalSession } from "../lib/terminal-feedback/index.mjs"
 
 const currentFilePath = fileURLToPath(import.meta.url)
 const rootDir = resolve(dirname(currentFilePath), "../..")
@@ -19,31 +18,26 @@ const packageNames = discoverTargets("packages").map((target) => target.dir)
  * @param {string[]} args
  * @param {{
  *   cwd?: string
- *   capture?: boolean
+ *   label?: string
+ *   quiet?: boolean
  * }} options
- * @returns {string}
+ * @returns {Promise<Awaited<ReturnType<import("../lib/terminal-feedback/process.mjs").runProcess>>>}
  */
-function run(command, args, options = {}) {
-  const capture = options.capture ?? false
-
-  const result = spawnSync(command, args, {
+async function run(command, args, options = {}) {
+  const session = options.session ?? createTerminalSession()
+  const result = await session.run({
+    command,
+    args,
     cwd: options.cwd ?? rootDir,
-    stdio: capture ? ["ignore", "pipe", "inherit"] : "inherit",
-    encoding: "utf8",
-    shell: process.platform === "win32",
+    label: options.label ?? `${command} ${args.join(" ")}`,
+    quiet: options.quiet ?? false,
   })
 
-  if (result.error) {
-    throw new Error(`${command} ${args.join(" ")} 启动失败：${result.error.message}`, {
-      cause: result.error,
-    })
+  if (result.code !== 0) {
+    throw new Error(`${command} ${args.join(" ")} 执行失败，退出码：${result.code}`)
   }
 
-  if (result.status !== 0) {
-    throw new Error(`${command} ${args.join(" ")} 执行失败，退出码：${result.status}`)
-  }
-
-  return result.stdout ?? ""
+  return result
 }
 
 /**
@@ -161,12 +155,43 @@ function readReportedTarball(output, targetName) {
 }
 
 /**
+ * 解析 pnpm pack 的机器可读结果；截断输出不能安全解析。
+ *
+ * @param {string} output
+ * @param {{ packageName: string, truncated?: boolean }} options
+ * @returns {{ filename: string }}
+ */
+export function parsePackOutput(output, { packageName, truncated = false }) {
+  if (truncated) {
+    throw new Error(`${packageName} 的机器可读输出已截断，无法安全解析`)
+  }
+
+  let parsedOutput
+
+  try {
+    parsedOutput = JSON.parse(output)
+  } catch (error) {
+    throw new Error(`${packageName} 的 pnpm pack 输出无法解析为 JSON：\n${output}`, {
+      cause: error,
+    })
+  }
+
+  const packResult = Array.isArray(parsedOutput) ? parsedOutput[0] : parsedOutput
+
+  if (!packResult?.filename) {
+    throw new Error(`${packageName} 的 pnpm pack 结果中缺少 filename`)
+  }
+
+  return packResult
+}
+
+/**
  * 构建并打包本地 workspace 包。
  *
  * @param {string[]} targets
- * @returns {Map<string, string>}
+ * @returns {Promise<Map<string, string>>}
  */
-export function packLocalPackages(targets = packageNames) {
+export async function packLocalPackages(targets = packageNames, { session = createTerminalSession() } = {}) {
   mkdirSync(packDir, {
     recursive: true,
   })
@@ -181,41 +206,31 @@ export function packLocalPackages(targets = packageNames) {
     const originalVersion = packageJson.version
     const packVersion = createTimestampedVersion(originalVersion, timestamp)
 
-    printSection(`构建 ${packageName} (${packVersion})...`)
-
     writePackageJson(target, {
       ...packageJson,
       version: packVersion,
     })
 
     try {
-      run("pnpm", ["--filter", packageName, "build"])
+      await run("pnpm", ["--filter", packageName, "build"], {
+        label: `构建 ${packageName}`,
+        session,
+      })
 
-      console.log(`打包 ${packageName}...`)
-
-      const output = run(
+      const packOutput = await run(
         "pnpm",
         ["--filter", packageName, "pack", "--pack-destination", packDir, "--json"],
         {
-          capture: true,
+          label: `打包 ${packageName}`,
+          quiet: true,
+          session,
         }
       )
 
-      let parsedOutput
-
-      try {
-        parsedOutput = JSON.parse(output)
-      } catch (error) {
-        throw new Error(`${packageName} 的 pnpm pack 输出无法解析为 JSON：\n${output}`, {
-          cause: error,
-        })
-      }
-
-      const packResult = Array.isArray(parsedOutput) ? parsedOutput[0] : parsedOutput
-
-      if (!packResult?.filename) {
-        throw new Error(`${packageName} 的 pnpm pack 结果中缺少 filename`)
-      }
+      const packResult = parsePackOutput(packOutput.stdout, {
+        packageName,
+        truncated: packOutput.stdoutTruncated,
+      })
 
       const tarballPath = resolve(packDir, packResult.filename)
 
@@ -248,6 +263,8 @@ function isMainModule() {
 
 // 同时支持核心包和实现 pack:local 的插件，并输出可复制的安装命令。
 async function main() {
+  const session = createTerminalSession()
+  session.begin({ title: "Schemx" })
   const result = await selectTargets(["packages", "plugins"], {
     eligible: (target) =>
       target.scope === "packages" || Boolean(target.scripts["pack:local"]),
@@ -255,6 +272,8 @@ async function main() {
   })
 
   if (!result) {
+    session.finish({ status: "cancel" })
+
     return
   }
 
@@ -267,40 +286,50 @@ async function main() {
   if (packageDirs.length > 0) {
     const targets = expandTargets(packageDirs)
 
-    console.log(`待打包包：${targets.map((name) => `@schemx/${name}`).join(", ")}`)
+    session.section({
+      title: "本地打包",
+      details: { 目标: targets.map((name) => `@schemx/${name}`) },
+    })
 
-    tarballPaths.push(...packLocalPackages(targets).values())
+    tarballPaths.push(...(await packLocalPackages(targets, { session })).values())
   }
 
   for (const target of pluginTargets) {
-    printSection(`打包插件 ${target.name}...`)
-    const output = run("pnpm", ["--filter", target.name, "run", "pack:local"], {
-      capture: true,
+    const pluginOutput = await run("pnpm", ["--filter", target.name, "run", "pack:local"], {
+      label: `打包插件 ${target.name}`,
+      quiet: true,
+      session,
     })
-    const reported = readReportedTarball(output, target.name)
+    if (pluginOutput.stdoutTruncated) {
+      throw new Error(`${target.name} 的机器可读输出已截断，无法安全解析`)
+    }
+
+    const reported = readReportedTarball(pluginOutput.stdout, target.name)
 
     if (reported.output) {
-      process.stdout.write(`${reported.output}\n`)
+      session.notice({ level: "info", message: reported.output })
     }
 
     tarballPaths.push(reported.tarballPath)
   }
 
   if (packageDirs.length === 0 && pluginTargets.length === 0) {
-    console.log("没有选中的目标，无需打包。")
+    session.notice({ level: "warning", message: "没有选中的目标，无需打包。" })
+    session.finish({ message: "无需执行" })
+
     return
   }
 
-  printSection(`打包完成，产物目录：${packDir}`)
-  console.log(createInstallCommand(tarballPaths))
+  session.notice({ level: "success", message: `打包完成，产物目录：${packDir}` })
+  session.section({ title: "安装方式", details: { 安装命令: createInstallCommand(tarballPaths) } })
+  session.finish()
 }
 
 if (isMainModule()) {
   try {
     await main()
   } catch (error) {
-    console.error()
-    console.error(error instanceof Error ? error.message : String(error))
+    createTerminalSession().notice({ level: "error", message: error instanceof Error ? error.message : String(error) })
 
     process.exitCode = 1
   }
